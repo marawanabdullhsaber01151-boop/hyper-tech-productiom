@@ -1,0 +1,603 @@
+<!-- @format -->
+
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>تسجيل الدخول — Hyper-Tech</title>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg-dark: #0b0f1a;
+        --bg-card: #111827;
+        --accent: #f59e0b;
+        --accent-soft: rgba(245, 158, 11, 0.12);
+        --text-main: #f1f5f9;
+        --text-muted: #aab8cc;
+        --text-dim: #475569;
+        --border: rgba(255, 255, 255, 0.08);
+        --red: #ef4444;
+        --red-soft: rgba(239, 68, 68, 0.12);
+      }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        font-family: "Tajawal", sans-serif;
+        background: var(--bg-dark);
+        color: var(--text-main);
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+      }
+      .auth-box {
+        width: 100%;
+        max-width: 520px;
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 20px;
+        padding: 32px 28px;
+      }
+      .auth-logo {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        margin-bottom: 8px;
+      }
+      .auth-logo-box {
+        width: 42px;
+        height: 42px;
+        border-radius: 12px;
+        background: linear-gradient(135deg, var(--accent), #d97706);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+      }
+      .auth-logo span {
+        font-weight: 800;
+        font-size: 18px;
+      }
+      .auth-sub {
+        text-align: center;
+        color: var(--text-muted);
+        font-size: 12.5px;
+        margin-bottom: 26px;
+      }
+      .auth-tabs {
+        display: flex;
+        background: var(--bg-dark);
+        border-radius: 12px;
+        padding: 4px;
+        margin-bottom: 22px;
+      }
+      .auth-tab {
+        flex: 1;
+        text-align: center;
+        padding: 10px;
+        border-radius: 9px;
+        font-size: 13px;
+        font-weight: 700;
+        cursor: pointer;
+        color: var(--text-muted);
+        background: transparent;
+        border: none;
+        font-family: inherit;
+        transition: 0.2s;
+      }
+      .auth-tab.active {
+        background: var(--accent);
+        color: #1a1206;
+      }
+      .field {
+        margin-bottom: 14px;
+      }
+      .field label {
+        display: block;
+        font-size: 12.5px;
+        color: var(--text-muted);
+        margin-bottom: 6px;
+      }
+       .field input,
+       .field select,
+       .field textarea {
+        width: 100%;
+        padding: 12px 14px;
+        border-radius: 11px;
+        background: var(--bg-dark);
+        border: 1px solid var(--border);
+        color: var(--text-main);
+        font-family: inherit;
+        font-size: 13.5px;
+        outline: none;
+        transition: 0.2s;
+      }
+      .field textarea {
+        resize: vertical;
+        min-height: 72px;
+      }
+       .field input:focus,
+       .field select:focus,
+      .field textarea:focus {
+        border-color: var(--accent);
+      }
+      .field-hint {
+        font-size: 11px;
+        color: var(--text-dim);
+        margin-top: 4px;
+      }
+      .auth-submit {
+        width: 100%;
+        background: linear-gradient(135deg, var(--accent), #d97706);
+        border: none;
+        border-radius: 12px;
+        padding: 14px;
+        color: #1a1206;
+        font-weight: 800;
+        font-size: 14px;
+        cursor: pointer;
+        margin-top: 6px;
+        transition: 0.2s;
+      }
+      .auth-submit:hover {
+        filter: brightness(1.08);
+      }
+      .auth-submit:disabled {
+        opacity: 0.55;
+        cursor: not-allowed;
+      }
+      .auth-error {
+        background: var(--red-soft);
+        border: 1px solid rgba(239, 68, 68, 0.3);
+        color: #fca5a5;
+        font-size: 12.5px;
+        padding: 11px 14px;
+        border-radius: 10px;
+        margin-bottom: 14px;
+        display: none;
+        align-items: center;
+        gap: 8px;
+      }
+      .auth-error.show {
+        display: flex;
+      }
+      .auth-success {
+        background: var(--accent-soft);
+        border: 1px solid rgba(245, 158, 11, 0.32);
+        color: var(--text-main);
+        font-size: 12.5px;
+        padding: 14px;
+        border-radius: 10px;
+        margin-bottom: 14px;
+        line-height: 1.8;
+      }
+      .auth-success.hidden {
+        display: none;
+      }
+      .reference-code {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        margin-top: 10px;
+        padding: 10px 12px;
+        border: 1px dashed rgba(245, 158, 11, 0.55);
+        border-radius: 9px;
+        direction: ltr;
+      }
+      .reference-code strong {
+        letter-spacing: 2px;
+        color: var(--accent);
+        font-size: 18px;
+      }
+      .copy-button {
+        border: 1px solid var(--border);
+        background: var(--bg-dark);
+        color: var(--text-muted);
+        border-radius: 7px;
+        padding: 6px 9px;
+        cursor: pointer;
+        font-family: inherit;
+        font-size: 11px;
+      }
+      .copy-button:hover {
+        color: var(--accent);
+        border-color: var(--accent);
+      }
+      .check-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--text-muted);
+        font-size: 12.5px;
+        margin: 2px 0 8px;
+      }
+      .check-row input {
+        accent-color: var(--accent);
+        width: 15px;
+        height: 15px;
+      }
+      .track-launch {
+        text-align: center;
+        margin: -8px 0 18px;
+        font-size: 12.5px;
+      }
+      .track-launch a {
+        color: var(--accent);
+        font-weight: 700;
+        text-decoration: none;
+      }
+      .track-box {
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 14px;
+        margin-bottom: 16px;
+        background: rgba(11, 15, 26, 0.42);
+      }
+      .track-box.hidden {
+        display: none;
+      }
+      .track-title {
+        font-size: 13px;
+        font-weight: 800;
+        margin-bottom: 12px;
+      }
+      .track-box .auth-submit {
+        padding: 11px;
+      }
+      .form-note {
+        color: var(--text-muted);
+        font-size: 11.5px;
+        line-height: 1.8;
+        margin-bottom: 14px;
+      }
+      .otp-note {
+        color: var(--text-muted);
+        font-size: 11.5px;
+        line-height: 1.8;
+        margin-bottom: 14px;
+      }
+      .manual-reset-link {
+        display: block;
+        margin-top: 12px;
+        color: var(--text-muted);
+        font-size: 11.5px;
+        text-align: center;
+      }
+      .manual-reset-link a {
+        color: var(--accent);
+        font-weight: 700;
+      }
+      .back-link {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        margin-top: 20px;
+        font-size: 12.5px;
+        color: var(--text-muted);
+      }
+      .back-link a {
+        color: var(--accent);
+        font-weight: 700;
+      }
+      .hidden {
+        display: none;
+      }
+
+      /* ✅ مؤشر قوة كلمة المرور */
+      .pw-strength {
+        margin-top: 8px;
+      }
+      .pw-strength-bar {
+        display: flex;
+        gap: 4px;
+        margin-bottom: 5px;
+      }
+      .pw-strength-bar span {
+        flex: 1;
+        height: 4px;
+        border-radius: 3px;
+        background: var(--border);
+        transition: 0.25s;
+      }
+      .pw-strength-bar span.on.weak {
+        background: var(--red);
+      }
+      .pw-strength-bar span.on.medium {
+        background: var(--accent);
+      }
+      .pw-strength-bar span.on.strong {
+        background: #22c55e;
+      }
+      .pw-strength-label {
+        font-size: 11px;
+        color: var(--text-dim);
+      }
+      .pw-strength-label.weak {
+        color: var(--red);
+      }
+      .pw-strength-label.medium {
+        color: var(--accent);
+      }
+      .pw-strength-label.strong {
+        color: #22c55e;
+      }
+      @media (max-width: 520px) {
+        body {
+          padding: 12px;
+          align-items: flex-start;
+        }
+        .auth-box {
+          margin: 10px 0;
+          padding: 26px 18px;
+        }
+        .auth-tabs {
+          gap: 2px;
+        }
+        .auth-tab {
+          font-size: 11.5px;
+          padding: 9px 4px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="auth-box">
+      <div class="auth-logo">
+        <div class="auth-logo-box">⚡</div>
+        <span>Hyper-Tech</span>
+      </div>
+      <p class="auth-sub">بوابة عملاء الجملة</p>
+
+      <div class="auth-tabs">
+        <button type="button" class="auth-tab active" id="tab-login">
+          تسجيل الدخول
+        </button>
+        <button type="button" class="auth-tab" id="tab-new-customer">
+          عميل جديد
+        </button>
+        <button type="button" class="auth-tab" id="tab-old-customer">
+          عميل قديم
+        </button>
+      </div>
+
+      <div class="track-launch">
+        <a href="#" id="track-toggle"
+          ><i class="fa-solid fa-magnifying-glass"></i> تابع حالة طلبك</a
+        >
+      </div>
+
+      <div id="track-box" class="track-box hidden">
+        <div class="track-title">متابعة طلب الانضمام</div>
+        <form id="form-track">
+          <div class="field">
+            <label for="track-phone">رقم الهاتف</label>
+            <input type="tel" id="track-phone" placeholder="01xxxxxxxxx" required />
+          </div>
+          <div class="field">
+            <label for="track-reference">الرقم المرجعي</label>
+            <input
+              type="text"
+              id="track-reference"
+              placeholder="مثال: A7K3P9XZ"
+              maxlength="8"
+              required
+            />
+          </div>
+          <button type="submit" class="auth-submit" id="track-submit">
+            <i class="fa-solid fa-magnifying-glass"></i> متابعة الحالة
+          </button>
+        </form>
+        <div id="track-result" class="auth-success hidden"></div>
+      </div>
+
+      <div class="auth-error" id="auth-error">
+        <i class="fa-solid fa-triangle-exclamation"></i
+        ><span id="auth-error-msg"></span>
+      </div>
+
+      <form id="form-login">
+        <div class="field">
+          <label>رقم الهاتف أو البريد الإلكتروني</label>
+          <input
+            type="text"
+            id="login-identifier"
+            placeholder="01xxxxxxxxx أو you@example.com"
+            required
+          />
+        </div>
+        <div class="field">
+          <label>كلمة المرور</label>
+          <input type="password" id="login-password" required />
+            <label class="check-row" for="login-remember">
+              <input type="checkbox" id="login-remember" />
+              <span>افتكرني على الجهاز ده</span>
+            </label>
+          <div class="field-hint">
+            <a
+              href="#"
+              id="forgot-password-link"
+              style="color: var(--accent); font-weight: 700"
+              >نسيت كلمة المرور؟</a
+            >
+          </div>
+        </div>
+        <button type="submit" class="auth-submit" id="login-submit">
+          <i class="fa-solid fa-right-to-bracket"></i> دخول
+        </button>
+      </form>
+
+      <!-- ✨ صندوق استرجاع كلمة المرور -->
+      <div id="forgot-password-box" class="hidden">
+        <p class="auth-sub" style="margin-bottom: 16px">
+          اكتب رقم هاتفك أو إيميلك عشان نبعث لك كود استرجاع من 6 أرقام.
+        </p>
+        <div class="field">
+          <label>رقم الهاتف أو البريد الإلكتروني</label>
+          <input type="text" id="forgot-identifier" required />
+        </div>
+        <button type="button" class="auth-submit" id="forgot-submit">
+          <i class="fa-solid fa-paper-plane"></i> إرسال الكود
+        </button>
+        <div id="otp-verify-fields" class="hidden">
+          <p class="otp-note">
+            لو الحساب موجود، هيوصلك الكود على وسيلة التواصل المسجلة. الكود صالح
+            لفترة محدودة.
+          </p>
+          <div class="field">
+            <label for="otp-code">كود التحقق</label>
+            <input
+              type="text"
+              id="otp-code"
+              inputmode="numeric"
+              autocomplete="one-time-code"
+              maxlength="6"
+              pattern="[0-9]{6}"
+              placeholder="000000"
+            />
+          </div>
+          <div class="field">
+            <label for="otp-new-password">كلمة المرور الجديدة</label>
+            <input type="password" id="otp-new-password" minlength="6" />
+          </div>
+          <div class="field">
+            <label for="otp-confirm-password">تأكيد كلمة المرور</label>
+            <input type="password" id="otp-confirm-password" minlength="6" />
+          </div>
+          <button type="button" class="auth-submit" id="otp-verify-submit">
+            <i class="fa-solid fa-shield-halved"></i> تأكيد وتغيير كلمة المرور
+          </button>
+        </div>
+        <div class="manual-reset-link">
+          لا تملك وصولًا لهاتفك أو إيميلك؟
+          <a href="#" id="forgot-manual-link">تواصل مع الدعم للاسترجاع اليدوي</a>
+        </div>
+        <div class="back-link">
+          <a href="#" id="back-to-login-link">رجوع لتسجيل الدخول</a>
+        </div>
+      </div>
+
+      <form id="form-new-customer" class="hidden">
+        <p class="form-note">
+          قدّم بياناتك، وفريق المبيعات هيراجع الطلب ويتواصل معاك. التقديم لا
+          ينشئ حسابًا أو يسمح بالدخول مباشرة.
+        </p>
+        <div class="field">
+          <label for="app-name">الاسم الكامل *</label>
+          <input type="text" id="app-name" minlength="2" required />
+        </div>
+        <div class="field">
+          <label for="app-phone">رقم الهاتف *</label>
+          <input type="tel" id="app-phone" placeholder="01xxxxxxxxx" required />
+        </div>
+        <div class="field">
+          <label for="app-email">البريد الإلكتروني (اختياري)</label>
+          <input type="email" id="app-email" placeholder="you@example.com" />
+        </div>
+        <div class="field">
+          <label for="app-address">العنوان التفصيلي (اختياري)</label>
+          <textarea
+            id="app-address"
+            rows="2"
+            placeholder="المدينة، المنطقة، الشارع، رقم المبنى"
+          ></textarea>
+        </div>
+        <div class="field">
+          <label for="app-city">المحافظة (اختياري)</label>
+          <select id="app-city">
+            <option value="">اختر المحافظة...</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="app-company">اسم الشركة *</label>
+          <input type="text" id="app-company" minlength="2" required />
+        </div>
+        <div class="field">
+          <label for="app-commercial-register">رقم السجل التجاري (اختياري)</label>
+          <input type="text" id="app-commercial-register" />
+        </div>
+        <div class="field">
+          <label for="app-tax-id">الرقم الضريبي (اختياري)</label>
+          <input type="text" id="app-tax-id" />
+        </div>
+        <div class="field">
+          <label for="app-volume">حجم الطلب الشهري المتوقع (اختياري)</label>
+          <input type="text" id="app-volume" placeholder="مثال: 100 قطعة" />
+        </div>
+        <div class="field">
+          <label for="app-notes">ملاحظات إضافية (اختياري)</label>
+          <textarea id="app-notes" rows="3"></textarea>
+        </div>
+        <button type="submit" class="auth-submit" id="application-submit">
+          <i class="fa-solid fa-paper-plane"></i> إرسال طلب الانضمام
+        </button>
+      </form>
+
+      <div id="application-success" class="auth-success hidden">
+        <strong
+          ><i class="fa-solid fa-circle-check"></i> تم استلام طلبك
+          بنجاح</strong
+        >
+        <div>احتفظ بالرقم ده لمتابعة حالة طلبك:</div>
+        <div class="reference-code">
+          <strong id="application-reference"></strong>
+          <button type="button" class="copy-button" id="copy-reference">
+            <i class="fa-regular fa-copy"></i> نسخ
+          </button>
+        </div>
+      </div>
+
+      <form id="form-old-customer" class="hidden">
+        <p class="form-note">
+          لو شركتك مسجلة عندنا ودي أول مرة تستخدم البوابة، ابعت الطلب ده وفريق
+          المبيعات هيتأكد من البيانات ويرسل لك طريقة الدخول.
+        </p>
+        <div class="field">
+          <label for="old-company">اسم الشركة *</label>
+          <input type="text" id="old-company" minlength="2" required />
+        </div>
+        <div class="field">
+          <label for="old-phone">رقم الهاتف *</label>
+          <input type="tel" id="old-phone" placeholder="01xxxxxxxxx" required />
+        </div>
+        <button type="submit" class="auth-submit" id="activation-submit">
+          <i class="fa-solid fa-paper-plane"></i> إرسال طلب التفعيل
+        </button>
+      </form>
+
+      <div id="activation-success" class="auth-success hidden">
+        <strong
+          ><i class="fa-solid fa-circle-check"></i> تم إرسال طلبك</strong
+        >
+        <div>
+          طلبك وصل لفريق المبيعات، هيتواصلوا معاك أو هتوصلك بيانات الدخول
+          قريبًا.
+        </div>
+      </div>
+
+      <div class="back-link">
+        <a href="portal.html"
+          ><i class="fa-solid fa-arrow-right"></i> رجوع لكتالوج المنتجات</a
+        >
+      </div>
+    </div>
+
+    <script src="JS/egypt-governorates.js"></script>
+    <script src="JS/portal-auth.js"></script>
+    <script src="JS/password-toggle.js"></script>
+  </body>
+</html>

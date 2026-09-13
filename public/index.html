@@ -1,0 +1,377 @@
+<!-- @format -->
+
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>هايبر تك — لوحة التحكم</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="CSS/theme.css" />
+    <script src="JS/theme-switcher.js"></script>
+    <link rel="stylesheet" href="CSS/style.css" />
+    <link rel="stylesheet" href="CSS/responsive.css" />
+    <link rel="stylesheet" href="CSS/enhancements.css" />
+  </head>
+  <body>
+    <!-- ===== SIDEBAR ===== -->
+    <!-- ✅ الأقسام والصفحات هنا بقت ديناميكية بالكامل حسب دور المستخدم،
+         بتتبنى من GET /api/v1/nav عبر JS/nav-loader.js — بدل القائمة
+         الثابتة القديمة اللي كانت بتعرض كل الصفحات لكل الناس. -->
+    <aside class="sidebar">
+      <div class="sidebar-logo">
+        <div class="logo-icon">⚡</div>
+        <div class="logo-text">
+          <h1>هايبر تك</h1>
+          <span>نظام إدارة الموارد</span>
+        </div>
+      </div>
+
+      <div class="sidebar-section">
+        <p class="sidebar-section-title">الرئيسية</p>
+        <a href="index.html" class="nav-item active">
+          <i class="fa-solid fa-gauge-high"></i>
+          لوحة التحكم
+        </a>
+      </div>
+
+      <!-- ✅ يتملى ديناميكيًا بالأقسام/الصفحات المسموح بيها للمستخدم الحالي بس -->
+      <div id="dynamic-sidebar"></div>
+
+      <div class="sidebar-footer">
+        <div class="user-card">
+          <div class="user-avatar">م</div>
+          <div class="user-info">
+            <h4>محمد صابر</h4>
+            <span>رئيس مجلس الإدارة</span>
+          </div>
+          <i class="fa-solid fa-ellipsis-vertical" title="القائمة"></i>
+          <i
+            class="fa-solid fa-arrow-right-from-bracket"
+            title="تسجيل الخروج"
+            style="cursor: pointer"
+            onclick="
+              event.stopPropagation();
+              window.HyperTechAuth.logout();
+            "
+          ></i>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ===== MAIN ===== -->
+    <main class="main">
+      <!-- TOPBAR -->
+      <header class="topbar">
+        <div class="topbar-title">
+          <h2>لوحة التحكم</h2>
+          <p id="dashboard-date">—</p>
+        </div>
+        <div class="topbar-actions">
+          <!-- ✨ يتحول لأحمر تلقائيًا لو فشل تحميل بيانات الداشبورد (index.js) -->
+          <div class="live-badge" id="live-badge">
+            <div class="pulse"></div>
+            <span id="live-badge-text">مباشر</span>
+          </div>
+          <div class="search-box">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input type="text" placeholder="ابحث..." />
+          </div>
+          <div class="icon-btn">
+            <i class="fa-regular fa-bell"></i>
+            <div class="notif-dot"></div>
+          </div>
+          <div class="icon-btn">
+            <i class="fa-regular fa-envelope"></i>
+          </div>
+        </div>
+      </header>
+
+      <!-- CONTENT -->
+      <div class="content">
+        <!-- GREETING -->
+        <div class="greeting">
+          <h3>صباح الخير، <span>رئيس مجلس الإدارة</span> 👋</h3>
+          <p>لوحة التحكم تعرض بيانات حقيقية من صفحات النظام.</p>
+        </div>
+
+        <!-- ✅ بطاقات الأقسام — تظهر بس للمستخدم اللي عنده أكتر من قسم
+             (زي chairman/executive_manager)، وبتتملى ديناميكيًا من
+             JS/nav-loader.js حسب GET /api/v1/nav. لأصحاب القسم الواحد،
+             nav-loader.js بيحولهم مباشرة للوحة قسمهم فمش هيشوفوا القسم ده خالص. -->
+        <div class="card" id="department-cards-wrap" style="margin-bottom: 20px; display: none">
+          <div class="card-head" style="padding-bottom: 4px">
+            <h4>🗂️ الأقسام</h4>
+          </div>
+          <div class="dept-cards-grid" id="department-cards" style="display: none"></div>
+        </div>
+
+        <!-- KPI CARDS -->
+        <div class="kpi-grid">
+          <div class="kpi-card amber">
+            <div class="kpi-top">
+              <div class="kpi-icon">
+                <i class="fa-solid fa-plug-circle-bolt"></i>
+              </div>
+            </div>
+            <div class="kpi-val" data-kpi="completed">0</div>
+            <div class="kpi-label">أوامر مكتملة هذا الشهر</div>
+          </div>
+
+          <div class="kpi-card blue">
+            <div class="kpi-top">
+              <div class="kpi-icon"><i class="fa-solid fa-warehouse"></i></div>
+            </div>
+            <div class="kpi-val" data-kpi="fillPercent">
+              0<span style="font-size: 16px; color: var(--text-muted)">%</span>
+            </div>
+            <div class="kpi-label">نسبة امتلاء المخزن</div>
+          </div>
+
+          <div class="kpi-card green">
+            <div class="kpi-top">
+              <div class="kpi-icon"><i class="fa-solid fa-industry"></i></div>
+            </div>
+            <div class="kpi-val" data-kpi="active">0</div>
+            <div class="kpi-label">أوامر إنتاج نشطة</div>
+          </div>
+
+          <div class="kpi-card purple">
+            <div class="kpi-top">
+              <div class="kpi-icon">
+                <i class="fa-solid fa-boxes-stacked"></i>
+              </div>
+            </div>
+            <div class="kpi-val" data-kpi="lowStock">0</div>
+            <div class="kpi-label">أصناف تحتاج تعبئة</div>
+          </div>
+        </div>
+
+        <!-- MID ROW -->
+        <div class="mid-row">
+          <!-- PRODUCTION CHART -->
+          <div class="card" style="animation-delay: 0.1s">
+            <div class="card-head">
+              <h4>🏭 توزيع أوامر الإنتاج</h4>
+              <a href="production.html" class="btn-ghost">الصفحة</a>
+            </div>
+            <div class="chart-area">
+              <div class="bar-chart"></div>
+            </div>
+          </div>
+
+          <!-- ALERTS -->
+          <div class="card" style="animation-delay: 0.15s">
+            <div class="card-head">
+              <h4>🔔 التنبيهات والتحذيرات</h4>
+              <span class="badge red" id="alert-badge">0 تنبيه</span>
+            </div>
+            <div class="alerts-list" id="alerts-list"></div>
+          </div>
+        </div>
+
+        <!-- BOTTOM ROW -->
+        <div class="bottom-row">
+          <!-- ORDERS TABLE -->
+          <div class="card" style="animation-delay: 0.2s">
+            <div class="card-head" style="padding-bottom: 16px">
+              <h4>📦 أوامر الإنتاج النشطة</h4>
+              <a href="production.html" class="btn-ghost">عرض الكل</a>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>الكود</th>
+                    <th>المنتج</th>
+                    <th>الكمية</th>
+                    <th>الحالة</th>
+                    <th>الموعد</th>
+                  </tr>
+                </thead>
+                <tbody id="orders-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- INVENTORY + QUICK ACTIONS -->
+          <div style="display: flex; flex-direction: column; gap: 20px">
+            <!-- DONUT -->
+            <div class="card" style="animation-delay: 0.22s">
+              <div class="card-head" style="padding-bottom: 4px">
+                <h4>📊 توزيع المخزن</h4>
+                <a href="inventory.html" class="btn-ghost">الصفحة</a>
+              </div>
+              <div class="donut-area">
+                <div class="donut-wrapper">
+                  <svg viewBox="0 0 100 100" width="160" height="160">
+                    <circle
+                      cx="50"
+                      cy="50"
+                      r="38"
+                      fill="none"
+                      stroke="rgba(255,255,255,0.05)"
+                      stroke-width="14"
+                    />
+                    <circle
+                      cx="50"
+                      cy="50"
+                      r="38"
+                      fill="none"
+                      stroke="#f59e0b"
+                      stroke-width="14"
+                      stroke-dasharray="0 144"
+                      stroke-dashoffset="0"
+                    />
+                    <circle
+                      cx="50"
+                      cy="50"
+                      r="38"
+                      fill="none"
+                      stroke="#3b82f6"
+                      stroke-width="14"
+                      stroke-dasharray="0 144"
+                      stroke-dashoffset="0"
+                    />
+                    <circle
+                      cx="50"
+                      cy="50"
+                      r="38"
+                      fill="none"
+                      stroke="#10b981"
+                      stroke-width="14"
+                      stroke-dasharray="0 144"
+                      stroke-dashoffset="0"
+                    />
+                  </svg>
+                  <div class="donut-center">
+                    <h3>0</h3>
+                    <p>صنف</p>
+                  </div>
+                </div>
+                <div class="donut-legend">
+                  <div class="donut-leg-item">
+                    <div
+                      class="donut-leg-dot"
+                      style="background: var(--accent)"
+                    ></div>
+                    <span class="donut-leg-label">مواد خام</span
+                    ><span class="donut-leg-val">0%</span>
+                  </div>
+                  <div class="donut-leg-item">
+                    <div
+                      class="donut-leg-dot"
+                      style="background: var(--accent2)"
+                    ></div>
+                    <span class="donut-leg-label">تحت التشغيل</span
+                    ><span class="donut-leg-val">0%</span>
+                  </div>
+                  <div class="donut-leg-item">
+                    <div
+                      class="donut-leg-dot"
+                      style="background: var(--green)"
+                    ></div>
+                    <span class="donut-leg-label">منتج تام</span
+                    ><span class="donut-leg-val">0%</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- QUICK ACTIONS -->
+            <div class="card" style="animation-delay: 0.25s">
+              <div class="card-head" style="padding-bottom: 4px">
+                <h4>⚡ إجراءات سريعة</h4>
+              </div>
+              <div class="quick-actions">
+                <button
+                  class="qa-btn"
+                  onclick="location.href = 'production.html'"
+                >
+                  <i class="fa-solid fa-plus"></i> أمر إنتاج
+                </button>
+                <button
+                  class="qa-btn"
+                  onclick="location.href = 'inventory.html'"
+                >
+                  <i class="fa-solid fa-box-open"></i> استلام مواد
+                </button>
+                <button class="qa-btn" onclick="location.href = 'sales.html'">
+                  <i class="fa-solid fa-file-invoice"></i> فاتورة بيع
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!--
+          ✨ إضافة: نظرة تشغيلية وجودة سريعة
+          Phase 2: كان اسمها "نظرة مالية وجودة سريعة" وفيها بطاقة "صافي
+          الربح" مربوطة بـ dashboard.ts القديم. اتشالت البطاقة المالية مع
+          باقي منطق المحاسبة؛ الجودة والمبيعات (كعدد أوامر) والمخزون
+          المنخفض عملياتية وباقية زي ما هي.
+        -->
+        <div
+          class="card"
+          id="finance-quality-card"
+          style="margin-top: 20px; animation-delay: 0.28s"
+        >
+          <div class="card-head" style="padding-bottom: 4px">
+            <h4>📊 نظرة تشغيلية وجودة سريعة</h4>
+          </div>
+          <div class="fq-grid" id="fq-grid">
+            <div class="empty-state" style="grid-column: span 3">
+              <i class="fa-solid fa-chart-pie"></i>
+              <h4>جاري التحميل...</h4>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- /content -->
+
+      <!-- STATUS BAR -->
+      <div class="status-bar">
+        <div class="status-item">
+          <div class="status-dot green"></div>
+          قاعدة البيانات: متصلة
+        </div>
+        <div class="status-item">
+          <div class="status-dot green"></div>
+          خط الإنتاج 1: يعمل
+        </div>
+        <div class="status-item">
+          <div class="status-dot green"></div>
+          خط الإنتاج 2: يعمل
+        </div>
+        <div class="status-item">
+          <div class="status-dot amber"></div>
+          خط الإنتاج 3: صيانة
+        </div>
+        <div style="margin-right: auto; color: var(--text-dim)">
+          آخر تحديث: <span id="last-update"></span>
+        </div>
+      </div>
+    </main>
+
+    <!-- TOAST -->
+    <div class="toast" id="toast">
+      <i class="fa-solid fa-circle-check"></i>
+      <span id="toast-msg">تم الحفظ بنجاح</span>
+    </div>
+
+    <script src="JS/auth.js"></script>
+    <script src="JS/api-client.js"></script>
+    <script src="JS/nav-loader.js"></script>
+    <script src="JS/index.js"></script>
+    <script src="JS/responsive.js"></script>
+    <script src="JS/enhancements.js"></script>
+    <script src="JS/password-toggle.js"></script>
+  </body>
+</html>

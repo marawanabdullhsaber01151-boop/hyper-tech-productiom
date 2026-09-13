@@ -1,0 +1,254 @@
+<!-- @format -->
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>هايبر تك — مدير المخازن</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="CSS/theme.css" />
+    <script src="JS/theme-switcher.js"></script>
+    <link rel="stylesheet" href="CSS/style.css" />
+    <link rel="stylesheet" href="CSS/contacts.css" />
+    <link rel="stylesheet" href="CSS/responsive.css" />
+    <link rel="stylesheet" href="CSS/enhancements.css" />
+    <style>
+      html:not([data-role="warehouse_manager"]):not([data-role="storekeeper"]):not([data-role="operations_manager"]):not([data-role="chairman"])
+        .page-guard {
+        display: none !important;
+      }
+      html:not([data-role="warehouse_manager"]):not([data-role="storekeeper"]):not([data-role="operations_manager"]):not([data-role="chairman"])
+        .page-denied {
+        display: flex !important;
+      }
+      .page-denied {
+        display: none;
+        min-height: 60vh;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+        gap: 10px;
+        color: var(--text-muted);
+      }
+      .wh-card {
+        background: var(--card-bg, #12161f);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 16px;
+        margin-bottom: 14px;
+      }
+      .wh-card .num {
+        font-weight: 700;
+      }
+      .wh-card .meta {
+        font-size: 12px;
+        color: var(--text-muted);
+        margin: 6px 0;
+      }
+      .mat-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 12.5px;
+        margin: 10px 0;
+      }
+      .mat-table th,
+      .mat-table td {
+        padding: 6px 8px;
+        border-bottom: 1px solid var(--border);
+        text-align: right;
+      }
+      .mat-table th {
+        color: var(--text-muted);
+      }
+      .mat-table input {
+        width: 90px;
+        padding: 4px 6px;
+        border-radius: 6px;
+        border: 1px solid var(--border);
+        background: transparent;
+        color: inherit;
+      }
+      .ok-badge {
+        color: var(--green, #10b981);
+      }
+      .bad-badge {
+        color: var(--red, #ef4444);
+      }
+      .action-row {
+        display: flex;
+        gap: 8px;
+        margin-top: 10px;
+      }
+      .action-row button {
+        flex: 1;
+      }
+      .btn-approve {
+        background: var(--green, #10b981);
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        padding: 8px;
+      }
+      .btn-partial {
+        background: #f59e0b;
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        padding: 8px;
+      }
+      .btn-reject {
+        background: var(--red, #ef4444);
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        padding: 8px;
+      }
+      .empty-hint {
+        font-size: 12px;
+        color: var(--text-muted);
+        text-align: center;
+        padding: 20px 0;
+      }
+      .archive-card {
+        background: rgba(16, 185, 129, 0.05);
+        border: 1px solid rgba(16, 185, 129, 0.2);
+        border-radius: 12px;
+        padding: 14px 16px;
+        margin-bottom: 10px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        max-width: 760px;
+      }
+      .archive-card .archive-icon {
+        color: var(--green, #10b981);
+        font-size: 18px;
+        flex-shrink: 0;
+      }
+      .archive-card .num {
+        font-weight: 700;
+        font-size: 13px;
+      }
+      .archive-card .meta {
+        font-size: 11.5px;
+        color: var(--text-muted);
+        margin-top: 3px;
+      }
+      .archive-card .badge {
+        margin-right: auto;
+        font-size: 10.5px;
+        padding: 3px 9px;
+        border-radius: 20px;
+        background: rgba(16, 185, 129, 0.15);
+        color: var(--green, #10b981);
+        white-space: nowrap;
+      }
+    </style>
+  </head>
+  <body data-allowed-roles="chairman,warehouse_manager,storekeeper,operations_manager">
+    <aside class="sidebar">
+      <div class="sidebar-logo">
+        <div class="logo-icon">⚡</div>
+        <div class="logo-text">
+          <h1>هايبر تك</h1>
+          <span>نظام إدارة الموارد</span>
+        </div>
+      </div>
+
+      <div class="sidebar-section">
+        <p class="sidebar-section-title">الرئيسية</p>
+        <a href="index.html" class="nav-item">
+          <i class="fa-solid fa-gauge-high"></i>
+          لوحة التحكم
+        </a>
+      </div>
+
+      <!-- ✅ يتملى ديناميكيًا بالأقسام/الصفحات المسموح بيها للمستخدم الحالي بس -->
+      <div id="dynamic-sidebar"></div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div class="topbar-title">
+          <h2>مدير المخازن</h2>
+          <p>
+            فحص المواد الخام تلقائيًا من الوصفة، واعتماد أو رفض أوامر الإنتاج
+          </p>
+        </div>
+        <div class="topbar-actions">
+          <div class="icon-btn">
+            <i class="fa-regular fa-bell"></i>
+            <div class="notif-dot"></div>
+          </div>
+          <div class="icon-btn"></div>
+        </div>
+      </header>
+
+      <div class="page-denied">
+        <i class="fa-solid fa-lock" style="font-size: 32px"></i>
+        <p>هذه الصفحة متاحة لمدير المخازن أو المدير الكامل فقط.</p>
+      </div>
+
+      <div class="page-guard" style="padding: 20px 28px; max-width: 760px">
+        <div
+          style="margin-bottom: 10px; font-weight: 700; color: var(--text-main)"
+        >
+          <i class="fa-solid fa-flask"></i> طلبات بانتظار فحص المواد
+        </div>
+        <div id="wh-list"><p class="empty-hint">جاري التحميل...</p></div>
+
+        <div
+          style="margin: 28px 0 10px; font-weight: 700; color: var(--text-main)"
+        >
+          <i class="fa-solid fa-truck-ramp-box"></i> منتجات تامة بانتظار
+          الاستلام في المخزن
+        </div>
+        <div id="wh-receive-list">
+          <p class="empty-hint">جاري التحميل...</p>
+        </div>
+
+        <div
+          style="
+            margin-top: 32px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border);
+          "
+        >
+          <div
+            style="
+              display: flex;
+              align-items: center;
+              gap: 8px;
+              margin-bottom: 14px;
+              color: var(--text-muted);
+              font-size: 13px;
+              font-weight: 700;
+            "
+          >
+            <i class="fa-solid fa-clock-rotate-left"></i> سجل الأوامر المنتهية
+            اللي مرّت عليك
+          </div>
+          <div id="wh-archive"><p class="empty-hint">جاري التحميل...</p></div>
+        </div>
+      </div>
+    </main>
+
+    <div class="toast" id="toast">
+      <i class="fa-solid fa-circle-check"></i><span id="toast-msg">تم</span>
+    </div>
+
+    <script src="JS/auth.js"></script>
+    <script src="JS/page-guard.js"></script>
+    <script src="JS/nav-loader.js"></script>
+    <script src="JS/enhancements.js"></script>
+    <script src="JS/production-workflow-shared.js"></script>
+    <script src="JS/factory-warehouse-manager.js"></script>
+  </body>
+</html>

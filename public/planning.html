@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>هايبر تك — التخطيط واحتياجات المواد</title>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap" rel="stylesheet" /><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="CSS/theme.css" />
+    <script src="JS/theme-switcher.js"></script>
+    <link rel="stylesheet" href="CSS/style.css" /><link rel="stylesheet" href="CSS/advanced-production.css" />
+  </head>
+  <body data-allowed-roles="admin,chairman,manager,production_manager,production_controller,warehouse_manager">
+    <main class="advanced-shell"><header class="advanced-header"><div><a href="index.html" class="back-link">← لوحة التحكم</a><p class="eyebrow">تخطيط احتياجات المواد</p><h1>التخطيط واحتياجات المواد</h1><p>حوّل الطلب المتوقع إلى احتياجات خامات وطلبات شراء قابلة للتنفيذ</p></div><button class="btn-secondary" data-refresh><i class="fa-solid fa-rotate"></i> تحديث الخطة</button></header>
+      <section class="advanced-layout"><div class="advanced-card wide"><div class="card-heading"><div><span class="card-kicker">Planning runs</span><h2>خطط الاحتياجات</h2></div><span class="count-pill" id="plan-count">0</span></div><div id="mrp-plans" class="record-list"><div class="loading-state">جاري تحميل الخطط...</div></div></div>
+      <div class="advanced-card"><div class="card-heading"><div><span class="card-kicker">تشغيل الخطة</span><h2>تشغيل خطة احتياجات</h2></div></div><form id="mrp-form" class="advanced-form"><input name="dueDate" type="date" required /><input name="inventoryItemId" type="number" required placeholder="رقم صنف الخامة" /><input name="grossQty" required placeholder="الكمية الإجمالية" /><input name="workflowOrderId" type="number" placeholder="رقم أمر الإنتاج (اختياري)" /><select name="demandSource"><option value="production_order">أمر إنتاج</option><option value="forecast">توقع</option><option value="manual">يدوي</option></select><button class="btn-primary">تشغيل الخطة</button></form><p class="form-hint">يتم احتساب المتاح والمطلوب الصافي مع عزل مخزون الحجر والحجز.</p></div>
+      <div class="advanced-card"><div class="card-heading"><div><span class="card-kicker">Exception queue</span><h2>طلبات الشراء الناتجة</h2></div></div><div id="requisitions" class="record-list"><div class="loading-state">جاري التحميل...</div></div></div></section>
+    </main><div class="toast" id="advanced-toast"><span id="advanced-toast-msg"></span></div><script src="JS/auth.js"></script><script src="JS/page-guard.js"></script><script src="JS/advanced-screen.js?v=2"></script><script src="JS/planning.js?v=2"></script>
+  </body>
+</html>

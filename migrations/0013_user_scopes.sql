@@ -1,0 +1,1 @@
+ALTER TABLE system_users ADD COLUMN IF NOT EXISTS scope_id text;

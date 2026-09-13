@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>هايبر تك — الحوكمة</title>
+  <link rel="stylesheet" href="CSS/theme.css" />
+  <script src="JS/theme-switcher.js"></script>
+  <link rel="stylesheet" href="CSS/style.css">
+  <link rel="stylesheet" href="CSS/governance.css">
+</head>
+<body data-allowed-roles="chairman,executive_manager">
+<main class="governance-shell">
+  <header>
+    <div><a href="index.html">← لوحة التحكم</a><h1>الحوكمة والاعتمادات</h1><p>مركز واحد لفهم من يعتمد ماذا، ومتى، ولماذا، مع سجل تدقيق لا يمكن العبث به.</p></div>
+    <button id="refresh" class="button primary" type="button">تحديث</button>
+  </header>
+  <div class="cards">
+    <article><span>طلبات اعتماد معلّقة</span><strong id="pending">—</strong></article>
+    <article><span>التفويضات</span><strong id="delegations">—</strong></article>
+    <article><span>سجل التدقيق</span><strong id="auditCount">—</strong></article>
+  </div>
+  <div id="pageStatus" class="status" role="status" aria-live="polite"></div>
+  <section class="panel governance-guide"><h2>كيف تعمل الحوكمة؟</h2><div class="guide-grid"><div><strong>١. الطلب</strong><span>ينشئ المستخدم العملية، وتُحفظ هويته وسببها.</span></div><div><strong>٢. الاعتماد</strong><span>يظهر الطلب لصاحب الدور المطلوب في ترتيب الخطوات.</span></div><div><strong>٣. الفصل</strong><span>لا يعتمد المستخدم موردًا أنشأه بنفسه.</span></div><div><strong>٤. التتبع</strong><span>كل قرار وتفويض واستثناء يظهر في سجل التدقيق.</span></div></div></section>
+  <section class="panel"><h2>طلبات الاعتماد</h2><div class="table-wrap"><table><thead><tr><th>العملية</th><th>المورد</th><th>الخطوة</th><th>الحالة</th><th>إجراء</th></tr></thead><tbody id="approvalRows"></tbody></table></div></section>
+  <section class="panel"><h2>التفويضات</h2><form id="delegationForm" class="inline-form"><select name="grantorUserId" required><option value="">المفوِّض...</option></select><select name="delegateUserId" required><option value="">المفوَّض إليه...</option></select><select name="actionKey" required><option value="">الإجراء...</option></select><select name="scopeType"><option value="company">الشركة</option><option value="factory">المصنع</option><option value="warehouse">المخزن</option><option value="department">الإدارة</option><option value="document">مستند</option></select><input name="startsAt" type="datetime-local" required><input name="endsAt" type="datetime-local" required><input name="reason" placeholder="سبب التفويض" minlength="3" required><button class="button primary">إضافة تفويض</button></form><div class="table-wrap"><table><thead><tr><th>الإجراء</th><th>المفوِّض</th><th>المفوَّض إليه</th><th>من</th><th>إلى</th><th>الحالة</th><th>إجراء</th></tr></thead><tbody id="delegationRows"></tbody></table></div></section>
+  <section class="panel"><h2>سياسات الاعتماد</h2><form id="policyForm" class="inline-form"><select name="actionKey" required><option value="">الإجراء...</option></select><input name="minAmount" inputmode="decimal" placeholder="الحد الأدنى للمبلغ" required><select name="approverRoles" multiple required size="4" title="اضغط مع Ctrl/Cmd لاختيار أكتر من دور"></select><input name="sequence" type="number" min="1" value="1" placeholder="الخطوة" required><button class="button primary">إضافة سياسة</button></form><div class="table-wrap"><table><thead><tr><th>الإجراء</th><th>الحد الأدنى</th><th>الأدوار</th><th>الخطوة</th><th>الحالة</th></tr></thead><tbody id="policyRows"></tbody></table></div></section>
+  <section class="panel"><h2>استثناءات الصلاحيات</h2><form id="overrideForm" class="inline-form"><select name="userId" required><option value="">المستخدم...</option></select><select name="actionKey" required><option value="">الإجراء...</option></select><select name="allowed"><option value="true">منح الصلاحية</option><option value="false">سحب الصلاحية</option></select><input name="expiresAt" type="datetime-local" placeholder="تاريخ الانتهاء اختياري"><input name="reason" placeholder="سبب الاستثناء"><button class="button primary">حفظ الاستثناء</button></form><div class="table-wrap"><table><thead><tr><th>المستخدم</th><th>الإجراء</th><th>القرار</th><th>السبب</th><th>الانتهاء</th><th>إجراء</th></tr></thead><tbody id="overrideRows"></tbody></table></div></section>
+  <section class="panel"><h2>الجلسات الحالية</h2><p class="muted">يمكن إغلاق جلسة أخرى للحساب الحالي إذا لم تعد موثوقة.</p><div class="table-wrap"><table><thead><tr><th>آخر نشاط</th><th>IP</th><th>الجهاز</th><th>الحالة</th><th>إجراء</th></tr></thead><tbody id="sessionRows"></tbody></table></div></section>
+  <section class="panel"><h2>محاكاة الصلاحيات وسجل الإجراءات</h2><p class="muted">استخدم المحاكاة قبل منح استثناء؛ فهي تعرض النتيجة الفعلية بعد جمع الدور والتفويض والاستثناء.</p><div class="inline-form"><select id="simulateUserId"><option value="">بدون مستخدم محدد</option></select><select id="simulateRole"><option value="">اختر دورًا</option></select><button id="simulateBtn" class="button" type="button">محاكاة</button><button id="verifyBtn" class="button" type="button">تحقق من سلامة السجل</button></div><div id="simulateResult" class="status"></div><div class="table-wrap compact-table"><table><thead><tr><th>العملية</th><th>الاسم</th><th>الأدوار الافتراضية</th></tr></thead><tbody id="actionRows"></tbody></table></div></section>
+  <section class="panel"><h2>آخر أحداث التدقيق</h2><div class="table-wrap"><table><thead><tr><th>الإجراء</th><th>المستخدم</th><th>القرار</th><th>التاريخ</th></tr></thead><tbody id="auditRows"></tbody></table></div></section>
+</main>
+<script src="JS/auth.js"></script><script src="JS/page-guard.js"></script><script src="JS/governance.js"></script>
+</body>
+</html>

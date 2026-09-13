@@ -1,0 +1,436 @@
+<!-- @format -->
+
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>هايبر تك — المخزن</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="CSS/theme.css" />
+    <script src="JS/theme-switcher.js"></script>
+    <link rel="stylesheet" href="CSS/style.css" />
+    <link rel="stylesheet" href="CSS/inventory.css" />
+    <link rel="stylesheet" href="CSS/responsive.css" />
+    <link rel="stylesheet" href="CSS/enhancements.css" />
+  </head>
+  <body data-allowed-roles="warehouse_manager,storekeeper,chairman">
+    <!-- ===== SIDEBAR ===== -->
+    <aside class="sidebar">
+      <div class="sidebar-logo">
+        <div class="logo-icon">⚡</div>
+        <div class="logo-text">
+          <h1>هايبر تك</h1>
+          <span>نظام إدارة الموارد</span>
+        </div>
+      </div>
+
+      <div class="sidebar-section">
+        <p class="sidebar-section-title">الرئيسية</p>
+        <a href="index.html" class="nav-item">
+          <i class="fa-solid fa-gauge-high"></i>
+          لوحة التحكم
+        </a>
+      </div>
+
+      <!-- ✅ يتملى ديناميكيًا بالأقسام/الصفحات المسموح بيها للمستخدم الحالي بس -->
+      <div id="dynamic-sidebar"></div>
+    </aside>
+
+    <!-- ===== MAIN ===== -->
+    <main class="main">
+      <!-- TOPBAR -->
+      <header class="topbar">
+        <div class="topbar-title">
+          <h2>المخزن</h2>
+          <p>إدارة وتتبع جميع الأصناف والمواد</p>
+        </div>
+        <div class="topbar-actions">
+          <div class="live-badge">
+            <div class="pulse"></div>
+            مباشر
+          </div>
+          <div class="search-box">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input
+              type="text"
+              id="search-input"
+              placeholder="ابحث عن صنف، كود، فئة..."
+            />
+          </div>
+          <div class="icon-btn">
+            <i class="fa-regular fa-bell"></i>
+            <div class="notif-dot"></div>
+          </div>
+          <button class="btn-primary" id="btn-add-item">
+            <i class="fa-solid fa-plus"></i>
+            صنف جديد
+          </button>
+        </div>
+      </header>
+
+      <!-- CONTENT -->
+      <div class="content">
+        <!-- KPI SUMMARY -->
+        <div class="inv-kpi-row">
+          <div class="inv-kpi-card">
+            <div class="inv-kpi-icon blue">
+              <i class="fa-solid fa-boxes-stacked"></i>
+            </div>
+            <div class="inv-kpi-info">
+              <span class="inv-kpi-val" id="kpi-total">24</span>
+              <span class="inv-kpi-label">إجمالي الأصناف</span>
+            </div>
+          </div>
+          <div class="inv-kpi-card">
+            <div class="inv-kpi-icon green">
+              <i class="fa-solid fa-circle-check"></i>
+            </div>
+            <div class="inv-kpi-info">
+              <span class="inv-kpi-val" id="kpi-ok">17</span>
+              <span class="inv-kpi-label">كمية كافية</span>
+            </div>
+          </div>
+          <div class="inv-kpi-card">
+            <div class="inv-kpi-icon amber">
+              <i class="fa-solid fa-triangle-exclamation"></i>
+            </div>
+            <div class="inv-kpi-info">
+              <span class="inv-kpi-val" id="kpi-low">5</span>
+              <span class="inv-kpi-label">قارب على النفاد</span>
+            </div>
+          </div>
+          <div class="inv-kpi-card">
+            <div class="inv-kpi-icon red">
+              <i class="fa-solid fa-circle-xmark"></i>
+            </div>
+            <div class="inv-kpi-info">
+              <span class="inv-kpi-val" id="kpi-out">2</span>
+              <span class="inv-kpi-label">نفد من المخزن</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- FILTERS + TABLE -->
+        <div class="inv-table-card">
+          <!-- FILTERS -->
+          <div class="inv-filters">
+            <div class="filter-tabs" id="filter-tabs">
+              <button class="filter-tab active" data-filter="all">
+                الكل <span class="tab-count">24</span>
+              </button>
+              <button class="filter-tab" data-filter="raw">
+                مواد خام <span class="tab-count">12</span>
+              </button>
+              <button class="filter-tab" data-filter="wip">
+                تحت التشغيل <span class="tab-count">6</span>
+              </button>
+              <button class="filter-tab" data-filter="finished">
+                منتج تام <span class="tab-count">6</span>
+              </button>
+            </div>
+            <div class="filter-right">
+              <div class="filter-select-wrap">
+                <i class="fa-solid fa-filter"></i>
+                <select id="status-filter">
+                  <option value="all">كل الحالات</option>
+                  <option value="ok">كمية كافية</option>
+                  <option value="low">قارب على النفاد</option>
+                  <option value="out">نفد</option>
+                </select>
+              </div>
+              <div class="filter-select-wrap">
+                <i class="fa-solid fa-sort"></i>
+                <select id="sort-select">
+                  <option value="name">ترتيب: الاسم</option>
+                  <option value="qty-asc">الكمية: الأقل أولاً</option>
+                  <option value="qty-desc">الكمية: الأكثر أولاً</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- TABLE -->
+          <div class="table-wrap">
+            <table id="inv-table">
+              <thead>
+                <tr>
+                  <th>الكود</th>
+                  <th>اسم الصنف</th>
+                  <th>الفئة</th>
+                  <th>الوحدة</th>
+                  <th>الكمية الحالية</th>
+                  <th>الحد الأدنى</th>
+                  <th>الحالة</th>
+                  <th>آخر حركة</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="inv-tbody">
+                <!-- يتم ملؤها من JavaScript -->
+              </tbody>
+            </table>
+          </div>
+
+          <!-- PAGINATION -->
+          <div class="inv-pagination">
+            <span class="pag-info" id="pag-info">عرض 1–10 من 24 صنف</span>
+            <div class="pag-btns">
+              <button class="pag-btn" id="pag-prev" disabled>
+                <i class="fa-solid fa-chevron-right"></i>
+              </button>
+              <button class="pag-btn active" id="pag-1">1</button>
+              <button class="pag-btn" id="pag-2">2</button>
+              <button class="pag-btn" id="pag-3">3</button>
+              <button class="pag-btn" id="pag-next">
+                <i class="fa-solid fa-chevron-left"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- /content -->
+
+      <!-- STATUS BAR -->
+      <div class="status-bar">
+        <div class="status-item">
+          <div class="status-dot green"></div>
+          قاعدة البيانات: متصلة
+        </div>
+        <div class="status-item">
+          <div class="status-dot green"></div>
+          خط الإنتاج 1: يعمل
+        </div>
+        <div class="status-item">
+          <div class="status-dot green"></div>
+          خط الإنتاج 2: يعمل
+        </div>
+        <div class="status-item">
+          <div class="status-dot amber"></div>
+          خط الإنتاج 3: صيانة
+        </div>
+        <div style="margin-right: auto; color: var(--text-dim)">
+          آخر تحديث: <span id="last-update"></span>
+        </div>
+      </div>
+    </main>
+
+    <!-- ===== MODAL: صنف / حركة ===== -->
+    <div class="modal-overlay" id="modal-overlay">
+      <div class="modal" id="modal">
+        <div class="modal-head">
+          <h3>صنف جديد</h3>
+          <button class="modal-close" id="modal-close">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          <!-- حركة فقط -->
+          <div
+            id="modal-move-fields"
+            style="display: none; flex-direction: column; gap: 16px"
+          >
+            <div class="form-row">
+              <div class="form-group">
+                <label>نوع الحركة</label>
+                <div class="movement-types">
+                  <label class="move-type active" data-type="in">
+                    <i class="fa-solid fa-arrow-down"></i> استلام (وارد)
+                  </label>
+                  <label class="move-type" data-type="out">
+                    <i class="fa-solid fa-arrow-up"></i> صرف (منصرف)
+                  </label>
+                  <label class="move-type" data-type="adjust">
+                    <i class="fa-solid fa-pen"></i> تسوية
+                  </label>
+                </div>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>الصنف</label>
+                <input
+                  type="text"
+                  class="form-input"
+                  data-field="move-item"
+                  readonly
+                />
+              </div>
+            </div>
+            <!-- ✅ إصلاح باگ حرج: النافذة دي مكانتش فيها أي حقل كمية أو
+                 ملاحظات ظاهر خالص — كان في حقل "qty" و"notes" في الكود
+                 بيتقرا، بس هو أصلًا جوه قسم "صنف" المخفي (display:none)
+                 وقت وضع الحركة، فمفيش أي مكان المستخدم يقدر يكتب فيه
+                 الكمية. النتيجة: تسجيل أي حركة مخزون كان مستحيل 100%. -->
+            <div class="form-row two-col">
+              <div class="form-group">
+                <label id="move-qty-label">الكمية</label>
+                <input
+                  type="number"
+                  class="form-input"
+                  data-field="move-qty"
+                  placeholder="0"
+                  min="0.001"
+                  step="0.001"
+                />
+              </div>
+              <div class="form-group">
+                <label>ملاحظات (اختياري)</label>
+                <input
+                  type="text"
+                  class="form-input"
+                  data-field="move-notes"
+                  placeholder="سبب الحركة..."
+                />
+              </div>
+            </div>
+          </div>
+
+          <!-- صنف فقط -->
+          <div
+            id="modal-item-fields"
+            style="display: flex; flex-direction: column; gap: 16px"
+          >
+            <div class="form-row">
+              <div class="form-group">
+                <label>اسم الصنف</label>
+                <input
+                  type="text"
+                  class="form-input"
+                  data-field="name"
+                  placeholder="مثال: نحاس خام"
+                />
+              </div>
+            </div>
+            <div class="form-row two-col">
+              <div class="form-group">
+                <label>كود الصنف</label>
+                <input
+                  type="text"
+                  class="form-input"
+                  data-field="code"
+                  placeholder="يُنشأ تلقائيًا إن تُرك فارغًا"
+                />
+              </div>
+              <div class="form-group">
+                <label>الفئة</label>
+                <select class="form-input" data-field="cat">
+                  <option value="raw">مواد خام</option>
+                  <option value="wip">تحت التشغيل</option>
+                  <option value="finished">منتج تام</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-row two-col">
+              <div class="form-group">
+                <label>الوحدة</label>
+                <input
+                  type="text"
+                  class="form-input"
+                  data-field="unit"
+                  placeholder="كجم / قطعة / متر"
+                />
+              </div>
+              <div class="form-group">
+                <label>سعر الوحدة (ج.م)</label>
+                <input
+                  type="number"
+                  class="form-input"
+                  data-field="unitPrice"
+                  placeholder="0"
+                  min="0"
+                  step="0.01"
+                />
+              </div>
+            </div>
+            <div class="form-row two-col">
+              <div class="form-group">
+                <label>الكمية الحالية</label>
+                <input
+                  type="number"
+                  class="form-input"
+                  data-field="qty"
+                  placeholder="0"
+                  min="0"
+                />
+              </div>
+            </div>
+            <div class="form-row two-col">
+              <div class="form-group">
+                <label>الحد الأدنى</label>
+                <input
+                  type="number"
+                  class="form-input"
+                  data-field="min"
+                  placeholder="0"
+                  min="0"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>ملاحظات (اختياري)</label>
+              <textarea
+                class="form-input"
+                data-field="notes"
+                rows="2"
+                placeholder="أي ملاحظات إضافية..."
+              ></textarea>
+            </div>
+          </div>
+        </div>
+        <div class="modal-foot">
+          <button class="btn-ghost" id="modal-cancel">إلغاء</button>
+          <button class="btn-primary" id="modal-save">
+            <i class="fa-solid fa-check"></i>
+            حفظ
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== TOAST ===== -->
+    <div class="toast" id="toast">
+      <i class="fa-solid fa-circle-check"></i>
+      <span id="toast-msg">تم الحفظ بنجاح</span>
+    </div>
+
+    <!-- ===== CONFIRM DELETE DIALOG ===== -->
+    <div class="confirm-overlay" id="confirm-overlay">
+      <div class="confirm-dialog">
+        <div class="confirm-icon">
+          <i class="fa-solid fa-triangle-exclamation"></i>
+        </div>
+        <h3>تأكيد الحذف</h3>
+        <p>
+          هل أنت متأكد من حذف الصنف<br /><strong id="confirm-name">—</strong>؟
+        </p>
+        <p class="confirm-warn">لا يمكن التراجع عن هذا الإجراء</p>
+        <div class="confirm-actions">
+          <button class="btn-ghost" id="confirm-no">إلغاء</button>
+          <button class="btn-danger" id="confirm-yes">
+            <i class="fa-solid fa-trash"></i> حذف نهائياً
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script src="JS/auth.js"></script>
+    <script src="JS/page-guard.js"></script>
+    <script src="JS/api-client.js"></script>
+    <script src="JS/nav-loader.js"></script>
+    <script src="JS/inventory.js"></script>
+    <script src="JS/responsive.js"></script>
+    <script src="JS/enhancements.js"></script>
+    <script src="JS/password-toggle.js"></script>
+  </body>
+</html>

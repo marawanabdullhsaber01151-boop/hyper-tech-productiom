@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>هايبر تك — البيانات الأساسية</title>
+  <link rel="stylesheet" href="CSS/theme.css" />
+  <script src="JS/theme-switcher.js"></script>
+  <link rel="stylesheet" href="CSS/style.css"><link rel="stylesheet" href="CSS/foundation.css">
+</head>
+<body data-allowed-roles="chairman,executive_manager,operations_manager,production_manager,warehouse_manager">
+  <main class="foundation-shell">
+    <header class="foundation-header">
+      <div><a href="index.html" class="back-link">← لوحة التحكم</a><h1>البيانات الأساسية</h1><p>مصدر موحّد للأصناف والمواقع ومراكز العمل والورديات.</p></div>
+      <button id="refreshBtn" class="button primary">تحديث البيانات</button>
+    </header>
+    <section id="summary" class="summary-grid" aria-label="ملخص البيانات"></section>
+    <nav class="tabs" aria-label="أقسام البيانات الأساسية">
+      <button class="tab active" data-tab="items">الأصناف</button><button class="tab" data-tab="conversions">تحويلات الوحدات</button><button class="tab" data-tab="locations">المواقع</button>
+      <button class="tab" data-tab="work-centers">مراكز العمل</button><button class="tab" data-tab="machines">الماكينات</button>
+      <button class="tab" data-tab="shifts">الورديات</button><button class="tab" data-tab="transitions">الانتقالات</button>
+      <button class="tab" data-tab="number-sequences">عدادات المستندات</button><button class="tab" data-tab="audit">سجل التدقيق</button>
+    </nav>
+    <section class="panel transition-check"><div class="panel-toolbar"><h2>اختبار انتقال حالة</h2></div><div class="check-form"><select id="checkEntity"><option value="production_order">أمر إنتاج</option><option value="production_operation">عملية إنتاج</option><option value="batch">دفعة</option><option value="quality_lot">تشغيلة جودة</option></select><input id="checkFrom" placeholder="الحالة الحالية"><input id="checkTo" placeholder="الحالة المطلوبة"><button id="checkBtn" class="button">تحقق</button></div><div id="checkResult" class="status" role="status"></div></section>
+    <section class="panel"><div class="panel-toolbar"><h2 id="tableTitle">الأصناف</h2><select id="conversionItem" hidden aria-label="اختر الصنف"></select><input id="search" type="search" placeholder="بحث بالاسم أو الكود"><button id="addBtn" class="button primary">إضافة</button></div><div id="status" class="status" role="status"></div><div class="table-wrap"><table><thead id="tableHead"></thead><tbody id="tableBody"></tbody></table></div></section>
+  </main>
+  <dialog id="entityDialog"><form method="dialog" id="entityForm"><h2 id="dialogTitle">إضافة سجل</h2><div id="formFields"></div><div class="dialog-actions"><button value="cancel" class="button">إلغاء</button><button id="saveBtn" value="default" class="button primary">حفظ</button></div></form></dialog>
+  <script src="JS/auth.js"></script><script src="JS/page-guard.js"></script><script src="JS/foundation.js"></script>
+</body>
+</html>

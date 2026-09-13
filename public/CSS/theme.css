@@ -1,0 +1,202 @@
+/**
+ * ✅ theme.css — مصدر الحقيقة الوحيد لكل متغيرات الألوان والخطوط
+ * والمسافات في النظام كله.
+ *
+ * لازم يتحمّل هذا الملف قبل أي ملف CSS تاني في كل صفحة (حتى قبل
+ * style.css نفسه)، عشان باقي الملفات تقدر تستخدم نفس المتغيرات
+ * بدل ما تعيد تعريفها بقيم مختلفة زي ما كان بيحصل قبل كده (مثال:
+ * foundation.css كان معرّف نظام ألوان منفصل خالص).
+ *
+ * # كيف يشتغل التبديل (Dark/Light + الهوية اللونية):
+ * الافتراضي (Dark + أزرق مؤسسي) مطبّق على :root مباشرة، وأي وضع تاني
+ * بيتفعّل بإضافة data-attribute على <html> بمعرفة JS (theme-switcher.js):
+ *   <html data-theme="light">              → وضع الإضاءة النهارية
+ *   <html data-accent="industrial-green">  → هوية أخضر صناعي
+ *   <html data-accent="warning-amber">     → هوية كهرماني تحذيري
+ *   <html data-accent="steel-gray">        → هوية رمادي فولاذي
+ * الاتنين قابلين للدمج مع بعض (مثلًا data-theme="light" و
+ * data-accent="industrial-green" في نفس الوقت).
+ *
+ * @format
+ */
+
+:root {
+  /* ===== الخلفيات (الوضع الداكن - الافتراضي) ===== */
+  --bg-dark: #0b0f1a;
+  --bg-card: #111827;
+  --bg-sidebar: #0d1120;
+
+  /* ===== الهوية اللونية (الافتراضي: أزرق مؤسسي) ===== */
+  --accent: #f59e0b;
+  --accent-soft: rgba(245, 158, 11, 0.12);
+  --accent2: #3b82f6;
+  --accent2-soft: rgba(59, 130, 246, 0.12);
+
+  /* ===== ألوان الحالة (ثابتة في كل الأوضاع) ===== */
+  --green: #10b981;
+  --green-soft: rgba(16, 185, 129, 0.12);
+  --red: #ef4444;
+  --red-soft: rgba(239, 68, 68, 0.12);
+  --purple: #8b5cf6;
+  --purple-soft: rgba(139, 92, 246, 0.12);
+
+  /* ===== النصوص (الوضع الداكن) ===== */
+  --text-main: #f1f5f9;
+  --text-muted: #aab8cc;
+  --text-dim: #475569;
+  --border: rgba(255, 255, 255, 0.07);
+
+  /* ===== مقاييس عامة (ثابتة، لا تتغير بين الأوضاع) ===== */
+  --sidebar-w: 260px;
+  --radius: 14px;
+  --radius-sm: 8px;
+  --transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  --font-family: Tajawal, Arial, sans-serif;
+
+  /* مقياس خطوط موحّد — بدل ما كل صفحة تحدد أحجام عشوائية بنفسها */
+  --font-xs: 12px;
+  --font-sm: 13px;
+  --font-base: 14px;
+  --font-md: 16px;
+  --font-lg: 20px;
+  --font-xl: 28px;
+}
+
+/* ============================================================
+   وضع الإضاءة النهارية (Light Mode)
+   ============================================================ */
+html[data-theme="light"] {
+  --bg-dark: #f4f6fb;
+  --bg-card: #ffffff;
+  --bg-sidebar: #ffffff;
+  --text-main: #0f172a;
+  --text-muted: #475569;
+  --text-dim: #94a3b8;
+  --border: rgba(15, 23, 42, 0.08);
+  --accent-soft: rgba(245, 158, 11, 0.1);
+  --accent2-soft: rgba(59, 130, 246, 0.08);
+  --green-soft: rgba(16, 185, 129, 0.08);
+  --red-soft: rgba(239, 68, 68, 0.08);
+  --purple-soft: rgba(139, 92, 246, 0.08);
+}
+
+/* ============================================================
+   الهويات اللونية (Accent Presets) — مستقلة عن وضع الإضاءة
+   ============================================================ */
+
+/* 🔵 أزرق مؤسسي — الافتراضي، مفيش داعي لتعريفه تاني هنا */
+
+/* 🟢 أخضر صناعي */
+html[data-accent="industrial-green"] {
+  --accent: #10b981;
+  --accent-soft: rgba(16, 185, 129, 0.12);
+  --accent2: #059669;
+  --accent2-soft: rgba(5, 150, 105, 0.12);
+}
+
+/* 🟠 كهرماني تحذيري — مناسب لبيئات المصانع اللي بتحب التحذيرات الواضحة */
+html[data-accent="warning-amber"] {
+  --accent: #f97316;
+  --accent-soft: rgba(249, 115, 22, 0.14);
+  --accent2: #eab308;
+  --accent2-soft: rgba(234, 179, 8, 0.12);
+}
+
+/* ⚪ رمادي فولاذي */
+html[data-accent="steel-gray"] {
+  --accent: #64748b;
+  --accent-soft: rgba(100, 116, 139, 0.14);
+  --accent2: #475569;
+  --accent2-soft: rgba(71, 85, 105, 0.12);
+}
+
+/* ============================================================
+   ويدجت تبديل الإضاءة/الهوية اللونية — يُحقن تلقائيًا بمعرفة
+   theme-switcher.js داخل أي .topbar-actions
+   ============================================================ */
+.theme-widget {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.theme-widget-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 15px;
+  transition: var(--transition);
+}
+.theme-widget-btn:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.theme-widget-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 50;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 6px;
+  min-width: 170px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+}
+.theme-accent-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  background: transparent;
+  color: var(--text-main);
+  font: inherit;
+  font-size: var(--font-sm);
+  text-align: right;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.theme-accent-option:hover {
+  background: var(--accent-soft);
+}
+.theme-accent-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.theme-accent-dot[data-dot="default"] {
+  background: #3b82f6;
+}
+.theme-accent-dot[data-dot="industrial-green"] {
+  background: #10b981;
+}
+.theme-accent-dot[data-dot="warning-amber"] {
+  background: #f97316;
+}
+.theme-accent-dot[data-dot="steel-gray"] {
+  background: #64748b;
+}
+.theme-widget-floating {
+  position: fixed;
+  bottom: 20px;
+  left: 20px;
+  z-index: 999;
+  background: var(--bg-card);
+  padding: 6px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+.theme-widget-floating .theme-widget-btn {
+  border-radius: 50%;
+}

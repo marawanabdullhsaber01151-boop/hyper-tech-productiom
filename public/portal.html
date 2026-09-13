@@ -1,0 +1,252 @@
+<!-- @format -->
+
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>كتالوج المنتجات — Hyper-Tech</title>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="CSS/portal.css" />
+  </head>
+  <body>
+    <div class="p-offline-banner" id="portal-offline-banner" role="status" aria-live="assertive">
+      لا يوجد اتصال بالإنترنت حاليًا. بعض الإجراءات لن تعمل حتى يعود الاتصال.
+    </div>
+    <header class="p-header">
+      <div class="p-logo">
+        <div class="p-logo-box">⚡</div>
+        <span>Hyper-Tech</span>
+      </div>
+      <div class="p-header-right">
+        <div class="p-notification-wrap">
+          <button
+            class="p-notifications-btn"
+            id="btn-notifications"
+            type="button"
+            aria-label="الإشعارات"
+            aria-expanded="false"
+          >
+            <i class="fa-regular fa-bell"></i>
+            <span
+              class="p-notifications-badge"
+              id="portal-notifications-badge"
+              style="display: none"
+              >0</span
+            >
+          </button>
+          <div
+            class="p-notifications-panel"
+            id="portal-notifications-panel"
+            role="status"
+            aria-live="polite"
+          >
+            <div class="p-notifications-head">
+              <span>إشعارات طلباتك</span>
+              <span>
+                <span id="portal-notifications-count">—</span>
+                <small id="portal-notifications-synced" class="p-last-synced"></small>
+              </span>
+            </div>
+            <div id="portal-notifications-list">
+              <div class="p-notifications-empty">سجّل الدخول لعرض الإشعارات</div>
+            </div>
+          </div>
+        </div>
+        <button class="p-cart-btn" id="btn-my-orders" type="button" style="display: none">
+          <i class="fa-solid fa-receipt"></i> طلباتي
+        </button>
+        <button class="p-cart-btn" id="btn-wishlist" type="button" style="display: none">
+          <i class="fa-regular fa-heart"></i> المفضلة
+        </button>
+        <button class="p-cart-btn" id="btn-cart">
+          <i class="fa-solid fa-cart-shopping"></i> السلة
+          <span class="p-cart-badge" id="cart-count" style="display: none"
+            >0</span
+          >
+        </button>
+        <a href="portal-login.html" class="p-account-link" id="account-link"
+          ><i class="fa-regular fa-user"></i> تسجيل الدخول</a
+        >
+      </div>
+    </header>
+
+    <section class="p-hero">
+      <h1>منتجاتنا لعملاء الجملة</h1>
+      <p>
+        تصفّح كتالوج المنتجات، وابعت طلبك مباشرة — التسعير حسب الكمية ويتم
+        الاتفاق عليه مع فريق المبيعات.
+      </p>
+      <div class="p-search-wrap">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input type="text" id="search-input" placeholder="ابحث عن منتج..." />
+      </div>
+      <div style="max-width:440px;margin:10px auto 0;text-align:right">
+        <label for="popular-filter" style="font-size:11px;color:var(--text-muted);margin-left:6px">ترتيب الكتالوج</label>
+        <select id="popular-filter" style="padding:8px 10px;border-radius:9px;background:var(--bg-card);border:1px solid var(--border);color:var(--text-main);font-family:inherit;font-size:12px">
+          <option value="default">الترتيب الافتراضي</option>
+          <option value="popular">الأكثر طلبًا</option>
+        </select>
+      </div>
+    </section>
+
+    <div class="p-grid-wrap">
+      <div class="p-grid" id="products-grid">
+        <div class="p-empty">
+          <i class="fa-solid fa-spinner fa-spin"></i>
+          <p>جاري تحميل المنتجات...</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Product Detail Modal -->
+    <div class="p-overlay" id="product-overlay">
+      <div class="p-modal">
+        <div class="p-modal-hero">
+         <button class="p-modal-close" id="modal-close" type="button" aria-label="إغلاق تفاصيل المنتج">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+          <i class="fa-solid fa-cube" id="modal-icon"></i>
+        </div>
+        <div class="p-modal-body">
+          <div class="p-modal-title" id="modal-title">—</div>
+          <div class="p-modal-code" id="modal-code">—</div>
+          <p class="p-modal-desc" id="modal-desc">—</p>
+          <button class="p-modal-wishlist" id="modal-wishlist">
+            <i class="fa-regular fa-heart"></i> إضافة للمفضلة
+          </button>
+          <div class="p-price-badge">
+            <i class="fa-solid fa-briefcase"></i>
+            <div>
+              <strong>تسعير بالجملة</strong
+              ><span>السعر حسب الكمية والاتفاق التجاري المباشر مع الشركة</span>
+            </div>
+          </div>
+          <div class="p-qty-row">
+            <label>الكمية</label>
+            <div class="p-qty-controls">
+              <button id="qty-minus">−</button>
+              <input type="number" id="modal-qty" value="1" min="1" />
+              <button id="qty-plus">+</button>
+            </div>
+          </div>
+          <button class="p-add-btn" id="btn-add-cart">
+            <i class="fa-solid fa-cart-plus"></i> إضافة للطلب
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Cart Drawer -->
+    <div class="p-cart-overlay" id="cart-overlay">
+      <div class="p-cart-drawer">
+        <div class="p-cart-head">
+          <h3><i class="fa-solid fa-cart-shopping"></i> طلبك الحالي</h3>
+          <button id="cart-close" type="button" aria-label="إغلاق السلة"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="p-cart-items" id="cart-items"></div>
+        <div class="p-cart-foot" id="cart-foot" style="display: none">
+          <label>الأولوية</label>
+          <select id="cart-priority">
+            <option value="normal">عادية</option>
+            <option value="high">مرتفعة</option>
+            <option value="urgent">عاجلة جداً</option>
+          </select>
+          <label>ملاحظات على الطلب (اختياري)</label>
+          <textarea
+            id="cart-notes"
+            placeholder="أي تفاصيل إضافية..."
+          ></textarea>
+          <button class="p-submit-btn" id="btn-submit-order">
+            <i class="fa-solid fa-paper-plane"></i> إرسال الطلب
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="p-toast" id="toast">
+      <i class="fa-solid fa-circle-check"></i><span id="toast-msg">تم</span>
+    </div>
+
+    <!-- ✨ Modal طلباتي — عرض كل طلبات العميل + حالة المراجعة + رد الموظف -->
+    <div class="p-overlay" id="my-orders-overlay">
+      <div class="p-modal" style="max-width: 560px">
+        <div class="p-modal-body" style="padding-top: 24px">
+          <button
+            class="p-modal-close"
+            id="my-orders-close"
+            type="button"
+            aria-label="إغلاق طلباتي"
+            style="position: static; float: left"
+          >
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+          <div class="p-modal-title">طلباتي</div>
+          <small id="my-orders-synced" class="p-last-synced"></small>
+          <div
+            id="my-orders-list"
+            style="
+              margin-top: 16px;
+              display: flex;
+              flex-direction: column;
+              gap: 12px;
+              max-height: 65vh;
+              overflow-y: auto;
+            "
+          ></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ✨ Modal بيانات الحساب — بديل تسجيل الخروج الفوري عند الضغط على الاسم -->
+    <div class="p-overlay" id="account-overlay">
+      <div class="p-modal" style="max-width: 520px">
+        <div class="p-modal-body" style="padding-top: 24px">
+        <button
+            class="p-modal-close"
+            id="account-close"
+            type="button"
+            aria-label="إغلاق بيانات الحساب"
+            style="position: static; float: left"
+          >
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+          <div class="p-modal-title">بياناتي</div>
+          <div id="account-body" style="margin-top: 16px"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Wishlist Modal -->
+    <div class="p-overlay" id="wishlist-overlay">
+      <div class="p-modal" style="max-width: 500px">
+        <div class="p-modal-body" style="padding-top: 24px">
+          <button
+            class="p-modal-close"
+            id="wishlist-close"
+            type="button"
+            aria-label="إغلاق المفضلة"
+            style="position: static; float: left"
+          >
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+          <div class="p-modal-title">المفضلة</div>
+          <div
+            id="wishlist-list"
+            style="margin-top:16px;max-height:65vh;overflow-y:auto"
+          ></div>
+        </div>
+      </div>
+    </div>
+
+    <script src="JS/egypt-governorates.js"></script>
+    <script src="JS/portal.js"></script>
+  </body>
+</html>

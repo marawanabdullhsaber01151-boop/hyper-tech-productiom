@@ -1,0 +1,396 @@
+<!-- @format -->
+
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>هايبر تك — أوامر الإنتاج</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="CSS/theme.css" />
+    <script src="JS/theme-switcher.js"></script>
+    <link rel="stylesheet" href="CSS/style.css" />
+    <link rel="stylesheet" href="CSS/production.css" />
+    <link rel="stylesheet" href="CSS/responsive.css" />
+    <link rel="stylesheet" href="CSS/enhancements.css" />
+  </head>
+  <body data-allowed-roles="executive_manager,operations_manager,production_manager,production_controller,chairman">
+    <!-- ===== SIDEBAR ===== -->
+    <aside class="sidebar">
+      <div class="sidebar-logo">
+        <div class="logo-icon">⚡</div>
+        <div class="logo-text">
+          <h1>هايبر تك</h1>
+          <span>نظام إدارة الموارد</span>
+        </div>
+      </div>
+
+      <div class="sidebar-section">
+        <p class="sidebar-section-title">الرئيسية</p>
+        <a href="index.html" class="nav-item">
+          <i class="fa-solid fa-gauge-high"></i>
+          لوحة التحكم
+        </a>
+      </div>
+
+      <!-- ✅ يتملى ديناميكيًا بالأقسام/الصفحات المسموح بيها للمستخدم الحالي بس -->
+      <div id="dynamic-sidebar"></div>
+    </aside>
+
+    <!-- ===== MAIN ===== -->
+    <main class="main">
+      <header class="topbar">
+        <div class="topbar-title">
+          <h2>أوامر الإنتاج</h2>
+          <p>إدارة ومتابعة أوامر التصنيع في الوقت الفعلي</p>
+        </div>
+        <div class="topbar-actions">
+          <div class="search-box">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input
+              type="text"
+              id="search-input"
+              placeholder="بحث بالمنتج أو الكود أو المشرف..."
+            />
+          </div>
+          <div class="icon-btn">
+            <i class="fa-regular fa-bell"></i>
+            <div class="notif-dot"></div>
+          </div>
+          <div class="icon-btn"></div>
+          <button id="btn-new-order" class="btn-primary">
+            <i class="fa-solid fa-plus"></i> أمر جديد
+          </button>
+        </div>
+      </header>
+
+      <div class="content">
+        <!-- KPI Row -->
+        <div class="pro-kpi-row">
+          <div class="pro-kpi-card" data-filter-status="all">
+            <div class="pro-kpi-icon blue">
+              <i class="fa-solid fa-list-check"></i>
+            </div>
+            <div class="pro-kpi-info">
+              <div class="pro-kpi-val" id="kpi-total">0</div>
+              <div class="pro-kpi-label">إجمالي الأوامر</div>
+            </div>
+          </div>
+          <div class="pro-kpi-card" data-filter-status="in_production">
+            <div class="pro-kpi-icon green">
+              <i class="fa-solid fa-gears"></i>
+            </div>
+            <div class="pro-kpi-info">
+              <div class="pro-kpi-val" id="kpi-running">0</div>
+              <div class="pro-kpi-label">قيد التنفيذ</div>
+            </div>
+          </div>
+          <div class="pro-kpi-card" data-filter-status="materials_requested">
+            <div class="pro-kpi-icon amber">
+              <i class="fa-solid fa-hourglass-half"></i>
+            </div>
+            <div class="pro-kpi-info">
+              <div class="pro-kpi-val" id="kpi-pending">0</div>
+              <div class="pro-kpi-label">بانتظار قرار</div>
+            </div>
+          </div>
+          <div class="pro-kpi-card" data-filter-status="materials_rejected">
+            <div class="pro-kpi-icon red">
+              <i class="fa-solid fa-triangle-exclamation"></i>
+            </div>
+            <div class="pro-kpi-info">
+              <div class="pro-kpi-val" id="kpi-late">0</div>
+              <div class="pro-kpi-label">مرفوض/متعثر</div>
+            </div>
+          </div>
+          <div class="pro-kpi-card" data-filter-status="completed">
+            <div class="pro-kpi-icon purple">
+              <i class="fa-solid fa-circle-check"></i>
+            </div>
+            <div class="pro-kpi-info">
+              <div class="pro-kpi-val" id="kpi-done">0</div>
+              <div class="pro-kpi-label">مكتمل بانتظار التسليم</div>
+            </div>
+          </div>
+        </div>
+
+        <section class="factory-control-tower" aria-labelledby="control-tower-title">
+          <div class="tower-heading">
+            <div>
+              <p class="eyebrow">مركز قيادة المصنع</p>
+              <h2 id="control-tower-title">نبض المصنع الآن</h2>
+              <p class="tower-subtitle">مؤشرات تشغيلية تساعدك على اتخاذ القرار قبل حدوث التعطّل</p>
+            </div>
+            <div class="tower-live"><span class="live-pulse"></span> مباشر · يتحدث تلقائياً</div>
+          </div>
+          <div class="tower-grid">
+            <article class="tower-metric tower-metric-oee">
+              <div class="tower-metric-top"><span>ضغط التشغيل الحالي</span><i class="fa-solid fa-gauge-high"></i></div>
+              <div class="tower-metric-value" id="tower-oee">—</div>
+              <div class="tower-meter"><span id="tower-oee-bar"></span></div>
+              <small id="tower-oee-note">جاري قراءة الخطوط</small>
+            </article>
+            <article class="tower-metric">
+              <div class="tower-metric-top"><span>جاهزية الخامات</span><i class="fa-solid fa-boxes-stacked"></i></div>
+              <div class="tower-metric-value" id="tower-materials">—</div>
+              <div class="tower-meter is-teal"><span id="tower-materials-bar"></span></div>
+              <small id="tower-materials-note">الطلبات التي يمكن تشغيلها فوراً</small>
+            </article>
+            <article class="tower-metric">
+              <div class="tower-metric-top"><span>جودة التصنيع من أول مرة</span><i class="fa-solid fa-shield-halved"></i></div>
+              <div class="tower-metric-value" id="tower-fpy">—</div>
+              <div class="tower-signal positive" id="tower-fpy-note"><i class="fa-solid fa-arrow-trend-up"></i> بدون إعادة تشغيل</div>
+            </article>
+            <article class="tower-metric tower-alert-metric">
+              <div class="tower-metric-top"><span>قرارات حرجة</span><i class="fa-solid fa-bell"></i></div>
+              <div class="tower-metric-value" id="tower-alerts">—</div>
+              <div class="tower-alert-list" id="tower-alert-list"><span>جاري تحميل التنبيهات...</span></div>
+            </article>
+          </div>
+          <div class="tower-footer">
+            <div class="tower-footer-label"><i class="fa-solid fa-bolt"></i> إجراءات سريعة</div>
+            <button class="tower-action" data-tower-filter="materials_requested"><i class="fa-solid fa-box-open"></i><span>نقص خامات</span><b id="tower-material-count">0</b></button>
+            <button class="tower-action" data-tower-filter="quality_check"><i class="fa-solid fa-microscope"></i><span>حالات جودة</span><b id="tower-quality-count">0</b></button>
+            <button class="tower-action" data-tower-filter="in_production"><i class="fa-solid fa-person-running"></i><span>أوامر على الخط</span><b id="tower-running-count">0</b></button>
+            <button class="tower-refresh" id="tower-refresh" title="تحديث المؤشرات"><i class="fa-solid fa-rotate"></i></button>
+          </div>
+        </section>
+
+        <section class="production-cycle-panel" aria-labelledby="production-cycle-title">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">دورة الإنتاج</p>
+              <h2 id="production-cycle-title">مراحل دورة الإنتاج</h2>
+            </div>
+            <div class="cycle-summary" id="cycle-summary">جاري تحميل الدورة...</div>
+          </div>
+          <div class="cycle-track" id="production-cycle-track">
+            <div class="cycle-loading">جاري تحميل مراحل الدورة...</div>
+          </div>
+        </section>
+
+        <!-- Filters -->
+        <div class="pro-filters">
+          <div class="filter-tabs">
+            <button class="filter-tab active" data-filter="all">الكل</button>
+            <button class="filter-tab" data-filter="new">
+              <i class="fa-solid fa-star"></i> جديد
+            </button>
+            <button class="filter-tab" data-filter="materials_requested">
+              <i class="fa-solid fa-hourglass-half"></i> بانتظار المخازن
+            </button>
+            <button class="filter-tab" data-filter="in_production">
+              <i class="fa-solid fa-gears"></i> قيد التنفيذ
+            </button>
+            <button class="filter-tab" data-filter="quality_check">
+              <i class="fa-solid fa-magnifying-glass"></i> فحص الجودة
+            </button>
+            <button class="filter-tab" data-filter="completed">
+              <i class="fa-solid fa-circle-check"></i> جاهز للتسليم
+            </button>
+          </div>
+          <div class="filter-right">
+            <div class="filter-select-wrap">
+              <i class="fa-solid fa-industry"></i>
+              <select id="line-filter">
+                <option value="all">كل الخطوط</option>
+              </select>
+            </div>
+            <div class="icon-btn" id="last-update-badge" title="آخر تحديث">
+              <i class="fa-solid fa-rotate"></i>
+            </div>
+          </div>
+        </div>
+
+        <!-- Orders Grid -->
+        <div class="orders-grid" id="orders-grid"></div>
+      </div>
+
+      <!-- Status Bar -->
+      <div class="status-bar">
+        <div class="status-item">
+          <div class="status-dot green"></div>
+          خط 1: يعمل
+        </div>
+        <div class="status-item">
+          <div class="status-dot green"></div>
+          خط 2: يعمل
+        </div>
+        <div class="status-item">
+          <div class="status-dot amber"></div>
+          خط 3: صيانة
+        </div>
+        <div
+          style="margin-right: auto; color: var(--text-dim); font-size: 11px"
+        >
+          آخر تحديث: <span id="last-update"></span>
+        </div>
+      </div>
+    </main>
+
+    <!-- ===== DETAIL PANEL ===== -->
+    <div class="detail-overlay" id="detail-overlay">
+      <div class="detail-panel">
+        <div class="detail-head">
+          <div>
+            <h3 id="dp-title">—</h3>
+            <div
+              id="dp-code"
+              style="font-size: 12px; color: var(--text-dim); margin-top: 3px"
+            ></div>
+          </div>
+          <button class="modal-close" id="detail-close">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+        <div class="detail-body" id="detail-body"></div>
+      </div>
+    </div>
+
+    <!-- ===== ADD ORDER MODAL ===== -->
+    <div class="modal-overlay" id="modal-overlay">
+      <div class="modal">
+        <div class="modal-head">
+          <h3><i class="fa-solid fa-industry"></i> أمر إنتاج جديد</h3>
+          <button class="modal-close" id="modal-close">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label>المنتج (وصفة تصنيع محفوظة) *</label>
+            <select id="modal-recipe" class="form-input">
+              <option value="">— اختر وصفة —</option>
+            </select>
+          </div>
+          <div class="form-row two-col">
+            <div class="form-group">
+              <label>الكمية المطلوبة *</label>
+              <input
+                type="number"
+                id="modal-qty"
+                class="form-input"
+                placeholder="عدد الوحدات"
+                min="1"
+              />
+            </div>
+            <div class="form-group">
+              <label>الوحدة</label>
+              <input
+                type="text"
+                id="modal-unit"
+                class="form-input"
+                placeholder="قطعة"
+                value="قطعة"
+              />
+            </div>
+          </div>
+          <div class="form-row two-col">
+            <div class="form-group">
+              <label>اسم العميل *</label>
+              <input
+                type="text"
+                id="modal-customer-name"
+                class="form-input"
+                placeholder="اسم العميل أو الجهة"
+              />
+            </div>
+            <div class="form-group">
+              <label>هاتف العميل</label>
+              <input
+                type="text"
+                id="modal-customer-phone"
+                class="form-input"
+                placeholder="اختياري"
+              />
+            </div>
+          </div>
+          <div class="form-row two-col">
+            <div class="form-group">
+              <label>الأولوية</label>
+              <select id="modal-priority" class="form-input">
+                <option value="low">منخفضة</option>
+                <option value="normal" selected>عادية</option>
+                <option value="high">مرتفعة</option>
+                <option value="urgent">عاجلة جداً</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>موعد التسليم المطلوب *</label>
+              <input type="date" id="modal-needed-by" class="form-input" />
+            </div>
+          </div>
+          <div class="form-group">
+            <label>تفاصيل الطلب</label>
+            <textarea
+              id="modal-order-details"
+              class="form-input"
+              placeholder="تفاصيل يشوفها المشرف..."
+              rows="2"
+            ></textarea>
+          </div>
+          <div class="form-group">
+            <label>ملاحظات داخلية</label>
+            <textarea
+              id="modal-notes"
+              class="form-input"
+              placeholder="ملاحظات إضافية..."
+              rows="2"
+            ></textarea>
+          </div>
+        </div>
+        <div class="modal-foot">
+          <button id="modal-save" class="btn-primary">
+            <i class="fa-solid fa-check"></i> إنشاء الأمر
+          </button>
+          <button id="modal-cancel" class="btn-ghost">إلغاء</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== CONFIRM DELETE ===== -->
+    <div class="confirm-overlay" id="confirm-overlay">
+      <div class="confirm-dialog">
+        <div class="confirm-icon"><i class="fa-solid fa-trash"></i></div>
+        <h3>حذف أمر الإنتاج</h3>
+        <p>
+          هل أنت متأكد من حذف أمر إنتاج <strong id="confirm-name"></strong>؟
+        </p>
+        <p class="confirm-warn">هذا الإجراء لا يمكن التراجع عنه</p>
+        <div class="confirm-actions">
+          <button class="btn-ghost" id="confirm-no">إلغاء</button>
+          <button class="btn-danger" id="confirm-yes">
+            <i class="fa-solid fa-trash"></i> حذف
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== TOAST ===== -->
+    <div class="toast" id="toast">
+      <i class="fa-solid fa-circle-check"></i>
+      <span id="toast-msg">تم الحفظ بنجاح</span>
+    </div>
+
+    <!-- ===== PRINT AREA (hidden, shown only on print) ===== -->
+    <div id="print-area"></div>
+
+    <script src="JS/auth.js"></script>
+    <script src="JS/page-guard.js"></script>
+    <script src="JS/api-client.js"></script>
+    <script src="JS/nav-loader.js"></script>
+     <script src="JS/production-workflow-shared.js"></script>
+    <script src="JS/production.js"></script>
+    <script src="JS/factory-control-tower.js"></script>
+    <script src="JS/responsive.js"></script>
+    <script src="JS/enhancements.js"></script>
+    <script src="JS/password-toggle.js"></script>
+  </body>
+</html>

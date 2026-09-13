@@ -1,0 +1,317 @@
+<!-- @format -->
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>هايبر تك — استقبال طلبات الإنتاج</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="CSS/theme.css" />
+    <script src="JS/theme-switcher.js"></script>
+    <link rel="stylesheet" href="CSS/style.css" />
+    <link rel="stylesheet" href="CSS/contacts.css" />
+    <link rel="stylesheet" href="CSS/responsive.css" />
+    <link rel="stylesheet" href="CSS/enhancements.css" />
+    <style>
+      html:not([data-role="hr"]):not([data-role="hr_manager"]):not([data-role="sales_manager"]):not(
+          [data-role="chairman"]
+        )
+        .page-guard {
+        display: none !important;
+      }
+      html:not([data-role="hr"]):not([data-role="hr_manager"]):not([data-role="sales_manager"]):not(
+          [data-role="chairman"]
+        )
+        .page-denied {
+        display: flex !important;
+      }
+      .page-denied {
+        display: none;
+        min-height: 60vh;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+        gap: 10px;
+        color: var(--text-muted);
+      }
+      .intake-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+      }
+      .intake-card {
+        background: var(--card-bg, #12161f);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 20px;
+        margin-bottom: 20px;
+      }
+      .intake-card h3 {
+        margin: 0 0 16px;
+        font-size: 15px;
+      }
+      .form-row {
+        margin-bottom: 14px;
+      }
+      .form-row label {
+        display: block;
+        font-size: 12px;
+        margin-bottom: 6px;
+        color: var(--text-muted);
+      }
+      .form-row input,
+      .form-row select,
+      .form-row textarea {
+        width: 100%;
+        padding: 9px 12px;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        background: transparent;
+        color: inherit;
+        font-family: inherit;
+        font-size: 13px;
+      }
+      .req-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+      }
+      .req-table th,
+      .req-table td {
+        padding: 10px 12px;
+        border-bottom: 1px solid var(--border);
+        text-align: right;
+      }
+      .req-table th {
+        color: var(--text-muted);
+        font-weight: 600;
+        font-size: 12px;
+      }
+      .lock-edit {
+        font-size: 12px;
+        color: var(--primary, #3b82f6);
+        cursor: pointer;
+        background: none;
+        border: none;
+      }
+      .wh-card {
+        background: rgba(59, 130, 246, 0.06);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 16px;
+        margin-bottom: 14px;
+      }
+      .wh-card .num {
+        font-weight: 700;
+      }
+      .wh-card .meta {
+        font-size: 12px;
+        color: var(--text-muted);
+        margin: 6px 0;
+      }
+      @media (max-width: 900px) {
+        .intake-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body data-allowed-roles="chairman,production_manager,supervisor">
+    <aside class="sidebar">
+      <div class="sidebar-logo">
+        <div class="logo-icon">⚡</div>
+        <div class="logo-text">
+          <h1>هايبر تك</h1>
+          <span>نظام إدارة الموارد</span>
+        </div>
+      </div>
+
+      <div class="sidebar-section">
+        <p class="sidebar-section-title">الرئيسية</p>
+        <a href="index.html" class="nav-item">
+          <i class="fa-solid fa-gauge-high"></i>
+          لوحة التحكم
+        </a>
+      </div>
+
+      <!-- ✅ يتملى ديناميكيًا بالأقسام/الصفحات المسموح بيها للمستخدم الحالي بس -->
+      <div id="dynamic-sidebar"></div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div class="topbar-title">
+          <h2>استقبال طلبات الإنتاج</h2>
+          <p>
+            نقطة البداية الوحيدة لأي أمر إنتاج — من هنا يبدأ الطلب رحلته في
+            المصنع
+          </p>
+        </div>
+        <div class="topbar-actions">
+          <div class="icon-btn">
+            <i class="fa-regular fa-bell"></i>
+            <div class="notif-dot"></div>
+          </div>
+          <div class="icon-btn"></div>
+        </div>
+      </header>
+
+      <div class="page-denied">
+        <i class="fa-solid fa-lock" style="font-size: 32px"></i>
+        <p>هذه الصفحة متاحة للاتش آر أو المدير الكامل فقط.</p>
+      </div>
+
+      <div class="page-guard" style="padding: 20px 28px">
+        <div class="intake-card">
+          <h3><i class="fa-solid fa-plus"></i> طلب إنتاج جديد</h3>
+          <div class="intake-grid">
+            <div>
+              <div class="form-row">
+                <label>اسم العميل *</label
+                ><input
+                  id="f-customer-name"
+                  placeholder="اسم العميل أو الشركة"
+                />
+              </div>
+              <div class="form-row">
+                <label>رقم التليفون</label><input id="f-customer-phone" />
+              </div>
+              <div class="form-row">
+                <label>الإيميل (اختياري)</label
+                ><input id="f-customer-email" type="email" />
+              </div>
+              <div class="form-row">
+                <label>مصدر الطلب</label>
+                <select id="f-source">
+                  <option value="direct">مباشر</option>
+                  <option value="website">من الموقع الإلكتروني</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <div class="form-row">
+                <label>اسم المنتج *</label>
+                <select id="f-product"></select>
+                <p
+                  id="f-product-empty"
+                  style="
+                    display: none;
+                    font-size: 12px;
+                    color: #f59e0b;
+                    margin-top: 6px;
+                  "
+                >
+                  لا يوجد منتجات مضافة بعد — يرجى إضافة وصفة تصنيع أولًا من صفحة
+                  "وصفات التصنيع".
+                </p>
+              </div>
+              <div class="form-row" style="display: flex; gap: 10px">
+                <div style="flex: 1">
+                  <label>الكمية *</label
+                  ><input id="f-qty" type="number" min="0" step="0.001" />
+                </div>
+                <div style="flex: 1">
+                  <label>الوحدة</label><select id="f-unit"><option value="">الوحدة...</option><option value="kg">كيلوجرام (kg)</option><option value="g">جرام (g)</option><option value="ton">طن</option><option value="l">لتر (l)</option><option value="ml">مليلتر (ml)</option><option value="piece">قطعة</option><option value="m">متر (m)</option><option value="cm">سنتيمتر (cm)</option><option value="box">كرتونة</option><option value="pack">علبة/باكيت</option><option value="roll">لفة</option><option value="set">طقم</option></select>
+                </div>
+              </div>
+              <div class="form-row" style="display: flex; gap: 10px">
+                <div style="flex: 1">
+                  <label>الأولوية</label>
+                  <select id="f-priority">
+                    <option value="normal">🟡 عادي</option>
+                    <option value="low">🟢 منخفض</option>
+                    <option value="high">🔴 مرتفع</option>
+                    <option value="urgent">⚡ عاجل جداً</option>
+                  </select>
+                </div>
+                <div style="flex: 1">
+                  <label>تاريخ التسليم *</label
+                  ><input id="f-needed-by" type="date" />
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="form-row">
+            <label>ملاحظات</label><textarea id="f-notes" rows="2"></textarea>
+          </div>
+          <button class="btn-primary" id="btn-submit">
+            <i class="fa-solid fa-paper-plane"></i> إرسال طلب الإنتاج لمدير
+            الإنتاج
+          </button>
+        </div>
+
+        <div
+          class="intake-card"
+          id="delivery-confirm-card"
+          style="display: none"
+        >
+          <h3>
+            <i class="fa-solid fa-hand-holding-heart"></i> طلبات جاهزة للتسليم
+            للعميل — بانتظار تأكيدك
+          </h3>
+          <div id="delivery-confirm-list"></div>
+        </div>
+
+        <div class="intake-card">
+          <h3>
+            <i class="fa-solid fa-list"></i> طلباتي
+            <span
+              id="portal-count-badge"
+              style="
+                display: none;
+                background: var(--accent, #f59e0b);
+                color: #1a1206;
+                font-size: 11px;
+                font-weight: 800;
+                padding: 3px 10px;
+                border-radius: 20px;
+                margin-right: 8px;
+              "
+              >0 من البوابة</span
+            >
+          </h3>
+          <table class="req-table">
+            <thead>
+              <tr>
+                <th>رقم الأمر</th>
+                <th>العميل</th>
+                <th>المنتج</th>
+                <th>تاريخ التسليم</th>
+                <th>الحالة</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="req-tbody">
+              <tr>
+                <td
+                  colspan="6"
+                  style="text-align: center; color: var(--text-muted)"
+                >
+                  جاري التحميل...
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+
+    <div class="toast" id="toast">
+      <i class="fa-solid fa-circle-check"></i><span id="toast-msg">تم</span>
+    </div>
+
+    <script src="JS/auth.js"></script>
+    <script src="JS/page-guard.js"></script>
+    <script src="JS/nav-loader.js"></script>
+    <script src="JS/enhancements.js"></script>
+    <script src="JS/production-workflow-shared.js"></script>
+    <script src="JS/factory-intake.js"></script>
+  </body>
+</html>

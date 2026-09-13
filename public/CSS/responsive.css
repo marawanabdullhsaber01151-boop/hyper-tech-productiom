@@ -1,0 +1,474 @@
+/** @format */
+/* ===================================================================
+   HYPER-TECH ERP — RESPONSIVE STYLESHEET
+   يغطي: موبايل (<480px) | موبايل كبير (<768px) | تابلت (<1024px)
+          لابتوب (<1280px) | ديسكتوب (≥1280px) | شاشة كبيرة (≥1536px)
+   ملاحظة: هذا الملف يُضاف بعد style.css وجميع ملفات CSS الأخرى
+   =================================================================== */
+
+/* ──────────────────────────────────────────────────────────────────
+   1.  زر الهامبرغر — مخفي على الديسكتوب / يظهر تلقائياً على الموبايل
+────────────────────────────────────────────────────────────────── */
+.menu-toggle {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text-muted);
+  font-size: 16px;
+  cursor: pointer;
+  transition: all var(--transition);
+  flex-shrink: 0;
+  order: -1; /* يظهر أولاً (على اليمين في RTL) */
+}
+
+.menu-toggle:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   2.  طبقة التعتيم — تُغلق الشريط الجانبي عند النقر عليها
+────────────────────────────────────────────────────────────────── */
+.sidebar-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(3px);
+  z-index: 99;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.sidebar-overlay.active {
+  opacity: 1;
+  pointer-events: all;
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   3.  لابتوب / شاشة صغيرة  — عرض < 1280px
+────────────────────────────────────────────────────────────────── */
+@media (max-width: 1279px) {
+  :root {
+    --sidebar-w: 240px;
+  }
+
+  .content {
+    padding: 24px 20px;
+  }
+
+  .topbar {
+    padding: 0 20px;
+  }
+
+  .status-bar {
+    padding: 10px 20px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  /* KPI grids: 4 أعمدة → 2 أعمدة */
+  .kpi-grid,
+  .acc-kpi-row,
+  .hr-kpi-row,
+  .sales-kpi-row,
+  .pur-kpi-row,
+  .con-kpi-row,
+  .inv-kpi-row {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  /* Movements: 6 → 3 */
+  .mv-kpi-row {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  /* Production: 5 → 3 */
+  .pro-kpi-row {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  /* Settings: عرض الشريط الجانبي أصغر */
+  .set-layout {
+    grid-template-columns: 200px 1fr;
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   4.  تابلت  — عرض < 1024px  (الشريط الجانبي يتحوّل إلى Drawer)
+────────────────────────────────────────────────────────────────── */
+@media (max-width: 1023px) {
+  /* ─── زر الهامبرغر يظهر ─── */
+  .menu-toggle {
+    display: flex;
+  }
+
+  /* ─── الشريط الجانبي: مخفي خارج الشاشة إلى اليمين ─── */
+  .sidebar {
+    transform: translateX(100%);
+    z-index: 200;
+    box-shadow: -8px 0 40px rgba(0, 0, 0, 0.55);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .sidebar.open {
+    transform: translateX(0);
+  }
+
+  /* ─── طبقة التعتيم مرئية ─── */
+  .sidebar-overlay {
+    display: block;
+  }
+
+  /* ─── المحتوى الرئيسي: بلا هامش جانبي ─── */
+  .main {
+    margin-right: 0;
+    width: 100%;
+  }
+
+  /* ─── الـ Topbar ─── */
+  .topbar {
+    padding: 0 14px;
+    gap: 10px;
+  }
+
+  .search-box input {
+    width: 130px;
+  }
+
+  /* ─── المحتوى ─── */
+  .content {
+    padding: 20px 14px;
+  }
+
+  .status-bar {
+    padding: 10px 14px;
+  }
+
+  /* ─── شبكات الصفحة الرئيسية ─── */
+  .mid-row {
+    grid-template-columns: 1fr !important;
+  }
+
+  .bottom-row {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* ✨ إضافة: قسم "نظرة مالية وجودة" الجديد — من 3 أعمدة إلى عمودين على
+     التابلت، مع بقاء قائمة المتابعة (fq-watchlist) ممتدة بعرض كامل */
+  .fq-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .fq-watchlist {
+    grid-column: span 2;
+  }
+
+  /* ─── تخطيط المحاسبة (1fr 340px) → 1fr ─── */
+  .acc-layout {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* ─── تخطيط الجودة (1fr 300px) → 1fr ─── */
+  .qc-layout {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* ─── تخطيط الحركات (1fr 300px) → 1fr ─── */
+  .mv-top-row {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* ─── تخطيط الإعدادات (240px 1fr) → 1fr ─── */
+  .set-layout {
+    grid-template-columns: 1fr !important;
+  }
+
+  .set-menu {
+    position: static !important;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .set-menu-item {
+    flex: 1;
+    min-width: 130px;
+    justify-content: center;
+    text-align: center;
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   5.  موبايل  — عرض < 768px
+────────────────────────────────────────────────────────────────── */
+@media (max-width: 767px) {
+  /* ─── Topbar ─── */
+  .topbar {
+    padding: 0 12px;
+    min-height: 58px;
+    height: auto;
+    gap: 8px;
+  }
+
+  .topbar-title h2 {
+    font-size: 15px;
+  }
+
+  .topbar-title p {
+    display: none;
+  }
+
+  /* إخفاء صندوق البحث (سيظهر كأيقونة فقط أو يُفتح بزر منفصل) */
+  .search-box {
+    display: none;
+  }
+
+  .topbar-actions {
+    gap: 6px;
+  }
+
+  /* ─── المحتوى ─── */
+  .content {
+    padding: 14px 10px;
+  }
+
+  .greeting {
+    margin-bottom: 20px;
+  }
+
+  .greeting h3 {
+    font-size: 17px;
+  }
+
+  /* ─── KPI: 2 أعمدة على الموبايل ─── */
+  .kpi-grid,
+  .acc-kpi-row,
+  .hr-kpi-row,
+  .sales-kpi-row,
+  .pur-kpi-row,
+  .con-kpi-row,
+  .inv-kpi-row {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+
+  .mv-kpi-row,
+  .pro-kpi-row {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+
+  /* ─── بطاقات KPI ─── */
+  .kpi-card {
+    padding: 14px;
+  }
+
+  .kpi-val {
+    font-size: 22px;
+  }
+
+  .kpi-label {
+    font-size: 12px;
+  }
+
+  .kpi-icon {
+    width: 36px;
+    height: 36px;
+    font-size: 15px;
+  }
+
+  /* ✨ إضافة: عمود واحد لقسم "نظرة مالية وجودة" على الموبايل الصغير */
+  .fq-grid {
+    grid-template-columns: 1fr;
+    padding: 14px;
+  }
+  .fq-watchlist {
+    grid-column: span 1;
+  }
+
+  /* ─── النماذج: عمود واحد ─── */
+  .form-row.two-col {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* ─── شريط الحالة ─── */
+  .status-bar {
+    padding: 8px 10px;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    gap: 16px;
+    font-size: 11px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .status-bar > * {
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+
+  /* ─── الإجراءات السريعة ─── */
+  .quick-actions {
+    grid-template-columns: 1fr 1fr;
+    padding: 12px;
+    gap: 8px;
+  }
+
+  .qa-btn {
+    font-size: 12px;
+    padding: 10px 10px;
+  }
+
+  /* ─── بطاقة المستخدم ─── */
+  .user-info h4 {
+    font-size: 12px;
+  }
+
+  .user-info span {
+    font-size: 10px;
+  }
+
+  /* ─── Toast ─── */
+  .toast {
+    left: 12px !important;
+    right: 12px !important;
+    transform: translateY(80px) !important;
+    border-radius: 14px;
+  }
+
+  .toast.show {
+    transform: translateY(0) !important;
+  }
+
+  /* ─── Modal ─── */
+  .modal {
+    width: calc(100vw - 20px);
+    max-height: 94vh;
+    border-radius: 16px;
+  }
+
+  .modal-body {
+    padding: 14px;
+    gap: 12px;
+  }
+
+  .modal-head {
+    padding: 14px 16px 12px;
+  }
+
+  .modal-foot {
+    padding: 12px 16px;
+  }
+
+  /* ─── حوار التأكيد ─── */
+  .confirm-dialog {
+    padding: 24px 18px;
+  }
+
+  /* ─── رأس البطاقة ─── */
+  .card-head {
+    padding: 16px 14px 0;
+  }
+
+  .card-head h4 {
+    font-size: 14px;
+  }
+
+  /* ─── عناوين الأزرار في card-head ─── */
+  .card-head-actions {
+    gap: 6px;
+  }
+
+  /* ─── تقليل padding داخل البطاقات ─── */
+  .chart-area {
+    padding: 14px;
+  }
+
+  .alerts-list {
+    padding: 8px 10px;
+  }
+
+  .donut-area {
+    padding: 14px;
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   6.  موبايل صغير  — عرض < 480px
+────────────────────────────────────────────────────────────────── */
+@media (max-width: 479px) {
+  /* ─── KPI: عمود واحد ─── */
+  .kpi-grid,
+  .acc-kpi-row,
+  .hr-kpi-row,
+  .sales-kpi-row,
+  .pur-kpi-row,
+  .con-kpi-row,
+  .inv-kpi-row,
+  .mv-kpi-row,
+  .pro-kpi-row {
+    grid-template-columns: 1fr;
+  }
+
+  /* ─── Topbar ─── */
+  .topbar-title h2 {
+    font-size: 13px;
+  }
+
+  /* إخفاء بعض أزرار topbar للتخفيف */
+  .topbar-actions .icon-btn + .icon-btn {
+    display: none;
+  }
+
+  /* ─── المحتوى ─── */
+  .content {
+    padding: 10px 8px;
+  }
+
+  .kpi-card {
+    padding: 12px;
+  }
+
+  .kpi-val {
+    font-size: 20px;
+  }
+
+  /* ─── شريط الحالة ─── */
+  .status-bar {
+    font-size: 10px;
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   7.  شاشات كبيرة  — عرض ≥ 1536px
+────────────────────────────────────────────────────────────────── */
+@media (min-width: 1536px) {
+  :root {
+    --sidebar-w: 280px;
+  }
+
+  .content {
+    padding: 40px 36px;
+  }
+
+  .topbar {
+    padding: 0 36px;
+  }
+
+  .kpi-grid {
+    gap: 22px;
+  }
+
+  .mid-row {
+    grid-template-columns: 1fr 420px;
+  }
+
+  .search-box input {
+    width: 220px;
+  }
+}

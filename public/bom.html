@@ -1,0 +1,310 @@
+<!-- @format -->
+
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>هايبر تك — وصفات التصنيع</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="CSS/theme.css" />
+    <script src="JS/theme-switcher.js"></script>
+    <link rel="stylesheet" href="CSS/style.css" />
+    <link rel="stylesheet" href="CSS/bom.css" />
+    <link rel="stylesheet" href="CSS/responsive.css" />
+    <link rel="stylesheet" href="CSS/enhancements.css" />
+  </head>
+  <body
+    data-allowed-roles="hr,hr_manager,production_manager,production_controller,supervisor,chairman"
+  >
+    <!-- ===== SIDEBAR ===== -->
+    <aside class="sidebar">
+      <div class="sidebar-logo">
+        <div class="logo-icon">⚡</div>
+        <div class="logo-text">
+          <h1>هايبر تك</h1>
+          <span>نظام إدارة الموارد</span>
+        </div>
+      </div>
+
+      <div class="sidebar-section">
+        <p class="sidebar-section-title">الرئيسية</p>
+        <a href="index.html" class="nav-item">
+          <i class="fa-solid fa-gauge-high"></i>
+          لوحة التحكم
+        </a>
+      </div>
+
+      <!-- ✅ يتملى ديناميكيًا بالأقسام/الصفحات المسموح بيها للمستخدم الحالي بس -->
+      <div id="dynamic-sidebar"></div>
+    </aside>
+
+    <!-- ===== MAIN ===== -->
+    <main class="main">
+      <!-- TOPBAR -->
+      <header class="topbar">
+        <div class="topbar-title">
+          <h2>وصفات التصنيع</h2>
+          <p>تحديد مكونات وتكاليف كل منتج</p>
+        </div>
+        <div class="topbar-actions">
+          <div class="search-box">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input
+              type="text"
+              id="search-input"
+              placeholder="ابحث بالمنتج أو المكوّن..."
+            />
+          </div>
+          <div class="icon-btn">
+            <i class="fa-regular fa-bell"></i>
+            <div class="notif-dot"></div>
+          </div>
+          <div class="icon-btn"></div>
+          <div class="icon-btn" title="تصدير">
+            <i class="fa-solid fa-file-export"></i>
+          </div>
+          <button class="btn-primary" id="btn-new-bom">
+            <i class="fa-solid fa-plus"></i>
+            وصفة جديدة
+          </button>
+        </div>
+      </header>
+
+      <!-- CONTENT -->
+      <div class="content">
+        <!-- KPI ROW -->
+        <div class="bom-kpi-row">
+          <div class="bom-kpi-card">
+            <div class="bom-kpi-icon blue">
+              <i class="fa-solid fa-diagram-project"></i>
+            </div>
+            <div class="bom-kpi-info">
+              <span class="bom-kpi-val" id="kpi-products">0</span>
+              <span class="bom-kpi-label">إجمالي الوصفات</span>
+            </div>
+          </div>
+          <div class="bom-kpi-card">
+            <div class="bom-kpi-icon amber">
+              <i class="fa-solid fa-cubes"></i>
+            </div>
+            <div class="bom-kpi-info">
+              <span class="bom-kpi-val" id="kpi-components">0</span>
+              <span class="bom-kpi-label">إجمالي المكونات</span>
+            </div>
+          </div>
+          <div class="bom-kpi-card">
+            <div class="bom-kpi-icon green">
+              <i class="fa-solid fa-tag"></i>
+            </div>
+            <div class="bom-kpi-info">
+              <span class="bom-kpi-val" id="kpi-cheapest">—</span>
+              <span class="bom-kpi-label">أقل تكلفة وحدة (جنيه)</span>
+            </div>
+          </div>
+          <div class="bom-kpi-card">
+            <div class="bom-kpi-icon red">
+              <i class="fa-solid fa-arrow-trend-up"></i>
+            </div>
+            <div class="bom-kpi-info">
+              <span class="bom-kpi-val" id="kpi-expensive">—</span>
+              <span class="bom-kpi-label">أعلى تكلفة وحدة (جنيه)</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- FILTER TABS -->
+        <div class="bom-filters">
+          <div class="bom-sort-wrap">
+            <i class="fa-solid fa-arrow-up-wide-short"></i>
+            <select id="sort-select">
+              <option value="name">ترتيب بالاسم</option>
+              <option value="cost-asc">التكلفة: الأقل أولاً</option>
+              <option value="cost-desc">التكلفة: الأعلى أولاً</option>
+              <option value="components">عدد المكونات</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- PRODUCTS GRID -->
+        <div class="bom-grid" id="bom-grid">
+          <!-- filled by JS -->
+        </div>
+      </div>
+      <!-- /content -->
+
+      <!-- STATUS BAR -->
+      <div class="status-bar">
+        <div class="status-item">
+          <div class="status-dot green"></div>
+          قاعدة البيانات: متصلة
+        </div>
+        <div class="status-item">
+          <div class="status-dot green"></div>
+          آخر مراجعة: اليوم
+        </div>
+        <div style="margin-right: auto; color: var(--text-dim)">
+          آخر تحديث: <span id="last-update"></span>
+        </div>
+      </div>
+    </main>
+
+    <!-- ===== MODAL: وصفة جديدة ===== -->
+    <div class="modal-overlay" id="modal-overlay">
+      <div class="modal">
+        <div class="modal-head">
+          <h3><i class="fa-solid fa-diagram-project"></i> وصفة تصنيع جديدة</h3>
+          <button class="modal-close" id="modal-close">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="form-row">
+            <div class="form-group">
+              <label>اسم المنتج</label>
+              <input
+                type="text"
+                id="modal-name"
+                class="form-input"
+                placeholder="مثال: مشترك 5 أرجل مع مفتاح رئيسي"
+              />
+            </div>
+          </div>
+          <div class="form-row two-col">
+            <div class="form-group">
+              <label>كود المنتج (اختياري)</label>
+              <input
+                type="text"
+                id="modal-code"
+                class="form-input"
+                placeholder="مثال: PRD-001"
+              />
+            </div>
+            <div class="form-group">
+              <label>الكمية الناتجة لكل دفعة</label>
+              <input
+                type="number"
+                min="0"
+                step="0.001"
+                id="modal-output-qty"
+                class="form-input"
+                value="1"
+              />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>ملاحظات</label>
+              <textarea
+                id="modal-notes"
+                class="form-input"
+                rows="2"
+                placeholder="أي تفاصيل إضافية عن الوصفة..."
+              ></textarea>
+            </div>
+          </div>
+          <div class="components-section">
+            <div class="components-head">
+              <label>المكونات</label>
+              <button
+                type="button"
+                class="btn-add-component"
+                id="btn-add-component"
+              >
+                <i class="fa-solid fa-plus"></i> إضافة مكوّن
+              </button>
+            </div>
+            <div class="components-table" id="components-table">
+              <div class="components-row components-header">
+                <span class="comp-cell-name">المكوّن</span>
+                <span class="comp-cell-source">المصدر</span>
+                <span class="comp-cell-unit">الوحدة</span>
+                <span class="comp-cell-qty">الكمية</span>
+                <span class="comp-cell-cost">سعر الوحدة</span>
+                <span class="comp-cell-action"></span>
+              </div>
+              <div class="components-rows" id="components-rows"></div>
+            </div>
+            <div class="components-empty" id="components-empty">
+              <i class="fa-solid fa-circle-info"></i>
+              لا توجد مكونات. اضغط "إضافة مكوّن" لتبدأ.
+            </div>
+          </div>
+        </div>
+        <div class="modal-foot">
+          <button class="btn-ghost" id="modal-cancel">إلغاء</button>
+          <button class="btn-primary" id="modal-save">
+            <i class="fa-solid fa-check"></i>
+            حفظ الوصفة
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== DETAIL PANEL ===== -->
+    <div class="detail-overlay" id="detail-overlay">
+      <div class="detail-panel" id="detail-panel">
+        <div class="detail-head">
+          <div>
+            <h3 id="dp-title">—</h3>
+            <p
+              id="dp-sub"
+              style="font-size: 12px; color: var(--text-muted); margin-top: 3px"
+            >
+              —
+            </p>
+          </div>
+          <button class="modal-close" id="detail-close">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+        <div class="detail-body" id="detail-body">
+          <!-- filled by JS -->
+        </div>
+      </div>
+    </div>
+
+    <!-- TOAST -->
+    <div class="toast" id="toast">
+      <i class="fa-solid fa-circle-check"></i>
+      <span id="toast-msg">تم الحفظ بنجاح</span>
+    </div>
+
+    <!-- ===== CONFIRM DELETE DIALOG ===== -->
+    <div class="confirm-overlay" id="confirm-overlay">
+      <div class="confirm-dialog">
+        <div class="confirm-icon">
+          <i class="fa-solid fa-triangle-exclamation"></i>
+        </div>
+        <h3>تأكيد الحذف</h3>
+        <p>
+          هل أنت متأكد من حذف وصفة<br />
+          <strong id="confirm-name">—</strong>؟
+        </p>
+        <p class="confirm-warn">لا يمكن التراجع عن هذا الإجراء</p>
+        <div class="confirm-actions">
+          <button class="btn-ghost" id="confirm-no">إلغاء</button>
+          <button class="btn-danger" id="confirm-yes">
+            <i class="fa-solid fa-trash"></i> حذف نهائياً
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script src="JS/auth.js"></script>
+    <script src="JS/page-guard.js"></script>
+    <script src="JS/api-client.js"></script>
+    <script src="JS/nav-loader.js"></script>
+    <script src="JS/bom.js"></script>
+    <script src="JS/responsive.js"></script>
+    <script src="JS/enhancements.js"></script>
+    <script src="JS/password-toggle.js"></script>
+  </body>
+</html>

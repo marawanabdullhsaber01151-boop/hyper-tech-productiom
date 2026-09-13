@@ -1,0 +1,171 @@
+<!-- @format -->
+
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>هايبر تك — مدير العمليات</title>
+    <link rel="stylesheet" href="CSS/theme.css" />
+    <script src="JS/theme-switcher.js"></script>
+    <link rel="stylesheet" href="CSS/style.css" />
+    <link rel="stylesheet" href="CSS/operations-manager.css" />
+  </head>
+  <body data-allowed-roles="chairman,executive_manager,operations_manager">
+    <main class="ops-manager-shell">
+      <header class="page-header">
+        <div>
+          <a href="index.html">← لوحة التحكم</a>
+          <h1>صندوق مدير العمليات</h1>
+          <p>
+            استقبال ومراجعة حالات التشغيل قبل أي تخطيط أو تنفيذ فعلي. هذه الشاشة
+            لا تعدّل المخزون ولا تنفذ إنتاجًا أو شراءً.
+          </p>
+        </div>
+        <button id="refreshCases" class="button primary" type="button">
+          تحديث
+        </button>
+      </header>
+
+      <div id="status" class="status" role="status" aria-live="polite"></div>
+
+      <section class="panel filters-panel" aria-labelledby="filtersTitle">
+        <div class="panel-heading">
+          <div>
+            <h2 id="filtersTitle">قائمة الحالات</h2>
+            <p class="muted">
+              النتائج والفلترة تتم على الخادم، ولا يتم تحميل كل الحالات دفعة
+              واحدة.
+            </p>
+          </div>
+        </div>
+        <form id="filtersForm" class="filters-grid">
+          <label
+            >بحث<input
+              name="search"
+              maxlength="100"
+              placeholder="رقم الحالة أو أمر البيع أو العميل"
+          /></label>
+          <label
+            >الحالة<select name="status">
+              <option value="">كل الحالات</option>
+              <option value="received">مستلمة</option>
+              <option value="under_validation">قيد التحقق</option>
+              <option value="needs_sales_clarification">
+                تحتاج توضيح Sales
+              </option>
+              <option value="analysis_ready">جاهزة للتحليل</option>
+            </select></label
+          >
+          <label
+            >الأولوية<select name="priority">
+              <option value="">كل الأولويات</option>
+              <option value="urgent">عاجلة</option>
+              <option value="high">مرتفعة</option>
+              <option value="normal">عادية</option>
+              <option value="low">منخفضة</option>
+            </select></label
+          >
+          <label
+            >الخطر<select name="riskLevel">
+              <option value="">كل مستويات الخطر</option>
+              <option value="high">مرتفع</option>
+              <option value="medium">متوسط</option>
+              <option value="low">منخفض</option>
+            </select></label
+          >
+          <label>من موعد<input type="date" name="dueDateFrom" /></label>
+          <label>إلى موعد<input type="date" name="dueDateTo" /></label>
+          <label
+            >Assigned To<input
+              type="number"
+              name="assignedTo"
+              min="1"
+              step="1"
+              placeholder="معرّف المستخدم"
+          /></label>
+          <label class="checkbox-label"
+            ><input type="checkbox" name="overdue" /> المتأخرة فقط</label
+          >
+          <div class="filter-actions">
+            <button class="button primary" type="submit">تطبيق الفلاتر</button>
+            <button class="button" id="clearFilters" type="button">مسح</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="panel" aria-live="polite">
+        <div id="casesLoading" class="state loading" hidden>
+          جارٍ تحميل الحالات...
+        </div>
+        <div id="casesEmpty" class="state empty" hidden>
+          لا توجد حالات مطابقة للفلاتر الحالية.
+        </div>
+        <div id="casesError" class="state error" hidden>
+          تعذر تحميل الحالات.
+        </div>
+        <div id="caseInbox" class="case-grid"></div>
+        <nav id="pagination" class="pagination" aria-label="تنقل الحالات"></nav>
+      </section>
+
+      <section
+        id="caseDetail"
+        class="panel case-detail"
+        hidden
+        aria-labelledby="detailTitle"
+      >
+        <div class="panel-heading">
+          <div>
+            <h2 id="detailTitle">تفاصيل الحالة</h2>
+            <p id="detailSubtitle" class="muted"></p>
+          </div>
+          <button id="closeDetail" class="button" type="button">إغلاق</button>
+        </div>
+        <div id="detailSummary" class="detail-summary"></div>
+        <div class="detail-actions">
+          <button
+            id="startValidation"
+            class="button primary"
+            type="button"
+            hidden
+          >
+            بدء التحقق
+          </button>
+          <button
+            id="completeValidation"
+            class="button success"
+            type="button"
+            hidden
+          >
+            اعتماد نتيجة التحقق
+          </button>
+          <button
+            id="requestClarification"
+            class="button warning"
+            type="button"
+            hidden
+          >
+            طلب توضيح من Sales
+          </button>
+        </div>
+        <h3>سطور أمر البيع</h3>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>الصنف</th>
+                <th>الكمية</th>
+                <th>الوحدة</th>
+                <th>الحالة</th>
+              </tr>
+            </thead>
+            <tbody id="detailLines"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+    <script src="JS/auth.js"></script>
+    <script src="JS/page-guard.js"></script>
+    <script src="JS/operations-manager.js"></script>
+  </body>
+</html>

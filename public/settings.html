@@ -1,0 +1,1008 @@
+<!-- @format -->
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>هايبر تك — الإعدادات</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="CSS/theme.css" />
+    <script src="JS/theme-switcher.js"></script>
+    <link rel="stylesheet" href="CSS/style.css" />
+    <link rel="stylesheet" href="CSS/settings.css" />
+    <link rel="stylesheet" href="CSS/responsive.css" />
+    <link rel="stylesheet" href="CSS/enhancements.css" />
+    <style>
+      /* ✅ إخفاء عناصر خاصة بالمدير الكامل فقط — أول تطبيق لنمط إخفاء حسب الدور بالنظام */
+      html:not([data-role="chairman"]) .admin-only {
+        display: none !important;
+      }
+    </style>
+  </head>
+  <body data-allowed-roles="chairman">
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+      <div class="sidebar-logo">
+        <div class="logo-icon">⚡</div>
+        <div class="logo-text">
+          <h1>هايبر تك</h1>
+          <span>نظام إدارة الموارد</span>
+        </div>
+      </div>
+
+      <div class="sidebar-section">
+        <p class="sidebar-section-title">الرئيسية</p>
+        <a href="index.html" class="nav-item">
+          <i class="fa-solid fa-gauge-high"></i>
+          لوحة التحكم
+        </a>
+      </div>
+
+      <!-- ✅ يتملى ديناميكيًا بالأقسام/الصفحات المسموح بيها للمستخدم الحالي بس -->
+      <div id="dynamic-sidebar"></div>
+    </aside>
+
+    <!-- MAIN -->
+    <main class="main">
+      <header class="topbar">
+        <div class="topbar-title">
+          <h2>الإعدادات</h2>
+          <p>إعدادات النظام والشركة والمستخدمين</p>
+        </div>
+        <div class="topbar-actions">
+          <div class="live-badge">
+            <div class="pulse"></div>
+            مباشر
+          </div>
+          <div class="icon-btn">
+            <i class="fa-regular fa-bell"></i>
+            <div class="notif-dot"></div>
+          </div>
+        </div>
+      </header>
+
+      <div class="content">
+        <div class="set-layout">
+          <!-- Settings Menu -->
+          <nav class="set-menu">
+            <div class="set-menu-item active" data-section="company">
+              <i class="fa-solid fa-building"></i> بيانات الشركة
+            </div>
+            <div class="set-menu-item" data-section="profile">
+              <i class="fa-solid fa-user-lock"></i> حسابي الشخصي
+            </div>
+            <div class="set-menu-item" data-section="users">
+              <i class="fa-solid fa-users-gear"></i> المستخدمون والصلاحيات
+            </div>
+            <div class="set-menu-divider"></div>
+            <div class="set-menu-item" data-section="notifications">
+              <i class="fa-solid fa-bell"></i> الإشعارات والتنبيهات
+            </div>
+            <div class="set-menu-item" data-section="system">
+              <i class="fa-solid fa-sliders"></i> إعدادات النظام
+            </div>
+            <div class="set-menu-divider"></div>
+            <div class="set-menu-item" data-section="backup">
+              <i class="fa-solid fa-database"></i> النسخ الاحتياطي
+            </div>
+            <div class="set-menu-item" data-section="about">
+              <i class="fa-solid fa-circle-info"></i> عن النظام
+            </div>
+          </nav>
+
+          <!-- Main Content -->
+          <div>
+            <!-- COMPANY SECTION -->
+            <div id="sec-company" class="set-section active">
+              <div class="set-section-card">
+                <div class="set-section-header">
+                  <h3>بيانات الشركة</h3>
+                  <p>المعلومات الأساسية التي تظهر في الفواتير والتقارير</p>
+                </div>
+                <div class="set-section-body">
+                  <div style="margin-bottom: 20px">
+                    <div
+                      class="logo-preview"
+                      id="logo-preview"
+                      title="انقر لتغيير الشعار"
+                    >
+                      ⚡
+                    </div>
+                    <p style="font-size: 11px; color: var(--text-dim)">
+                      انقر على الشعار لتغييره (يحفظ كنص/emoji)
+                    </p>
+                  </div>
+                  <div class="form-row">
+                    <div class="form-group">
+                      <label>اسم الشركة *</label
+                      ><input
+                        type="text"
+                        id="c-name"
+                        placeholder="Hyper-Tech للصناعة"
+                      />
+                    </div>
+                    <div class="form-group">
+                      <label>شعار الشركة (emoji/نص)</label
+                      ><input
+                        type="text"
+                        id="c-logo"
+                        placeholder="⚡"
+                        maxlength="5"
+                      />
+                    </div>
+                  </div>
+                  <div class="form-row">
+                    <div class="form-group">
+                      <label>رقم الهاتف</label
+                      ><input
+                        type="tel"
+                        id="c-phone"
+                        placeholder="+20 xx xxxx xxxx"
+                      />
+                    </div>
+                    <div class="form-group">
+                      <label>البريد الإلكتروني</label
+                      ><input
+                        type="email"
+                        id="c-email"
+                        placeholder="info@hypertech.com"
+                      />
+                    </div>
+                  </div>
+                  <div class="form-row">
+                    <div class="form-group">
+                      <label>الرقم الضريبي</label
+                      ><input
+                        type="text"
+                        id="c-tax"
+                        placeholder="000-000-000"
+                      />
+                    </div>
+                    <div class="form-group">
+                      <label>السجل التجاري</label
+                      ><input
+                        type="text"
+                        id="c-reg"
+                        placeholder="رقم السجل التجاري"
+                      />
+                    </div>
+                  </div>
+                  <div class="form-row full">
+                    <div class="form-group">
+                      <label>العنوان</label
+                      ><textarea
+                        id="c-address"
+                        placeholder="العنوان الكامل للشركة..."
+                      ></textarea>
+                    </div>
+                  </div>
+                  <div class="form-row">
+                    <div class="form-group">
+                      <label>المدينة</label
+                      ><select id="c-city"><option value="">اختر المحافظة...</option></select>
+                    </div>
+                    <div class="form-group">
+                      <label>الدولة</label
+                      ><select id="c-country"><option value="مصر" selected>مصر</option><option value="السعودية">السعودية</option><option value="الإمارات">الإمارات</option><option value="الكويت">الكويت</option><option value="قطر">قطر</option><option value="البحرين">البحرين</option><option value="عُمان">عُمان</option><option value="الأردن">الأردن</option><option value="العراق">العراق</option><option value="ليبيا">ليبيا</option><option value="السودان">السودان</option><option value="أخرى">أخرى</option></select>
+                    </div>
+                  </div>
+                  <div class="form-row">
+                    <div class="form-group">
+                      <label>العملة</label
+                      ><select id="c-currency">
+                        <option value="EGP">جنيه مصري (ج.م)</option>
+                        <option value="USD">دولار أمريكي ($)</option>
+                        <option value="SAR">ريال سعودي (ر.س)</option>
+                      </select>
+                    </div>
+                    <div class="form-group">
+                      <label>السنة المالية تبدأ من</label
+                      ><select id="c-fy">
+                        <option value="01">يناير</option>
+                        <option value="04">أبريل</option>
+                        <option value="07">يوليو</option>
+                        <option value="10">أكتوبر</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+                <div class="set-section-footer">
+                  <button class="btn-primary" id="btn-save-company">
+                    <i class="fa-solid fa-floppy-disk"></i> حفظ بيانات الشركة
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- PROFILE SECTION (تغيير كلمة المرور الشخصية — متاح لأي مستخدم) -->
+            <div id="sec-profile" class="set-section">
+              <div class="set-section-card">
+                <div class="set-section-header">
+                  <h3><i class="fa-solid fa-user-lock"></i> حسابي الشخصي</h3>
+                </div>
+                <div class="set-section-body">
+                  <p
+                    style="
+                      font-size: 12px;
+                      color: var(--text-muted);
+                      margin-bottom: 16px;
+                    "
+                  >
+                    تغيير الاسم متاح فقط لمن لديه صلاحية المدير الكامل من صفحة
+                    "المستخدمون والصلاحيات". هنا يمكنك تغيير كلمة المرور الخاصة
+                    بك فقط.
+                  </p>
+                  <div class="form-grid">
+                    <div class="form-group">
+                      <label>كلمة المرور الحالية</label>
+                      <input
+                        type="password"
+                        id="p-current-pass"
+                        placeholder="••••••••"
+                      />
+                    </div>
+                    <div class="form-group">
+                      <label>كلمة المرور الجديدة</label>
+                      <input
+                        type="password"
+                        id="p-new-pass"
+                        placeholder="••••••••"
+                      />
+                    </div>
+                    <div class="form-group">
+                      <label>تأكيد كلمة المرور الجديدة</label>
+                      <input
+                        type="password"
+                        id="p-confirm-pass"
+                        placeholder="••••••••"
+                      />
+                    </div>
+                  </div>
+                </div>
+                <div class="set-section-footer">
+                  <button class="btn-primary" id="btn-change-my-password">
+                    <i class="fa-solid fa-key"></i> تغيير كلمة المرور
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- USERS SECTION -->
+            <div id="sec-users" class="set-section">
+              <div class="set-section-card">
+                <div
+                  class="set-section-header"
+                  style="
+                    display: flex;
+                    align-items: flex-start;
+                    justify-content: space-between;
+                  "
+                >
+                  <div>
+                    <h3>المستخدمون والصلاحيات</h3>
+                    <p>إدارة حسابات المستخدمين وتحديد صلاحيات الوصول</p>
+                  </div>
+                  <button
+                    class="btn-primary"
+                    id="btn-new-user"
+                    style="font-size: 12px; padding: 8px 16px"
+                  >
+                    <i class="fa-solid fa-user-plus"></i> مستخدم جديد
+                  </button>
+                </div>
+                <div class="set-section-body" style="padding: 0">
+                  <table class="users-table">
+                    <thead>
+                      <tr>
+                        <th>المستخدم</th>
+                        <th>الدور</th>
+                        <th>الوصول</th>
+                        <th>آخر دخول</th>
+                        <th>الحالة</th>
+                        <th>الإجراءات</th>
+                      </tr>
+                    </thead>
+                    <tbody id="users-tbody"></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            <!-- NOTIFICATIONS SECTION -->
+            <div id="sec-notifications" class="set-section">
+              <div class="set-section-card">
+                <div class="set-section-header">
+                  <h3>إعدادات الإشعارات</h3>
+                  <p>تحكم في التنبيهات التي يرسلها النظام</p>
+                </div>
+                <div class="set-section-body">
+                  <div class="toggle-row">
+                    <div class="toggle-info">
+                      <h4>تنبيه نقص المخزون</h4>
+                      <p>تنبيه عند وصول أي صنف إلى أقل من الحد الأدنى</p>
+                    </div>
+                    <label class="toggle-switch"
+                      ><input type="checkbox" id="notif-stock" checked /><span
+                        class="toggle-track"
+                      ></span
+                    ></label>
+                  </div>
+                  <div class="toggle-row">
+                    <div class="toggle-info">
+                      <h4>تنبيه الأوامر المتأخرة</h4>
+                      <p>تنبيه عند تأخر أوامر الإنتاج عن موعد التسليم</p>
+                    </div>
+                    <label class="toggle-switch"
+                      ><input type="checkbox" id="notif-late" checked /><span
+                        class="toggle-track"
+                      ></span
+                    ></label>
+                  </div>
+                  <div class="toggle-row">
+                    <div class="toggle-info">
+                      <h4>تنبيه الفواتير المستحقة</h4>
+                      <p>تذكير بفواتير البيع التي حان موعد سدادها</p>
+                    </div>
+                    <label class="toggle-switch"
+                      ><input
+                        type="checkbox"
+                        id="notif-invoices"
+                        checked /><span class="toggle-track"></span
+                    ></label>
+                  </div>
+                  <div class="toggle-row">
+                    <div class="toggle-info">
+                      <h4>تنبيه استلام الطلبات</h4>
+                      <p>إشعار عند استلام أوامر الشراء من الموردين</p>
+                    </div>
+                    <label class="toggle-switch"
+                      ><input type="checkbox" id="notif-po" /><span
+                        class="toggle-track"
+                      ></span
+                    ></label>
+                  </div>
+                  <div class="toggle-row">
+                    <div class="toggle-info">
+                      <h4>تقرير يومي</h4>
+                      <p>ملخص يومي بالعمليات والأنشطة المنجزة</p>
+                    </div>
+                    <label class="toggle-switch"
+                      ><input type="checkbox" id="notif-daily" /><span
+                        class="toggle-track"
+                      ></span
+                    ></label>
+                  </div>
+                  <div class="toggle-row">
+                    <div class="toggle-info">
+                      <h4>تقرير أسبوعي</h4>
+                      <p>ملخص أسبوعي شامل لجميع الأنشطة</p>
+                    </div>
+                    <label class="toggle-switch"
+                      ><input type="checkbox" id="notif-weekly" checked /><span
+                        class="toggle-track"
+                      ></span
+                    ></label>
+                  </div>
+                </div>
+                <div class="set-section-footer">
+                  <button class="btn-primary" id="btn-save-notif">
+                    <i class="fa-solid fa-floppy-disk"></i> حفظ إعدادات
+                    الإشعارات
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- SYSTEM SECTION -->
+            <div id="sec-system" class="set-section">
+              <div class="set-section-card">
+                <div class="set-section-header">
+                  <h3>إعدادات النظام</h3>
+                  <p>تفضيلات العرض والتشغيل العامة</p>
+                </div>
+                <div class="set-section-body">
+                  <div class="form-row">
+                    <div class="form-group">
+                      <label>اللغة</label
+                      ><select id="sys-lang">
+                        <option value="ar">العربية</option>
+                        <option value="en">English</option>
+                      </select>
+                    </div>
+                    <div class="form-group">
+                      <label>صيغة التاريخ</label
+                      ><select id="sys-date">
+                        <option value="dd/mm/yyyy">DD/MM/YYYY</option>
+                        <option value="mm/dd/yyyy">MM/DD/YYYY</option>
+                        <option value="yyyy-mm-dd">YYYY-MM-DD</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div class="form-row">
+                    <div class="form-group">
+                      <label>عدد عناصر الجدول في الصفحة</label
+                      ><select id="sys-pagesize">
+                        <option value="10">10</option>
+                        <option value="20" selected>20</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                      </select>
+                    </div>
+                    <div class="form-group">
+                      <label>العملة الافتراضية</label
+                      ><select id="sys-currency">
+                        <option value="EGP">جنيه مصري (ج.م)</option>
+                        <option value="USD">دولار ($)</option>
+                        <option value="SAR">ريال (ر.س)</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div class="toggle-row">
+                    <div class="toggle-info">
+                      <h4>تأكيد قبل الحذف</h4>
+                      <p>إظهار رسالة تأكيد قبل حذف أي بيانات</p>
+                    </div>
+                    <label class="toggle-switch"
+                      ><input
+                        type="checkbox"
+                        id="sys-confirm-del"
+                        checked /><span class="toggle-track"></span
+                    ></label>
+                  </div>
+                  <div class="toggle-row">
+                    <div class="toggle-info">
+                      <h4>الترقيم التلقائي</h4>
+                      <p>توليد أرقام تلقائية للفواتير وأوامر الإنتاج</p>
+                    </div>
+                    <label class="toggle-switch"
+                      ><input
+                        type="checkbox"
+                        id="sys-autonumber"
+                        checked /><span class="toggle-track"></span
+                    ></label>
+                  </div>
+                  <div class="toggle-row">
+                    <div class="toggle-info">
+                      <h4>تحديث لوحة التحكم تلقائياً</h4>
+                      <p>تحديث بيانات الداشبورد كل دقيقة</p>
+                    </div>
+                    <label class="toggle-switch"
+                      ><input
+                        type="checkbox"
+                        id="sys-autorefresh"
+                        checked /><span class="toggle-track"></span
+                    ></label>
+                  </div>
+                </div>
+                <div class="set-section-footer">
+                  <button class="btn-primary" id="btn-save-system">
+                    <i class="fa-solid fa-floppy-disk"></i> حفظ إعدادات النظام
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- BACKUP SECTION -->
+            <div id="sec-backup" class="set-section">
+              <div class="set-section-card">
+                <div class="set-section-header">
+                  <h3>النسخ الاحتياطي واستعادة البيانات</h3>
+                  <p>احتفظ بنسخة من بياناتك واستعدها عند الحاجة</p>
+                </div>
+                <div class="set-section-body">
+                  <!-- Phase 2: export/import backup and full data-wipe cards
+                       removed along with admin-vault.ts and secure-vault.html
+                       (both explicitly removed in this phase). Only the
+                       client-side cache clear below remains, since it never
+                       depended on that route. -->
+                  <div class="backup-card">
+                    <div class="backup-card-head">
+                      <div class="backup-icon blue">
+                        <i class="fa-solid fa-broom"></i>
+                      </div>
+                      <div>
+                        <h4>مسح ذاكرة التخزين المؤقت</h4>
+                        <p>حذف مفاتيح الكاش المؤقتة دون حذف بيانات النظام</p>
+                      </div>
+                    </div>
+                    <button class="btn-ghost" id="btn-clear-cache">
+                      <i class="fa-solid fa-broom"></i> مسح الكاش
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- ABOUT SECTION -->
+            <div id="sec-about" class="set-section">
+              <div class="set-section-card">
+                <div class="set-section-header">
+                  <h3>عن النظام</h3>
+                  <p>معلومات الإصدار والتقنيات المستخدمة</p>
+                </div>
+                <div class="set-section-body">
+                  <div style="text-align: center; padding: 20px 0 32px">
+                    <div
+                      style="
+                        width: 80px;
+                        height: 80px;
+                        background: linear-gradient(
+                          135deg,
+                          var(--accent),
+                          #d97706
+                        );
+                        border-radius: 20px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        font-size: 36px;
+                        margin: 0 auto 16px;
+                        box-shadow: 0 8px 24px rgba(245, 158, 11, 0.3);
+                      "
+                    >
+                      ⚡
+                    </div>
+                    <h2 style="font-size: 24px; font-weight: 800">
+                      هايبر تك
+                    </h2>
+                    <p
+                      style="
+                        color: var(--text-muted);
+                        margin-top: 6px;
+                        font-size: 13px;
+                      "
+                    >
+                      نظام متكامل لإدارة موارد المصنع
+                    </p>
+                  </div>
+                  <div class="about-info">
+                    <div class="about-item">
+                      <label>الإصدار</label><span>v2.0.0</span>
+                    </div>
+                    <div class="about-item">
+                      <label>التقنيات</label
+                      ><span id="about-stack"
+                        >Express + TypeScript + PostgreSQL</span
+                      >
+                    </div>
+                    <div class="about-item">
+                      <label>التخزين</label
+                      ><span id="about-storage">PostgreSQL Database</span>
+                    </div>
+                    <div class="about-item">
+                      <label>حجم قاعدة البيانات</label
+                      ><span id="about-db-size">—</span>
+                    </div>
+                    <div class="about-item">
+                      <label>مدة تشغيل السيرفر</label
+                      ><span id="about-uptime">—</span>
+                    </div>
+                    <div class="about-item">
+                      <label>الترخيص</label><span>© 2026 Hyper-Tech</span>
+                    </div>
+                  </div>
+                  <!-- ✨ نبضة النظام الحية — أرقام حقيقية من قاعدة البيانات، مش ديكور -->
+                  <div
+                    class="set-section-header"
+                    style="padding: 24px 0 12px; border: none"
+                  >
+                    <h3 style="font-size: 14px">
+                      <i
+                        class="fa-solid fa-heart-pulse"
+                        style="color: var(--accent)"
+                      ></i>
+                      نبضة النظام الحية
+                    </h3>
+                    <p>عدد السجلات الفعلي في قاعدة البيانات الآن</p>
+                  </div>
+                  <div
+                    class="about-info"
+                    id="system-pulse-grid"
+                    style="grid-template-columns: repeat(4, 1fr)"
+                  >
+                    <p
+                      style="
+                        grid-column: 1/-1;
+                        text-align: center;
+                        color: var(--text-dim);
+                        padding: 12px;
+                      "
+                    >
+                      <i class="fa-solid fa-spinner fa-spin"></i> جاري
+                      التحميل...
+                    </p>
+                  </div>
+                  <div
+                    style="
+                      margin-top: 24px;
+                      padding: 16px;
+                      background: rgba(255, 255, 255, 0.03);
+                      border-radius: 10px;
+                      border: 1px solid var(--border);
+                    "
+                  >
+                    <h4
+                      style="
+                        font-size: 13px;
+                        font-weight: 700;
+                        margin-bottom: 10px;
+                        color: var(--text-muted);
+                      "
+                    >
+                      الموديولات المتاحة:
+                    </h4>
+                    <div style="display: flex; flex-wrap: wrap; gap: 8px">
+                      <span
+                        style="
+                          background: var(--green-soft);
+                          color: var(--green);
+                          padding: 4px 12px;
+                          border-radius: 20px;
+                          font-size: 12px;
+                          font-weight: 700;
+                        "
+                        >✓ لوحة التحكم</span
+                      >
+                      <span
+                        style="
+                          background: var(--accent-soft);
+                          color: var(--accent);
+                          padding: 4px 12px;
+                          border-radius: 20px;
+                          font-size: 12px;
+                          font-weight: 700;
+                        "
+                        >✓ الإنتاج</span
+                      >
+                      <span
+                        style="
+                          background: var(--accent-soft);
+                          color: var(--accent);
+                          padding: 4px 12px;
+                          border-radius: 20px;
+                          font-size: 12px;
+                          font-weight: 700;
+                        "
+                        >✓ وصفات التصنيع</span
+                      >
+                      <span
+                        style="
+                          background: var(--purple-soft);
+                          color: var(--purple);
+                          padding: 4px 12px;
+                          border-radius: 20px;
+                          font-size: 12px;
+                          font-weight: 700;
+                        "
+                        >✓ الجودة</span
+                      >
+                      <span
+                        style="
+                          background: var(--accent2-soft);
+                          color: var(--accent2);
+                          padding: 4px 12px;
+                          border-radius: 20px;
+                          font-size: 12px;
+                          font-weight: 700;
+                        "
+                        >✓ المخزن</span
+                      >
+                      <span
+                        style="
+                          background: var(--accent2-soft);
+                          color: var(--accent2);
+                          padding: 4px 12px;
+                          border-radius: 20px;
+                          font-size: 12px;
+                          font-weight: 700;
+                        "
+                        >✓ المواد الخام</span
+                      >
+                      <span
+                        style="
+                          background: var(--accent2-soft);
+                          color: var(--accent2);
+                          padding: 4px 12px;
+                          border-radius: 20px;
+                          font-size: 12px;
+                          font-weight: 700;
+                        "
+                        >✓ حركات المخزون</span
+                      >
+                      <span
+                        style="
+                          background: var(--green-soft);
+                          color: var(--green);
+                          padding: 4px 12px;
+                          border-radius: 20px;
+                          font-size: 12px;
+                          font-weight: 700;
+                        "
+                        >✓ المبيعات</span
+                      >
+                      <span
+                        style="
+                          background: var(--red-soft);
+                          color: var(--red);
+                          padding: 4px 12px;
+                          border-radius: 20px;
+                          font-size: 12px;
+                          font-weight: 700;
+                        "
+                        >✓ المشتريات</span
+                      >
+                      <span
+                        style="
+                          background: var(--green-soft);
+                          color: var(--green);
+                          padding: 4px 12px;
+                          border-radius: 20px;
+                          font-size: 12px;
+                          font-weight: 700;
+                        "
+                        >✓ الموردون والعملاء</span
+                      >
+                      <span
+                        style="
+                          background: var(--accent-soft);
+                          color: var(--accent);
+                          padding: 4px 12px;
+                          border-radius: 20px;
+                          font-size: 12px;
+                          font-weight: 700;
+                        "
+                        >✓ الموارد البشرية</span
+                      >
+                      <span
+                        style="
+                          background: var(--amber-soft, var(--accent-soft));
+                          color: var(--accent);
+                          padding: 4px 12px;
+                          border-radius: 20px;
+                          font-size: 12px;
+                          font-weight: 700;
+                        "
+                        >✓ المحاسبة</span
+                      >
+                      <span
+                        style="
+                          background: var(--accent2-soft);
+                          color: var(--accent2);
+                          padding: 4px 12px;
+                          border-radius: 20px;
+                          font-size: 12px;
+                          font-weight: 700;
+                        "
+                        >✓ التقارير</span
+                      >
+                      <span
+                        style="
+                          background: rgba(255, 255, 255, 0.07);
+                          color: var(--text-muted);
+                          padding: 4px 12px;
+                          border-radius: 20px;
+                          font-size: 12px;
+                          font-weight: 700;
+                        "
+                        >✓ الإعدادات</span
+                      >
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- /main content -->
+        </div>
+        <!-- /set-layout -->
+      </div>
+      <!-- /content -->
+
+      <div class="status-bar">
+        <div class="status-item">
+          <div class="status-dot green"></div>
+          قاعدة البيانات: متصلة
+        </div>
+        <div class="status-item" id="last-backup-bar">
+          النسخ الاحتياطي: لم يتم
+        </div>
+        <div style="margin-right: auto; color: var(--text-dim)">
+          آخر تحديث: <span id="last-update"></span>
+        </div>
+      </div>
+    </main>
+
+    <!-- MODAL: New/Edit User -->
+    <div class="modal-overlay" id="modal-overlay">
+      <div class="modal" style="max-width: 480px">
+        <div class="modal-header">
+          <h3 id="modal-title">مستخدم جديد</h3>
+          <button class="modal-close" id="modal-close">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="form-row">
+            <div class="form-group">
+              <label>الاسم الكامل *</label
+              ><input type="text" id="u-name" placeholder="اسم المستخدم" />
+            </div>
+            <div class="form-group">
+              <label>اسم المستخدم (للدخول) *</label
+              ><input type="text" id="u-username" placeholder="username" />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>البريد الإلكتروني</label
+              ><input
+                type="email"
+                id="u-email"
+                placeholder="user@company.com"
+              />
+            </div>
+            <div class="form-group">
+              <label>الدور *</label>
+              <select id="u-role">
+                <option value="chairman">رئيس مجلس الإدارة</option>
+                <option value="executive_manager">المدير التنفيذي</option>
+                <option value="sales_manager">مدير المبيعات</option>
+                <option value="online_seller">بائع أونلاين</option>
+                <option value="offline_seller">بائع أوفلاين</option>
+                <option value="operations_manager">مدير التشغيل</option>
+                <option value="purchasing_manager">مدير المشتريات</option>
+                <option value="buyer">المشتري</option>
+                <option value="hr">الاتش آر</option>
+                <option value="hr_manager">مدير الموارد البشرية</option>
+                <option value="production_manager">مدير الإنتاج</option>
+                <option value="production_controller">مراقب الإنتاج</option>
+                <option value="warehouse_manager">مدير المخازن</option>
+                <option value="storekeeper">أمين المخزن</option>
+                <option value="supervisor">مشرف</option>
+                <option value="production_quality_controller">مراقب جودة دورة الإنتاج</option>
+                <option value="raw_material_quality_controller">مراقب جودة الخامات</option>
+                <option value="quality_engineer">مهندس الجودة</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>الحالة</label>
+              <select id="u-status">
+                <option value="active">نشط</option>
+                <option value="inactive">غير نشط</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>كلمة المرور</label
+              ><input type="password" id="u-pass" placeholder="••••••••" />
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-ghost" id="modal-cancel">إلغاء</button>
+          <button class="btn-primary" id="modal-save">
+            <i class="fa-solid fa-floppy-disk"></i> حفظ
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ✨ MODAL: Custom Permissions (استثناءات دقيقة لكل مستخدم — دائمة أو مؤقتة) -->
+    <div class="modal-overlay" id="perms-modal-overlay">
+      <div class="modal" style="max-width: 620px">
+        <div class="modal-header">
+          <h3>
+            <i class="fa-solid fa-key"></i> صلاحيات مخصّصة —
+            <span id="perms-modal-username"></span>
+          </h3>
+          <button class="modal-close" id="perms-modal-close">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          <p
+            style="
+              font-size: 12px;
+              color: var(--text-muted);
+              margin-bottom: 16px;
+              line-height: 1.7;
+            "
+          >
+            كل إجراء هنا افتراضيًا محكوم بدور المستخدم. أي استثناء تضيفه هنا
+            بيتفعّل فورًا ويتخطى الدور — سواء منح صلاحية إضافية أو سحب صلاحية
+            كانت متاحة، بشكل دائم أو لحد تاريخ معيّن (تفويض مؤقت).
+          </p>
+          <div id="perms-groups"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ✨ MODAL: Grant/Edit Permission Override -->
+    <div class="modal-overlay" id="grant-modal-overlay">
+      <div class="modal" style="max-width: 420px">
+        <div class="modal-header">
+          <h3 id="grant-modal-title">استثناء صلاحية</h3>
+          <button class="modal-close" id="grant-modal-close">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="form-row full">
+            <div class="form-group">
+              <label>النوع</label>
+              <select id="grant-allowed">
+                <option value="true">
+                  منح الصلاحية (حتى لو دوره الأصلي مايسمحش)
+                </option>
+                <option value="false">
+                  سحب الصلاحية (حتى لو دوره الأصلي بيسمح)
+                </option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row full">
+            <div class="form-group">
+              <label>تاريخ الانتهاء (اختياري — سيبه فاضي لاستثناء دائم)</label>
+              <input type="date" id="grant-expires" />
+            </div>
+          </div>
+          <div class="form-row full">
+            <div class="form-group">
+              <label>السبب (اختياري)</label>
+              <input
+                type="text"
+                id="grant-reason"
+                placeholder="مثلاً: إجازة سنوية"
+              />
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-ghost" id="grant-modal-cancel">إلغاء</button>
+          <button class="btn-primary" id="grant-modal-save">
+            <i class="fa-solid fa-floppy-disk"></i> حفظ
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- CONFIRM -->
+    <div class="confirm-overlay" id="confirm-overlay">
+      <div class="confirm-box">
+        <div class="confirm-icon">
+          <i class="fa-solid fa-triangle-exclamation"></i>
+        </div>
+        <h3 id="confirm-title">تأكيد</h3>
+        <p id="confirm-msg">هل أنت متأكد؟</p>
+        <div class="confirm-btns">
+          <button class="btn-ghost" id="confirm-no">إلغاء</button>
+          <button class="btn-danger" id="confirm-yes">تأكيد</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- TOAST -->
+    <div class="toast" id="toast">
+      <i class="fa-solid fa-circle-check"></i
+      ><span id="toast-msg">تم الحفظ</span>
+    </div>
+
+    <script src="JS/egypt-governorates.js"></script>
+    <script src="JS/auth.js"></script>
+    <script src="JS/page-guard.js"></script>
+    <script src="JS/api-client.js"></script>
+    <script src="JS/nav-loader.js"></script>
+    <script src="JS/settings.js"></script>
+    <script src="JS/responsive.js"></script>
+    <script src="JS/enhancements.js"></script>
+    <script src="JS/password-toggle.js"></script>
+  </body>
+</html>

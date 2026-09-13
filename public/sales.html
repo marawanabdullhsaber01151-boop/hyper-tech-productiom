@@ -1,0 +1,350 @@
+<!-- @format -->
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>هايبر تك — المبيعات</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="CSS/theme.css" />
+    <script src="JS/theme-switcher.js"></script>
+    <link rel="stylesheet" href="CSS/style.css" />
+    <link rel="stylesheet" href="CSS/sales.css" />
+    <link rel="stylesheet" href="CSS/responsive.css" />
+    <link rel="stylesheet" href="CSS/enhancements.css" />
+  </head>
+  <body data-allowed-roles="executive_manager,sales_manager,online_seller,offline_seller,hr,hr_manager,chairman">
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+      <div class="sidebar-logo">
+        <div class="logo-icon">⚡</div>
+        <div class="logo-text">
+          <h1>هايبر تك</h1>
+          <span>نظام إدارة الموارد</span>
+        </div>
+      </div>
+
+      <div class="sidebar-section">
+        <p class="sidebar-section-title">الرئيسية</p>
+        <a href="index.html" class="nav-item">
+          <i class="fa-solid fa-gauge-high"></i>
+          لوحة التحكم
+        </a>
+      </div>
+
+      <!-- ✅ يتملى ديناميكيًا بالأقسام/الصفحات المسموح بيها للمستخدم الحالي بس -->
+      <div id="dynamic-sidebar"></div>
+    </aside>
+
+    <!-- MAIN -->
+    <main class="main">
+      <header class="topbar">
+        <div class="topbar-title">
+          <h2>المبيعات</h2>
+          <p>إدارة فواتير البيع وأوامر العملاء</p>
+        </div>
+        <div class="topbar-actions">
+          <div class="live-badge">
+            <div class="pulse"></div>
+            مباشر
+          </div>
+          <div class="search-box">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input
+              type="text"
+              id="search-input"
+              placeholder="ابحث برقم الفاتورة، العميل..."
+            />
+          </div>
+          <div class="icon-btn">
+            <i class="fa-regular fa-bell"></i>
+            <div class="notif-dot"></div>
+          </div>
+          <button class="btn-primary" id="btn-new-invoice">
+            <i class="fa-solid fa-plus"></i> فاتورة جديدة
+          </button>
+        </div>
+      </header>
+
+      <div class="content">
+        <!-- KPIs -->
+        <div class="sales-kpi-row">
+          <div class="sales-kpi-card">
+            <div class="sales-kpi-icon blue">
+              <i class="fa-solid fa-file-invoice-dollar"></i>
+            </div>
+            <div>
+              <div class="sales-kpi-val" id="kpi-total">0</div>
+              <div class="sales-kpi-label">إجمالي الفواتير</div>
+            </div>
+          </div>
+          <div class="sales-kpi-card">
+            <div class="sales-kpi-icon green">
+              <i class="fa-solid fa-sack-dollar"></i>
+            </div>
+            <div>
+              <div class="sales-kpi-val" id="kpi-revenue">0 ج.م</div>
+              <div class="sales-kpi-label">إجمالي الإيرادات</div>
+            </div>
+          </div>
+          <div class="sales-kpi-card">
+            <div class="sales-kpi-icon amber">
+              <i class="fa-solid fa-clock"></i>
+            </div>
+            <div>
+              <div class="sales-kpi-val" id="kpi-pending">0</div>
+              <div class="sales-kpi-label">فواتير معلقة</div>
+            </div>
+          </div>
+          <div class="sales-kpi-card">
+            <div class="sales-kpi-icon purple">
+              <i class="fa-solid fa-users"></i>
+            </div>
+            <div>
+              <div class="sales-kpi-val" id="kpi-customers">0</div>
+              <div class="sales-kpi-label">عملاء نشطون</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Table Card -->
+        <div class="sales-card">
+          <div class="sales-card-header">
+            <h3>
+              <i
+                class="fa-solid fa-list-ul"
+                style="color: var(--accent); margin-left: 8px"
+              ></i>
+              قائمة الفواتير
+            </h3>
+            <div style="display: flex; gap: 10px">
+              <select class="sel-filter" id="date-filter">
+                <option value="all">كل الفترات</option>
+                <option value="today">اليوم</option>
+                <option value="week">هذا الأسبوع</option>
+                <option value="month">هذا الشهر</option>
+              </select>
+              <button class="btn-ghost" id="btn-print-all">
+                <i class="fa-solid fa-print"></i> طباعة
+              </button>
+              <button class="btn-ghost" id="btn-export">
+                <i class="fa-solid fa-file-export"></i> تصدير
+              </button>
+            </div>
+          </div>
+
+          <div class="sales-filters">
+            <div class="filter-tab-row">
+              <button class="ftab active" data-status="all">
+                الكل <span class="tc" id="tab-all">0</span>
+              </button>
+              <button class="ftab" data-status="draft">
+                مسودة <span class="tc" id="tab-draft">0</span>
+              </button>
+              <button class="ftab" data-status="confirmed">
+                مؤكد <span class="tc" id="tab-confirmed">0</span>
+              </button>
+              <button class="ftab" data-status="shipped">
+                تم الشحن <span class="tc" id="tab-shipped">0</span>
+              </button>
+              <button class="ftab" data-status="paid">
+                مدفوع <span class="tc" id="tab-paid">0</span>
+              </button>
+              <button class="ftab" data-status="cancelled">
+                ملغي <span class="tc" id="tab-cancelled">0</span>
+              </button>
+            </div>
+            <select class="sel-filter" id="customer-filter">
+              <option value="all">كل العملاء</option>
+            </select>
+          </div>
+
+          <div class="sales-table-wrap" style="max-height: 58vh; overflow: auto">
+            <table class="sales-table">
+              <thead style="position: sticky; top: 0; z-index: 2">
+                <tr>
+                  <th>رقم الفاتورة</th>
+                  <th>العميل</th>
+                  <th>التاريخ</th>
+                  <th>البنود</th>
+                  <th>الإجمالي</th>
+                  <th>الحالة</th>
+                  <th>الإجراءات</th>
+                </tr>
+              </thead>
+              <tbody id="sales-tbody" aria-live="polite">
+                <tr>
+                  <td colspan="7" class="empty-cell">جاري تحميل الفواتير...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="table-footer">
+            <div class="table-footer-info" id="footer-info">
+              جاري التحميل...
+            </div>
+            <div class="pag-btns" id="pag-btns"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="status-bar">
+        <div class="status-item">
+          <div class="status-dot green"></div>
+          قاعدة البيانات: متصلة
+        </div>
+        <div class="status-item">
+          <div class="status-dot green"></div>
+          نظام المبيعات: نشط
+        </div>
+        <div style="margin-right: auto; color: var(--text-dim)">
+          آخر تحديث: <span id="last-update"></span>
+        </div>
+      </div>
+    </main>
+
+    <!-- MODAL: New/Edit Invoice -->
+    <div class="modal-overlay" id="modal-overlay">
+      <div class="modal">
+        <div class="modal-header">
+          <h3 id="modal-title">فاتورة بيع جديدة</h3>
+          <button class="modal-close" id="modal-close">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="form-row">
+            <div class="form-group">
+              <label>رقم الفاتورة</label>
+              <input
+                type="text"
+                id="f-code"
+                placeholder="INV-2026-001"
+                readonly
+              />
+            </div>
+            <div class="form-group">
+              <label>تاريخ الفاتورة</label>
+              <input type="date" id="f-date" />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>العميل *</label>
+              <select id="f-customer">
+                <option value="">— اختر عميل —</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>تاريخ الاستحقاق</label>
+              <input type="date" id="f-due" />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>حالة الفاتورة</label>
+              <select id="f-status">
+                <option value="draft">مسودة</option>
+                <option value="confirmed">مؤكد (يخصم من المخزون)</option>
+                <option value="shipped">تم الشحن</option>
+                <option value="paid">مدفوع</option>
+                <option value="cancelled">ملغي</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Items -->
+          <div class="items-section">
+            <div class="items-section-head">
+              <h4>
+                <i
+                  class="fa-solid fa-boxes-stacked"
+                  style="color: var(--accent); margin-left: 6px"
+                ></i>
+                المنتجات والأصناف
+              </h4>
+              <button class="btn-ghost btn-sm-text" id="btn-add-item-row">
+                <i class="fa-solid fa-plus"></i> إضافة صنف
+              </button>
+            </div>
+            <table class="items-table">
+              <thead>
+                <tr>
+                  <th>الصنف / المنتج</th>
+                  <th>الكمية</th>
+                  <th>سعر الوحدة (ج.م)</th>
+                  <th>الإجمالي</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="items-tbody"></tbody>
+            </table>
+            <div class="items-total-row">
+              <span>إجمالي الفاتورة:</span>
+              <strong id="invoice-total">0.00 ج.م</strong>
+            </div>
+          </div>
+
+          <div class="form-row full" style="margin-top: 16px">
+            <div class="form-group">
+              <label>ملاحظات</label>
+              <textarea
+                id="f-notes"
+                placeholder="أي ملاحظات إضافية على الفاتورة..."
+              ></textarea>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-ghost" id="modal-cancel">إلغاء</button>
+          <button class="btn-primary" id="modal-save">
+            <i class="fa-solid fa-floppy-disk"></i> حفظ الفاتورة
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- CONFIRM DELETE -->
+    <div class="confirm-overlay" id="confirm-overlay">
+      <div class="confirm-box">
+        <div class="confirm-icon"><i class="fa-solid fa-trash"></i></div>
+        <h3>حذف الفاتورة</h3>
+        <p id="confirm-msg">
+          هل أنت متأكد من حذف هذه الفاتورة؟ لا يمكن التراجع.
+        </p>
+        <div class="confirm-btns">
+          <button class="btn-ghost" id="confirm-no">إلغاء</button>
+          <button class="btn-danger" id="confirm-yes">
+            <i class="fa-solid fa-trash"></i> حذف
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- PRINT AREA -->
+    <div class="print-area" id="print-area"></div>
+
+    <!-- TOAST -->
+    <div class="toast" id="toast">
+      <i class="fa-solid fa-circle-check"></i
+      ><span id="toast-msg">تم الحفظ</span>
+    </div>
+
+    <script src="JS/auth.js"></script>
+    <script src="JS/page-guard.js"></script>
+    <script src="JS/api-client.js"></script>
+    <script src="JS/nav-loader.js"></script>
+    <script src="JS/sales.js"></script>
+    <script src="JS/responsive.js"></script>
+    <script src="JS/enhancements.js"></script>
+    <script src="JS/password-toggle.js"></script>
+  </body>
+</html>

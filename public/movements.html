@@ -1,0 +1,462 @@
+<!-- @format -->
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>هايبر تك — حركات المخزون</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="CSS/theme.css" />
+    <script src="JS/theme-switcher.js"></script>
+    <link rel="stylesheet" href="CSS/style.css" />
+    <link rel="stylesheet" href="CSS/movements.css" />
+    <link rel="stylesheet" href="CSS/responsive.css" />
+    <link rel="stylesheet" href="CSS/enhancements.css" />
+  </head>
+  <body data-allowed-roles="warehouse_manager,storekeeper,chairman">
+    <!-- ===== SIDEBAR ===== -->
+    <aside class="sidebar">
+      <div class="sidebar-logo">
+        <div class="logo-icon">⚡</div>
+        <div class="logo-text">
+          <h1>هايبر تك</h1>
+          <span>نظام إدارة الموارد</span>
+        </div>
+      </div>
+
+      <div class="sidebar-section">
+        <p class="sidebar-section-title">الرئيسية</p>
+        <a href="index.html" class="nav-item">
+          <i class="fa-solid fa-gauge-high"></i>
+          لوحة التحكم
+        </a>
+      </div>
+
+      <!-- ✅ يتملى ديناميكيًا بالأقسام/الصفحات المسموح بيها للمستخدم الحالي بس -->
+      <div id="dynamic-sidebar"></div>
+    </aside>
+
+    <!-- ===== MAIN ===== -->
+    <main class="main">
+      <!-- TOPBAR -->
+      <header class="topbar">
+        <div class="topbar-title">
+          <h2>حركات المخزون</h2>
+          <p>
+            سجل كامل لجميع الحركات الواردة والمنصرفة — مرتبط بالمواد الخام
+            والمخزن
+          </p>
+        </div>
+        <div class="topbar-actions">
+          <div class="live-badge">
+            <div class="pulse"></div>
+            مباشر
+          </div>
+          <div class="search-box">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input
+              type="text"
+              id="search-input"
+              placeholder="ابحث بالمادة، المورد، السبب..."
+            />
+          </div>
+          <div class="icon-btn">
+            <i class="fa-regular fa-bell"></i>
+            <div class="notif-dot"></div>
+          </div>
+          <div class="icon-btn"></div>
+          <div class="icon-btn" title="تصدير PDF / طباعة" id="btn-print">
+            <i class="fa-solid fa-print"></i>
+          </div>
+          <div class="icon-btn" title="تصدير CSV" id="btn-export">
+            <i class="fa-solid fa-file-csv"></i>
+          </div>
+          <button class="btn-primary" id="btn-add-move">
+            <i class="fa-solid fa-plus"></i>
+            حركة جديدة
+          </button>
+        </div>
+      </header>
+
+      <!-- CONTENT -->
+      <div class="content">
+        <!-- KPI CARDS -->
+        <div class="mv-kpi-row">
+          <div class="mv-kpi-card">
+            <div class="mv-kpi-icon blue">
+              <i class="fa-solid fa-list-check"></i>
+            </div>
+            <div class="mv-kpi-info">
+              <span class="mv-kpi-val" id="kpi-total">0</span>
+              <span class="mv-kpi-label">إجمالي الحركات</span>
+            </div>
+          </div>
+          <div class="mv-kpi-card">
+            <div class="mv-kpi-icon green">
+              <i class="fa-solid fa-arrow-down"></i>
+            </div>
+            <div class="mv-kpi-info">
+              <span class="mv-kpi-val" id="kpi-in-count">0</span>
+              <span class="mv-kpi-label">حركات وارد</span>
+            </div>
+          </div>
+          <div class="mv-kpi-card">
+            <div class="mv-kpi-icon red">
+              <i class="fa-solid fa-arrow-up"></i>
+            </div>
+            <div class="mv-kpi-info">
+              <span class="mv-kpi-val" id="kpi-out-count">0</span>
+              <span class="mv-kpi-label">حركات منصرف</span>
+            </div>
+          </div>
+          <div class="mv-kpi-card">
+            <div class="mv-kpi-icon amber">
+              <i class="fa-solid fa-scale-balanced"></i>
+            </div>
+            <div class="mv-kpi-info">
+              <span class="mv-kpi-val" id="kpi-net">0</span>
+              <span class="mv-kpi-label">صافي الكميات (وحدة)</span>
+            </div>
+          </div>
+          <div class="mv-kpi-card">
+            <div class="mv-kpi-icon purple">
+              <i class="fa-solid fa-coins"></i>
+            </div>
+            <div class="mv-kpi-info">
+              <span class="mv-kpi-val" id="kpi-val">0</span>
+              <span class="mv-kpi-label">قيمة الوارد (ج.م)</span>
+            </div>
+          </div>
+          <div class="mv-kpi-card">
+            <div class="mv-kpi-icon teal">
+              <i class="fa-solid fa-boxes-stacked"></i>
+            </div>
+            <div class="mv-kpi-info">
+              <span class="mv-kpi-val" id="kpi-mats">0</span>
+              <span class="mv-kpi-label">مواد متحركة</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- CHART + QUICK STATS ROW -->
+        <div class="mv-top-row">
+          <!-- BAR CHART -->
+          <div class="mv-chart-card">
+            <div class="mv-chart-head">
+              <div>
+                <h4>حركات آخر 14 يوم</h4>
+                <p>وارد مقابل منصرف يوميًا</p>
+              </div>
+              <div class="mv-chart-legend">
+                <span class="legend-dot green"></span> وارد
+                <span class="legend-dot red"></span> منصرف
+              </div>
+            </div>
+            <div class="mv-chart-body" id="mv-chart-body">
+              <!-- rendered by JS -->
+            </div>
+            <div class="mv-chart-footer" id="mv-chart-labels">
+              <!-- rendered by JS -->
+            </div>
+          </div>
+
+          <!-- QUICK STATS PANEL -->
+          <div class="mv-stats-card">
+            <div class="mv-stats-head">
+              <h4><i class="fa-solid fa-chart-pie"></i> إحصائيات سريعة</h4>
+            </div>
+            <div class="mv-stats-body">
+              <div class="mv-stat-item">
+                <span class="mv-stat-label">أكثر مادة حركةً</span>
+                <span class="mv-stat-val" id="stat-most-active">—</span>
+              </div>
+              <div class="mv-stat-item">
+                <span class="mv-stat-label">آخر حركة مسجّلة</span>
+                <span class="mv-stat-val" id="stat-last-move">—</span>
+              </div>
+              <div class="mv-stat-item">
+                <span class="mv-stat-label">أكبر كمية واردة</span>
+                <span class="mv-stat-val" id="stat-max-in">—</span>
+              </div>
+              <div class="mv-stat-item">
+                <span class="mv-stat-label">أكبر كمية منصرفة</span>
+                <span class="mv-stat-val" id="stat-max-out">—</span>
+              </div>
+              <div class="mv-stat-item">
+                <span class="mv-stat-label">أكثر مصدر للحركات</span>
+                <span class="mv-stat-val" id="stat-top-supplier">—</span>
+              </div>
+              <div class="mv-stat-item">
+                <span class="mv-stat-label">المواد في خطر الآن</span>
+                <span class="mv-stat-val danger" id="stat-danger">0 مادة</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- MOVEMENTS LOG -->
+        <div class="mv-log-card">
+          <!-- FILTER BAR -->
+          <div class="mv-filter-bar">
+            <!-- Type tabs -->
+            <div class="mv-tabs" id="mv-tabs">
+              <button class="mv-tab active" data-type="all">
+                الكل <span class="tab-count" id="tab-all-count">0</span>
+              </button>
+              <button class="mv-tab" data-type="in">
+                <i class="fa-solid fa-arrow-down"></i> وارد
+                <span class="tab-count" id="tab-in-count">0</span>
+              </button>
+              <button class="mv-tab" data-type="out">
+                <i class="fa-solid fa-arrow-up"></i> منصرف
+                <span class="tab-count" id="tab-out-count">0</span>
+              </button>
+            </div>
+
+            <!-- Right filters -->
+            <div class="mv-filter-right">
+              <!-- Material filter -->
+              <div class="filter-select-wrap">
+                <i class="fa-solid fa-boxes-stacked"></i>
+                <select id="filter-material">
+                  <option value="all">كل المواد</option>
+                </select>
+              </div>
+
+              <!-- Date range -->
+              <div class="filter-date-wrap">
+                <i class="fa-solid fa-calendar-days"></i>
+                <input type="date" id="filter-date-from" title="من تاريخ" />
+                <span>—</span>
+                <input type="date" id="filter-date-to" title="إلى تاريخ" />
+              </div>
+
+              <!-- Sort -->
+              <div class="filter-select-wrap">
+                <i class="fa-solid fa-sort"></i>
+                <select id="sort-select">
+                  <option value="date-desc">التاريخ: الأحدث أولاً</option>
+                  <option value="date-asc">التاريخ: الأقدم أولاً</option>
+                  <option value="qty-desc">الكمية: الأعلى أولاً</option>
+                  <option value="qty-asc">الكمية: الأقل أولاً</option>
+                  <option value="mat-name">اسم المادة</option>
+                </select>
+              </div>
+
+              <!-- Clear filters -->
+              <button class="btn-ghost btn-sm-txt" id="btn-clear-filters">
+                <i class="fa-solid fa-rotate-right"></i> إعادة ضبط
+              </button>
+            </div>
+          </div>
+
+          <!-- RESULTS BAR -->
+          <div class="mv-results-bar">
+            <span id="results-label">جاري التحميل...</span>
+            <span class="mv-results-period" id="results-period"></span>
+          </div>
+
+          <!-- TABLE -->
+          <div class="mv-table-wrap">
+            <table class="mv-table">
+              <thead>
+                <tr>
+                  <th class="th-num">#</th>
+                  <th>التاريخ</th>
+                  <th>المادة</th>
+                  <th>الكود</th>
+                  <th>النوع</th>
+                  <th>الكمية</th>
+                  <th>الرصيد بعد الحركة</th>
+                  <th>الملاحظات / المصدر</th>
+                  <th>القيمة</th>
+                  <th>إجراءات</th>
+                </tr>
+              </thead>
+              <tbody id="mv-tbody">
+                <tr>
+                  <td colspan="10">
+                    <div class="empty-state">
+                      <i class="fa-solid fa-arrow-right-arrow-left"></i>
+                      <h4>جاري التحميل...</h4>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- PAGINATION -->
+          <div class="mv-pagination" id="mv-pagination">
+            <!-- rendered by JS -->
+          </div>
+        </div>
+        <!-- /LOG CARD -->
+      </div>
+      <!-- /CONTENT -->
+    </main>
+    <!-- /MAIN -->
+
+    <!-- ===== MODAL: ADD MOVEMENT ===== -->
+    <div class="modal-overlay" id="move-modal">
+      <div class="modal-box">
+        <div class="modal-head">
+          <h3>
+            <i class="fa-solid fa-arrow-right-arrow-left"></i>
+            تسجيل حركة مخزون
+          </h3>
+          <button class="modal-close" id="move-close">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          <!-- Move type toggle -->
+          <div class="move-type-toggle">
+            <button class="move-type-btn in active" data-type="in">
+              <i class="fa-solid fa-arrow-down"></i>
+              <span>استلام وارد</span>
+              <small>إضافة إلى المخزون</small>
+            </button>
+            <button class="move-type-btn out" data-type="out">
+              <i class="fa-solid fa-arrow-up"></i>
+              <span>صرف منصرف</span>
+              <small>خصم من المخزون</small>
+            </button>
+          </div>
+
+          <!-- Material select -->
+          <div class="form-group">
+            <label>المادة الخام <span style="color: var(--red)">*</span></label>
+            <div class="mat-select-wrap">
+              <i class="fa-solid fa-boxes-stacked"></i>
+              <select id="move-mat-select" class="form-input">
+                <option value="">— اختر المادة —</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Material badge (shown after selection) -->
+          <div class="move-mat-badge" id="move-mat-badge" style="display: none">
+            <div class="badge-info">
+              <span class="badge-name" id="move-badge-name">—</span>
+              <span class="badge-code" id="move-badge-code">—</span>
+            </div>
+            <div class="badge-stock">
+              <span class="badge-stock-label">المخزون الحالي:</span>
+              <span class="badge-stock-val" id="move-badge-qty">—</span>
+            </div>
+          </div>
+
+          <!-- Quantity + Date -->
+          <div class="form-row two-col">
+            <div class="form-group">
+              <label>الكمية <span style="color: var(--red)">*</span></label>
+              <input
+                type="number"
+                id="move-qty"
+                class="form-input"
+                placeholder="0"
+                min="0.01"
+                step="0.01"
+              />
+              <span class="form-hint" id="move-qty-hint"></span>
+            </div>
+            <div class="form-group">
+              <label>التاريخ <span style="color: var(--red)">*</span></label>
+              <input type="date" id="move-date" class="form-input" />
+            </div>
+          </div>
+
+          <!-- Reference / Reason / Notes — الحقل الوحيد المتاح فعليًا في قاعدة البيانات (notes) -->
+          <div class="form-group">
+            <label>ملاحظات (السبب / المورد / المرجع)</label>
+            <input
+              type="text"
+              id="move-reason"
+              class="form-input"
+              placeholder="مثال: توريد من شركة كذا — أمر شراء PO-2026-001..."
+            />
+          </div>
+
+          <!-- Cost override -->
+          <div class="form-group" id="move-cost-wrap">
+            <label>سعر الوحدة (ج.م) — اختياري</label>
+            <input
+              type="number"
+              id="move-cost"
+              class="form-input"
+              placeholder="اتركه فارغًا لاستخدام السعر المحفوظ للصنف"
+              min="0"
+              step="0.01"
+            />
+          </div>
+        </div>
+        <div class="modal-foot">
+          <button class="btn-primary" id="move-save-btn">
+            <i class="fa-solid fa-arrow-down"></i> تسجيل الاستلام
+          </button>
+          <button class="btn-ghost" id="move-cancel">إلغاء</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== DRAWER: MOVEMENT DETAIL ===== -->
+    <div class="mv-drawer-overlay" id="mv-drawer-overlay"></div>
+    <aside class="mv-drawer" id="mv-drawer">
+      <div class="mv-drawer-head">
+        <h3><i class="fa-solid fa-receipt"></i> تفاصيل الحركة</h3>
+        <button class="modal-close" id="mv-drawer-close">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <div class="mv-drawer-body" id="mv-drawer-body">
+        <!-- rendered by JS -->
+      </div>
+    </aside>
+
+    <!-- ===== CONFIRM DELETE ===== -->
+    <div class="confirm-overlay" id="confirm-overlay">
+      <div class="confirm-dialog">
+        <div class="confirm-icon">
+          <i class="fa-solid fa-triangle-exclamation"></i>
+        </div>
+        <h3>حذف الحركة</h3>
+        <p>
+          هل تريد حذف هذه الحركة من السجل؟<br />
+          <strong id="confirm-desc">—</strong>
+        </p>
+        <p class="confirm-warn">
+          سيتم تعديل رصيد المادة تلقائيًا ولا يمكن التراجع
+        </p>
+        <div class="confirm-actions">
+          <button class="btn-ghost" id="confirm-no">إلغاء</button>
+          <button class="btn-danger" id="confirm-yes">
+            <i class="fa-solid fa-trash"></i> حذف الحركة
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== TOAST ===== -->
+    <div class="toast" id="toast">
+      <i class="fa-solid fa-circle-check" id="toast-icon"></i>
+      <span id="toast-msg">تمت العملية بنجاح</span>
+    </div>
+
+    <script src="JS/auth.js"></script>
+    <script src="JS/page-guard.js"></script>
+    <script src="JS/api-client.js"></script>
+    <script src="JS/nav-loader.js"></script>
+    <script src="JS/movements.js"></script>
+    <script src="JS/responsive.js"></script>
+    <script src="JS/enhancements.js"></script>
+    <script src="JS/password-toggle.js"></script>
+  </body>
+</html>

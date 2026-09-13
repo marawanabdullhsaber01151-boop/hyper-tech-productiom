@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>هايبر تك — طلبات التفعيل</title>
+  <link rel="stylesheet" href="CSS/theme.css">
+  <script src="JS/theme-switcher.js"></script>
+  <link rel="stylesheet" href="CSS/style.css">
+  <link rel="stylesheet" href="CSS/portal-customers-admin.css">
+</head>
+<body data-allowed-roles="sales_manager,executive_manager,chairman">
+  <main class="customers-shell">
+    <header>
+      <div>
+        <a href="index.html">← لوحة التحكم</a>
+        <h1>طلبات التفعيل</h1>
+        <p>ربط عميل موجود في سجلات الشركة بحساب البوابة بعد مراجعة الموظف.</p>
+      </div>
+      <button id="refresh" class="button primary">تحديث</button>
+    </header>
+    <div id="status" class="status" role="status" aria-live="polite"></div>
+    <section class="panel">
+      <div class="section-heading">
+        <h2>الطلبات المعلقة</h2>
+        <span id="resultCount" class="muted"></span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>بيانات الطلب</th><th>الترشيح التلقائي</th><th>التقديم</th><th>إجراء</th></tr></thead>
+          <tbody id="requestRows"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <dialog id="contactDialog" class="action-dialog">
+    <form id="contactSearchForm">
+      <h2>بحث يدوي في العملاء</h2>
+      <p class="muted">اختَر العميل الصحيح بنفسك؛ لا يتم التفعيل تلقائيًا.</p>
+      <div class="search-row">
+        <input id="contactQuery" class="input" minlength="2" required placeholder="الاسم أو الشركة أو التليفون">
+        <button class="button primary" type="submit">بحث</button>
+      </div>
+      <div id="contactResults" class="contact-results"></div>
+      <div class="dialog-actions"><button type="button" class="button" data-close-contact>إغلاق</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="noteDialog" class="action-dialog">
+    <form id="noteForm">
+      <h2>رفض طلب التفعيل</h2>
+      <p class="muted">سبب الرفض إلزامي ويظل الطلب محفوظًا في الأرشيف.</p>
+      <label for="noteInput">سبب الرفض</label>
+      <textarea id="noteInput" rows="5" maxlength="1000" required></textarea>
+      <div class="dialog-actions">
+        <button type="button" class="button" data-close-note>إلغاء</button>
+        <button type="submit" class="button danger">تسجيل الرفض</button>
+      </div>
+    </form>
+  </dialog>
+  <script src="JS/auth.js"></script>
+  <script src="JS/page-guard.js"></script>
+  <script src="JS/portal-activation-requests-admin.js"></script>
+</body>
+</html>

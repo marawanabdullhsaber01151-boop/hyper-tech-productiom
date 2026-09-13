@@ -1,0 +1,324 @@
+<!-- @format -->
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>هايبر تك — مدير الإنتاج</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="CSS/theme.css" />
+    <script src="JS/theme-switcher.js"></script>
+    <link rel="stylesheet" href="CSS/style.css" />
+    <link rel="stylesheet" href="CSS/contacts.css" />
+    <link rel="stylesheet" href="CSS/responsive.css" />
+    <link rel="stylesheet" href="CSS/enhancements.css" />
+    <style>
+      html:not([data-role="production_manager"]):not([data-role="production_controller"]):not([data-role="operations_manager"]):not([data-role="executive_manager"]):not([data-role="chairman"])
+        .page-guard {
+        display: none !important;
+      }
+      html:not([data-role="production_manager"]):not([data-role="production_controller"]):not([data-role="operations_manager"]):not([data-role="executive_manager"]):not([data-role="chairman"])
+        .page-denied {
+        display: flex !important;
+      }
+      .page-denied {
+        display: none;
+        min-height: 60vh;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+        gap: 10px;
+        color: var(--text-muted);
+      }
+      .pm-cols {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 16px;
+        align-items: start;
+      }
+      .pm-col h3 {
+        font-size: 14px;
+        margin: 0 0 12px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .pm-card {
+        background: var(--card-bg, #12161f);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 14px;
+        margin-bottom: 12px;
+      }
+      .pm-card .num {
+        font-weight: 700;
+        font-size: 13px;
+      }
+      .pm-card .meta {
+        font-size: 12px;
+        color: var(--text-muted);
+        margin: 6px 0;
+      }
+      .pm-card button {
+        width: 100%;
+        margin-top: 8px;
+      }
+      .empty-hint {
+        font-size: 12px;
+        color: var(--text-muted);
+        text-align: center;
+        padding: 20px 0;
+      }
+      .modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.5);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 100;
+      }
+      .modal-overlay.open {
+        display: flex;
+      }
+      .modal-box {
+        background: var(--card-bg, #12161f);
+        border-radius: 14px;
+        padding: 22px;
+        width: 420px;
+        max-width: 92vw;
+        max-height: 85vh;
+        overflow: auto;
+      }
+      .modal-box h3 {
+        margin: 0 0 14px;
+      }
+      .form-row {
+        margin-bottom: 12px;
+      }
+      .form-row label {
+        display: block;
+        font-size: 12px;
+        margin-bottom: 5px;
+        color: var(--text-muted);
+      }
+      .form-row input,
+      .form-row select,
+      .form-row textarea {
+        width: 100%;
+        padding: 9px 12px;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        background: transparent;
+        color: inherit;
+        font-family: inherit;
+        font-size: 13px;
+      }
+      @media (max-width: 900px) {
+        .pm-cols {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body data-allowed-roles="chairman,executive_manager,production_manager,operations_manager">
+    <aside class="sidebar">
+      <div class="sidebar-logo">
+        <div class="logo-icon">⚡</div>
+        <div class="logo-text">
+          <h1>هايبر تك</h1>
+          <span>نظام إدارة الموارد</span>
+        </div>
+      </div>
+
+      <div class="sidebar-section">
+        <p class="sidebar-section-title">الرئيسية</p>
+        <a href="index.html" class="nav-item">
+          <i class="fa-solid fa-gauge-high"></i>
+          لوحة التحكم
+        </a>
+      </div>
+
+      <!-- ✅ يتملى ديناميكيًا بالأقسام/الصفحات المسموح بيها للمستخدم الحالي بس -->
+      <div id="dynamic-sidebar"></div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div class="topbar-title">
+          <h2>مدير الإنتاج</h2>
+          <p>
+            استلام الطلبات، إرسالها بعد اعتماد المخازن، واتخاذ قرار التسليم
+            النهائي
+          </p>
+        </div>
+        <div class="topbar-actions">
+          <div class="icon-btn">
+            <i class="fa-regular fa-bell"></i>
+            <div class="notif-dot"></div>
+          </div>
+          <div class="icon-btn"></div>
+        </div>
+      </header>
+
+      <div class="page-denied">
+        <i class="fa-solid fa-lock" style="font-size: 32px"></i>
+        <p>هذه الصفحة متاحة لمدير الإنتاج أو المدير الكامل فقط.</p>
+      </div>
+
+      <div class="page-guard" style="padding: 20px 28px">
+        <div class="pm-cols">
+          <div class="pm-col">
+            <h3><i class="fa-solid fa-inbox"></i> بانتظار الاستلام</h3>
+            <div id="col-new"><p class="empty-hint">جاري التحميل...</p></div>
+          </div>
+          <div class="pm-col">
+            <h3>
+              <i class="fa-solid fa-paper-plane"></i> جاهزة للإرسال للفريق
+            </h3>
+            <div id="col-dispatch">
+              <p class="empty-hint">جاري التحميل...</p>
+            </div>
+          </div>
+          <div class="pm-col">
+            <h3><i class="fa-solid fa-truck"></i> اكتملت — قرار التسليم</h3>
+            <div id="col-deliver">
+              <p class="empty-hint">جاري التحميل...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Modal: استلام الطلب -->
+    <div class="modal-overlay" id="receive-modal">
+      <div class="modal-box">
+        <h3>استلام أمر الإنتاج</h3>
+        <div class="form-row">
+          <label>المشرف *</label>
+          <select id="r-supervisor-select">
+            <option value="">جاري التحميل...</option>
+          </select>
+          <p
+            id="r-supervisor-empty"
+            style="
+              display: none;
+              font-size: 12px;
+              color: #f59e0b;
+              margin-top: 6px;
+            "
+          >
+            مفيش حد مسجل بدور "مشرف" حاليًا — اطلب من المدير الكامل يضيف واحد من
+            الإعدادات.
+          </p>
+        </div>
+        <div class="form-row">
+          <label>مراقب الجودة *</label>
+          <select id="r-qc-select">
+            <option value="">جاري التحميل...</option>
+          </select>
+          <p
+            id="r-qc-empty"
+            style="
+              display: none;
+              font-size: 12px;
+              color: #f59e0b;
+              margin-top: 6px;
+            "
+          >
+            مفيش حد مسجل بدور "مراقب جودة" حاليًا — اطلب من المدير الكامل يضيف
+            واحد من الإعدادات.
+          </p>
+        </div>
+        <div class="form-row">
+          <label>خط الإنتاج *</label><input id="r-line" />
+        </div>
+        <div class="form-row">
+          <label>تاريخ بداية الإنتاج *</label
+          ><input id="r-start-date" type="date" />
+        </div>
+        <div class="form-row">
+          <label>حالة الأمر *</label>
+          <select id="r-status">
+            <option value="running">جاري الآن</option>
+            <option value="pending">معلّق</option>
+          </select>
+        </div>
+        <div class="form-row" id="r-reason-row" style="display: none">
+          <label>سبب التعليق *</label><input id="r-reason" />
+        </div>
+        <button
+          class="btn-primary"
+          id="btn-receive-confirm"
+          style="width: 100%"
+        >
+          تأكيد الاستلام
+        </button>
+        <button
+          onclick="
+            document.getElementById('receive-modal').classList.remove('open')
+          "
+          style="width: 100%; margin-top: 8px"
+        >
+          إلغاء
+        </button>
+      </div>
+    </div>
+
+    <!-- Modal: التسليم -->
+    <div class="modal-overlay" id="deliver-modal">
+      <div class="modal-box">
+        <h3>قرار تسليم أمر الإنتاج</h3>
+        <div class="form-row">
+          <label>وجهة التسليم *</label>
+          <select id="d-type">
+            <option value="customer">تسليم للعميل (عبر الاتش آر)</option>
+            <option value="warehouse">تسليم للمخزن (منتج تام)</option>
+          </select>
+        </div>
+        <div class="form-row" id="d-inv-row" style="display: none">
+          <label>ربط بصنف مخزون (منتج تام)</label>
+          <select id="d-inventory-item">
+            <option value="">بدون إضافة للمخزون</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label>ملاحظات</label><textarea id="d-notes" rows="2"></textarea>
+        </div>
+        <button
+          class="btn-primary"
+          id="btn-deliver-confirm"
+          style="width: 100%"
+        >
+          تأكيد
+        </button>
+        <button
+          onclick="
+            document.getElementById('deliver-modal').classList.remove('open')
+          "
+          style="width: 100%; margin-top: 8px"
+        >
+          إلغاء
+        </button>
+      </div>
+    </div>
+
+    <div class="toast" id="toast">
+      <i class="fa-solid fa-circle-check"></i><span id="toast-msg">تم</span>
+    </div>
+
+    <script src="JS/auth.js"></script>
+    <script src="JS/page-guard.js"></script>
+    <script src="JS/nav-loader.js"></script>
+    <script src="JS/enhancements.js"></script>
+    <script src="JS/production-workflow-shared.js"></script>
+    <script src="JS/factory-production-manager.js"></script>
+  </body>
+</html>

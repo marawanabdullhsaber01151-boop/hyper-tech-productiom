@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>هايبر تك — مركز التحكم بالإنتاج</title>
+    <link rel="stylesheet" href="CSS/theme.css" />
+    <script src="JS/theme-switcher.js"></script>
+    <link rel="stylesheet" href="CSS/style.css" />
+    <link rel="stylesheet" href="CSS/production-control.css" />
+  </head>
+  <body data-allowed-roles="chairman,production_manager,production_controller,warehouse_manager,supervisor,production_quality_controller">
+    <main class="control-shell">
+      <header class="control-header">
+        <div>
+          <p class="eyebrow">نظام تشغيل المصنع</p>
+          <h1>مركز التحكم بالإنتاج</h1>
+          <p class="muted">التخطيط، التنفيذ، الجودة والتتبع في شاشة تشغيل واحدة.</p>
+        </div>
+        <a class="back-link" href="production.html">← أوامر الإنتاج</a>
+      </header>
+
+      <nav class="control-tabs" aria-label="أقسام مركز التحكم">
+        <button class="control-tab active" data-tab="overview">نظرة عامة</button>
+        <button class="control-tab" data-tab="engineering">الهندسة</button>
+          <button class="control-tab" data-tab="planning">تخطيط الاحتياجات</button>
+        <button class="control-tab" data-tab="execution">التنفيذ والجودة</button>
+        <button class="control-tab" data-tab="traceability">التتبع</button>
+      </nav>
+
+      <section class="control-panel active" id="tab-overview">
+        <div class="metric-grid">
+          <div class="metric-card"><span>أوامر نشطة</span><strong id="metric-active">—</strong></div>
+          <div class="metric-card"><span>تم التسليم</span><strong id="metric-completed">—</strong></div>
+          <div class="metric-card"><span>تحتاج متابعة</span><strong id="metric-blocked">—</strong></div>
+          <div class="metric-card"><span>تقارير عدم المطابقة المفتوحة</span><strong id="metric-ncr">—</strong></div>
+        </div>
+        <div class="panel-card">
+          <div class="panel-title"><h2>خط سير دورة الإنتاج</h2><button class="btn-secondary" id="refresh-control">تحديث</button></div>
+          <div class="stage-grid" id="stage-grid"><div class="loading">جاري التحميل...</div></div>
+        </div>
+      </section>
+
+      <section class="control-panel" id="tab-engineering">
+        <div class="split-grid">
+          <div class="panel-card">
+            <div class="panel-title"><h2>منتج هندسي جديد</h2></div>
+            <form id="product-form" class="stack-form">
+              <input name="code" placeholder="كود المنتج" required />
+              <input name="name" placeholder="اسم المنتج" required />
+              <select name="productType"><option value="finished">منتج تام</option><option value="semi_finished">نصف مصنع</option><option value="raw_material">خامة</option></select>
+              <select name="baseUnit"><option value="وحدة" selected>وحدة</option><option value="كجم">كيلوجرام (كجم)</option><option value="جم">جرام (جم)</option><option value="لتر">لتر</option><option value="مل">مليلتر (مل)</option><option value="متر">متر</option><option value="سم">سنتيمتر (سم)</option><option value="قطعة">قطعة</option><option value="علبة">علبة</option><option value="كرتونة">كرتونة</option><option value="طن">طن</option></select>
+              <textarea name="description" placeholder="الوصف"></textarea>
+              <button class="btn-primary">إضافة المنتج</button>
+            </form>
+            <div class="form-divider"></div>
+            <form id="version-form" class="stack-form">
+              <select name="productId" required data-lookup="productId"><option value="">اختر المنتج...</option></select>
+              <input name="version" placeholder="رقم الإصدار مثل 1.0" required />
+              <input name="effectiveFrom" type="date" />
+              <textarea name="bomSnapshot" placeholder='BOM JSON مثل [{"itemCode":"RM-01","qty":"2"}]'></textarea>
+              <textarea name="routingSnapshot" placeholder='بيانات مسار التشغيل مثل [{"operationNo":10,"name":"قص"}]'></textarea>
+              <button class="btn-secondary">إضافة إصدار</button>
+            </form>
+            <form id="approve-version-form" class="inline-form compact-form">
+              <select name="versionId" required data-lookup="versionId"><option value="">اختر الإصدار للاعتماد...</option></select>
+              <button class="btn-secondary">اعتماد الإصدار</button>
+            </form>
+          </div>
+          <div class="panel-card">
+            <div class="panel-title"><h2>المنتجات والإصدارات</h2><button class="btn-secondary" id="refresh-products">تحديث</button></div>
+            <div id="products-list" class="data-list"></div>
+            <div class="form-divider"></div>
+            <form id="routing-form" class="stack-form">
+              <select name="versionId" required data-lookup="versionId"><option value="">اختر إصدار المنتج...</option></select>
+              <input name="operationNo" type="number" placeholder="رقم العملية" required />
+              <input name="name" placeholder="اسم العملية" required />
+              <input name="setupMinutes" type="number" min="0" placeholder="زمن التجهيز بالدقائق" />
+              <input name="runMinutesPerUnit" placeholder="زمن التشغيل للوحدة" value="0" />
+              <button class="btn-secondary">إضافة عملية لمسار التشغيل</button>
+            </form>
+            <div class="form-divider"></div>
+            <form id="change-request-form" class="stack-form">
+              <select name="productId" required data-lookup="productId"><option value="">اختر المنتج...</option></select>
+              <select name="productVersionId" data-lookup="versionId"><option value="">بدون إصدار محدد (اختياري)</option></select>
+              <input name="title" placeholder="عنوان طلب التغيير" required />
+              <textarea name="reason" placeholder="سبب التغيير" required></textarea>
+              <button class="btn-secondary">فتح طلب تغيير ECR</button>
+            </form>
+          </div>
+        </div>
+      </section>
+
+      <section class="control-panel" id="tab-planning">
+        <div class="split-grid">
+          <div class="panel-card">
+            <div class="panel-title"><h2>تشغيل تخطيط الاحتياجات</h2></div>
+            <form id="mrp-form" class="stack-form">
+              <input name="dueDate" type="date" />
+              <select name="workflowOrderId" data-lookup="workflowOrderId"><option value="">بدون أمر إنتاج محدد (اختياري)</option></select>
+              <textarea name="requirements" placeholder='المتطلبات JSON مثال: [{"inventoryItemId":1,"grossQty":"100"}]' required></textarea>
+              <button class="btn-primary">حساب الاحتياج</button>
+            </form>
+            <div class="form-divider"></div>
+            <form id="requisition-form" class="inline-form compact-form">
+              <select name="materialRequirementId" required data-lookup="materialRequirementId"><option value="">اختر الاحتياج الذي به عجز...</option></select>
+              <button class="btn-secondary">إنشاء طلب شراء</button>
+            </form>
+          </div>
+          <div class="panel-card"><div class="panel-title"><h2>آخر خطط الاحتياجات</h2><button class="btn-secondary" id="refresh-plans">تحديث</button></div><div id="plans-list" class="data-list"></div></div>
+        </div>
+      </section>
+
+      <section class="control-panel" id="tab-execution">
+        <div class="split-grid">
+          <div class="panel-card">
+            <div class="panel-title"><h2>تسجيل توقف</h2></div>
+            <form id="downtime-form" class="stack-form">
+              <select data-role="order-picker" data-batch-target="downtime-batch"><option value="">اختر أمر الإنتاج أولًا...</option></select>
+              <select name="batchId" id="downtime-batch" required disabled><option value="">اختر أمر الإنتاج أولًا</option></select>
+              <select name="reasonCode" required>
+                <option value="">سبب التوقف...</option>
+                <option value="mechanical_failure">عطل ميكانيكي</option>
+                <option value="electrical_failure">عطل كهربائي</option>
+                <option value="material_shortage">نقص مواد خام</option>
+                <option value="changeover_setup">تغيير إعداد/قالب</option>
+                <option value="quality_hold">انتظار موافقة جودة</option>
+                <option value="planned_maintenance">صيانة دورية مخططة</option>
+                <option value="power_outage">انقطاع كهرباء</option>
+                <option value="operator_break">استراحة عمالة</option>
+                <option value="other">سبب آخر</option>
+              </select>
+              <input name="minutes" type="number" min="1" placeholder="المدة بالدقائق" required />
+              <textarea name="notes" placeholder="ملاحظات"></textarea>
+              <button class="btn-primary">حفظ التوقف</button>
+            </form>
+            <div class="form-divider"></div>
+            <form id="confirmation-form" class="stack-form">
+              <select data-role="order-picker" data-batch-target="confirm-batch"><option value="">اختر أمر الإنتاج أولًا...</option></select>
+              <select name="batchId" id="confirm-batch" required disabled><option value="">اختر أمر الإنتاج أولًا</option></select>
+              <input name="operationNo" type="number" placeholder="رقم العملية" required />
+              <input name="goodQty" placeholder="الكمية الجيدة" required />
+              <input name="scrapQty" placeholder="الهالك" value="0" />
+              <input name="reworkQty" placeholder="إعادة التشغيل" value="0" />
+              <button class="btn-secondary">تسجيل تأكيد العملية</button>
+            </form>
+            <form id="close-batch-form" class="inline-form compact-form">
+              <select data-role="order-picker" data-batch-target="close-batch"><option value="">اختر أمر الإنتاج أولًا...</option></select>
+              <select name="batchId" id="close-batch" required disabled><option value="">اختر أمر الإنتاج أولًا</option></select>
+              <button class="btn-secondary">إغلاق الدفعة</button>
+            </form>
+          </div>
+          <div class="panel-card">
+            <div class="panel-title"><h2>فتح تقرير عدم مطابقة</h2><button class="btn-secondary" id="refresh-ncr">تحديث</button></div>
+            <form id="ncr-form" class="stack-form">
+              <select name="workflowOrderId" required data-role="order-picker" data-batch-target="ncr-batch"><option value="">اختر أمر الإنتاج...</option></select>
+              <select name="batchId" id="ncr-batch" disabled><option value="">بدون دفعة محددة (اختياري)</option></select>
+              <select name="defectCode" required>
+                <option value="">كود العيب...</option>
+                <option value="dimension_mismatch">عدم مطابقة أبعاد</option>
+                <option value="surface_defect">عيب سطحي/تشطيب</option>
+                <option value="assembly_error">خطأ تجميع</option>
+                <option value="material_damage">تلف في المادة الخام</option>
+                <option value="color_mismatch">اختلاف لون</option>
+                <option value="functional_failure">عطل وظيفي</option>
+                <option value="packaging_defect">عيب تعبئة/تغليف</option>
+                <option value="other">عيب آخر</option>
+              </select>
+              <input name="affectedQty" placeholder="الكمية المتأثرة" required />
+              <select name="disposition"><option value="">قرار لاحق</option><option value="rework">إعادة تشغيل</option><option value="scrap">هالك</option><option value="hold">عزل</option><option value="sort">فرز</option></select>
+              <button class="btn-primary">فتح تقرير عدم مطابقة</button>
+            </form>
+            <div id="ncr-list" class="data-list compact"></div>
+            <div class="form-divider"></div>
+            <form id="trace-create-form" class="stack-form">
+              <select name="workflowOrderId" required data-role="order-picker" data-batch-target="trace-batch"><option value="">اختر أمر الإنتاج...</option></select>
+              <select name="batchId" id="trace-batch" required disabled><option value="">اختر أمر الإنتاج أولًا</option></select>
+              <select name="traceType"><option value="input_lot">خامة داخلة</option><option value="output_lot">منتج خارج</option><option value="shipment">شحنة</option></select>
+              <input name="lotNumber" placeholder="رقم التشغيلة" required />
+              <select name="itemCode" data-lookup="itemCode"><option value="">بدون صنف محدد (اختياري)</option></select>
+              <input name="quantity" placeholder="الكمية" />
+              <button class="btn-secondary">إضافة سجل تتبع</button>
+            </form>
+          </div>
+        </div>
+      </section>
+
+      <section class="control-panel" id="tab-traceability">
+        <div class="panel-card">
+          <div class="panel-title"><h2>تتبع التشغيلة</h2></div>
+          <form id="trace-form" class="inline-form">
+            <input name="lotNumber" placeholder="رقم التشغيلة" required />
+            <button class="btn-primary">بحث</button>
+          </form>
+          <div id="trace-list" class="data-list"></div>
+        </div>
+      </section>
+      <div class="toast" id="control-toast"></div>
+    </main>
+    <script src="JS/auth.js"></script>
+    <script src="JS/page-guard.js"></script>
+    <script src="JS/api-client.js"></script>
+    <script src="JS/production-control.js"></script>
+  </body>
+</html>

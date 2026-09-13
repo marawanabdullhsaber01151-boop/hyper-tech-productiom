@@ -1,0 +1,462 @@
+/** @format */
+/* ===== ENHANCEMENTS.CSS ===== */
+/* تحسينات الواجهة والمميزات الإضافية */
+
+/* ===== USER MENU DROPDOWN ===== */
+.user-menu-wrapper {
+  position: relative;
+}
+
+.user-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  min-width: 200px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  z-index: 1000;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-8px);
+  transition: all var(--transition);
+  margin-top: 8px;
+}
+
+.user-menu.active {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.user-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  color: var(--text-main);
+  text-decoration: none;
+  cursor: pointer;
+  border-bottom: 1px solid var(--border);
+  transition: all var(--transition);
+  font-size: 14px;
+}
+
+.user-menu-item:last-child {
+  border-bottom: none;
+}
+
+.user-menu-item:hover {
+  background: rgba(245, 158, 11, 0.1);
+  padding-right: 20px;
+}
+
+.user-menu-item i {
+  width: 20px;
+  text-align: center;
+  color: var(--accent);
+}
+
+.user-menu-item.danger:hover {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--red);
+}
+
+.user-menu-item.danger i {
+  color: var(--red);
+}
+
+/* ===== NOTIFICATIONS PANEL ===== */
+.notifications-panel {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  width: 320px;
+  max-height: 400px;
+  overflow-y: auto;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  z-index: 1000;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-8px);
+  transition: all var(--transition);
+  margin-top: 8px;
+}
+
+.notifications-panel.active {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.notif-header {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.notif-header h4 {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.notif-clear-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 12px;
+  text-decoration: underline;
+  transition: color var(--transition);
+}
+
+.notif-clear-btn:hover {
+  color: var(--text-main);
+}
+
+.notif-item {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: background var(--transition);
+}
+
+.notif-item:hover {
+  background: rgba(245, 158, 11, 0.05);
+}
+
+.notif-item-title {
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 4px;
+  color: var(--text-main);
+}
+
+.notif-item-text {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+
+.notif-item-time {
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.notif-empty {
+  padding: 30px 16px;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+/* ===== SEARCH RESULTS ===== */
+.search-results-panel {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  width: 350px;
+  max-height: 300px;
+  overflow-y: auto;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  z-index: 1000;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-8px);
+  transition: all var(--transition);
+  margin-top: 8px;
+}
+
+.search-results-panel.active {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.search-result-item {
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: background var(--transition);
+}
+
+.search-result-item:hover {
+  background: rgba(245, 158, 11, 0.05);
+}
+
+.search-result-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-main);
+}
+
+.search-result-type {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 3px;
+}
+
+.search-empty {
+  padding: 20px 16px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+/* ===== UTILITY IMPROVEMENTS ===== */
+.sidebar-footer .user-card {
+  cursor: pointer;
+}
+
+.sidebar-footer .user-card i {
+  transition:
+    transform var(--transition),
+    color var(--transition);
+}
+
+.sidebar-footer .user-card i.active {
+  color: var(--accent);
+  transform: rotate(90deg);
+}
+
+/* Search box focus state */
+.search-box input:focus {
+  outline: none;
+  background: rgba(245, 158, 11, 0.08) !important;
+  border-color: var(--accent) !important;
+}
+
+/* Icon buttons with notifications */
+.icon-btn {
+  position: relative;
+  cursor: pointer;
+  transition: color var(--transition);
+}
+
+.icon-btn:hover {
+  color: var(--accent);
+}
+
+.notif-dot {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 8px;
+  height: 8px;
+  background: var(--red);
+  border-radius: 50%;
+  animation: pulseAlert 2s infinite;
+}
+
+/* ✅ إصلاح: اتسمّت pulseAlert بدل pulse — كانت اسمها بيصطدم مع أي
+   pulse تانية في أي صفحة، والملف ده بيتحمّل آخر حاجة في كل صفحة فكانت
+   نبضته الحمرا بتفرض نفسها فوق أي نبضة تانية بغض النظر عن قصدها. */
+@keyframes pulseAlert {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(239, 68, 68, 0);
+  }
+}
+
+/* ===== TOAST IMPROVEMENTS ===== */
+.toast.error {
+  background: var(--red);
+}
+
+.toast.warning {
+  background: var(--accent);
+}
+
+.toast.success {
+  background: var(--green);
+}
+
+.toast.info {
+  background: var(--accent2);
+}
+
+/* ===== LOADING STATES ===== */
+.btn-loading {
+  pointer-events: none;
+  opacity: 0.7;
+}
+
+.btn-loading::after {
+  content: "";
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  margin-right: 8px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ===== MODAL IMPROVEMENTS ===== */
+.modal-overlay {
+  animation: fadeIn var(--transition);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.modal {
+  animation: slideUp var(--transition);
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(30px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* ===== CONFIRM DIALOG STYLING ===== */
+.confirm-dialog {
+  animation: slideUp var(--transition);
+}
+
+.confirm-dialog h3 {
+  color: var(--text-main);
+  font-size: 18px;
+  margin-bottom: 12px;
+}
+
+.confirm-dialog p {
+  color: var(--text-muted);
+  font-size: 14px;
+  margin-bottom: 20px;
+}
+
+.confirm-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+.confirm-actions button {
+  flex: 1;
+}
+
+/* ✨ شارة الشفافية — تظهر على كارت المستخدم لو عنده استثناء صلاحيات نشط */
+.user-card {
+  position: relative;
+}
+.delegation-badge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #1a1206;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  box-shadow: 0 0 0 2px var(--bg-card);
+  animation: delegationPulse 2.2s ease-in-out infinite;
+  cursor: help;
+}
+.delegation-badge.restricted {
+  background: var(--red, #ef4444);
+  color: #fff;
+}
+@keyframes delegationPulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 2px var(--bg-card),
+      0 0 0 0 rgba(245, 158, 11, 0.5);
+  }
+  50% {
+    box-shadow:
+      0 0 0 2px var(--bg-card),
+      0 0 0 5px rgba(245, 158, 11, 0);
+  }
+}
+
+/* ✅ بطاقات الأقسام في index.html — تظهر لأصحاب أكتر من قسم بس
+   (chairman/executive_manager)، بتتملى ديناميكيًا من JS/nav-loader.js */
+.dept-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 14px;
+  padding: 16px 20px 20px;
+}
+.dept-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 14px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  text-decoration: none;
+  color: inherit;
+  transition:
+    transform 0.15s ease,
+    border-color 0.15s ease;
+}
+.dept-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--accent);
+}
+.dept-card-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+.dept-card-body {
+  flex: 1;
+  min-width: 0;
+}
+.dept-card-body h4 {
+  margin: 0 0 2px;
+  font-size: 14px;
+  color: var(--text, #fff);
+}
+.dept-card-body span {
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.dept-card-arrow {
+  color: var(--text-dim);
+  font-size: 12px;
+}

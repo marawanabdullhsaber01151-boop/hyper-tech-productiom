@@ -1,0 +1,140 @@
+<!-- @format -->
+
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>هايبر تك — تسجيل الدخول</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        color-scheme: dark;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        font-family: Tajawal, Arial, sans-serif;
+        background: radial-gradient(circle at top right, #1c4e72, #091621 55%);
+        color: #edf5fb;
+        padding: 24px;
+      }
+      .card {
+        width: min(100%, 430px);
+        background: #102331ef;
+        border: 1px solid #31556c;
+        border-radius: 20px;
+        padding: 38px;
+        box-shadow: 0 25px 80px #0008;
+      }
+      .mark {
+        width: 54px;
+        height: 54px;
+        display: grid;
+        place-items: center;
+        border-radius: 15px;
+        background: #f5af19;
+        color: #132333;
+        font-size: 28px;
+        margin-bottom: 18px;
+      }
+      h1 {
+        margin: 0 0 8px;
+        font-size: 26px;
+      }
+      p {
+        color: #b7cbd9;
+        margin: 0 0 28px;
+        line-height: 1.7;
+      }
+      label {
+        display: block;
+        font-size: 14px;
+        margin: 16px 0 7px;
+        color: #d6e5ef;
+      }
+      input {
+        width: 100%;
+        padding: 13px 14px;
+        border: 1px solid #476276;
+        border-radius: 10px;
+        background: #0b1924;
+        color: #fff;
+        font: inherit;
+        outline: none;
+      }
+      input:focus {
+        border-color: #f5af19;
+        box-shadow: 0 0 0 3px #f5af1933;
+      }
+      button {
+        width: 100%;
+        margin-top: 25px;
+        padding: 13px;
+        border: 0;
+        border-radius: 10px;
+        background: #f5af19;
+        color: #172635;
+        cursor: pointer;
+        font:
+          700 16px Tajawal,
+          Arial;
+      }
+      button:disabled {
+        opacity: 0.65;
+        cursor: wait;
+      }
+      #message {
+        min-height: 22px;
+        color: #ffb4ae;
+        margin: 14px 0 0;
+        font-size: 14px;
+      }
+      .hint {
+        margin-top: 22px;
+        font-size: 12px;
+        color: #85a0b2;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="card">
+      <div class="mark">⚡</div>
+      <h1>هايبر تك</h1>
+      <p>سجّل الدخول للوصول إلى صلاحياتك في نظام الشركة والمصنع.</p>
+      <form id="login-form">
+        <label for="username">اسم المستخدم</label>
+        <input
+          id="username"
+          name="username"
+          autocomplete="username"
+          required
+          autofocus
+        />
+        <label for="password">كلمة المرور</label>
+        <input
+          id="password"
+          name="password"
+          type="password"
+          autocomplete="current-password"
+          required
+        />
+        <button id="submit" type="submit">تسجيل الدخول</button>
+        <div id="message" role="alert"></div>
+      </form>
+      <p class="hint">
+        لأول تشغيل، تظهر بيانات المدير الأولي في نافذة التشغيل على جهاز المسؤول.
+      </p>
+    </main>
+    <script src="JS/auth.js"></script>
+    <script src="JS/password-toggle.js"></script>
+  </body>
+</html>

@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>هايبر تك — طلبات الانضمام</title>
+  <link rel="stylesheet" href="CSS/theme.css">
+  <script src="JS/theme-switcher.js"></script>
+  <link rel="stylesheet" href="CSS/style.css">
+  <link rel="stylesheet" href="CSS/portal-customers-admin.css">
+</head>
+<body data-allowed-roles="sales_manager,executive_manager,chairman">
+  <main class="customers-shell">
+    <header>
+      <div>
+        <a href="index.html">← لوحة التحكم</a>
+        <h1>طلبات الانضمام</h1>
+        <p>مراجعة العملاء الجدد قبل إنشاء حساب في بوابة العملاء.</p>
+      </div>
+      <div class="header-actions">
+        <label class="filter-label" for="statusFilter">عرض</label>
+        <select id="statusFilter" class="input">
+          <option value="active">المعلقة وناقصها معلومات</option>
+          <option value="all">كل الطلبات</option>
+          <option value="pending">المعلقة فقط</option>
+          <option value="needs_info">ناقصها معلومات</option>
+          <option value="approved">المعتمدة</option>
+          <option value="rejected">المرفوضة</option>
+        </select>
+        <button id="refresh" class="button primary">تحديث</button>
+      </div>
+    </header>
+    <div id="status" class="status" role="status" aria-live="polite"></div>
+    <section class="panel">
+      <div class="section-heading">
+        <h2>قائمة الطلبات</h2>
+        <span id="resultCount" class="muted"></span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>الاسم</th><th>الشركة</th><th>التليفون</th><th>التقديم</th><th>الحالة</th><th>التفاصيل</th><th>إجراء</th></tr></thead>
+          <tbody id="applicationRows"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <dialog id="noteDialog" class="action-dialog">
+    <form id="noteForm" method="dialog">
+      <h2 id="noteTitle">ملاحظة</h2>
+      <p id="noteHint" class="muted"></p>
+      <label for="noteInput">اكتب رسالة واضحة تصل للعميل</label>
+      <textarea id="noteInput" name="reason" rows="5" maxlength="1000" required></textarea>
+      <div class="dialog-actions">
+        <button type="button" class="button" data-close-dialog>إلغاء</button>
+        <button type="submit" class="button primary" id="noteSubmit">حفظ</button>
+      </div>
+    </form>
+  </dialog>
+  <script src="JS/auth.js"></script>
+  <script src="JS/page-guard.js"></script>
+  <script src="JS/egypt-governorates.js"></script>
+  <script src="JS/portal-applications-admin.js"></script>
+</body>
+</html>

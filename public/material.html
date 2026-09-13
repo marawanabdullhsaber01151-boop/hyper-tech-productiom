@@ -1,0 +1,422 @@
+<!-- @format -->
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>هايبر تك — المواد الخام</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="CSS/theme.css" />
+    <script src="JS/theme-switcher.js"></script>
+    <link rel="stylesheet" href="CSS/style.css" />
+    <link rel="stylesheet" href="CSS/material.css" />
+    <link rel="stylesheet" href="CSS/responsive.css" />
+    <link rel="stylesheet" href="CSS/enhancements.css" />
+  </head>
+  <body data-allowed-roles="warehouse_manager,storekeeper,chairman">
+    <!-- ===== SIDEBAR ===== -->
+    <aside class="sidebar">
+      <div class="sidebar-logo">
+        <div class="logo-icon">⚡</div>
+        <div class="logo-text">
+          <h1>هايبر تك</h1>
+          <span>نظام إدارة الموارد</span>
+        </div>
+      </div>
+
+      <div class="sidebar-section">
+        <p class="sidebar-section-title">الرئيسية</p>
+        <a href="index.html" class="nav-item">
+          <i class="fa-solid fa-gauge-high"></i>
+          لوحة التحكم
+        </a>
+      </div>
+
+      <!-- ✅ يتملى ديناميكيًا بالأقسام/الصفحات المسموح بيها للمستخدم الحالي بس -->
+      <div id="dynamic-sidebar"></div>
+    </aside>
+
+    <!-- ===== MAIN ===== -->
+    <main class="main">
+      <!-- TOPBAR -->
+      <header class="topbar">
+        <div class="topbar-title">
+          <h2>المواد الخام</h2>
+          <p>إدارة ومتابعة المواد الخام — مخزون، موردون، استهلاك الإنتاج</p>
+        </div>
+        <div class="topbar-actions">
+          <div class="live-badge">
+            <div class="pulse"></div>
+            مباشر
+          </div>
+          <div class="search-box">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input
+              type="text"
+              id="search-input"
+              placeholder="ابحث بالاسم، الكود، المورد..."
+            />
+          </div>
+          <div class="icon-btn" title="إشعارات">
+            <i class="fa-regular fa-bell"></i>
+            <div class="notif-dot" id="notif-dot" style="display: none"></div>
+          </div>
+          <button class="btn-primary" id="btn-add">
+            <i class="fa-solid fa-plus"></i>
+            مادة جديدة
+          </button>
+        </div>
+      </header>
+
+      <!-- CONTENT -->
+      <div class="content">
+        <!-- KPI CARDS -->
+        <div class="rm-kpi-row">
+          <div class="rm-kpi-card">
+            <div class="rm-kpi-icon blue">
+              <i class="fa-solid fa-boxes-stacked"></i>
+            </div>
+            <div class="rm-kpi-info">
+              <span class="rm-kpi-val" id="kpi-total">0</span>
+              <span class="rm-kpi-label">إجمالي المواد الخام</span>
+            </div>
+          </div>
+          <div class="rm-kpi-card">
+            <div class="rm-kpi-icon green">
+              <i class="fa-solid fa-circle-check"></i>
+            </div>
+            <div class="rm-kpi-info">
+              <span class="rm-kpi-val" id="kpi-ok">0</span>
+              <span class="rm-kpi-label">كمية كافية</span>
+            </div>
+          </div>
+          <div class="rm-kpi-card">
+            <div class="rm-kpi-icon amber">
+              <i class="fa-solid fa-triangle-exclamation"></i>
+            </div>
+            <div class="rm-kpi-info">
+              <span class="rm-kpi-val" id="kpi-low">0</span>
+              <span class="rm-kpi-label">قارب على النفاد</span>
+            </div>
+          </div>
+          <div class="rm-kpi-card">
+            <div class="rm-kpi-icon red">
+              <i class="fa-solid fa-circle-xmark"></i>
+            </div>
+            <div class="rm-kpi-info">
+              <span class="rm-kpi-val" id="kpi-out">0</span>
+              <span class="rm-kpi-label">نفد من المخزن</span>
+            </div>
+          </div>
+          <div class="rm-kpi-card">
+            <div class="rm-kpi-icon purple">
+              <i class="fa-solid fa-coins"></i>
+            </div>
+            <div class="rm-kpi-info">
+              <span class="rm-kpi-val" id="kpi-val">0</span>
+              <span class="rm-kpi-label">إجمالي قيمة المخزون</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- MAIN LAYOUT: TABLE + DETAIL PANEL -->
+        <div class="rm-layout">
+          <!-- LEFT: MATERIALS TABLE -->
+          <div class="rm-table-card">
+            <!-- FILTERS -->
+            <div class="rm-filters">
+              <div class="rm-tabs" id="rm-tabs">
+                <button class="rm-tab active" data-status="all">
+                  الكل <span class="tab-count">0</span>
+                </button>
+                <button class="rm-tab" data-status="ok">
+                  كافية <span class="tab-count">0</span>
+                </button>
+                <button class="rm-tab" data-status="low">
+                  منخفض <span class="tab-count">0</span>
+                </button>
+                <button class="rm-tab" data-status="out">
+                  نفد <span class="tab-count">0</span>
+                </button>
+              </div>
+              <div class="filter-right">
+                <div class="filter-select-wrap">
+                  <i class="fa-solid fa-sort"></i>
+                  <select id="sort-select">
+                    <option value="name">ترتيب بالاسم</option>
+                    <option value="code">ترتيب بالكود</option>
+                    <option value="qty-asc">الكمية: الأقل أولاً</option>
+                    <option value="qty-desc">الكمية: الأعلى أولاً</option>
+                    <option value="status">بالحالة</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <!-- TABLE -->
+            <div style="overflow-x: auto">
+              <table class="rm-table">
+                <thead>
+                  <tr>
+                    <th>الكود</th>
+                    <th>المادة</th>
+                    <th>الوحدة</th>
+                    <th>المخزون</th>
+                    <th>الحالة</th>
+                    <th>المورد</th>
+                    <th>السعر / استخدام</th>
+                    <th>إجراءات</th>
+                  </tr>
+                </thead>
+                <tbody id="rm-tbody">
+                  <tr>
+                    <td colspan="8">
+                      <div class="empty-state">
+                        <i class="fa-solid fa-boxes-stacked"></i>
+                        <h4>جاري التحميل...</h4>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <!-- /TABLE CARD -->
+
+          <!-- RIGHT: DETAIL PANEL -->
+          <aside class="rm-detail-panel" id="detail-panel">
+            <div class="detail-empty">
+              <i class="fa-regular fa-hand-pointer"></i>
+              <p>اختر مادة من الجدول<br />لعرض تفاصيلها</p>
+            </div>
+          </aside>
+        </div>
+        <!-- /MAIN LAYOUT -->
+      </div>
+      <!-- /CONTENT -->
+    </main>
+    <!-- /MAIN -->
+
+    <!-- ===== MODAL: ADD / EDIT MATERIAL ===== -->
+    <div class="modal-overlay" id="mat-modal">
+      <div class="modal-box">
+        <div class="modal-head">
+          <h3 id="mat-modal-title">إضافة مادة خام</h3>
+          <button class="modal-close" id="mat-close">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          <!-- Basic Info -->
+          <div class="modal-section-title">البيانات الأساسية</div>
+          <div class="form-row two-col">
+            <div class="form-group">
+              <label>كود المادة <span style="color: var(--red)">*</span></label>
+              <input
+                type="text"
+                id="f-code"
+                class="form-input"
+                placeholder="مثال: CU-001"
+                style="font-family: monospace; text-transform: uppercase"
+              />
+            </div>
+            <div class="form-group">
+              <label
+                >وحدة القياس <span style="color: var(--red)">*</span></label
+              >
+              <select id="f-unit" class="form-input">
+                <option>كجم</option>
+                <option>جم</option>
+                <option>متر</option>
+                <option>قطعة</option>
+                <option>لتر</option>
+                <option>م²</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>اسم المادة <span style="color: var(--red)">*</span></label>
+            <input
+              type="text"
+              id="f-name"
+              class="form-input"
+              placeholder="مثال: نحاس خام"
+            />
+          </div>
+          <div class="form-row two-col">
+            <div class="form-group">
+              <label
+                >الكمية الحالية <span style="color: var(--red)">*</span></label
+              >
+              <input
+                type="number"
+                id="f-qty"
+                class="form-input"
+                placeholder="0"
+                min="0"
+              />
+            </div>
+            <div class="form-group">
+              <label>الحد الأدنى للتنبيه</label>
+              <input
+                type="number"
+                id="f-min"
+                class="form-input"
+                placeholder="0"
+                min="0"
+              />
+            </div>
+          </div>
+
+          <!-- Supplier Info -->
+          <div class="modal-section-title" style="margin-top: 6px">
+            بيانات المورد
+          </div>
+          <div class="form-group">
+            <label>المورد</label>
+            <select id="f-supplier" class="form-input">
+              <option value="">— بدون مورد محدد —</option>
+            </select>
+          </div>
+          <div class="form-row two-col">
+            <div class="form-group">
+              <label>سعر الوحدة (ج.م)</label>
+              <input
+                type="number"
+                id="f-cost"
+                class="form-input"
+                placeholder="0.00"
+                min="0"
+                step="0.01"
+              />
+            </div>
+            <div class="form-group">
+              <label>وقت التوريد (يوم)</label>
+              <input
+                type="number"
+                id="f-lead"
+                class="form-input"
+                placeholder="7"
+                min="1"
+              />
+            </div>
+          </div>
+        </div>
+        <div class="modal-foot">
+          <button class="btn-primary" id="mat-save">
+            <i class="fa-solid fa-check"></i> حفظ
+          </button>
+          <button class="btn-ghost" id="mat-cancel">إلغاء</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== MODAL: MOVEMENT (استلام / صرف) ===== -->
+    <div class="modal-overlay" id="move-modal">
+      <div class="modal-box wide">
+        <div class="modal-head">
+          <h3>تسجيل حركة مخزون</h3>
+          <button class="modal-close" id="move-close">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          <!-- Move type toggle -->
+          <div class="move-type-toggle">
+            <button class="move-type-btn in active" data-type="in">
+              <i class="fa-solid fa-arrow-down"></i> استلام وارد
+            </button>
+            <button class="move-type-btn out" data-type="out">
+              <i class="fa-solid fa-arrow-up"></i> صرف منصرف
+            </button>
+          </div>
+
+          <!-- Item badge -->
+          <div class="move-item-badge">
+            <div class="badge-name" id="move-item-name">—</div>
+            <div class="badge-qty" id="move-current-qty">المخزون الحالي: —</div>
+          </div>
+
+          <!-- Fields -->
+          <div class="form-row two-col">
+            <div class="form-group">
+              <label>الكمية <span style="color: var(--red)">*</span></label>
+              <input
+                type="number"
+                id="move-qty"
+                class="form-input"
+                placeholder="0"
+                min="0.01"
+                step="0.01"
+              />
+            </div>
+            <div class="form-group">
+              <label>التاريخ <span style="color: var(--red)">*</span></label>
+              <input type="date" id="move-date" class="form-input" />
+            </div>
+          </div>
+          <div class="form-group">
+            <label>السبب / الملاحظة</label>
+            <input
+              type="text"
+              id="move-reason"
+              class="form-input"
+              placeholder="مثال: توريد شهري — أمر إنتاج PO-2026-001..."
+            />
+          </div>
+        </div>
+        <div class="modal-foot">
+          <button class="btn-primary" id="move-save-btn">
+            <i class="fa-solid fa-arrow-down"></i> تسجيل الاستلام
+          </button>
+          <button class="btn-ghost" id="move-cancel">إلغاء</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== CONFIRM DELETE ===== -->
+    <div class="confirm-overlay" id="confirm-overlay">
+      <div class="confirm-dialog">
+        <div class="confirm-icon">
+          <i class="fa-solid fa-triangle-exclamation"></i>
+        </div>
+        <h3>تأكيد الحذف</h3>
+        <p>
+          هل أنت متأكد من حذف المادة<br /><strong id="confirm-name">—</strong>؟
+        </p>
+        <p class="confirm-warn">
+          لو للمادة دي حركات مخزون مسجّلة من قبل، الحذف هيترفض تلقائيًا للحفاظ
+          على سجل الحركات — استخدم "تعديل" بدل الحذف في الحالة دي
+        </p>
+        <div class="confirm-actions">
+          <button class="btn-ghost" id="confirm-no">إلغاء</button>
+          <button class="btn-danger" id="confirm-yes">
+            <i class="fa-solid fa-trash"></i> حذف نهائياً
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== TOAST ===== -->
+    <div class="toast" id="toast">
+      <i class="fa-solid fa-circle-check"></i>
+      <span id="toast-msg">تمت العملية بنجاح</span>
+    </div>
+
+    <script src="JS/auth.js"></script>
+    <script src="JS/page-guard.js"></script>
+    <script src="JS/api-client.js"></script>
+    <script src="JS/nav-loader.js"></script>
+    <script src="JS/material.js"></script>
+    <script src="JS/responsive.js"></script>
+    <script src="JS/enhancements.js"></script>
+    <script src="JS/password-toggle.js"></script>
+  </body>
+</html>

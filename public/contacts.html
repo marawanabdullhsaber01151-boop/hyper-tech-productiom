@@ -1,0 +1,341 @@
+<!-- @format -->
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>هايبر تك — الموردون والعملاء</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="CSS/theme.css" />
+    <script src="JS/theme-switcher.js"></script>
+    <link rel="stylesheet" href="CSS/style.css" />
+    <link rel="stylesheet" href="CSS/contacts.css" />
+    <link rel="stylesheet" href="CSS/responsive.css" />
+    <link rel="stylesheet" href="CSS/enhancements.css" />
+  </head>
+  <body data-allowed-roles="executive_manager,sales_manager,online_seller,offline_seller,hr,hr_manager,chairman">
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+      <div class="sidebar-logo">
+        <div class="logo-icon">⚡</div>
+        <div class="logo-text">
+          <h1>هايبر تك</h1>
+          <span>نظام إدارة الموارد</span>
+        </div>
+      </div>
+
+      <div class="sidebar-section">
+        <p class="sidebar-section-title">الرئيسية</p>
+        <a href="index.html" class="nav-item">
+          <i class="fa-solid fa-gauge-high"></i>
+          لوحة التحكم
+        </a>
+      </div>
+
+      <!-- ✅ يتملى ديناميكيًا بالأقسام/الصفحات المسموح بيها للمستخدم الحالي بس -->
+      <div id="dynamic-sidebar"></div>
+    </aside>
+
+    <!-- MAIN -->
+    <main class="main">
+      <header class="topbar">
+        <div class="topbar-title">
+          <h2>الموردون والعملاء</h2>
+          <p>إدارة جهات الاتصال والشركاء التجاريين</p>
+        </div>
+        <div class="topbar-actions">
+          <div class="live-badge">
+            <div class="pulse"></div>
+            مباشر
+          </div>
+          <div class="search-box">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input
+              type="text"
+              id="search-input"
+              placeholder="ابحث بالاسم، الهاتف، المدينة..."
+            />
+          </div>
+          <div class="icon-btn">
+            <i class="fa-regular fa-bell"></i>
+            <div class="notif-dot"></div>
+          </div>
+          <button class="btn-primary" id="btn-new-contact">
+            <i class="fa-solid fa-plus"></i> جهة اتصال جديدة
+          </button>
+        </div>
+      </header>
+
+      <div class="content">
+        <!-- KPIs -->
+        <div class="con-kpi-row">
+          <div class="con-kpi-card">
+            <div class="con-kpi-icon blue">
+              <i class="fa-solid fa-address-book"></i>
+            </div>
+            <div>
+              <div class="con-kpi-val" id="kpi-total">0</div>
+              <div class="con-kpi-label">إجمالي جهات الاتصال</div>
+            </div>
+          </div>
+          <div class="con-kpi-card">
+            <div class="con-kpi-icon amber">
+              <i class="fa-solid fa-truck"></i>
+            </div>
+            <div>
+              <div class="con-kpi-val" id="kpi-suppliers">0</div>
+              <div class="con-kpi-label">موردون</div>
+            </div>
+          </div>
+          <div class="con-kpi-card">
+            <div class="con-kpi-icon green">
+              <i class="fa-solid fa-handshake"></i>
+            </div>
+            <div>
+              <div class="con-kpi-val" id="kpi-customers">0</div>
+              <div class="con-kpi-label">عملاء</div>
+            </div>
+          </div>
+          <div class="con-kpi-card">
+            <div class="con-kpi-icon purple">
+              <i class="fa-solid fa-scale-balanced"></i>
+            </div>
+            <div>
+              <div class="con-kpi-val" id="kpi-balance">0 ج.م</div>
+              <div class="con-kpi-label">إجمالي المديونيات</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Type tabs + toolbar -->
+        <div class="con-toolbar">
+          <div class="type-tabs">
+            <button class="type-tab active" data-type="all">
+              <i class="fa-solid fa-people-group"></i> الكل
+            </button>
+            <button class="type-tab" data-type="supplier">
+              <i class="fa-solid fa-truck"></i> الموردون
+            </button>
+            <button class="type-tab blue" data-type="customer">
+              <i class="fa-solid fa-handshake"></i> العملاء
+            </button>
+          </div>
+          <select class="sel-filter" id="sort-select">
+            <option value="name">ترتيب بالاسم</option>
+            <option value="balance">ترتيب بالرصيد</option>
+            <option value="recent">الأحدث</option>
+          </select>
+        </div>
+
+        <!-- Cards Grid -->
+        <div class="con-grid" id="con-grid">
+          <!-- filled by JS -->
+        </div>
+
+        <div
+          id="empty-state"
+          style="display: none"
+          class="empty-state"
+          style="padding: 60px; text-align: center"
+        >
+          <i class="fa-solid fa-people-group"></i>
+          <h4>لا توجد جهات اتصال</h4>
+          <p>أضف موردين وعملاء لتبدأ</p>
+        </div>
+      </div>
+
+      <div class="status-bar">
+        <div class="status-item">
+          <div class="status-dot green"></div>
+          قاعدة البيانات: متصلة
+        </div>
+        <div class="status-item">
+          <div class="status-dot green"></div>
+          سجل جهات الاتصال: نشط
+        </div>
+        <div style="margin-right: auto; color: var(--text-dim)">
+          آخر تحديث: <span id="last-update"></span>
+        </div>
+      </div>
+    </main>
+
+    <!-- MODAL: New/Edit Contact -->
+    <div class="modal-overlay" id="modal-overlay">
+      <div class="modal">
+        <div class="modal-header">
+          <h3 id="modal-title">جهة اتصال جديدة</h3>
+          <button class="modal-close" id="modal-close">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="form-row">
+            <div class="form-group">
+              <label>النوع *</label>
+              <select id="f-type">
+                <option value="supplier">مورد</option>
+                <option value="customer">عميل</option>
+                <option value="both">مورد وعميل</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>الاسم التجاري *</label>
+              <input
+                type="text"
+                id="f-name"
+                placeholder="اسم الشركة أو الفرد"
+              />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>الشركة / الجهة التابعة لها</label>
+              <input type="text" id="f-company" placeholder="اختياري" />
+            </div>
+            <div class="form-group">
+              <label>رقم الهاتف</label>
+              <input type="tel" id="f-phone" placeholder="01xxxxxxxxx" />
+            </div>
+          </div>
+          <div id="duplicate-warning" class="no-match" style="display: none; margin-bottom: 16px"></div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>البريد الإلكتروني</label>
+              <input
+                type="email"
+                id="f-email"
+                placeholder="example@company.com"
+              />
+            </div>
+            <div class="form-group">
+              <label>الرصيد الافتتاحي (ج.م)</label>
+              <input
+                type="number"
+                id="f-opening-balance"
+                placeholder="0.00"
+                step="0.01"
+              />
+              <small>إذا أدخلت قيمة، اكتب ملاحظة ستظهر للعميل في كشف الحساب.</small>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="f-city">المحافظة</label>
+              <select id="f-city">
+                <option value="">اختر المحافظة...</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="f-segment">تصنيف العميل</label>
+              <select id="f-segment">
+                <option value="">بدون تصنيف</option>
+              </select>
+              <small>تصنيف إداري فقط؛ لا يغيّر الأسعار أو الحد الائتماني تلقائيًا.</small>
+            </div>
+          </div>
+          <div class="form-row full" id="opening-balance-note-row">
+            <div class="form-group">
+              <label for="f-opening-balance-note">ملاحظة الرصيد الافتتاحي</label>
+              <textarea
+                id="f-opening-balance-note"
+                placeholder="مثال: رصيد افتتاحي متفق عليه عند بدء التعامل"
+              ></textarea>
+              <small>هذه الملاحظة ستظهر للعميل حرفيًا، فاكتب سببًا واضحًا ومهنيًا.</small>
+            </div>
+          </div>
+          <div class="form-row full">
+            <div class="form-group">
+              <label>العنوان</label>
+              <textarea
+                id="f-address"
+                placeholder="العنوان التفصيلي..."
+              ></textarea>
+            </div>
+          </div>
+          <div class="form-row full">
+            <div class="form-group">
+              <label>ملاحظات</label>
+              <textarea
+                id="f-notes"
+                placeholder="أي ملاحظات إضافية..."
+              ></textarea>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-ghost" id="modal-cancel">إلغاء</button>
+          <button class="btn-primary" id="modal-save">
+            <i class="fa-solid fa-floppy-disk"></i> حفظ
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MANUAL BALANCE ADJUSTMENT -->
+    <div class="modal-overlay" id="balance-modal-overlay">
+      <div class="modal">
+        <div class="modal-header">
+          <h3>تسوية رصيد العميل</h3>
+          <button class="modal-close" id="balance-modal-close">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          <p id="balance-contact-name" style="color: var(--text-muted); margin-bottom: 16px"></p>
+          <div class="form-group">
+            <label for="adjustment-amount">قيمة التسوية (ج.م) *</label>
+            <input type="number" id="adjustment-amount" step="0.01" placeholder="موجب للزيادة، سالب للتخفيض" />
+          </div>
+          <div class="form-group" style="margin-top: 16px">
+            <label for="adjustment-note">السبب الظاهر للعميل *</label>
+            <textarea id="adjustment-note" required placeholder="اكتب سببًا واضحًا ومهنيًا، مثل: تسوية فرق تحصيل بتاريخ ..."></textarea>
+            <small>لا تستخدم عبارات داخلية مثل «تعديل يدوي من الأدمن»؛ النص يظهر في كشف حساب العميل.</small>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-ghost" id="balance-modal-cancel">إلغاء</button>
+          <button class="btn-primary" id="balance-modal-save">تسجيل التسوية</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- CONFIRM DELETE -->
+    <div class="confirm-overlay" id="confirm-overlay">
+      <div class="confirm-box">
+        <div class="confirm-icon"><i class="fa-solid fa-trash"></i></div>
+        <h3>حذف جهة الاتصال</h3>
+        <p id="confirm-msg">هل أنت متأكد من الحذف؟</p>
+        <div class="confirm-btns">
+          <button class="btn-ghost" id="confirm-no">إلغاء</button>
+          <button class="btn-danger" id="confirm-yes">
+            <i class="fa-solid fa-trash"></i> حذف
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- TOAST -->
+    <div class="toast" id="toast">
+      <i class="fa-solid fa-circle-check"></i
+      ><span id="toast-msg">تم الحفظ</span>
+    </div>
+
+    <script src="JS/auth.js"></script>
+    <script src="JS/page-guard.js"></script>
+    <script src="JS/api-client.js"></script>
+    <script src="JS/nav-loader.js"></script>
+    <script src="JS/egypt-governorates.js"></script>
+    <script src="JS/contact-segments.js"></script>
+    <script src="JS/contacts.js"></script>
+    <script src="JS/responsive.js"></script>
+    <script src="JS/enhancements.js"></script>
+    <script src="JS/password-toggle.js"></script>
+  </body>
+</html>
