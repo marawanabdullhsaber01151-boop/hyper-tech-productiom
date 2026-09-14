@@ -12,7 +12,9 @@ describe("canonical production domain", () => {
   });
 
   it("allows the approved workflow path", () => {
-    expect(canTransitionProduction("new", "pending_supervisor")).toBe(true);
+    expect(canTransitionProduction("awaiting_operations_claim", "claimed")).toBe(true);
+    expect(canTransitionProduction("claimed", "materials_requested")).toBe(true);
+    expect(canTransitionProduction("new", "pending_supervisor")).toBe(false);
     expect(canTransitionProduction("materials_approved", "in_production")).toBe(
       true,
     );

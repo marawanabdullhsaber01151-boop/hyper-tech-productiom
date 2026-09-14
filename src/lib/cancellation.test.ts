@@ -5,6 +5,8 @@ describe("pre-production cancellation guard", () => {
   it("allows cancellation while a line has not yet entered production", () => {
     for (const status of [
       "new",
+      "awaiting_operations_claim",
+      "claimed",
       "pending_supervisor",
       "materials_requested",
       "materials_rejected",

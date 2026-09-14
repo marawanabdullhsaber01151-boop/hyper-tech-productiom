@@ -18,10 +18,11 @@ import {
   operationsCaseLinesTable,
   operationsCaseRevisionsTable,
   operationsCasesTable,
+  productionWorkflowOrdersTable,
   salesOrdersTable,
   systemUsersTable,
 } from "../db/schema";
-import { requireAuth, requirePermission } from "../middleware/auth";
+import { requireAuth, requirePermission, requireRole } from "../middleware/auth";
 import { parseIdParam } from "../lib/validate";
 import { OPERATIONS_MANAGER_PERMISSIONS } from "../lib/permissions";
 import { OPERATIONS_CONTROL_ROLES } from "../lib/operations-control-policy";
@@ -35,8 +36,105 @@ import {
   receiveSalesOrderIntoOperations,
 } from "../lib/operations-intake";
 import { writeAuditEvent } from "../lib/governance";
+import { claimOperationsLine } from "../lib/operations-claim";
+import { notifyRole, notifyRoles } from "../lib/notifications";
 
 const router = Router();
+
+router.get(
+  "/operations-manager/production-orders",
+  requireAuth,
+  requireRole("operations_manager", "executive_manager", "chairman"),
+  async (req, res, next) => {
+    try {
+      const requestedStatus =
+        typeof req.query.status === "string" ? req.query.status : null;
+      const allowedStatuses = ["awaiting_operations_claim", "claimed"] as const;
+      const status =
+        requestedStatus && allowedStatuses.includes(requestedStatus as (typeof allowedStatuses)[number])
+          ? requestedStatus
+          : null;
+
+      const rows = await db
+        .select()
+        .from(productionWorkflowOrdersTable)
+        .where(
+          status
+            ? eq(productionWorkflowOrdersTable.workflowStatus, status)
+            : inArray(
+                productionWorkflowOrdersTable.workflowStatus,
+                [...allowedStatuses],
+              ),
+        )
+        .orderBy(desc(productionWorkflowOrdersTable.createdAt));
+
+      res.json({
+        data: rows,
+        awaitingClaimCount: rows.filter(
+          (row) => row.workflowStatus === "awaiting_operations_claim",
+        ).length,
+      });
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+/**
+ * Operations Manager pull/claim path. It uses the same atomic helper as the
+ * portal-sales push path, so both triggers contend on one database predicate.
+ */
+router.post(
+  "/operations-manager/production-orders/:id/claim",
+  requireAuth,
+  requireRole("operations_manager", "executive_manager", "chairman"),
+  async (req, res, next) => {
+    try {
+      const id = parseIdParam(req.params.id, res);
+      if (id === null) return;
+
+      const claimed = await db.transaction((tx) =>
+        claimOperationsLine(tx, {
+          orderId: id,
+          actorUserId: req.user!.userId,
+          actorName: req.user!.username,
+          actionKey: "production_workflow.claimed_by_operations_manager",
+          reason: "استلام مدير التشغيل لسطر الإنتاج",
+          ipAddress: req.ip,
+          userAgent: req.get("user-agent"),
+        }),
+      );
+
+      await notifyRoles(
+        ["executive_manager", "sales_manager", "online_seller", "offline_seller", "hr", "hr_manager"],
+        {
+          type: "operations_line_claimed",
+          title: "تم استلام سطر إنتاج بواسطة مدير التشغيل",
+          body: `تم استلام السطر ${claimed.orderNumber} بواسطة ${req.user!.username}.`,
+          referenceType: "production_workflow",
+          referenceId: claimed.id,
+        },
+      );
+      await notifyRole("production_manager", {
+        type: "workflow_new_order",
+        title: "سطر إنتاج جاهز للاستلام",
+        body: `تم استلام السطر ${claimed.orderNumber} بواسطة مدير التشغيل، ويمكن لمدير الإنتاج بدء التوزيع.`,
+        referenceType: "production_workflow",
+        referenceId: claimed.id,
+      });
+      res.json({ message: "تم استلام سطر الإنتاج بنجاح", data: claimed });
+    } catch (err) {
+      if (err instanceof Error && "status" in err) {
+        const typed = err as Error & { status?: number; code?: string };
+        res.status(Number(typed.status) || 422).json({
+          error: { code: typed.code, message: typed.message },
+        });
+        return;
+      }
+      next(err);
+    }
+  },
+);
 
 const clarificationSchema = z.object({
   reason: z.string().trim().min(3).max(1000),

@@ -5,8 +5,8 @@
  * نقطة دخول عميل الجملة للنظام: يتصفح المنتجات من غير تسجيل دخول، يقدّم
  * طلب انضمام تتم مراجعته، ويبعت طلب (ممكن أكتر من منتج مع بعض في نفس الإرسالة) —
  * كل منتج في الطلب بيتحول لأمر إنتاج حقيقي (production_workflow_orders)
- * بالحالة الأولى "new" بالظبط زي ما لو الاتش آر هو اللي دخّله يدوي —
- * يعني دورة الإنتاج بعد كده تمشي زي ما هي 100% من غير أي تغيير.
+ * بالحالة الأولى "awaiting_operations_claim" عشان كل سطر يعدّي من بوابة
+ * مدير التشغيل الذرية قبل ما يبدأ مسار الإنتاج.
  */
 import { Router, Request, Response, NextFunction } from "express";
 import { and, eq, desc, sql, inArray, gt, isNull, ne, count } from "drizzle-orm";
@@ -2178,7 +2178,7 @@ router.post(
             .insert(productionWorkflowOrdersTable)
             .values({
               orderNumber,
-              workflowStatus: "new",
+               workflowStatus: "awaiting_operations_claim",
               productName: recipe.productName,
               qty: item.qty,
               unit: item.unit,
@@ -2221,6 +2221,13 @@ router.post(
         type: "portal_order_received",
         title: `طلب جديد من بوابة العملاء — ${customer.fullName}`,
         body: `${customer.fullName}${customer.companyName ? " (" + customer.companyName + ")" : ""} بعت طلب فيه ${totalItems} ${totalItems === 1 ? "منتج" : "منتجات"}.`,
+        referenceType: "production_workflow",
+        referenceId: createdOrders[0].id,
+      });
+      await notifyRole("operations_manager", {
+        type: "operations_line_awaiting_claim",
+        title: `طلب بوابة ينتظر استلام مدير التشغيل — ${batchRef}`,
+        body: `وصلت ${totalItems} سطور إنتاج من طلب البوابة ${batchRef}، وهي تنتظر بوابة مدير التشغيل.`,
         referenceType: "production_workflow",
         referenceId: createdOrders[0].id,
       });

@@ -6,6 +6,8 @@
 
 export const PRODUCTION_STATUSES = [
   "new",
+  "awaiting_operations_claim",
+  "claimed",
   "pending_supervisor",
   "materials_requested",
   "materials_approved",
@@ -25,6 +27,8 @@ export type ProductionStatus = (typeof PRODUCTION_STATUSES)[number];
 
 export const PRODUCTION_STATUS_LABELS: Record<ProductionStatus, string> = {
   new: "جديد",
+  awaiting_operations_claim: "في انتظار استلام مدير التشغيل",
+  claimed: "تم استلامه من مدير التشغيل",
   pending_supervisor: "في انتظار مشرف الإنتاج",
   materials_requested: "تم طلب المواد الخام",
   materials_approved: "المواد موافق عليها",
@@ -43,7 +47,9 @@ export const PRODUCTION_STATUS_LABELS: Record<ProductionStatus, string> = {
 export const PRODUCTION_TRANSITIONS: Readonly<
   Record<ProductionStatus, readonly ProductionStatus[]>
 > = {
-  new: ["pending_supervisor", "materials_requested", "cancelled"],
+  new: ["awaiting_operations_claim", "cancelled"],
+  awaiting_operations_claim: ["claimed", "cancelled"],
+  claimed: ["materials_requested", "cancelled"],
   pending_supervisor: ["materials_requested", "cancelled"],
   materials_requested: [
     "materials_approved",

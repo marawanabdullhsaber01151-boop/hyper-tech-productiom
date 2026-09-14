@@ -10,13 +10,16 @@
  * المرحلة دي، والاتنين موجودين بجانب بعض عمدًا لغرضين مختلفين.
  *
  * الحد المسموح به هنا: العميل أو مبيعات البوابة يقدروا يلغوا السطر بس لسه
- * في مرحلة "قبل الإنتاج" — يعني قبل أي خصم فعلي من المخزون. بمجرد ما مدير
+ * في مرحلة "قبل الإنتاج" — بما فيها بوابة مدير التشغيل قبل أي خصم فعلي من
+ * المخزون. بمجرد ما مدير
  * المخازن يوافق (materials_approved/materials_partial) أو الطلب يدخل
  * in_production أو أي مرحلة بعدها، الإلغاء مرفوض تمامًا، من غير استثناء —
  * راجع test في src/lib/cancellation.test.ts اللي بيثبت الحماية دي.
  */
 export const CANCELLABLE_WORKFLOW_STATUSES = new Set([
   "new",
+  "awaiting_operations_claim",
+  "claimed",
   "pending_supervisor",
   "materials_requested",
   "materials_rejected",

@@ -3,8 +3,8 @@
  * Production Workflow — نظام دورة الإنتاج المتكاملة
  *
  * مراحل الدورة:
- *  1. new              — تم إنشاء أمر الإنتاج (محاسب / مدير)
- *  2. pending_supervisor — في انتظار قبول مشرف الإنتاج
+ *  1. awaiting_operations_claim — في انتظار بوابة مدير التشغيل
+ *  2. claimed          — تم استلام السطر بواسطة مدير التشغيل/المبيعات
  *  3. materials_requested — المشرف طلب المواد الخام من مدير المخازن
  *  4. materials_approved  — مدير المخازن وافق (كامل) → تم الخصم من المخزون
  *  5. materials_partial   — مدير المخازن وافق جزئياً
@@ -42,7 +42,14 @@ export const productionWorkflowOrdersTable = pgTable(
 
     // ─── معلومات أمر الإنتاج الأساسية ───────────────────────────────────────
     orderNumber: text("order_number").notNull().unique(),
-    workflowStatus: text("workflow_status").notNull().default("new"),
+    workflowStatus: text("workflow_status")
+      .notNull()
+      .default("awaiting_operations_claim"),
+    // Phase 4: explicit Operations Manager gate. These are intentionally
+    // stored on each line so ownership is queryable, not inferred.
+    claimedById: integer("claimed_by_id"),
+    claimedByName: text("claimed_by_name"),
+    claimedAt: timestamp("claimed_at", { withTimezone: true }),
 
     // ─── مصدر الطلب (طلب العميل) ─────────────────────────────────────────────
     salesOrderId: integer("sales_order_id").references(

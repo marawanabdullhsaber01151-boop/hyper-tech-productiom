@@ -22,6 +22,25 @@
 
   <div id="status" class="status" role="status" aria-live="polite"></div>
 
+  <section class="panel" aria-labelledby="productionClaimTitle">
+    <div class="panel-heading">
+      <div>
+        <h2 id="productionClaimTitle">بوابة استلام سطور الإنتاج</h2>
+        <p class="muted">كل سطر ينتظر استلام مدير التشغيل. إذا دفعته المبيعات أو استلمته أنت أولًا، سيظهر الطرف الآخر برسالة تعارض واضحة.</p>
+      </div>
+      <button id="refreshProductionLines" class="button" type="button">تحديث السطور</button>
+    </div>
+    <div id="productionLinesLoading" class="state loading" hidden>جارٍ تحميل سطور الإنتاج...</div>
+    <div id="productionLinesEmpty" class="state empty" hidden>لا توجد سطور في انتظار الاستلام أو مستلمة حاليًا.</div>
+    <div id="productionLinesError" class="state error" hidden>تعذر تحميل سطور الإنتاج.</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>رقم السطر</th><th>المنتج</th><th>العميل</th><th>الكمية</th><th>الحالة</th><th>المسؤول</th><th>الإجراء</th></tr></thead>
+        <tbody id="productionClaimRows"></tbody>
+      </table>
+    </div>
+  </section>
+
   <section class="panel intake-panel" aria-labelledby="intakeTitle">
     <div class="panel-heading">
       <div>

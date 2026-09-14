@@ -490,7 +490,7 @@ router.patch(
           .insert(productionWorkflowOrdersTable)
           .values({
             orderNumber: await generateWorkflowOrderNumber(tx),
-            workflowStatus: "new",
+            workflowStatus: "awaiting_operations_claim",
             productName: locked.productName,
             qty: newFinalQty ?? locked.requestedQty,
             unit: locked.unit,
@@ -545,10 +545,10 @@ router.patch(
         referenceId: id,
       });
       if (result.workflowOrder) {
-        await notifyRole("production_manager", {
-          type: "workflow_new_order",
-          title: `أمر إنتاج جديد من طلب ${existing.requestNumber}`,
-          body: `تم تحويل طلب "${existing.productName}" إلى أمر الإنتاج ${result.workflowOrder.orderNumber}، وهو جاهز للاستلام.`,
+        await notifyRole("operations_manager", {
+          type: "operations_line_awaiting_claim",
+          title: `سطر إنتاج جديد ينتظر استلام مدير التشغيل — ${existing.requestNumber}`,
+          body: `تم تحويل طلب "${existing.productName}" إلى أمر الإنتاج ${result.workflowOrder.orderNumber}، وهو ينتظر استلام مدير التشغيل.`,
           referenceType: "production_workflow",
           referenceId: result.workflowOrder.id,
         });

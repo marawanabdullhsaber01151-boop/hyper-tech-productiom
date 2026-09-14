@@ -33,8 +33,15 @@ import {
   multiplyDecimalQuantities,
   subtractDecimalQuantities,
 } from "../lib/decimal-quantity";
+import { maskProductionWorkflowPayload } from "../lib/fieldMasking";
 
 const router = Router();
+router.use((req, res, next) => {
+  const originalJson = res.json.bind(res);
+  res.json = ((body: unknown) =>
+    originalJson(maskProductionWorkflowPayload(body, req.user?.role ?? ""))) as typeof res.json;
+  next();
+});
 const OPERATIONS_ROLES = [...OPERATIONS_CONTROL_ROLES.planCreate] as const;
 const INTERNAL_ROLES = [
   "operations_manager",

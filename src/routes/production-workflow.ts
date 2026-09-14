@@ -39,6 +39,7 @@ import { computeRequiredMaterialsForOrder } from "../lib/materials";
 import { PERMISSIONS } from "../lib/permissions";
 import { assertProductionTransition } from "../domain/production-status";
 import { writeAuditEvent } from "../lib/governance";
+import { maskProductionWorkflowPayload } from "../lib/fieldMasking";
 import {
   notificationsTable,
   qualityRecordsTable,
@@ -47,6 +48,15 @@ import {
 } from "../db/schema";
 
 const router = Router();
+
+// Apply the PII boundary at serialization time for every endpoint in this
+// router, including dashboard/detail responses and mutation responses.
+router.use((req, res, next) => {
+  const originalJson = res.json.bind(res);
+  res.json = ((body: unknown) =>
+    originalJson(maskProductionWorkflowPayload(body, req.user?.role ?? ""))) as typeof res.json;
+  next();
+});
 
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -98,6 +108,8 @@ async function auditWorkflowTransition(
 function workflowStatusLabel(status: string): string {
   const labels: Record<string, string> = {
     new: "جديد",
+    awaiting_operations_claim: "في انتظار استلام مدير التشغيل",
+    claimed: "تم استلامه من مدير التشغيل",
     pending_supervisor: "في انتظار مشرف الإنتاج",
     materials_requested: "تم طلب المواد الخام",
     materials_approved: "المواد موافق عليها",
@@ -170,6 +182,7 @@ const CUSTOMER_INFO_ALLOWED_ROLES = new Set([
   "hr",
   "hr_manager",
   "executive_manager",
+  "operations_manager",
   "sales_manager",
   "online_seller",
   "offline_seller",
@@ -209,6 +222,10 @@ router.get(
       const stats = {
         total: orders.length,
         new: orders.filter((o) => o.workflowStatus === "new").length,
+        awaiting_operations_claim: orders.filter(
+          (o) => o.workflowStatus === "awaiting_operations_claim",
+        ).length,
+        claimed: orders.filter((o) => o.workflowStatus === "claimed").length,
         pending_supervisor: orders.filter(
           (o) => o.workflowStatus === "pending_supervisor",
         ).length,
@@ -280,6 +297,7 @@ router.get(
     "hr",
     "hr_manager",
     "production_manager",
+    "production_controller",
     "warehouse_manager",
     "supervisor",
     "production_quality_controller",
@@ -316,6 +334,8 @@ router.get(
           byStatus: Object.fromEntries(
             [
               "new",
+              "awaiting_operations_claim",
+              "claimed",
               "pending_supervisor",
               "materials_requested",
               "materials_approved",
@@ -528,7 +548,7 @@ router.post(
           .insert(productionWorkflowOrdersTable)
           .values({
             orderNumber,
-            workflowStatus: "new",
+            workflowStatus: "awaiting_operations_claim",
             productName: recipe.productName,
             qty: data.qty,
             unit: data.unit,
@@ -565,11 +585,12 @@ router.post(
 
       const pLabel = priorityLabel(data.priority);
 
-      // ✅ نقطة الاستلام الأولى في الدورة: مدير الإنتاج (وليس المشرف مباشرة)
-      await notifyRole("production_manager", {
-        type: "workflow_new_order",
-        title: `أمر إنتاج جديد — ${pLabel}`,
-        body: `أمر إنتاج جديد "${recipe.productName}" (${data.qty} ${data.unit}) — رقم ${order.orderNumber}. في انتظار الاستلام.`,
+       // Phase 4: the first handoff is the Operations Manager gate. The
+       // production manager is notified only after the claim and receive step.
+       await notifyRole("operations_manager", {
+         type: "operations_line_awaiting_claim",
+         title: `أمر إنتاج جديد ينتظر استلام مدير التشغيل — ${pLabel}`,
+         body: `أمر إنتاج جديد "${recipe.productName}" (${data.qty} ${data.unit}) — رقم ${order.orderNumber}. في انتظار استلام مدير التشغيل.`,
         referenceType: "production_workflow",
         referenceId: order.id,
       });
@@ -693,7 +714,7 @@ router.patch(
         res.status(404).json({ error: { message: "الأمر غير موجود" } });
         return;
       }
-      if (existing.workflowStatus !== "new") {
+       if (existing.workflowStatus !== "claimed") {
         res.status(409).json({
           error: {
             message: `لا يمكن استلام الأمر — حالته: "${workflowStatusLabel(existing.workflowStatus)}"`,
@@ -745,7 +766,7 @@ router.patch(
         const locked = await lockWorkflowOrder(tx, id);
         if (!locked)
           throw Object.assign(new Error("الأمر غير موجود"), { status: 404 });
-        if (locked.workflowStatus !== "new") {
+         if (locked.workflowStatus !== "claimed") {
           throw Object.assign(
             new Error(
               `لا يمكن استلام الأمر — الأمر في حالة: "${workflowStatusLabel(locked.workflowStatus)}"`,
@@ -754,8 +775,8 @@ router.patch(
           );
         }
         assertProductionTransition(
-          locked.workflowStatus,
-          "materials_requested",
+           locked.workflowStatus,
+           "materials_requested",
         );
         const [up] = await tx
           .update(productionWorkflowOrdersTable)
@@ -783,7 +804,7 @@ router.patch(
           .where(
             and(
               eq(productionWorkflowOrdersTable.id, id),
-              eq(productionWorkflowOrdersTable.workflowStatus, "new"),
+               eq(productionWorkflowOrdersTable.workflowStatus, "claimed"),
             ),
           )
           .returning();

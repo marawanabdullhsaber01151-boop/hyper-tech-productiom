@@ -30,6 +30,7 @@ import { sendCustomerAlert } from "../lib/otpDelivery";
 import { logger } from "../lib/logger";
 import { assertCancellable } from "../lib/cancellation";
 import { writeAuditEvent } from "../lib/governance";
+import { claimOperationsLine } from "../lib/operations-claim";
 import { z } from "zod";
 
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
@@ -180,6 +181,7 @@ router.post(
         const priceMap = new Map(
           data.items.map((i) => [i.workflowOrderId, i.unitPrice]),
         );
+        const portalSalesClaimedOrderIds: number[] = [];
         for (const order of orders) {
           if (!priceMap.has(order.id)) {
             throw Object.assign(
@@ -274,6 +276,22 @@ router.post(
             .set(updateValues)
             .where(eq(productionWorkflowOrdersTable.id, order.id));
 
+          // Confirmation is the portal-sales "push forward" trigger. If the
+          // Operations Manager already pulled the line, keep that ownership;
+          // otherwise claim it atomically here.
+          if (order.workflowStatus === "awaiting_operations_claim") {
+            await claimOperationsLine(tx, {
+              orderId: order.id,
+              actorUserId: req.user!.userId,
+              actorName: req.user!.username,
+              actionKey: "production_workflow.claimed_by_portal_sales",
+              reason: "تأكيد طلب بوابة العملاء من المبيعات",
+              ipAddress: req.ip,
+              userAgent: req.get("user-agent"),
+            });
+            portalSalesClaimedOrderIds.push(order.id);
+          }
+
           if (overrideInput?.dueDateOverride || overrideInput?.deliveryMethodOverride) {
             await writeAuditEvent({
               executor: tx,
@@ -312,15 +330,31 @@ router.post(
           })
           .returning();
 
-        return { salesOrder, review, orders };
+        return { salesOrder, review, orders, portalSalesClaimedOrderIds };
       });
 
-      const { orders, ...reviewResult } = result;
+      const { orders, portalSalesClaimedOrderIds, ...reviewResult } = result;
       const customerName = orders[0].customerName || "عميل البوابة";
+      if (portalSalesClaimedOrderIds.length > 0) {
+        await notifyRole("operations_manager", {
+          type: "operations_line_awaiting_claim",
+          title: "طلب بوابة تم دفعه إلى التشغيل",
+          body: `تم تأكيد الإرسالية "${batchRef}" من المبيعات. سطورها تم استلامها ذريًا بواسطة المبيعات وجاهزة للمتابعة.`,
+          referenceType: "production_workflow",
+          referenceId: portalSalesClaimedOrderIds[0],
+        });
+        await notifyRole("production_manager", {
+          type: "workflow_new_order",
+          title: "سطر إنتاج جاهز للاستلام",
+          body: `تم دفع سطر من الإرسالية "${batchRef}" إلى التشغيل بواسطة المبيعات.`,
+          referenceType: "production_workflow",
+          referenceId: portalSalesClaimedOrderIds[0],
+        });
+      }
       await notifyRole("production_manager", {
         type: "portal_order_confirmed",
         title: "طلب بوابة مؤكد — جاهز للإنتاج",
-        body: `تم تأكيد إرسالية "${batchRef}" وربطها بأمر بيع ${result.salesOrder.orderNumber}. العميل: ${customerName}. جاهزة للاستلام.`,
+        body: `تم تأكيد إرسالية "${batchRef}" وربطها بأمر بيع ${result.salesOrder.orderNumber}. جاهزة للاستلام.`,
         referenceType: "production_workflow",
         referenceId: orders[0].id,
       });
@@ -470,6 +504,76 @@ router.post(
         res
           .status(409)
           .json({ error: { message: batchReviewConflictMessage } });
+        return;
+      }
+      next(err);
+    }
+  },
+);
+
+/* ============================================================
+   POST /portal-orders/:id/claim — مسار دفع سطر واحد من المبيعات للتشغيل
+   (يُستخدم أيضًا كواجهة صريحة للاختبار/إعادة المحاولة، بينما confirm
+   يستدعي نفس الدالة الذرية تلقائيًا).
+============================================================ */
+router.post(
+  "/portal-orders/:id/claim",
+  requireAuth,
+  requireRole(...PERMISSIONS.sales.write),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const id = Number(req.params.id);
+      if (!Number.isInteger(id) || id <= 0) {
+        res.status(400).json({ error: { message: "معرّف غير صحيح" } });
+        return;
+      }
+
+      const claimed = await db.transaction(async (tx: Transaction) => {
+        const [order] = await tx
+          .select({
+            id: productionWorkflowOrdersTable.id,
+            portalCustomerId: productionWorkflowOrdersTable.portalCustomerId,
+          })
+          .from(productionWorkflowOrdersTable)
+          .where(eq(productionWorkflowOrdersTable.id, id))
+          .limit(1);
+        if (!order || !order.portalCustomerId) {
+          throw Object.assign(new Error("سطر طلب البوابة غير موجود"), {
+            status: 404,
+          });
+        }
+        return claimOperationsLine(tx, {
+          orderId: id,
+          actorUserId: req.user!.userId,
+          actorName: req.user!.username,
+          actionKey: "production_workflow.claimed_by_portal_sales",
+          reason: "دفع سطر طلب البوابة إلى التشغيل",
+          ipAddress: req.ip,
+          userAgent: req.get("user-agent"),
+        });
+      });
+
+      await notifyRole("operations_manager", {
+        type: "operations_line_claimed_by_sales",
+        title: "المبيعات استلمت سطرًا وأرسلته للتشغيل",
+        body: `تم دفع سطر الإنتاج ${claimed.orderNumber} إلى مسار التشغيل بواسطة ${req.user!.username}.`,
+        referenceType: "production_workflow",
+        referenceId: claimed.id,
+      });
+      await notifyRole("production_manager", {
+        type: "workflow_new_order",
+        title: "سطر إنتاج جاهز للاستلام",
+        body: `تم دفع السطر ${claimed.orderNumber} إلى التشغيل بواسطة المبيعات.`,
+        referenceType: "production_workflow",
+        referenceId: claimed.id,
+      });
+      res.json({ message: "تم دفع السطر إلى التشغيل", data: claimed });
+    } catch (err) {
+      if (err instanceof Error && "status" in err) {
+        const typed = err as Error & { status?: number; code?: string };
+        res.status(Number(typed.status) || 422).json({
+          error: { code: typed.code, message: typed.message },
+        });
         return;
       }
       next(err);

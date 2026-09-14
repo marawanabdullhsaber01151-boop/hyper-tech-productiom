@@ -67,6 +67,68 @@
     button.setAttribute("aria-busy", String(pending));
   }
 
+  function setProductionLinesState(name) {
+    $("productionLinesLoading").hidden = name !== "loading";
+    $("productionLinesEmpty").hidden = name !== "empty";
+    $("productionLinesError").hidden = name !== "error";
+    $("productionClaimRows").closest(".table-wrap").hidden = name !== "ready";
+  }
+
+  function renderProductionLines(rows) {
+    $("productionClaimRows").innerHTML = rows.map((line) => {
+      const awaiting = line.workflowStatus === "awaiting_operations_claim";
+      return `
+        <tr>
+          <td>${esc(line.orderNumber)}</td>
+          <td>${esc(line.productName)}</td>
+          <td>${esc(line.customerName || "—")}</td>
+          <td>${esc(line.qty)} ${esc(line.unit)}</td>
+          <td>${esc(awaiting ? "في انتظار الاستلام" : "تم الاستلام")}</td>
+          <td>${esc(line.claimedByName || "—")}</td>
+          <td>
+            ${awaiting
+              ? `<button class="button success claim-production-line" data-id="${esc(line.id)}">استلام السطر</button>`
+              : '<span class="muted">تم الاستلام</span>'}
+          </td>
+        </tr>
+      `;
+    }).join("");
+    $("productionClaimRows").querySelectorAll(".claim-production-line").forEach((button) => {
+      button.addEventListener("click", () => claimProductionLine(Number(button.dataset.id), button));
+    });
+  }
+
+  async function loadProductionLines() {
+    setProductionLinesState("loading");
+    try {
+      const result = await api("/operations-manager/production-orders");
+      const rows = Array.isArray(result.data) ? result.data : [];
+      if (!rows.length) {
+        setProductionLinesState("empty");
+        return;
+      }
+      renderProductionLines(rows);
+      setProductionLinesState("ready");
+    } catch (error) {
+      setProductionLinesState("error");
+      setStatus(actionError(error, "تعذر تحميل سطور الإنتاج."), true);
+    }
+  }
+
+  async function claimProductionLine(id, button) {
+    setPending(button, true);
+    try {
+      await api(`/operations-manager/production-orders/${id}/claim`, { method: "POST" });
+      setStatus("تم استلام سطر الإنتاج. أصبح جاهزًا لمدير الإنتاج.");
+      await loadProductionLines();
+    } catch (error) {
+      setStatus(actionError(error, "تعذر استلام سطر الإنتاج."), true);
+      await loadProductionLines();
+    } finally {
+      setPending(button, false);
+    }
+  }
+
   function setViewState(name) {
     $("casesLoading").hidden = name !== "loading";
     $("casesEmpty").hidden = name !== "empty";
@@ -283,6 +345,7 @@
       setPending(button, false);
     }
   });
+  $("refreshProductionLines").addEventListener("click", loadProductionLines);
   $("closeDetail").addEventListener("click", () => { $("caseDetail").hidden = true; });
   $("startValidation").addEventListener("click", () => {
     if (state.currentCase) {
@@ -317,5 +380,5 @@
     }
   });
 
-  loadStaff().then(() => loadCases());
+  loadStaff().then(() => Promise.all([loadCases(), loadProductionLines()]));
 })();
