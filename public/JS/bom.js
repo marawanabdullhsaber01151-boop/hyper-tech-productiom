@@ -325,6 +325,8 @@ const modalOverlay = document.getElementById("modal-overlay");
 const fName = document.getElementById("modal-name");
 const fCode = document.getElementById("modal-code");
 const fOutputQty = document.getElementById("modal-output-qty");
+const fReferencePrice = document.getElementById("modal-reference-price");
+const fExpectedDays = document.getElementById("modal-expected-days");
 const fNotes = document.getElementById("modal-notes");
 const componentsRows = document.getElementById("components-rows");
 const componentsEmpty = document.getElementById("components-empty");
@@ -466,6 +468,8 @@ function openCreateModal() {
   fName.value = "";
   fCode.value = "";
   fOutputQty.value = "1";
+  fReferencePrice.value = "";
+  fExpectedDays.value = "";
   fNotes.value = "";
   renderComponentRows();
   modalOverlay.classList.add("open");
@@ -489,6 +493,8 @@ async function openEditModal(id) {
   fName.value = recipe.productName;
   fCode.value = recipe.productCode || "";
   fOutputQty.value = recipe.outputQty || "1";
+  fReferencePrice.value = recipe.referencePrice || "";
+  fExpectedDays.value = recipe.expectedProductionDays || "";
   fNotes.value = recipe.description || "";
   currentItems = (recipe.items || []).map((i) => ({
     id: i.id,
@@ -529,6 +535,8 @@ async function saveBom() {
     productName,
     productCode: fCode.value.trim() || null,
     outputQty: String(fOutputQty.value || "1"),
+    referencePrice: fReferencePrice.value.trim() ? String(fReferencePrice.value.trim()) : null,
+    expectedProductionDays: fExpectedDays.value.trim() ? Number(fExpectedDays.value.trim()) : null,
     description: fNotes.value.trim() || null,
   };
 

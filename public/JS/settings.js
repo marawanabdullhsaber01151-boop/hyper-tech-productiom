@@ -595,6 +595,64 @@ function switchSection(section) {
     );
   if (section === "users") renderUsers();
   if (section === "about") renderSystemInfo();
+  if (section === "delivery-rules") loadDeliveryRules();
+}
+
+// ---- Delivery Method Rules (Phase 3) ----
+function deliveryRuleRangeLabel(rule) {
+  const parts = [];
+  if (rule.minQty || rule.maxQty)
+    parts.push(`كمية: ${rule.minQty ?? "؟"} — ${rule.maxQty ?? "∞"}`);
+  if (rule.minValue || rule.maxValue)
+    parts.push(`قيمة: ${rule.minValue ?? "؟"} — ${rule.maxValue ?? "∞"} ج.م`);
+  if (!parts.length) parts.push("بدون حدود (قاعدة عامة)");
+  const timingLabel = { any: "أي وقت", on_time: "في الميعاد", late: "متأخر" }[rule.timing] || rule.timing;
+  parts.push(`التوقيت: ${timingLabel}`);
+  return parts.join(" · ");
+}
+
+async function loadDeliveryRules() {
+  const list = document.getElementById("delivery-rules-list");
+  if (!list) return;
+  list.innerHTML = '<div class="empty-state">جاري التحميل...</div>';
+  try {
+    const rules = await apiCall("/settings/delivery-rules");
+    if (!rules.length) {
+      list.innerHTML = '<div class="empty-state">لا توجد قواعد بعد — أضف قاعدة تحت.</div>';
+      return;
+    }
+    list.innerHTML = rules
+      .map(
+        (r) => `
+      <div class="backup-card" data-rule-id="${r.id}" style="display:flex;justify-content:space-between;align-items:center;gap:12px">
+        <div>
+          <h4>${escSettings(r.label)} ${r.isActive ? "" : "(معطّلة)"}</h4>
+          <p>${escSettings(deliveryRuleRangeLabel(r))} · أولوية ${r.priority} · النتيجة: ${r.deliveryMethod === "customer" ? "توصيل للعميل" : "استلام من المخزن"}</p>
+        </div>
+        <button class="btn-danger" data-delete-rule="${r.id}">حذف</button>
+      </div>`,
+      )
+      .join("");
+    list.querySelectorAll("[data-delete-rule]").forEach((btn) =>
+      btn.addEventListener("click", async () => {
+        if (!confirm("حذف القاعدة دي؟")) return;
+        try {
+          await apiCall(`/settings/delivery-rules/${btn.dataset.deleteRule}`, { method: "DELETE" });
+          await loadDeliveryRules();
+        } catch (e) {
+          showToast(e.message, "warn");
+        }
+      }),
+    );
+  } catch (e) {
+    list.innerHTML = `<div class="empty-state">${escSettings(e.message)}</div>`;
+  }
+}
+
+function escSettings(value) {
+  const d = document.createElement("div");
+  d.textContent = value ?? "";
+  return d.innerHTML;
 }
 
 // ---- Helpers ----
@@ -655,6 +713,33 @@ function bindEvents() {
         switchSection(this.dataset.section);
       }),
     );
+  // Delivery method rules (Phase 3)
+  document
+    .getElementById("delivery-rule-form")
+    ?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const payload = {
+        label: getValue("dr-label"),
+        minQty: getValue("dr-min-qty") || null,
+        maxQty: getValue("dr-max-qty") || null,
+        minValue: getValue("dr-min-value") || null,
+        maxValue: getValue("dr-max-value") || null,
+        timing: getValue("dr-timing") || "any",
+        deliveryMethod: getValue("dr-method") || "warehouse",
+        priority: Number(getValue("dr-priority") || 100),
+      };
+      try {
+        await apiCall("/settings/delivery-rules", {
+          method: "POST",
+          body: JSON.stringify(payload),
+        });
+        e.target.reset();
+        await loadDeliveryRules();
+        showToast("تمت إضافة القاعدة");
+      } catch (err) {
+        showToast(err.message, "warn");
+      }
+    });
   // Company
   document
     .getElementById("btn-save-company")

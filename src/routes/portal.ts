@@ -27,6 +27,7 @@ import {
   contactsTable,
   bomRecipesTable,
   bomRecipeItemsTable,
+  deliveryMethodRulesTable,
   productionWorkflowOrdersTable,
   portalCartItemsTable,
   portalWishlistItemsTable,
@@ -45,7 +46,10 @@ import { notifyRole, notifyRoles } from "../lib/notifications";
 import { notifyPortalCustomer } from "../lib/portalNotifications";
 import { sendCustomerAlert, sendOtpCode } from "../lib/otpDelivery";
 import { generateWorkflowOrderNumber } from "./production-workflow";
-import { toPortalOrderItem } from "../domain/portal-orders";
+import { toPortalOrderItem, computeBatchRollupStatus } from "../domain/portal-orders";
+import { suggestDueDate } from "../lib/dueDateSuggestion";
+import { computeDeliveryMethod } from "../lib/deliveryMethod";
+import { assertCancellable, isCancellableStatus } from "../lib/cancellation";
 import { z } from "zod";
 import { logger } from "../lib/logger";
 import { writeAuditEvent } from "../lib/governance";
@@ -1901,6 +1905,10 @@ router.get(
         .map((b) => ({
           batchRef: b.batchRef,
           createdAt: b.createdAt,
+          overallStatus: computeBatchRollupStatus({
+            itemStatuses: b.items.map((i) => i.workflowStatus),
+            hasReview: reviewByBatch.has(b.batchRef),
+          }),
           items: b.items.map((item) => {
             const review = reviewByBatch.get(b.batchRef);
             const rejection =
@@ -1926,6 +1934,9 @@ router.get(
               productCode: item.productCode,
               timeline: buildPortalTimeline(item, review),
               rejection,
+              // Phase 3: الفرونت إند يعتمد على القيمة دي بس عشان يقرر يعرض
+              // زرار الإلغاء ولا لأ — نفس منطق src/lib/cancellation.ts بالظبط.
+              canCancel: isCancellableStatus(item.workflowStatus),
             };
           }),
           review:
@@ -2105,6 +2116,13 @@ router.post(
       // batchRef بسيط لتجميع منتجات نفس الإرسالة بصريًا عند الاتش آر
       const batchRef = `PORTAL-${Date.now().toString(36).toUpperCase()}`;
 
+      // Phase 3: قواعد طريقة التسليم بتتقرا مرة واحدة برّه الحلقة — نفس
+      // القواعد بتتطبق على كل سطر في الإرسالية.
+      const deliveryRules = await db
+        .select()
+        .from(deliveryMethodRulesTable)
+        .where(eq(deliveryMethodRulesTable.isActive, true));
+
       const createdOrders = await db.transaction(async (tx: Transaction) => {
         const results = [];
         for (const item of data.items) {
@@ -2127,6 +2145,35 @@ router.post(
             );
           }
           const orderNumber = await generateWorkflowOrderNumber(tx);
+          const qtyNumber = Number(item.qty);
+
+          // Phase 3: اقتراح تاريخ تسليم تلقائي — راجع src/lib/dueDateSuggestion.ts
+          // للصيغة الكاملة. neededBy يبدأ مساوي للاقتراح ويقدر يتغيّر بعدين
+          // لو المبيعات عدّلته وقت المراجعة (POST /portal-orders/:batchRef/confirm).
+          const suggestion = await suggestDueDate({
+            expectedProductionDays: recipe.expectedProductionDays,
+            qty: qtyNumber,
+            outputQty: Number(recipe.outputQty),
+          });
+
+          // Phase 3: تسعير مرجعي فقط — بيتعرض للعميل كتقدير، ومايتحسبش في
+          // أي فاتورة أو رصيد. السعر الحقيقي لسه بيتحدد يدويًا وقت المراجعة
+          // بدون أي تغيير في المنطق ده.
+          const referenceUnitPrice = recipe.referencePrice;
+          const referenceLineTotal =
+            referenceUnitPrice !== null ?
+              (qtyNumber * Number(referenceUnitPrice)).toFixed(2)
+            : null;
+
+          const suggestedDeliveryMethod = computeDeliveryMethod(
+            deliveryRules,
+            {
+              qty: qtyNumber,
+              value: Number(referenceLineTotal ?? 0),
+              timing: "any",
+            },
+          );
+
           const [inserted] = await tx
             .insert(productionWorkflowOrdersTable)
             .values({
@@ -2146,6 +2193,11 @@ router.post(
                portalCustomerId: customer.id,
               priority: data.priority,
               notes: data.notes ?? null,
+              neededBy: suggestion.date,
+              suggestedDueDate: suggestion.date,
+              referenceUnitPrice,
+              referenceLineTotal,
+              suggestedDeliveryMethod,
               // ✅ عميل البوابة مش موظف، فمفيش له userId حقيقي في نظام الموظفين —
               // بنسجّل رقمه هو نفسه هنا (namespace مختلف عن system_users، مرجعي بس)
               createdById: customer.id,
@@ -2181,6 +2233,80 @@ router.post(
     } catch (err: any) {
       if (err?.status) {
         res.status(err.status).json({ error: { message: err.message } } as any);
+        return;
+      }
+      next(err);
+    }
+  },
+);
+
+/* ============================================================
+   POST /portal/orders/:id/cancel — إلغاء صنف واحد من طرف العميل نفسه
+   (Phase 3) — مسموح بس لسه قبل الإنتاج؛ راجع src/lib/cancellation.ts
+   للحدود بالظبط وليه الإندپوينت ده منفصل عن إلغاء الموظف الداخلي العام.
+============================================================ */
+const cancelPortalOrderSchema = z.object({
+  reason: z.string().max(500).optional().nullable(),
+});
+
+router.post(
+  "/portal/orders/:id/cancel",
+  requirePortalAuth,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const id = Number(req.params.id);
+      if (!Number.isInteger(id) || id <= 0) {
+        res.status(400).json({ error: { message: "معرّف غير صحيح" } });
+        return;
+      }
+      const data = cancelPortalOrderSchema.parse(req.body ?? {});
+      const customerId = getAuthenticatedPortalCustomerId(req);
+
+      const updated = await db.transaction(async (tx: Transaction) => {
+        const [order] = await tx
+          .select()
+          .from(productionWorkflowOrdersTable)
+          .where(eq(productionWorkflowOrdersTable.id, id))
+          .for("update");
+        if (!order || order.portalCustomerId !== customerId) {
+          throw Object.assign(new Error("الصنف غير موجود"), { status: 404 });
+        }
+        assertCancellable(order.workflowStatus);
+
+        const [customer] = await tx
+          .select()
+          .from(portalCustomersTable)
+          .where(eq(portalCustomersTable.id, customerId))
+          .limit(1);
+
+        const [result] = await tx
+          .update(productionWorkflowOrdersTable)
+          .set({
+            workflowStatus: "cancelled",
+            cancelledById: customerId,
+            cancelledByName: customer?.fullName ?? null,
+            cancelledByRole: "customer",
+            cancelReason: data.reason ?? null,
+            cancelledAt: new Date(),
+            updatedAt: new Date(),
+          })
+          .where(eq(productionWorkflowOrdersTable.id, id))
+          .returning();
+        return result;
+      });
+
+      await notifyRole("hr", {
+        type: "portal_order_cancelled_by_customer",
+        title: "العميل ألغى صنفًا من طلبه",
+        body: `${updated.customerName || "عميل البوابة"} ألغى "${updated.productName}" (${updated.orderNumber}).`,
+        referenceType: "production_workflow",
+        referenceId: updated.id,
+      });
+
+      res.json({ message: "تم إلغاء الصنف", order: updated });
+    } catch (err: any) {
+      if (err?.status) {
+        res.status(err.status).json({ error: { message: err.message } });
         return;
       }
       next(err);

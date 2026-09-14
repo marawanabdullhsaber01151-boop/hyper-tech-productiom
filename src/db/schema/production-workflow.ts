@@ -146,6 +146,48 @@ export const productionWorkflowOrdersTable = pgTable(
     // ─── تواريخ عامة ─────────────────────────────────────────────────────────
     startDate: date("start_date", { mode: "string" }),
     endDate: date("end_date", { mode: "string" }),
+
+    // ─── Phase 3: تاريخ التسليم المقترح تلقائيًا + تسعير مرجعي لكل سطر ────────
+    // suggestedDueDate: ناتج src/lib/dueDateSuggestion.ts وقت إنشاء الطلب —
+    // بيفضل زي ما هو حتى لو neededBy اتغيّر بعدين، عشان نقدر نقارن "المقترح"
+    // بـ"الفعلي" لاحقًا. neededBy نفسه هو التاريخ الحالي/الفعلي المعمول به
+    // (يبدأ = suggestedDueDate، وممكن يتغيّر لو المبيعات عدّلته يدويًا).
+    suggestedDueDate: date("suggested_due_date", { mode: "string" }),
+    dueDateOverriddenById: integer("due_date_overridden_by_id"),
+    dueDateOverriddenByName: text("due_date_overridden_by_name"),
+    dueDateOverrideReason: text("due_date_override_reason"),
+    dueDateOverriddenAt: timestamp("due_date_overridden_at", {
+      withTimezone: true,
+    }),
+    // تسعير مرجعي فقط — مايتحسبش في أي فاتورة ولا رصيد ولا محاسبة. القيمة
+    // الحقيقية للفاتورة لسه بتتحدد يدويًا وقت مراجعة المبيعات (بدون تغيير).
+    referenceUnitPrice: numeric("reference_unit_price", {
+      precision: 12,
+      scale: 2,
+    }),
+    referenceLineTotal: numeric("reference_line_total", {
+      precision: 12,
+      scale: 2,
+    }),
+    // Phase 3: طريقة التسليم المحسوبة تلقائيًا من src/lib/deliveryMethod.ts
+    // (بالإضافة لـ deliveryType الموجود أصلًا، اللي بيتسجل وقت التسليم
+    // الفعلي من مدير الإنتاج — القيمتين منفصلتين عمدًا: دي اقتراح مبكر،
+    // وده القرار النهائي وقت التنفيذ).
+    suggestedDeliveryMethod: text("suggested_delivery_method"), // customer / warehouse
+    deliveryMethodOverriddenById: integer("delivery_method_overridden_by_id"),
+    deliveryMethodOverriddenByName: text("delivery_method_overridden_by_name"),
+    deliveryMethodOverrideReason: text("delivery_method_override_reason"),
+    deliveryMethodOverriddenAt: timestamp("delivery_method_overridden_at", {
+      withTimezone: true,
+    }),
+    // Phase 3: إلغاء ما قبل الإنتاج — راجع src/lib/cancellation.ts للحارس
+    // اللي بيمنع الإلغاء بعد عبور حدود "in_production".
+    cancelledById: integer("cancelled_by_id"),
+    cancelledByName: text("cancelled_by_name"),
+    cancelledByRole: text("cancelled_by_role"), // "customer" أو دور الموظف
+    cancelReason: text("cancel_reason"),
+    cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
+
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

@@ -31,6 +31,13 @@ export const confirmPortalBatchSchema = z.object({
       z.object({
         workflowOrderId: z.number(),
         unitPrice: z.string().min(1, "السعر مطلوب لكل صنف"),
+        // Phase 3: مبيعات البوابة تقدر تعدّل تاريخ التسليم و/أو طريقة
+        // التسليم المقترحين تلقائيًا لكل صنف وقت المراجعة. الاتنين
+        // اختياريين — لو اتسيبوا فاضيين، الاقتراح الأصلي (suggestedDueDate/
+        // suggestedDeliveryMethod) يفضل زي ما هو كـ neededBy الفعلي.
+        dueDateOverride: z.string().optional().nullable(),
+        deliveryMethodOverride: z.enum(["customer", "warehouse"]).optional().nullable(),
+        overrideReason: z.string().max(500).optional().nullable(),
       }),
     )
     .min(1),

@@ -28,6 +28,9 @@ import { notifyRole, notifyRoles } from "../lib/notifications";
 import { notifyPortalCustomer } from "../lib/portalNotifications";
 import { sendCustomerAlert } from "../lib/otpDelivery";
 import { logger } from "../lib/logger";
+import { assertCancellable } from "../lib/cancellation";
+import { writeAuditEvent } from "../lib/governance";
+import { z } from "zod";
 
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -123,6 +126,14 @@ router.get(
             qty: i.qty,
             unit: i.unit,
             bomRecipeId: i.bomRecipeId,
+            // Phase 3: بيانات مساعدة للمراجعة — الموظف يقدر يشوفها ويقرر
+            // يسيبها زي ما هي أو يعدّلها (dueDateOverride/deliveryMethodOverride
+            // في POST /portal-orders/:batchRef/confirm).
+            neededBy: i.neededBy,
+            suggestedDueDate: i.suggestedDueDate,
+            referenceUnitPrice: i.referenceUnitPrice,
+            referenceLineTotal: i.referenceLineTotal,
+            suggestedDeliveryMethod: i.suggestedDeliveryMethod,
           })),
         }));
       res.json(data);
@@ -232,10 +243,60 @@ router.post(
           });
 
           // ✅ الربط الفعلي بين أمر الإنتاج والفاتورة
+          const overrideInput = data.items.find(
+            (i) => i.workflowOrderId === order.id,
+          );
+          const updateValues: Record<string, unknown> = {
+            salesOrderId: salesOrder.id,
+          };
+          // Phase 3: تطبيق تعديل مبيعات البوابة على تاريخ/طريقة التسليم لو
+          // اتبعتوا مع الطلب. لو مفيش تعديل، الاقتراح التلقائي الأصلي يفضل
+          // كما هو (neededBy/suggestedDeliveryMethod اتحطوا وقت الإرسال).
+          if (overrideInput?.dueDateOverride) {
+            updateValues.neededBy = overrideInput.dueDateOverride;
+            updateValues.dueDateOverriddenById = req.user!.userId;
+            updateValues.dueDateOverriddenByName = req.user!.username;
+            updateValues.dueDateOverrideReason =
+              overrideInput.overrideReason ?? null;
+            updateValues.dueDateOverriddenAt = new Date();
+          }
+          if (overrideInput?.deliveryMethodOverride) {
+            updateValues.suggestedDeliveryMethod =
+              overrideInput.deliveryMethodOverride;
+            updateValues.deliveryMethodOverriddenById = req.user!.userId;
+            updateValues.deliveryMethodOverriddenByName = req.user!.username;
+            updateValues.deliveryMethodOverrideReason =
+              overrideInput.overrideReason ?? null;
+            updateValues.deliveryMethodOverriddenAt = new Date();
+          }
           await tx
             .update(productionWorkflowOrdersTable)
-            .set({ salesOrderId: salesOrder.id })
+            .set(updateValues)
             .where(eq(productionWorkflowOrdersTable.id, order.id));
+
+          if (overrideInput?.dueDateOverride || overrideInput?.deliveryMethodOverride) {
+            await writeAuditEvent({
+              executor: tx,
+              actorUserId: req.user!.userId,
+              actorName: req.user!.username,
+              actionKey: "portal_orders.override",
+              resourceType: "production_workflow",
+              resourceId: order.id,
+              beforeData: {
+                neededBy: order.neededBy,
+                suggestedDeliveryMethod: order.suggestedDeliveryMethod,
+              },
+              afterData: {
+                neededBy: updateValues.neededBy ?? order.neededBy,
+                suggestedDeliveryMethod:
+                  updateValues.suggestedDeliveryMethod ??
+                  order.suggestedDeliveryMethod,
+              },
+              reason: overrideInput?.overrideReason ?? "تعديل يدوي وقت مراجعة طلب البوابة",
+              ipAddress: req.ip,
+              userAgent: req.get("user-agent"),
+            });
+          }
         }
 
         const [review] = await tx
@@ -409,6 +470,81 @@ router.post(
         res
           .status(409)
           .json({ error: { message: batchReviewConflictMessage } });
+        return;
+      }
+      next(err);
+    }
+  },
+);
+
+/* ============================================================
+   POST /portal-orders/:id/cancel — إلغاء صنف واحد من طرف مبيعات البوابة
+   (Phase 3) — نفس حدود الإلغاء اللي عند العميل بالظبط (src/lib/cancellation.ts)،
+   ومنفصل عمدًا عن إندپوينت الإلغاء الداخلي العام للإنتاج.
+============================================================ */
+const cancelPortalOrderItemSchema = z.object({
+  reason: z.string().min(1, "سبب الإلغاء مطلوب").max(500),
+});
+
+router.post(
+  "/portal-orders/:id/cancel",
+  requireAuth,
+  requireRole(...PERMISSIONS.sales.write),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const id = Number(req.params.id);
+      if (!Number.isInteger(id) || id <= 0) {
+        res.status(400).json({ error: { message: "معرّف غير صحيح" } });
+        return;
+      }
+      const data = cancelPortalOrderItemSchema.parse(req.body);
+
+      const updated = await db.transaction(async (tx: Transaction) => {
+        const [order] = await tx
+          .select()
+          .from(productionWorkflowOrdersTable)
+          .where(
+            and(
+              eq(productionWorkflowOrdersTable.id, id),
+              isNotNull(productionWorkflowOrdersTable.portalCustomerId),
+            ),
+          )
+          .for("update");
+        if (!order) {
+          throw Object.assign(new Error("الصنف غير موجود"), { status: 404 });
+        }
+        assertCancellable(order.workflowStatus);
+
+        const [result] = await tx
+          .update(productionWorkflowOrdersTable)
+          .set({
+            workflowStatus: "cancelled",
+            cancelledById: req.user!.userId,
+            cancelledByName: req.user!.username,
+            cancelledByRole: req.user!.role,
+            cancelReason: data.reason,
+            cancelledAt: new Date(),
+            updatedAt: new Date(),
+          })
+          .where(eq(productionWorkflowOrdersTable.id, id))
+          .returning();
+        return result;
+      });
+
+      if (updated.portalCustomerId) {
+        await notifyPortalCustomer(updated.portalCustomerId, {
+          type: "portal_order_cancelled_by_staff",
+          title: "تم إلغاء صنف من طلبك",
+          body: `تم إلغاء "${updated.productName}" (${updated.orderNumber}). السبب: ${data.reason}`,
+          referenceType: "production_workflow",
+          referenceId: updated.id,
+        });
+      }
+
+      res.json({ message: "تم إلغاء الصنف", order: updated });
+    } catch (err: any) {
+      if (err?.status) {
+        res.status(err.status).json({ error: { message: err.message } });
         return;
       }
       next(err);

@@ -88,6 +88,9 @@
             <div class="set-menu-item" data-section="system">
               <i class="fa-solid fa-sliders"></i> إعدادات النظام
             </div>
+            <div class="set-menu-item" data-section="delivery-rules">
+              <i class="fa-solid fa-truck-fast"></i> قواعد طريقة التسليم
+            </div>
             <div class="set-menu-divider"></div>
             <div class="set-menu-item" data-section="backup">
               <i class="fa-solid fa-database"></i> النسخ الاحتياطي
@@ -485,6 +488,47 @@
                   <button class="btn-primary" id="btn-save-system">
                     <i class="fa-solid fa-floppy-disk"></i> حفظ إعدادات النظام
                   </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- DELIVERY RULES SECTION (Phase 3) -->
+            <div id="sec-delivery-rules" class="set-section">
+              <div class="set-section-card">
+                <div class="set-section-header">
+                  <h3>قواعد طريقة التسليم</h3>
+                  <p>
+                    تتحدد طريقة تسليم كل صنف تلقائيًا حسب أول قاعدة نشطة
+                    تتطابق (بترتيب الأولوية، الأصغر أولًا). القاعدة الافتراضية
+                    (بدون حدود) بتشتغل fallback لو محدش القواعد الأخرى اتطابقت.
+                  </p>
+                </div>
+                <div class="set-section-body">
+                  <div id="delivery-rules-list" style="margin-bottom:18px">
+                    <div class="empty-state">جاري التحميل...</div>
+                  </div>
+                  <form id="delivery-rule-form" class="form-row" style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+                    <label>اسم القاعدة<input type="text" id="dr-label" required placeholder="مثال: طلبات كبيرة" /></label>
+                    <label>أقل كمية<input type="number" step="0.001" id="dr-min-qty" /></label>
+                    <label>أعلى كمية<input type="number" step="0.001" id="dr-max-qty" /></label>
+                    <label>أقل قيمة<input type="number" step="0.01" id="dr-min-value" /></label>
+                    <label>أعلى قيمة<input type="number" step="0.01" id="dr-max-value" /></label>
+                    <label>التوقيت
+                      <select id="dr-timing">
+                        <option value="any">أي وقت</option>
+                        <option value="on_time">في الميعاد</option>
+                        <option value="late">متأخر</option>
+                      </select>
+                    </label>
+                    <label>طريقة التسليم
+                      <select id="dr-method">
+                        <option value="warehouse">استلام من المخزن</option>
+                        <option value="customer">توصيل للعميل</option>
+                      </select>
+                    </label>
+                    <label>الأولوية<input type="number" id="dr-priority" value="100" /></label>
+                    <button class="btn-primary" type="submit">إضافة قاعدة</button>
+                  </form>
                 </div>
               </div>
             </div>

@@ -8,6 +8,7 @@ export * from "./bom";
 export * from "./quality";
 export * from "./movements";
 export * from "./settings";
+export * from "./delivery-rules";
 export * from "./state";
 export * from "./approvals";
 export * from "./production-workflow";

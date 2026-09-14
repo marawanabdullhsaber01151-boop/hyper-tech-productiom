@@ -616,6 +616,41 @@ function renderAccountEdit(body, me) {
     });
 }
 
+function portalRollupStatusLabel(status) {
+  return (
+    {
+      all_cancelled: "كل الأصناف اتلغت",
+      needs_attention: "محتاج انتباه — فيه صنف اتأجل أو اتلغى",
+      all_completed: "اكتمل الطلب بالكامل",
+      in_progress: "جاري التنفيذ",
+      pending_review: "في انتظار مراجعة المبيعات",
+    }[status] || status
+  );
+}
+
+function portalDeliveryMethodLabel(value) {
+  return value === "customer" ? "توصيل للعميل"
+    : value === "warehouse" ? "استلام من المخزن"
+    : null;
+}
+
+async function cancelPortalOrderItem(id, button) {
+  if (!confirm("متأكد إنك عايز تلغي الصنف ده؟")) return;
+  const reason = prompt("سبب الإلغاء (اختياري)") || null;
+  if (button) button.disabled = true;
+  try {
+    await portalApiCall(`/portal/orders/${id}/cancel`, {
+      method: "POST",
+      body: JSON.stringify({ reason }),
+    });
+    showToast("تم إلغاء الصنف");
+    await openMyOrders();
+  } catch (error) {
+    showToast(`تعذّر إلغاء الصنف: ${error.message}`, true);
+    if (button) button.disabled = false;
+  }
+}
+
 async function openMyOrders() {
   const overlay = document.getElementById("my-orders-overlay");
   const list = document.getElementById("my-orders-list");
@@ -653,16 +688,29 @@ async function openMyOrders() {
                    ${it.rejection.reason ? `<span>${escHtml(it.rejection.reason)}</span>` : ""}</div>
                  </div>`
                : "";
+            const metaBits = [];
+            if (it.neededBy) metaBits.push(`<span><i class="fa-regular fa-calendar"></i> الميعاد المتوقع: ${escHtml(it.neededBy)}</span>`);
+            if (it.referenceLineTotal) metaBits.push(`<span><i class="fa-solid fa-tag"></i> السعر التقديري: ${escHtml(it.referenceLineTotal)} ج.م</span>`);
+            const deliveryLabel = portalDeliveryMethodLabel(it.suggestedDeliveryMethod);
+            if (deliveryLabel) metaBits.push(`<span><i class="fa-solid fa-truck"></i> ${deliveryLabel}</span>`);
+            const metaHtml = metaBits.length
+              ? `<div class="p-order-item-meta" style="font-size:12px;color:var(--text-dim);display:flex;gap:14px;flex-wrap:wrap;margin:4px 0 8px">${metaBits.join("")}</div>`
+              : "";
+            const cancelBtnHtml = it.canCancel
+              ? `<button type="button" class="p-order-item-cancel" style="font-size:12px;color:var(--danger,#e5484d);background:none;border:none;cursor:pointer;padding:0;margin-top:4px" onclick="cancelPortalOrderItem(${it.id}, this)"><i class="fa-solid fa-xmark"></i> إلغاء هذا الصنف</button>`
+              : "";
             return `<div class="p-order-item">
                <div class="p-order-item-head">
                  <strong>${escHtml(it.productName)}</strong>
                  <em>(${escHtml(it.qty)} ${escHtml(it.unit || "")})</em>
                </div>
+               ${metaHtml}
                ${
                  it.rejection
                    ? rejectionHtml
                    : `<div class="p-timeline">${timelineHtml}</div>`
                }
+               ${cancelBtnHtml}
             </div>`;
           })
           .join("");
@@ -678,6 +726,9 @@ async function openMyOrders() {
           <div class="p-order-batch-head">
             <span>${escHtml(batch.batchRef)}</span>
             <span class="p-order-date">${new Date(batch.createdAt).toLocaleDateString("ar-EG", { day: "numeric", month: "short", year: "numeric" })}</span>
+          </div>
+          <div class="p-order-batch-status ${escHtml(batch.overallStatus || "")}" style="font-size:12px;font-weight:600;margin:2px 0 10px;color:var(--text-dim)">
+            ${escHtml(portalRollupStatusLabel(batch.overallStatus))}
           </div>
           ${itemsHtml}
             <button class="p-reorder-btn" type="button" onclick="reorderBatch(${JSON.stringify(batch.batchRef)})">

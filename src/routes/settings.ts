@@ -13,8 +13,10 @@ import {
   inventoryItemsTable,
   stockMovementsTable,
   productionWorkflowOrdersTable,
+  deliveryMethodRulesTable,
+  insertDeliveryMethodRuleSchema,
 } from "../db/schema";
-import { requireAuth, requirePermission } from "../middleware/auth";
+import { requireAuth, requirePermission, requireRole } from "../middleware/auth";
 import { parseIdParam } from "../lib/validate";
 import { moveToTrash } from "../lib/trash";
 import { strongPasswordSchema } from "./auth";
@@ -575,6 +577,93 @@ router.get(
           users: usersCount[0].n,
         },
       });
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+/* ============================================================
+   Delivery Method Rules (Phase 3) — قابلة للتعديل من الإعدادات بدون نشر
+   كود جديد. راجع src/lib/deliveryMethod.ts للمنطق اللي بيستهلك القواعد دي.
+============================================================ */
+router.get(
+  "/settings/delivery-rules",
+  requireAuth,
+  requireRole("chairman"),
+  async (_req, res, next) => {
+    try {
+      const rules = await db
+        .select()
+        .from(deliveryMethodRulesTable)
+        .orderBy(deliveryMethodRulesTable.priority);
+      res.json(rules);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+router.post(
+  "/settings/delivery-rules",
+  requireAuth,
+  requireRole("chairman"),
+  async (req, res, next) => {
+    try {
+      const data = insertDeliveryMethodRuleSchema.parse(req.body);
+      const [created] = await db
+        .insert(deliveryMethodRulesTable)
+        .values(data)
+        .returning();
+      res.status(201).json(created);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+router.patch(
+  "/settings/delivery-rules/:id",
+  requireAuth,
+  requireRole("chairman"),
+  async (req, res, next) => {
+    try {
+      const id = parseIdParam(req.params.id, res);
+      if (id === null) return;
+      const data = insertDeliveryMethodRuleSchema.partial().parse(req.body);
+      const [updated] = await db
+        .update(deliveryMethodRulesTable)
+        .set({ ...data, updatedAt: new Date() })
+        .where(eq(deliveryMethodRulesTable.id, id))
+        .returning();
+      if (!updated) {
+        res.status(404).json({ error: { message: "القاعدة غير موجودة" } });
+        return;
+      }
+      res.json(updated);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+router.delete(
+  "/settings/delivery-rules/:id",
+  requireAuth,
+  requireRole("chairman"),
+  async (req, res, next) => {
+    try {
+      const id = parseIdParam(req.params.id, res);
+      if (id === null) return;
+      const [deleted] = await db
+        .delete(deliveryMethodRulesTable)
+        .where(eq(deliveryMethodRulesTable.id, id))
+        .returning();
+      if (!deleted) {
+        res.status(404).json({ error: { message: "القاعدة غير موجودة" } });
+        return;
+      }
+      res.json({ message: "تم حذف القاعدة" });
     } catch (err) {
       next(err);
     }
