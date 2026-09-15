@@ -83,23 +83,39 @@
   const rows = (items, empty, render, colspan) =>
     items.length ? items.map(render).join("") : `<tr><td colspan="${colspan}">${empty}</td></tr>`;
 
-  async function load() {
+  function applyRoleView(profile) {
+    const admin = ["chairman", "executive_manager"].includes(profile?.role);
+    document.querySelectorAll("[data-admin-only]").forEach((element) => {
+      element.hidden = !admin;
+    });
+    return admin;
+  }
+
+  async function load(profile = window.HyperTechAuth.user) {
     try {
       setStatus("جارٍ تحميل بيانات الحوكمة…");
+      const isAdmin = applyRoleView(profile);
+      // Approval requests are useful to an approver even when that user is
+      // deliberately not allowed to administer policies/delegations.
+      const requests = await api("/governance/approval-requests");
+      $("pending").textContent = requests.filter((r) => r.status === "pending").length;
+      $("approvalRows").innerHTML = rows(requests, "لا توجد طلبات اعتماد.", (r) =>
+         `<tr><td>${esc(labelForAction(r.actionKey, r.actionKey))}</td><td>${esc(RESOURCE_LABELS[r.resourceType] || "مورد")} رقم ${esc(r.resourceId)}</td><td>${esc(r.currentStep)}</td><td>${esc(STATUS_LABELS[r.status] || "غير محدد")}</td><td>${r.status === "pending" ? `<button class="button" data-id="${esc(r.id)}" data-decision="approve">اعتماد</button> <button class="button" data-id="${esc(r.id)}" data-decision="reject">رفض</button>` : "—"}</td></tr>`, 5);
+      if (!isAdmin) {
+        setStatus("تم تحميل طلبات الاعتماد الخاصة بدورك", "success");
+        return;
+      }
+
       populateStaticLookups();
-      const [requests, audit, delegations, policies, overrides, sessions, actions, users] = await Promise.all([
-        api("/governance/approval-requests"), api("/governance/audit"),
-        api("/governance/delegations"), api("/governance/approval-policies"),
-        api("/my-permission-overrides"), api("/auth/sessions"), api("/action-registry"),
-        api("/governance/users"),
+      const [audit, delegations, policies, overrides, sessions, actions, users] = await Promise.all([
+        api("/governance/audit"), api("/governance/delegations"),
+        api("/governance/approval-policies"), api("/my-permission-overrides"),
+        api("/auth/sessions"), api("/action-registry"), api("/governance/users"),
       ]);
       populateActionLookups(actions);
       populateUserLookups(users);
-      $("pending").textContent = requests.filter((r) => r.status === "pending").length;
       $("delegations").textContent = delegations.length;
       $("auditCount").textContent = audit.length;
-      $("approvalRows").innerHTML = rows(requests, "لا توجد طلبات اعتماد.", (r) =>
-         `<tr><td>${esc(labelForAction(r.actionKey, r.actionKey))}</td><td>${esc(RESOURCE_LABELS[r.resourceType] || "مورد")} رقم ${esc(r.resourceId)}</td><td>${esc(r.currentStep)}</td><td>${esc(STATUS_LABELS[r.status] || "غير محدد")}</td><td>${r.status === "pending" ? `<button class="button" data-id="${esc(r.id)}" data-decision="approve">اعتماد</button> <button class="button" data-id="${esc(r.id)}" data-decision="reject">رفض</button>` : "—"}</td></tr>`, 5);
       $("delegationRows").innerHTML = rows(delegations, "لا توجد تفويضات.", (entry) => {
         const d = entry.delegation || entry;
          return `<tr><td>${esc(labelForAction(d.actionKey, d.actionKey))}</td><td>${esc(entry.grantorName || d.grantorUserId)}</td><td>${esc(d.delegateUserId)}</td><td>${esc(d.startsAt)}</td><td>${esc(d.endsAt)}</td><td>${esc(STATUS_LABELS[d.status] || "غير محدد")}</td><td>${d.status === "active" ? `<button class="button" data-revoke="${esc(d.id)}">إلغاء</button>` : "—"}</td></tr>`;
@@ -149,6 +165,7 @@
     $("delegationForm").onsubmit = (e) => submitForm(e, "/governance/delegations", (b) => ({ ...b, grantorUserId: Number(b.grantorUserId), delegateUserId: Number(b.delegateUserId), startsAt: new Date(b.startsAt).toISOString(), endsAt: new Date(b.endsAt).toISOString() }));
     $("policyForm").onsubmit = (e) => submitForm(e, "/governance/approval-policies", (b) => ({ ...b, minAmount: String(b.minAmount), sequence: Number(b.sequence), approverRoles: Array.from(e.target.elements.approverRoles.selectedOptions).map((o) => o.value) }));
     $("overrideForm").onsubmit = (e) => submitForm(e, "/permission-overrides", (b) => ({ ...b, userId: Number(b.userId), allowed: b.allowed === "true", expiresAt: b.expiresAt ? new Date(b.expiresAt).toISOString() : undefined }));
-    $("simulateBtn").onclick = simulate; $("verifyBtn").onclick = verify; load();
+    $("simulateBtn").onclick = simulate; $("verifyBtn").onclick = verify;
+    window.HyperTechAuth.ready.then(load);
   });
 })();
