@@ -23,7 +23,7 @@
  * (أو مباشرة: node scripts/run-migrations.mjs)
  */
 
-import { readdirSync, readFileSync } from "fs";
+import { existsSync, readdirSync, readFileSync } from "fs";
 import { fileURLToPath } from "url";
 import path from "path";
 import "dotenv/config";
@@ -33,6 +33,62 @@ const { Pool } = pkg;
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const migrationsDir = path.join(__dirname, "..", "migrations");
+const baselineSchemaPath = path.join(
+  __dirname,
+  "..",
+  "drizzle",
+  "0000_0000_initial_schema.sql",
+);
+
+/**
+ * The supplied repository has a canonical initial schema in drizzle/, while
+ * the real incremental delivery lives in migrations/. A fresh database must
+ * receive that baseline before migration 0001 can reference system_users.
+ * Existing databases are not rewritten: the marker makes the bootstrap
+ * idempotent and the guard rejects a partial/ambiguous database instead of
+ * guessing.
+ */
+async function ensureBaselineSchema(client) {
+  const { rows } = await client.query(`
+    SELECT
+      to_regclass('public.system_users') AS system_users,
+      to_regclass('public.inventory_items') AS inventory_items,
+      to_regclass('public.contacts') AS contacts
+  `);
+  const baseline = rows[0];
+  if (baseline.system_users && baseline.inventory_items && baseline.contacts) {
+    return false;
+  }
+
+  const present = [baseline.system_users, baseline.inventory_items, baseline.contacts]
+    .filter(Boolean).length;
+  if (present > 0) {
+    throw new Error(
+      "قاعدة البيانات تحتوي جزءًا من الـbaseline فقط؛ أوقف الترحيل وافحصها يدويًا قبل المتابعة.",
+    );
+  }
+  if (!existsSync(baselineSchemaPath)) {
+    throw new Error(`ملف baseline غير موجود: ${baselineSchemaPath}`);
+  }
+
+  const baselineSql = readFileSync(baselineSchemaPath, "utf8")
+    .replaceAll(/--> statement-breakpoint/g, "");
+  await client.query("BEGIN");
+  try {
+    await client.query(baselineSql);
+    await client.query(
+      `INSERT INTO "_migrations_applied" (filename)
+       VALUES ('0000_0000_initial_schema.sql')
+       ON CONFLICT (filename) DO NOTHING`,
+    );
+    await client.query("COMMIT");
+    console.log("✅ تم تهيئة baseline schema من drizzle/0000_0000_initial_schema.sql");
+    return true;
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  }
+}
 
 async function main() {
   if (!process.env.DATABASE_URL) {
@@ -56,6 +112,13 @@ async function main() {
         applied_at timestamptz NOT NULL DEFAULT now()
       );
     `);
+
+    const bootstrapClient = await pool.connect();
+    try {
+      await ensureBaselineSchema(bootstrapClient);
+    } finally {
+      bootstrapClient.release();
+    }
 
     const { rows: appliedRows } = await pool.query(
       `SELECT filename FROM "_migrations_applied"`,

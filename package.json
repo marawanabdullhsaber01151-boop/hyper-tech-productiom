@@ -16,7 +16,8 @@
     "db:seed": "tsx src/seed.ts",
     "test": "vitest run",
     "test:e2e": "vitest run --config vitest.e2e.config.ts",
-    "check:roles": "node scripts/check-role-consistency.mjs"
+    "check:roles": "node scripts/check-role-consistency.mjs",
+    "audit:baseline": "node scripts/phase0-baseline-audit.mjs"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

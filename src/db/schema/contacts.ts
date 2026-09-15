@@ -110,4 +110,3 @@ export const createContactSchema = insertContactSchema;
 
 export type InsertContact = z.infer<typeof insertContactSchema>;
 export type Contact = typeof contactsTable.$inferSelect;
-export type ContactLedgerEntry = typeof contactLedgerTable.$inferSelect;

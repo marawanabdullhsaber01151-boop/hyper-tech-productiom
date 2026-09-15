@@ -1,0 +1,789 @@
+{
+  "generatedAt": "2026-09-15T22:27:42.670Z",
+  "repository": {
+    "root": ".",
+    "packageManager": "npm",
+    "nodeEngine": ">=20"
+  },
+  "counts": {
+    "routes": 2,
+    "pages": 0,
+    "schemaTables": 0,
+    "migrationFiles": 0,
+    "declaredRoles": 18,
+    "actionRegistryEntries": 33,
+    "testFiles": 29
+  },
+  "routes": [
+    {
+      "file": "src/main.ts",
+      "line": 99,
+      "owner": "app",
+      "method": "GET",
+      "path": "/api/v1/health",
+      "apiPath": "/api/v1/health",
+      "protectedByAuth": false,
+      "protectedByRole": false
+    },
+    {
+      "file": "src/main.ts",
+      "line": 150,
+      "owner": "app",
+      "method": "GET",
+      "path": "/*splat",
+      "apiPath": "/api/v1/*splat",
+      "protectedByAuth": false,
+      "protectedByRole": false
+    }
+  ],
+  "pages": [],
+  "tables": {
+    "schemaDefinitions": [],
+    "migrationTables": [],
+    "schemaTables": []
+  },
+  "migrations": [],
+  "roles": {
+    "declared": [
+      "buyer",
+      "chairman",
+      "executive_manager",
+      "hr",
+      "hr_manager",
+      "offline_seller",
+      "online_seller",
+      "operations_manager",
+      "production_controller",
+      "production_manager",
+      "production_quality_controller",
+      "purchasing_manager",
+      "quality_engineer",
+      "raw_material_quality_controller",
+      "sales_manager",
+      "storekeeper",
+      "supervisor",
+      "warehouse_manager"
+    ],
+    "frontendRoleDrift": [],
+    "referencedDeclaredRoles": [
+      "buyer",
+      "chairman",
+      "executive_manager",
+      "hr_manager",
+      "offline_seller",
+      "online_seller",
+      "operations_manager",
+      "production_controller",
+      "production_manager",
+      "production_quality_controller",
+      "purchasing_manager",
+      "quality_engineer",
+      "raw_material_quality_controller",
+      "sales_manager",
+      "storekeeper",
+      "supervisor",
+      "warehouse_manager"
+    ]
+  },
+  "permissions": {
+    "actionRegistry": [
+      {
+        "key": "contacts.create",
+        "rolesConstant": "CONTACTS_WRITE"
+      },
+      {
+        "key": "contacts.edit",
+        "rolesConstant": "CONTACTS_WRITE"
+      },
+      {
+        "key": "contacts.delete",
+        "rolesConstant": "CONTACTS_WRITE"
+      },
+      {
+        "key": "sales.create",
+        "rolesConstant": "SALES_WRITE"
+      },
+      {
+        "key": "sales.edit",
+        "rolesConstant": "SALES_WRITE"
+      },
+      {
+        "key": "sales.delete",
+        "rolesConstant": "SALES_WRITE"
+      },
+      {
+        "key": "sales.approve",
+        "rolesConstant": "SALES_WRITE"
+      },
+      {
+        "key": "purchases.create",
+        "rolesConstant": "PURCHASES_WRITE"
+      },
+      {
+        "key": "purchases.edit",
+        "rolesConstant": "PURCHASES_WRITE"
+      },
+      {
+        "key": "purchases.delete",
+        "rolesConstant": "PURCHASES_WRITE"
+      },
+      {
+        "key": "purchases.approve",
+        "rolesConstant": "PURCHASES_WRITE"
+      },
+      {
+        "key": "inventory.create",
+        "rolesConstant": "INVENTORY_WRITE"
+      },
+      {
+        "key": "inventory.edit",
+        "rolesConstant": "INVENTORY_WRITE"
+      },
+      {
+        "key": "inventory.delete",
+        "rolesConstant": "INVENTORY_WRITE"
+      },
+      {
+        "key": "movements.create",
+        "rolesConstant": "MOVEMENTS_WRITE"
+      },
+      {
+        "key": "movements.delete",
+        "rolesConstant": "MOVEMENTS_WRITE"
+      },
+      {
+        "key": "bom.create",
+        "rolesConstant": "BOM_WRITE"
+      },
+      {
+        "key": "bom.edit",
+        "rolesConstant": "BOM_WRITE"
+      },
+      {
+        "key": "bom.delete",
+        "rolesConstant": "BOM_WRITE"
+      },
+      {
+        "key": "hr.create",
+        "rolesConstant": "HR_WRITE"
+      },
+      {
+        "key": "hr.edit",
+        "rolesConstant": "HR_WRITE"
+      },
+      {
+        "key": "hr.delete",
+        "rolesConstant": "HR_WRITE"
+      },
+      {
+        "key": "accounting.create",
+        "rolesConstant": "ACCOUNTING_WRITE"
+      },
+      {
+        "key": "accounting.edit",
+        "rolesConstant": "ACCOUNTING_WRITE"
+      },
+      {
+        "key": "accounting.approve",
+        "rolesConstant": "ACCOUNTING_WRITE"
+      },
+      {
+        "key": "productionWorkflow.cancel",
+        "rolesConstant": "OPERATIONS_CASE_VIEW"
+      },
+      {
+        "key": "operations.case.edit",
+        "rolesConstant": "OPERATIONS_PLAN_EDIT"
+      },
+      {
+        "key": "operations.analysis.run",
+        "rolesConstant": "OPERATIONS_CASE_VIEW"
+      },
+      {
+        "key": "operations.plan.create",
+        "rolesConstant": "OPERATIONS_PLAN_EDIT"
+      },
+      {
+        "key": "operations.plan.edit",
+        "rolesConstant": "OPERATIONS_PLAN_EDIT"
+      },
+      {
+        "key": "operations.plan.submit",
+        "rolesConstant": "OPERATIONS_PLAN_EDIT"
+      },
+      {
+        "key": "operations.plan.approve",
+        "rolesConstant": "OPERATIONS_PLAN_APPROVE"
+      },
+      {
+        "key": "operations.plan.dispatch",
+        "rolesConstant": "OPERATIONS_PLAN_DISPATCH"
+      }
+    ],
+    "explicitPermissionCalls": [
+      {
+        "key": "bom.create",
+        "file": "src/routes/bom.ts",
+        "line": 51
+      },
+      {
+        "key": "bom.edit",
+        "file": "src/routes/bom.ts",
+        "line": 151
+      },
+      {
+        "key": "bom.delete",
+        "file": "src/routes/bom.ts",
+        "line": 178
+      },
+      {
+        "key": "bom.edit",
+        "file": "src/routes/bom.ts",
+        "line": 230
+      },
+      {
+        "key": "bom.edit",
+        "file": "src/routes/bom.ts",
+        "line": 253
+      },
+      {
+        "key": "contacts.create",
+        "file": "src/routes/contacts.ts",
+        "line": 132
+      },
+      {
+        "key": "contacts.edit",
+        "file": "src/routes/contacts.ts",
+        "line": 205
+      },
+      {
+        "key": "contacts.delete",
+        "file": "src/routes/contacts.ts",
+        "line": 236
+      },
+      {
+        "key": "governance.managePolicies",
+        "file": "src/routes/governance.ts",
+        "line": 154
+      },
+      {
+        "key": "governance.managePolicies",
+        "file": "src/routes/governance.ts",
+        "line": 176
+      },
+      {
+        "key": "inventory.create",
+        "file": "src/routes/inventory.ts",
+        "line": 67
+      },
+      {
+        "key": "inventory.edit",
+        "file": "src/routes/inventory.ts",
+        "line": 123
+      },
+      {
+        "key": "inventory.delete",
+        "file": "src/routes/inventory.ts",
+        "line": 150
+      },
+      {
+        "key": "movements.create",
+        "file": "src/routes/movements.ts",
+        "line": 50
+      },
+      {
+        "key": "movements.delete",
+        "file": "src/routes/movements.ts",
+        "line": 119
+      },
+      {
+        "key": "productionWorkflow.execute",
+        "file": "src/routes/operations.ts",
+        "line": 14
+      },
+      {
+        "key": "productionWorkflow.cost.record",
+        "file": "src/routes/operations.ts",
+        "line": 37
+      },
+      {
+        "key": "productionWorkflow.execute",
+        "file": "src/routes/production-execution.ts",
+        "line": 38
+      },
+      {
+        "key": "productionWorkflow.execute",
+        "file": "src/routes/production-execution.ts",
+        "line": 94
+      },
+      {
+        "key": "productionWorkflow.warehouseAction",
+        "file": "src/routes/production-workflow.ts",
+        "line": 909
+      },
+      {
+        "key": "productionWorkflow.cancel",
+        "file": "src/routes/production-workflow.ts",
+        "line": 2067
+      },
+      {
+        "key": "sales.create",
+        "file": "src/routes/sales.ts",
+        "line": 647
+      },
+      {
+        "key": "sales.edit",
+        "file": "src/routes/sales.ts",
+        "line": 801
+      },
+      {
+        "key": "sales.delete",
+        "file": "src/routes/sales.ts",
+        "line": 1002
+      },
+      {
+        "key": "sales.edit",
+        "file": "src/routes/sales.ts",
+        "line": 1090
+      },
+      {
+        "key": "sales.edit",
+        "file": "src/routes/sales.ts",
+        "line": 1196
+      },
+      {
+        "key": "settings.manageUsers",
+        "file": "src/routes/settings.ts",
+        "line": 29
+      },
+      {
+        "key": "settings.managePermissions",
+        "file": "src/routes/settings.ts",
+        "line": 30
+      },
+      {
+        "key": "${key}",
+        "file": "scripts/smoke-test.js",
+        "line": 205
+      }
+    ]
+  },
+  "statuses": [
+    {
+      "file": "src/domain/production-status.ts",
+      "values": [
+        "awaiting_operations_claim",
+        "cancelled",
+        "completed",
+        "delivered_customer",
+        "delivered_warehouse",
+        "delivery_pending_customer",
+        "delivery_pending_warehouse",
+        "in_production",
+        "materials_approved",
+        "materials_partial",
+        "materials_rejected",
+        "materials_requested",
+        "new",
+        "pending_supervisor",
+        "quality_check"
+      ]
+    },
+    {
+      "file": "src/domain/production-cycle.ts",
+      "values": [
+        "cancelled",
+        "completed",
+        "delivered_customer",
+        "delivered_warehouse",
+        "delivery_pending_customer",
+        "delivery_pending_warehouse",
+        "in_production",
+        "materials_approved",
+        "materials_partial",
+        "materials_rejected",
+        "materials_requested",
+        "new",
+        "pending_supervisor",
+        "quality_check"
+      ]
+    },
+    {
+      "file": "src/db/schema/production-workflow.ts",
+      "values": [
+        "assigned_engineer_id",
+        "assigned_engineer_name",
+        "awaiting_operations_claim",
+        "bom_recipe_id",
+        "cancel_reason",
+        "cancelled_at",
+        "cancelled_by_id",
+        "cancelled_by_name",
+        "cancelled_by_role",
+        "claimed_at",
+        "claimed_by_id",
+        "claimed_by_name",
+        "created_at",
+        "created_by_id",
+        "created_by_name",
+        "current_stage",
+        "customer_email",
+        "customer_name",
+        "customer_phone",
+        "delivered_at",
+        "delivered_by_id",
+        "delivered_by_name",
+        "delivery_initiated_at",
+        "delivery_initiated_by_id",
+        "delivery_initiated_by_name",
+        "delivery_method_overridden_at",
+        "delivery_method_overridden_by_id",
+        "delivery_method_overridden_by_name",
+        "delivery_method_override_reason",
+        "delivery_notes",
+        "delivery_type",
+        "due_date_overridden_at",
+        "due_date_overridden_by_id",
+        "due_date_overridden_by_name",
+        "due_date_override_reason",
+        "end_date",
+        "in_production",
+        "material_request_id",
+        "materials_requested_at",
+        "needed_by",
+        "operational_status",
+        "order_details",
+        "order_number",
+        "order_source",
+        "parent_workflow_order_id",
+        "pending_delivery_add_to_inventory",
+        "pending_delivery_inventory_item_id",
+        "pending_reason",
+        "portal_customer_id",
+        "product_name",
+        "production_line",
+        "production_workflow_orders",
+        "quality_controller_name",
+        "quality_controller_user_id",
+        "quality_done_at",
+        "quality_notes",
+        "quality_reported_by_id",
+        "quality_reported_by_name",
+        "quality_status",
+        "received_at",
+        "received_by_name",
+        "received_by_user_id",
+        "reference_line_total",
+        "reference_unit_price",
+        "requested_materials",
+        "root_sales_order_id",
+        "sales_order_id",
+        "sales_order_ref",
+        "source_type",
+        "start_date",
+        "suggested_delivery_method",
+        "suggested_due_date",
+        "supervisor_accepted_at",
+        "supervisor_id",
+        "supervisor_name",
+        "supervisor_notes",
+        "team_assigned_at",
+        "updated_at",
+        "warehouse_approved_qty",
+        "warehouse_comment",
+        "warehouse_decided_at",
+        "warehouse_decision",
+        "warehouse_manager_id",
+        "warehouse_manager_name",
+        "workflow_status"
+      ]
+    },
+    {
+      "file": "src/db/schema/sales.ts",
+      "values": [
+        "base_unit",
+        "cancelled",
+        "contact_id",
+        "conversion_factor",
+        "created_at",
+        "created_by_id",
+        "draft",
+        "due_date",
+        "inventory_item_id",
+        "order_id",
+        "order_number",
+        "packaging_qty",
+        "packaging_unit",
+        "pending_approval",
+        "pending_review",
+        "sales_contact_idx",
+        "sales_created_at_idx",
+        "sales_date_idx",
+        "sales_items_order_idx",
+        "sales_order_items",
+        "sales_orders",
+        "sales_status_idx",
+        "stock_sync_status",
+        "unit_price",
+        "updated_at"
+      ]
+    },
+    {
+      "file": "src/db/schema/operations.ts",
+      "values": [
+        "accepted_qty",
+        "approved",
+        "assigned_to",
+        "batch_id",
+        "batch_number",
+        "change_reason",
+        "changed_by",
+        "completed_at",
+        "cost_type",
+        "created_at",
+        "created_by",
+        "document_revisions",
+        "document_revisions_document_idx",
+        "exception_type",
+        "planned_qty",
+        "produced_qty",
+        "production_batches",
+        "production_batches_order_idx",
+        "production_cost_entries",
+        "production_cost_entries_order_type_idx",
+        "production_exceptions",
+        "production_exceptions_queue_idx",
+        "production_exceptions_resource_idx",
+        "resolved_at",
+        "resolved_by",
+        "resource_id",
+        "resource_type",
+        "rework_qty",
+        "root_cause",
+        "scrap_qty",
+        "scrap_reason",
+        "source_id",
+        "source_type",
+        "started_at",
+        "unit_rate",
+        "workflow_order_id"
+      ]
+    },
+    {
+      "file": "src/db/schema/operations-control.ts",
+      "values": [
+        "actor_name",
+        "actor_user_id",
+        "available_qty",
+        "confirmed_at",
+        "confirmed_by",
+        "created_at",
+        "created_by",
+        "customer_status",
+        "fulfillment_allocations",
+        "fulfillment_allocations_item_source_unique",
+        "fulfillment_allocations_order_idx",
+        "fulfillment_allocations_source_idx",
+        "idempotency_key",
+        "internal_status",
+        "inventory_item_id",
+        "material_name",
+        "operation_transfers",
+        "operation_transfers_workflow_idx",
+        "operations_to_production",
+        "operations_to_warehouse",
+        "pending_operations",
+        "prepared_at",
+        "prepared_by",
+        "production_to_operations",
+        "purchase_requisitions",
+        "purchase_requisitions_item_idx",
+        "purchase_requisitions_workflow_idx",
+        "purchase_requisitions_workflow_item_unique",
+        "received_at",
+        "received_by",
+        "required_qty",
+        "sales_order_id",
+        "sales_order_item_id",
+        "shortage_qty",
+        "source_id",
+        "source_type",
+        "warehouse_to_operations",
+        "workflow_events",
+        "workflow_events_workflow_idx",
+        "workflow_order_id"
+      ]
+    },
+    {
+      "file": "src/db/schema/planning.ts",
+      "values": [
+        "approved_at",
+        "approved_by",
+        "available_minutes",
+        "available_qty",
+        "created_at",
+        "created_by",
+        "decided_by",
+        "demand_id",
+        "demand_source",
+        "demand_type",
+        "draft",
+        "due_date",
+        "gross_qty",
+        "horizon_end",
+        "horizon_start",
+        "impact_snapshot",
+        "input_hash",
+        "inventory_item_id",
+        "load_date",
+        "machine_id",
+        "material_requirement_id",
+        "material_requirements",
+        "material_requirements_item_idx",
+        "material_requirements_plan_idx",
+        "net_qty",
+        "open_production",
+        "operations_case",
+        "overload_minutes",
+        "pegged_qty",
+        "plan_id",
+        "plan_number",
+        "planning_capacity_loads",
+        "planning_capacity_loads_run_date_idx",
+        "planning_pegging_links",
+        "planning_pegging_links_run_idx",
+        "planning_purchase_requisitions",
+        "planning_release_decisions",
+        "planning_release_decisions_run_decision_idx",
+        "planning_run_inputs",
+        "planning_run_inputs_run_idx",
+        "planning_runs",
+        "planning_runs_scenario_idx",
+        "planning_runs_status_idx",
+        "planning_shortage_messages",
+        "planning_shortage_messages_run_idx",
+        "portal_order",
+        "production_plans",
+        "recommended_action",
+        "released_at",
+        "released_by",
+        "requested_qty",
+        "required_by",
+        "required_minutes",
+        "requisition_number",
+        "run_id",
+        "run_key",
+        "sales_order",
+        "scenario_code",
+        "shift_id",
+        "source_id",
+        "source_type",
+        "within_capacity",
+        "work_center_id",
+        "workflow_order_id"
+      ]
+    }
+  ],
+  "settings": {
+    "literalCandidates": []
+  },
+  "notifications": {
+    "literalTypes": []
+  },
+  "tests": [
+    "e2e/approval-flow.e2e.test.ts",
+    "e2e/production-workflow.e2e.test.ts",
+    "src/db/schema/foundation.test.ts",
+    "src/domain/planning.test.ts",
+    "src/domain/portal-orders.test.ts",
+    "src/domain/production-cycle.test.ts",
+    "src/domain/production-execution.test.ts",
+    "src/domain/production-status.test.ts",
+    "src/lib/actionRegistry.test.ts",
+    "src/lib/cancellation.test.ts",
+    "src/lib/decimal-quantity.test.ts",
+    "src/lib/fieldMasking.test.ts",
+    "src/lib/governance.test.ts",
+    "src/lib/identityNormalization.test.ts",
+    "src/lib/identityNormalizationMigration.test.ts",
+    "src/lib/operations-claim.test.ts",
+    "src/lib/operations-control-policy.test.ts",
+    "src/lib/operations-intake.test.ts",
+    "src/lib/otpDelivery.test.ts",
+    "src/lib/portalConfig.test.ts",
+    "src/lib/salesStatusTransition.test.ts",
+    "src/lib/validate.test.ts",
+    "src/middleware/apiEnvelope.test.ts",
+    "src/middleware/errorHandler.test.ts",
+    "src/middleware/portal-auth.test.ts",
+    "src/routes/operations-manager.mount.test.ts",
+    "src/routes/operations-manager.test.ts",
+    "src/routes/portal-orders.test.ts",
+    "src/routes/production-workflow.masking.test.ts"
+  ],
+  "findings": {
+    "duplicateRoutes": [],
+    "duplicateTables": [],
+    "frontendRoleDrift": [],
+    "unmountedRouteModules": [],
+    "intentionalLegacyModules": [
+      "src/routes/production.ts"
+    ],
+    "unexpectedUnmountedRouteModules": [],
+    "schemaTablesWithoutMigrationCreate": [],
+    "baselineSchemaTables": [
+      "accounting_transactions",
+      "app_state",
+      "approval_policies",
+      "approval_requests",
+      "attendance_logs",
+      "audit_events",
+      "bom_recipe_items",
+      "bom_recipes",
+      "contact_ledger",
+      "contacts",
+      "delegations",
+      "document_revisions",
+      "employees",
+      "fulfillment_allocations",
+      "inventory_items",
+      "login_sessions",
+      "notifications",
+      "operation_transfers",
+      "permission_overrides",
+      "portal_customers",
+      "portal_order_reviews",
+      "portal_password_reset_requests",
+      "production_batches",
+      "production_cost_entries",
+      "production_exceptions",
+      "production_orders",
+      "production_requests",
+      "production_workflow_orders",
+      "purchase_order_items",
+      "purchase_orders",
+      "purchase_requisitions",
+      "quality_inspections",
+      "quality_records",
+      "sales_order_items",
+      "sales_orders",
+      "stock_movements",
+      "system_settings",
+      "system_users",
+      "trash",
+      "workflow_events"
+    ],
+    "schemaTablesWithoutAnyDeliverySource": [],
+    "migrationTablesWithoutSchemaDefinition": [],
+    "databaseVerified": false
+  },
+  "sourcesOfTruth": {
+    "roles": "src/lib/roles.ts",
+    "fineGrainedPermissions": "src/lib/actionRegistry.ts",
+    "productionLifecycle": "src/domain/production-status.ts",
+    "productionStageProjection": "src/domain/production-cycle.ts",
+    "databaseDelivery": "migrations/*.sql via scripts/run-migrations.mjs",
+    "apiMount": "src/main.ts",
+    "notificationPersistence": "src/lib/notifications.ts and src/lib/portalNotifications.ts"
+  }
+}
