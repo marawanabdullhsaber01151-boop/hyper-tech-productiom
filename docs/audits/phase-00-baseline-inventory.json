@@ -1,23 +1,2533 @@
 {
-  "generatedAt": "2026-09-15T22:27:42.670Z",
+  "generatedAt": "2026-09-15T22:41:36.193Z",
   "repository": {
     "root": ".",
     "packageManager": "npm",
     "nodeEngine": ">=20"
   },
   "counts": {
-    "routes": 2,
-    "pages": 0,
-    "schemaTables": 0,
-    "migrationFiles": 0,
+    "routes": 253,
+    "pages": 32,
+    "schemaTables": 78,
+    "migrationFiles": 54,
     "declaredRoles": 18,
     "actionRegistryEntries": 33,
     "testFiles": 29
   },
   "routes": [
     {
+      "file": "src/routes/auth.ts",
+      "line": 31,
+      "owner": "router",
+      "method": "POST",
+      "path": "/auth/login",
+      "apiPath": "/api/v1/auth/login",
+      "protectedByAuth": false,
+      "protectedByRole": false
+    },
+    {
+      "file": "src/routes/auth.ts",
+      "line": 119,
+      "owner": "router",
+      "method": "GET",
+      "path": "/auth/me",
+      "apiPath": "/api/v1/auth/me",
+      "protectedByAuth": true,
+      "protectedByRole": false
+    },
+    {
+      "file": "src/routes/auth.ts",
+      "line": 145,
+      "owner": "router",
+      "method": "POST",
+      "path": "/auth/logout",
+      "apiPath": "/api/v1/auth/logout",
+      "protectedByAuth": true,
+      "protectedByRole": false
+    },
+    {
+      "file": "src/routes/auth.ts",
+      "line": 158,
+      "owner": "router",
+      "method": "GET",
+      "path": "/auth/sessions",
+      "apiPath": "/api/v1/auth/sessions",
+      "protectedByAuth": true,
+      "protectedByRole": false
+    },
+    {
+      "file": "src/routes/auth.ts",
+      "line": 183,
+      "owner": "router",
+      "method": "DELETE",
+      "path": "/auth/sessions/:id",
+      "apiPath": "/api/v1/auth/sessions/:id",
+      "protectedByAuth": true,
+      "protectedByRole": false
+    },
+    {
+      "file": "src/routes/auth.ts",
+      "line": 219,
+      "owner": "router",
+      "method": "POST",
+      "path": "/auth/change-password",
+      "apiPath": "/api/v1/auth/change-password",
+      "protectedByAuth": true,
+      "protectedByRole": false
+    },
+    {
+      "file": "src/routes/bom.ts",
+      "line": 30,
+      "owner": "router",
+      "method": "GET",
+      "path": "/bom",
+      "apiPath": "/api/v1/bom",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/bom.ts",
+      "line": 48,
+      "owner": "router",
+      "method": "POST",
+      "path": "/bom",
+      "apiPath": "/api/v1/bom",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/bom.ts",
+      "line": 87,
+      "owner": "router",
+      "method": "GET",
+      "path": "/bom/items/all",
+      "apiPath": "/api/v1/bom/items/all",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/bom.ts",
+      "line": 118,
+      "owner": "router",
+      "method": "GET",
+      "path": "/bom/:id",
+      "apiPath": "/api/v1/bom/:id",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/bom.ts",
+      "line": 148,
+      "owner": "router",
+      "method": "PATCH",
+      "path": "/bom/:id",
+      "apiPath": "/api/v1/bom/:id",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/bom.ts",
+      "line": 175,
+      "owner": "router",
+      "method": "DELETE",
+      "path": "/bom/:id",
+      "apiPath": "/api/v1/bom/:id",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/bom.ts",
+      "line": 227,
+      "owner": "router",
+      "method": "POST",
+      "path": "/bom/:id/items",
+      "apiPath": "/api/v1/bom/:id/items",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/bom.ts",
+      "line": 250,
+      "owner": "router",
+      "method": "DELETE",
+      "path": "/bom/:id/items/:itemId",
+      "apiPath": "/api/v1/bom/:id/items/:itemId",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/contacts.ts",
+      "line": 27,
+      "owner": "router",
+      "method": "GET",
+      "path": "/contacts/search",
+      "apiPath": "/api/v1/contacts/search",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/contacts.ts",
+      "line": 64,
+      "owner": "router",
+      "method": "GET",
+      "path": "/contacts/duplicate-check",
+      "apiPath": "/api/v1/contacts/duplicate-check",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/contacts.ts",
+      "line": 103,
+      "owner": "router",
+      "method": "GET",
+      "path": "/contacts",
+      "apiPath": "/api/v1/contacts",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/contacts.ts",
+      "line": 129,
+      "owner": "router",
+      "method": "POST",
+      "path": "/contacts",
+      "apiPath": "/api/v1/contacts",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/contacts.ts",
+      "line": 167,
+      "owner": "router",
+      "method": "GET",
+      "path": "/contacts/:id",
+      "apiPath": "/api/v1/contacts/:id",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/contacts.ts",
+      "line": 202,
+      "owner": "router",
+      "method": "PATCH",
+      "path": "/contacts/:id",
+      "apiPath": "/api/v1/contacts/:id",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/contacts.ts",
+      "line": 233,
+      "owner": "router",
+      "method": "DELETE",
+      "path": "/contacts/:id",
+      "apiPath": "/api/v1/contacts/:id",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/dashboard.ts",
+      "line": 31,
+      "owner": "router",
+      "method": "GET",
+      "path": "/dashboard",
+      "apiPath": "/api/v1/dashboard",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/engineering.ts",
+      "line": 27,
+      "owner": "router",
+      "method": "GET",
+      "path": "/engineering/products",
+      "apiPath": "/api/v1/engineering/products",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/engineering.ts",
+      "line": 39,
+      "owner": "router",
+      "method": "POST",
+      "path": "/engineering/products",
+      "apiPath": "/api/v1/engineering/products",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/engineering.ts",
+      "line": 52,
+      "owner": "router",
+      "method": "GET",
+      "path": "/engineering/products/:id",
+      "apiPath": "/api/v1/engineering/products/:id",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/engineering.ts",
+      "line": 70,
+      "owner": "router",
+      "method": "POST",
+      "path": "/engineering/products/:id/versions",
+      "apiPath": "/api/v1/engineering/products/:id/versions",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/engineering.ts",
+      "line": 86,
+      "owner": "router",
+      "method": "POST",
+      "path": "/engineering/bom-versions/:id/approve",
+      "apiPath": "/api/v1/engineering/bom-versions/:id/approve",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/engineering.ts",
+      "line": 105,
+      "owner": "router",
+      "method": "POST",
+      "path": "/engineering/routings/:versionId/operations",
+      "apiPath": "/api/v1/engineering/routings/:versionId/operations",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/engineering.ts",
+      "line": 121,
+      "owner": "router",
+      "method": "GET",
+      "path": "/engineering/change-requests",
+      "apiPath": "/api/v1/engineering/change-requests",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/engineering.ts",
+      "line": 129,
+      "owner": "router",
+      "method": "POST",
+      "path": "/engineering/change-requests",
+      "apiPath": "/api/v1/engineering/change-requests",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/foundation.ts",
+      "line": 81,
+      "owner": "router",
+      "method": "GET",
+      "path": "/foundation/summary",
+      "apiPath": "/api/v1/foundation/summary",
+      "protectedByAuth": false,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/foundation.ts",
+      "line": 104,
+      "owner": "router",
+      "method": "GET",
+      "path": "/foundation/items",
+      "apiPath": "/api/v1/foundation/items",
+      "protectedByAuth": false,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/foundation.ts",
+      "line": 117,
+      "owner": "router",
+      "method": "POST",
+      "path": "/foundation/items",
+      "apiPath": "/api/v1/foundation/items",
+      "protectedByAuth": false,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/foundation.ts",
+      "line": 126,
+      "owner": "router",
+      "method": "PATCH",
+      "path": "/foundation/items/:id",
+      "apiPath": "/api/v1/foundation/items/:id",
+      "protectedByAuth": false,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/foundation.ts",
+      "line": 140,
+      "owner": "router",
+      "method": "GET",
+      "path": "/foundation/items/:id/conversions",
+      "apiPath": "/api/v1/foundation/items/:id/conversions",
+      "protectedByAuth": false,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/foundation.ts",
+      "line": 149,
+      "owner": "router",
+      "method": "POST",
+      "path": "/foundation/items/:id/conversions",
+      "apiPath": "/api/v1/foundation/items/:id/conversions",
+      "protectedByAuth": false,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/foundation.ts",
+      "line": 163,
+      "owner": "router",
+      "method": "GET",
+      "path": "/foundation/locations",
+      "apiPath": "/api/v1/foundation/locations",
+      "protectedByAuth": false,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/foundation.ts",
+      "line": 168,
+      "owner": "router",
+      "method": "POST",
+      "path": "/foundation/locations",
+      "apiPath": "/api/v1/foundation/locations",
+      "protectedByAuth": false,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/foundation.ts",
+      "line": 182,
+      "owner": "router",
+      "method": "PATCH",
+      "path": "/foundation/locations/:id",
+      "apiPath": "/api/v1/foundation/locations/:id",
+      "protectedByAuth": false,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/foundation.ts",
+      "line": 216,
+      "owner": "router",
+      "method": "GET",
+      "path": "/foundation/work-centers",
+      "apiPath": "/api/v1/foundation/work-centers",
+      "protectedByAuth": false,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/foundation.ts",
+      "line": 221,
+      "owner": "router",
+      "method": "POST",
+      "path": "/foundation/work-centers",
+      "apiPath": "/api/v1/foundation/work-centers",
+      "protectedByAuth": false,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/foundation.ts",
+      "line": 235,
+      "owner": "router",
+      "method": "PATCH",
+      "path": "/foundation/work-centers/:id",
+      "apiPath": "/api/v1/foundation/work-centers/:id",
+      "protectedByAuth": false,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/foundation.ts",
+      "line": 254,
+      "owner": "router",
+      "method": "GET",
+      "path": "/foundation/machines",
+      "apiPath": "/api/v1/foundation/machines",
+      "protectedByAuth": false,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/foundation.ts",
+      "line": 264,
+      "owner": "router",
+      "method": "POST",
+      "path": "/foundation/machines",
+      "apiPath": "/api/v1/foundation/machines",
+      "protectedByAuth": false,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/foundation.ts",
+      "line": 276,
+      "owner": "router",
+      "method": "PATCH",
+      "path": "/foundation/machines/:id",
+      "apiPath": "/api/v1/foundation/machines/:id",
+      "protectedByAuth": false,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/foundation.ts",
+      "line": 295,
+      "owner": "router",
+      "method": "PATCH",
+      "path": "/foundation/machines/:id/status",
+      "apiPath": "/api/v1/foundation/machines/:id/status",
+      "protectedByAuth": false,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/foundation.ts",
+      "line": 309,
+      "owner": "router",
+      "method": "GET",
+      "path": "/foundation/shifts",
+      "apiPath": "/api/v1/foundation/shifts",
+      "protectedByAuth": false,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/foundation.ts",
+      "line": 314,
+      "owner": "router",
+      "method": "POST",
+      "path": "/foundation/shifts",
+      "apiPath": "/api/v1/foundation/shifts",
+      "protectedByAuth": false,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/foundation.ts",
+      "line": 323,
+      "owner": "router",
+      "method": "PATCH",
+      "path": "/foundation/shifts/:id",
+      "apiPath": "/api/v1/foundation/shifts/:id",
+      "protectedByAuth": false,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/foundation.ts",
+      "line": 337,
+      "owner": "router",
+      "method": "GET",
+      "path": "/foundation/transitions",
+      "apiPath": "/api/v1/foundation/transitions",
+      "protectedByAuth": false,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/foundation.ts",
+      "line": 346,
+      "owner": "router",
+      "method": "POST",
+      "path": "/foundation/transitions",
+      "apiPath": "/api/v1/foundation/transitions",
+      "protectedByAuth": false,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/foundation.ts",
+      "line": 356,
+      "owner": "router",
+      "method": "GET",
+      "path": "/foundation/audit",
+      "apiPath": "/api/v1/foundation/audit",
+      "protectedByAuth": false,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/foundation.ts",
+      "line": 366,
+      "owner": "router",
+      "method": "GET",
+      "path": "/foundation/number-sequences",
+      "apiPath": "/api/v1/foundation/number-sequences",
+      "protectedByAuth": false,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/foundation.ts",
+      "line": 372,
+      "owner": "router",
+      "method": "POST",
+      "path": "/foundation/number-sequences",
+      "apiPath": "/api/v1/foundation/number-sequences",
+      "protectedByAuth": false,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/foundation.ts",
+      "line": 381,
+      "owner": "router",
+      "method": "PATCH",
+      "path": "/foundation/number-sequences/:id",
+      "apiPath": "/api/v1/foundation/number-sequences/:id",
+      "protectedByAuth": false,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/foundation.ts",
+      "line": 396,
+      "owner": "router",
+      "method": "GET",
+      "path": "/foundation/number-sequences/:key/preview",
+      "apiPath": "/api/v1/foundation/number-sequences/:key/preview",
+      "protectedByAuth": false,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/foundation.ts",
+      "line": 407,
+      "owner": "router",
+      "method": "POST",
+      "path": "/foundation/validate-transition",
+      "apiPath": "/api/v1/foundation/validate-transition",
+      "protectedByAuth": false,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/governance.ts",
+      "line": 22,
+      "owner": "router",
+      "method": "GET",
+      "path": "/governance/users",
+      "apiPath": "/api/v1/governance/users",
+      "protectedByAuth": false,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/governance.ts",
+      "line": 35,
+      "owner": "router",
+      "method": "GET",
+      "path": "/governance/delegations",
+      "apiPath": "/api/v1/governance/delegations",
+      "protectedByAuth": false,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/governance.ts",
+      "line": 47,
+      "owner": "router",
+      "method": "POST",
+      "path": "/governance/delegations",
+      "apiPath": "/api/v1/governance/delegations",
+      "protectedByAuth": false,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/governance.ts",
+      "line": 84,
+      "owner": "router",
+      "method": "PATCH",
+      "path": "/governance/delegations/:id/revoke",
+      "apiPath": "/api/v1/governance/delegations/:id/revoke",
+      "protectedByAuth": false,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/governance.ts",
+      "line": 116,
+      "owner": "router",
+      "method": "GET",
+      "path": "/governance/audit",
+      "apiPath": "/api/v1/governance/audit",
+      "protectedByAuth": false,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/governance.ts",
+      "line": 123,
+      "owner": "router",
+      "method": "GET",
+      "path": "/governance/approval-policies",
+      "apiPath": "/api/v1/governance/approval-policies",
+      "protectedByAuth": false,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/governance.ts",
+      "line": 128,
+      "owner": "router",
+      "method": "GET",
+      "path": "/governance/approval-requests",
+      "apiPath": "/api/v1/governance/approval-requests",
+      "protectedByAuth": false,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/governance.ts",
+      "line": 154,
+      "owner": "router",
+      "method": "POST",
+      "path": "/governance/approval-policies",
+      "apiPath": "/api/v1/governance/approval-policies",
+      "protectedByAuth": false,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/governance.ts",
+      "line": 176,
+      "owner": "router",
+      "method": "PATCH",
+      "path": "/governance/approval-policies/:id",
+      "apiPath": "/api/v1/governance/approval-policies/:id",
+      "protectedByAuth": false,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/governance.ts",
+      "line": 200,
+      "owner": "router",
+      "method": "PATCH",
+      "path": "/governance/approval-requests/:id/decide",
+      "apiPath": "/api/v1/governance/approval-requests/:id/decide",
+      "protectedByAuth": false,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/governance.ts",
+      "line": 317,
+      "owner": "router",
+      "method": "GET",
+      "path": "/governance/simulate",
+      "apiPath": "/api/v1/governance/simulate",
+      "protectedByAuth": false,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/governance.ts",
+      "line": 343,
+      "owner": "router",
+      "method": "GET",
+      "path": "/governance/audit-events/verify",
+      "apiPath": "/api/v1/governance/audit-events/verify",
+      "protectedByAuth": false,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/health.ts",
+      "line": 139,
+      "owner": "router",
+      "method": "GET",
+      "path": "/health/ready",
+      "apiPath": "/api/v1/health/ready",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/health.ts",
+      "line": 163,
+      "owner": "router",
+      "method": "GET",
+      "path": "/admin/health",
+      "apiPath": "/api/v1/admin/health",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/health.ts",
+      "line": 180,
+      "owner": "router",
+      "method": "GET",
+      "path": "/admin/audit/findings",
+      "apiPath": "/api/v1/admin/audit/findings",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/health.ts",
+      "line": 202,
+      "owner": "router",
+      "method": "GET",
+      "path": "/admin/diagnostics/availability",
+      "apiPath": "/api/v1/admin/diagnostics/availability",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/inventory.ts",
+      "line": 18,
+      "owner": "router",
+      "method": "GET",
+      "path": "/inventory",
+      "apiPath": "/api/v1/inventory",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/inventory.ts",
+      "line": 64,
+      "owner": "router",
+      "method": "POST",
+      "path": "/inventory",
+      "apiPath": "/api/v1/inventory",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/inventory.ts",
+      "line": 83,
+      "owner": "router",
+      "method": "GET",
+      "path": "/inventory/:id",
+      "apiPath": "/api/v1/inventory/:id",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/inventory.ts",
+      "line": 120,
+      "owner": "router",
+      "method": "PATCH",
+      "path": "/inventory/:id",
+      "apiPath": "/api/v1/inventory/:id",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/inventory.ts",
+      "line": 147,
+      "owner": "router",
+      "method": "DELETE",
+      "path": "/inventory/:id",
+      "apiPath": "/api/v1/inventory/:id",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/movements.ts",
+      "line": 25,
+      "owner": "router",
+      "method": "GET",
+      "path": "/stock-movements",
+      "apiPath": "/api/v1/stock-movements",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/movements.ts",
+      "line": 47,
+      "owner": "router",
+      "method": "POST",
+      "path": "/stock-movements",
+      "apiPath": "/api/v1/stock-movements",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/movements.ts",
+      "line": 88,
+      "owner": "router",
+      "method": "GET",
+      "path": "/stock-movements/:id",
+      "apiPath": "/api/v1/stock-movements/:id",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/movements.ts",
+      "line": 116,
+      "owner": "router",
+      "method": "DELETE",
+      "path": "/stock-movements/:id",
+      "apiPath": "/api/v1/stock-movements/:id",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/nav.ts",
+      "line": 45,
+      "owner": "router",
+      "method": "GET",
+      "path": "/nav",
+      "apiPath": "/api/v1/nav",
+      "protectedByAuth": true,
+      "protectedByRole": false
+    },
+    {
+      "file": "src/routes/notifications.ts",
+      "line": 13,
+      "owner": "router",
+      "method": "GET",
+      "path": "/notifications",
+      "apiPath": "/api/v1/notifications",
+      "protectedByAuth": true,
+      "protectedByRole": false
+    },
+    {
+      "file": "src/routes/notifications.ts",
+      "line": 41,
+      "owner": "router",
+      "method": "GET",
+      "path": "/notifications/unread-count",
+      "apiPath": "/api/v1/notifications/unread-count",
+      "protectedByAuth": true,
+      "protectedByRole": false
+    },
+    {
+      "file": "src/routes/notifications.ts",
+      "line": 65,
+      "owner": "router",
+      "method": "PATCH",
+      "path": "/notifications/:id/read",
+      "apiPath": "/api/v1/notifications/:id/read",
+      "protectedByAuth": true,
+      "protectedByRole": false
+    },
+    {
+      "file": "src/routes/notifications.ts",
+      "line": 97,
+      "owner": "router",
+      "method": "PATCH",
+      "path": "/notifications/read-all",
+      "apiPath": "/api/v1/notifications/read-all",
+      "protectedByAuth": true,
+      "protectedByRole": false
+    },
+    {
+      "file": "src/routes/notifications.ts",
+      "line": 120,
+      "owner": "router",
+      "method": "DELETE",
+      "path": "/notifications/:id",
+      "apiPath": "/api/v1/notifications/:id",
+      "protectedByAuth": true,
+      "protectedByRole": false
+    },
+    {
+      "file": "src/routes/operations-control.ts",
+      "line": 64,
+      "owner": "router",
+      "method": "GET",
+      "path": "/operations-control/lookups/sales-orders",
+      "apiPath": "/api/v1/operations-control/lookups/sales-orders",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/operations-control.ts",
+      "line": 75,
+      "owner": "router",
+      "method": "GET",
+      "path": "/operations-control/lookups/production-orders",
+      "apiPath": "/api/v1/operations-control/lookups/production-orders",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/operations-control.ts",
+      "line": 87,
+      "owner": "router",
+      "method": "GET",
+      "path": "/operations-control/lookups/inventory-items",
+      "apiPath": "/api/v1/operations-control/lookups/inventory-items",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/operations-control.ts",
+      "line": 219,
+      "owner": "router",
+      "method": "GET",
+      "path": "/operations-control/sales-orders/:id/plan",
+      "apiPath": "/api/v1/operations-control/sales-orders/:id/plan",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/operations-control.ts",
+      "line": 237,
+      "owner": "router",
+      "method": "POST",
+      "path": "/operations-control/sales-orders/:id/draft-plan",
+      "apiPath": "/api/v1/operations-control/sales-orders/:id/draft-plan",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/operations-control.ts",
+      "line": 263,
+      "owner": "router",
+      "method": "POST",
+      "path": "/operations-control/sales-orders/:id/execute-plan",
+      "apiPath": "/api/v1/operations-control/sales-orders/:id/execute-plan",
+      "protectedByAuth": true,
+      "protectedByRole": false
+    },
+    {
+      "file": "src/routes/operations-control.ts",
+      "line": 295,
+      "owner": "router",
+      "method": "GET",
+      "path": "/operations-control/purchase-requisitions",
+      "apiPath": "/api/v1/operations-control/purchase-requisitions",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/operations-control.ts",
+      "line": 303,
+      "owner": "router",
+      "method": "PATCH",
+      "path": "/operations-control/purchase-requisitions/:id/confirm",
+      "apiPath": "/api/v1/operations-control/purchase-requisitions/:id/confirm",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/operations-control.ts",
+      "line": 320,
+      "owner": "router",
+      "method": "POST",
+      "path": "/operations-control/transfers",
+      "apiPath": "/api/v1/operations-control/transfers",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/operations-control.ts",
+      "line": 343,
+      "owner": "router",
+      "method": "PATCH",
+      "path": "/operations-control/transfers/:id/receive",
+      "apiPath": "/api/v1/operations-control/transfers/:id/receive",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/operations-control.ts",
+      "line": 387,
+      "owner": "router",
+      "method": "GET",
+      "path": "/operations-control/orders/:id/events",
+      "apiPath": "/api/v1/operations-control/orders/:id/events",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/operations-control.ts",
+      "line": 395,
+      "owner": "router",
+      "method": "GET",
+      "path": "/operations-control/orders/:id/customer-status",
+      "apiPath": "/api/v1/operations-control/orders/:id/customer-status",
+      "protectedByAuth": true,
+      "protectedByRole": false
+    },
+    {
+      "file": "src/routes/operations-manager.ts",
+      "line": 44,
+      "owner": "router",
+      "method": "GET",
+      "path": "/operations-manager/production-orders",
+      "apiPath": "/api/v1/operations-manager/production-orders",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/operations-manager.ts",
+      "line": 87,
+      "owner": "router",
+      "method": "POST",
+      "path": "/operations-manager/production-orders/:id/claim",
+      "apiPath": "/api/v1/operations-manager/production-orders/:id/claim",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/operations-manager.ts",
+      "line": 267,
+      "owner": "router",
+      "method": "GET",
+      "path": "/operations-manager/cases",
+      "apiPath": "/api/v1/operations-manager/cases",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/operations-manager.ts",
+      "line": 351,
+      "owner": "router",
+      "method": "GET",
+      "path": "/operations-manager/staff",
+      "apiPath": "/api/v1/operations-manager/staff",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/operations-manager.ts",
+      "line": 377,
+      "owner": "router",
+      "method": "POST",
+      "path": "/operations-manager/cases/from-sales-order-number",
+      "apiPath": "/api/v1/operations-manager/cases/from-sales-order-number",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/operations-manager.ts",
+      "line": 430,
+      "owner": "router",
+      "method": "POST",
+      "path": "/operations-manager/cases/from-sales-order/:salesOrderId",
+      "apiPath": "/api/v1/operations-manager/cases/from-sales-order/:salesOrderId",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/operations-manager.ts",
+      "line": 489,
+      "owner": "router",
+      "method": "GET",
+      "path": "/operations-manager/cases/:id",
+      "apiPath": "/api/v1/operations-manager/cases/:id",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/operations-manager.ts",
+      "line": 529,
+      "owner": "router",
+      "method": "GET",
+      "path": "/operations-manager/cases/:id/revisions",
+      "apiPath": "/api/v1/operations-manager/cases/:id/revisions",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/operations-manager.ts",
+      "line": 560,
+      "owner": "router",
+      "method": "POST",
+      "path": "/operations-manager/cases/:id/start-validation",
+      "apiPath": "/api/v1/operations-manager/cases/:id/start-validation",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/operations-manager.ts",
+      "line": 663,
+      "owner": "router",
+      "method": "POST",
+      "path": "/operations-manager/cases/:id/complete-validation",
+      "apiPath": "/api/v1/operations-manager/cases/:id/complete-validation",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/operations-manager.ts",
+      "line": 763,
+      "owner": "router",
+      "method": "POST",
+      "path": "/operations-manager/cases/:id/request-sales-clarification",
+      "apiPath": "/api/v1/operations-manager/cases/:id/request-sales-clarification",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/operations.ts",
+      "line": 14,
+      "owner": "router",
+      "method": "POST",
+      "path": "/operations/batches",
+      "apiPath": "/api/v1/operations/batches",
+      "protectedByAuth": false,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/operations.ts",
+      "line": 29,
+      "owner": "router",
+      "method": "GET",
+      "path": "/operations/orders/:orderId/batches",
+      "apiPath": "/api/v1/operations/orders/:orderId/batches",
+      "protectedByAuth": false,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/operations.ts",
+      "line": 37,
+      "owner": "router",
+      "method": "POST",
+      "path": "/operations/cost-entries",
+      "apiPath": "/api/v1/operations/cost-entries",
+      "protectedByAuth": false,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/operations.ts",
+      "line": 63,
+      "owner": "router",
+      "method": "GET",
+      "path": "/operations/orders/:orderId/cost",
+      "apiPath": "/api/v1/operations/orders/:orderId/cost",
+      "protectedByAuth": false,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/operations.ts",
+      "line": 75,
+      "owner": "router",
+      "method": "GET",
+      "path": "/operations/exceptions",
+      "apiPath": "/api/v1/operations/exceptions",
+      "protectedByAuth": false,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/operations.ts",
+      "line": 82,
+      "owner": "router",
+      "method": "PATCH",
+      "path": "/operations/exceptions/:id/resolve",
+      "apiPath": "/api/v1/operations/exceptions/:id/resolve",
+      "protectedByAuth": false,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/operations.ts",
+      "line": 94,
+      "owner": "router",
+      "method": "GET",
+      "path": "/operations/revisions/:resourceType/:resourceId",
+      "apiPath": "/api/v1/operations/revisions/:resourceType/:resourceId",
+      "protectedByAuth": false,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/planning.ts",
+      "line": 41,
+      "owner": "router",
+      "method": "POST",
+      "path": "/planning/runs",
+      "apiPath": "/api/v1/planning/runs",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/planning.ts",
+      "line": 233,
+      "owner": "router",
+      "method": "GET",
+      "path": "/planning/runs",
+      "apiPath": "/api/v1/planning/runs",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/planning.ts",
+      "line": 244,
+      "owner": "router",
+      "method": "GET",
+      "path": "/planning/runs/:id",
+      "apiPath": "/api/v1/planning/runs/:id",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/planning.ts",
+      "line": 257,
+      "owner": "router",
+      "method": "POST",
+      "path": "/planning/runs/:id/approve",
+      "apiPath": "/api/v1/planning/runs/:id/approve",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/planning.ts",
+      "line": 275,
+      "owner": "router",
+      "method": "POST",
+      "path": "/planning/runs/:id/release/preview",
+      "apiPath": "/api/v1/planning/runs/:id/release/preview",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/planning.ts",
+      "line": 292,
+      "owner": "router",
+      "method": "POST",
+      "path": "/planning/runs/:id/release",
+      "apiPath": "/api/v1/planning/runs/:id/release",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/planning.ts",
+      "line": 330,
+      "owner": "router",
+      "method": "POST",
+      "path": "/planning/mrp",
+      "apiPath": "/api/v1/planning/mrp",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/planning.ts",
+      "line": 368,
+      "owner": "router",
+      "method": "GET",
+      "path": "/planning/mrp",
+      "apiPath": "/api/v1/planning/mrp",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/planning.ts",
+      "line": 381,
+      "owner": "router",
+      "method": "POST",
+      "path": "/planning/requisitions",
+      "apiPath": "/api/v1/planning/requisitions",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/portal-customers-admin.ts",
+      "line": 150,
+      "owner": "router",
+      "method": "GET",
+      "path": "/portal-customers",
+      "apiPath": "/api/v1/portal-customers",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/portal-customers-admin.ts",
+      "line": 210,
+      "owner": "router",
+      "method": "GET",
+      "path": "/portal-customers/export.csv",
+      "apiPath": "/api/v1/portal-customers/export.csv",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/portal-customers-admin.ts",
+      "line": 281,
+      "owner": "router",
+      "method": "PATCH",
+      "path": "/portal-customers/:id/status",
+      "apiPath": "/api/v1/portal-customers/:id/status",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/portal-customers-admin.ts",
+      "line": 340,
+      "owner": "router",
+      "method": "PATCH",
+      "path": "/portal-customers/:id/city",
+      "apiPath": "/api/v1/portal-customers/:id/city",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/portal-customers-admin.ts",
+      "line": 393,
+      "owner": "router",
+      "method": "PATCH",
+      "path": "/portal-customers/:id/segment",
+      "apiPath": "/api/v1/portal-customers/:id/segment",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/portal-customers-admin.ts",
+      "line": 444,
+      "owner": "router",
+      "method": "DELETE",
+      "path": "/portal-customers/:id",
+      "apiPath": "/api/v1/portal-customers/:id",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/portal-customers-admin.ts",
+      "line": 524,
+      "owner": "router",
+      "method": "PATCH",
+      "path": "/portal-customers/:id/minimum-order",
+      "apiPath": "/api/v1/portal-customers/:id/minimum-order",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/portal-customers-admin.ts",
+      "line": 595,
+      "owner": "router",
+      "method": "GET",
+      "path": "/portal-customers/password-reset-requests",
+      "apiPath": "/api/v1/portal-customers/password-reset-requests",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/portal-customers-admin.ts",
+      "line": 647,
+      "owner": "router",
+      "method": "PATCH",
+      "path": "/portal-customers/:id/reset-password",
+      "apiPath": "/api/v1/portal-customers/:id/reset-password",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/portal-customers-admin.ts",
+      "line": 728,
+      "owner": "router",
+      "method": "GET",
+      "path": "/portal-applications",
+      "apiPath": "/api/v1/portal-applications",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/portal-customers-admin.ts",
+      "line": 771,
+      "owner": "router",
+      "method": "PATCH",
+      "path": "/portal-applications/:id/city",
+      "apiPath": "/api/v1/portal-applications/:id/city",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/portal-customers-admin.ts",
+      "line": 821,
+      "owner": "router",
+      "method": "PATCH",
+      "path": "/portal-applications/:id/approve",
+      "apiPath": "/api/v1/portal-applications/:id/approve",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/portal-customers-admin.ts",
+      "line": 1005,
+      "owner": "router",
+      "method": "PATCH",
+      "path": "/portal-applications/:id/needs-info",
+      "apiPath": "/api/v1/portal-applications/:id/needs-info",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/portal-customers-admin.ts",
+      "line": 1032,
+      "owner": "router",
+      "method": "PATCH",
+      "path": "/portal-applications/:id/reject",
+      "apiPath": "/api/v1/portal-applications/:id/reject",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/portal-customers-admin.ts",
+      "line": 1050,
+      "owner": "router",
+      "method": "GET",
+      "path": "/portal-activation-requests",
+      "apiPath": "/api/v1/portal-activation-requests",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/portal-customers-admin.ts",
+      "line": 1097,
+      "owner": "router",
+      "method": "PATCH",
+      "path": "/portal-activation-requests/:id/confirm",
+      "apiPath": "/api/v1/portal-activation-requests/:id/confirm",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/portal-customers-admin.ts",
+      "line": 1237,
+      "owner": "router",
+      "method": "PATCH",
+      "path": "/portal-activation-requests/:id/reject",
+      "apiPath": "/api/v1/portal-activation-requests/:id/reject",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/portal-orders.ts",
+      "line": 76,
+      "owner": "router",
+      "method": "GET",
+      "path": "/portal-orders/pending",
+      "apiPath": "/api/v1/portal-orders/pending",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/portal-orders.ts",
+      "line": 150,
+      "owner": "router",
+      "method": "POST",
+      "path": "/portal-orders/:batchRef/confirm",
+      "apiPath": "/api/v1/portal-orders/:batchRef/confirm",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/portal-orders.ts",
+      "line": 413,
+      "owner": "router",
+      "method": "POST",
+      "path": "/portal-orders/:batchRef/reject",
+      "apiPath": "/api/v1/portal-orders/:batchRef/reject",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/portal-orders.ts",
+      "line": 519,
+      "owner": "router",
+      "method": "POST",
+      "path": "/portal-orders/:id/claim",
+      "apiPath": "/api/v1/portal-orders/:id/claim",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/portal-orders.ts",
+      "line": 593,
+      "owner": "router",
+      "method": "POST",
+      "path": "/portal-orders/:id/cancel",
+      "apiPath": "/api/v1/portal-orders/:id/cancel",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/portal.ts",
+      "line": 296,
+      "owner": "router",
+      "method": "POST",
+      "path": "/portal/register",
+      "apiPath": "/api/v1/portal/register",
+      "protectedByAuth": false,
+      "protectedByRole": false
+    },
+    {
+      "file": "src/routes/portal.ts",
+      "line": 349,
+      "owner": "router",
+      "method": "POST",
+      "path": "/portal/applications",
+      "apiPath": "/api/v1/portal/applications",
+      "protectedByAuth": false,
+      "protectedByRole": false
+    },
+    {
+      "file": "src/routes/portal.ts",
+      "line": 453,
+      "owner": "router",
+      "method": "POST",
+      "path": "/portal/activation-requests",
+      "apiPath": "/api/v1/portal/activation-requests",
+      "protectedByAuth": false,
+      "protectedByRole": false
+    },
+    {
+      "file": "src/routes/portal.ts",
+      "line": 499,
+      "owner": "router",
+      "method": "GET",
+      "path": "/portal/applications/track",
+      "apiPath": "/api/v1/portal/applications/track",
+      "protectedByAuth": false,
+      "protectedByRole": false
+    },
+    {
+      "file": "src/routes/portal.ts",
+      "line": 558,
+      "owner": "router",
+      "method": "POST",
+      "path": "/portal/login",
+      "apiPath": "/api/v1/portal/login",
+      "protectedByAuth": false,
+      "protectedByRole": false
+    },
+    {
+      "file": "src/routes/portal.ts",
+      "line": 612,
+      "owner": "router",
+      "method": "POST",
+      "path": "/portal/logout",
+      "apiPath": "/api/v1/portal/logout",
+      "protectedByAuth": true,
+      "protectedByRole": false
+    },
+    {
+      "file": "src/routes/portal.ts",
+      "line": 632,
+      "owner": "router",
+      "method": "POST",
+      "path": "/portal/forgot-password",
+      "apiPath": "/api/v1/portal/forgot-password",
+      "protectedByAuth": false,
+      "protectedByRole": false
+    },
+    {
+      "file": "src/routes/portal.ts",
+      "line": 678,
+      "owner": "router",
+      "method": "POST",
+      "path": "/portal/otp/request",
+      "apiPath": "/api/v1/portal/otp/request",
+      "protectedByAuth": false,
+      "protectedByRole": false
+    },
+    {
+      "file": "src/routes/portal.ts",
+      "line": 797,
+      "owner": "router",
+      "method": "POST",
+      "path": "/portal/otp/verify",
+      "apiPath": "/api/v1/portal/otp/verify",
+      "protectedByAuth": false,
+      "protectedByRole": false
+    },
+    {
+      "file": "src/routes/portal.ts",
+      "line": 979,
+      "owner": "router",
+      "method": "GET",
+      "path": "/portal/notifications",
+      "apiPath": "/api/v1/portal/notifications",
+      "protectedByAuth": true,
+      "protectedByRole": false
+    },
+    {
+      "file": "src/routes/portal.ts",
+      "line": 1015,
+      "owner": "router",
+      "method": "GET",
+      "path": "/portal/notifications/unread-count",
+      "apiPath": "/api/v1/portal/notifications/unread-count",
+      "protectedByAuth": true,
+      "protectedByRole": false
+    },
+    {
+      "file": "src/routes/portal.ts",
+      "line": 1039,
+      "owner": "router",
+      "method": "PATCH",
+      "path": "/portal/notifications/:id/read",
+      "apiPath": "/api/v1/portal/notifications/:id/read",
+      "protectedByAuth": true,
+      "protectedByRole": false
+    },
+    {
+      "file": "src/routes/portal.ts",
+      "line": 1073,
+      "owner": "router",
+      "method": "GET",
+      "path": "/portal/me",
+      "apiPath": "/api/v1/portal/me",
+      "protectedByAuth": true,
+      "protectedByRole": false
+    },
+    {
+      "file": "src/routes/portal.ts",
+      "line": 1148,
+      "owner": "router",
+      "method": "GET",
+      "path": "/portal/sessions",
+      "apiPath": "/api/v1/portal/sessions",
+      "protectedByAuth": true,
+      "protectedByRole": false
+    },
+    {
+      "file": "src/routes/portal.ts",
+      "line": 1196,
+      "owner": "router",
+      "method": "DELETE",
+      "path": "/portal/sessions/:id",
+      "apiPath": "/api/v1/portal/sessions/:id",
+      "protectedByAuth": true,
+      "protectedByRole": false
+    },
+    {
+      "file": "src/routes/portal.ts",
+      "line": 1253,
+      "owner": "router",
+      "method": "POST",
+      "path": "/portal/sessions/revoke-others",
+      "apiPath": "/api/v1/portal/sessions/revoke-others",
+      "protectedByAuth": true,
+      "protectedByRole": false
+    },
+    {
+      "file": "src/routes/portal.ts",
+      "line": 1303,
+      "owner": "router",
+      "method": "GET",
+      "path": "/portal/config",
+      "apiPath": "/api/v1/portal/config",
+      "protectedByAuth": false,
+      "protectedByRole": false
+    },
+    {
+      "file": "src/routes/portal.ts",
+      "line": 1326,
+      "owner": "router",
+      "method": "POST",
+      "path": "/portal/activate",
+      "apiPath": "/api/v1/portal/activate",
+      "protectedByAuth": false,
+      "protectedByRole": false
+    },
+    {
+      "file": "src/routes/portal.ts",
+      "line": 1444,
+      "owner": "router",
+      "method": "PATCH",
+      "path": "/portal/me",
+      "apiPath": "/api/v1/portal/me",
+      "protectedByAuth": true,
+      "protectedByRole": false
+    },
+    {
+      "file": "src/routes/portal.ts",
+      "line": 1568,
+      "owner": "router",
+      "method": "GET",
+      "path": "/portal/cart",
+      "apiPath": "/api/v1/portal/cart",
+      "protectedByAuth": true,
+      "protectedByRole": false
+    },
+    {
+      "file": "src/routes/portal.ts",
+      "line": 1603,
+      "owner": "router",
+      "method": "POST",
+      "path": "/portal/cart",
+      "apiPath": "/api/v1/portal/cart",
+      "protectedByAuth": true,
+      "protectedByRole": false
+    },
+    {
+      "file": "src/routes/portal.ts",
+      "line": 1693,
+      "owner": "router",
+      "method": "DELETE",
+      "path": "/portal/cart/:bomRecipeId",
+      "apiPath": "/api/v1/portal/cart/:bomRecipeId",
+      "protectedByAuth": true,
+      "protectedByRole": false
+    },
+    {
+      "file": "src/routes/portal.ts",
+      "line": 1717,
+      "owner": "router",
+      "method": "GET",
+      "path": "/portal/wishlist",
+      "apiPath": "/api/v1/portal/wishlist",
+      "protectedByAuth": true,
+      "protectedByRole": false
+    },
+    {
+      "file": "src/routes/portal.ts",
+      "line": 1751,
+      "owner": "router",
+      "method": "POST",
+      "path": "/portal/wishlist",
+      "apiPath": "/api/v1/portal/wishlist",
+      "protectedByAuth": true,
+      "protectedByRole": false
+    },
+    {
+      "file": "src/routes/portal.ts",
+      "line": 1801,
+      "owner": "router",
+      "method": "DELETE",
+      "path": "/portal/wishlist/:bomRecipeId",
+      "apiPath": "/api/v1/portal/wishlist/:bomRecipeId",
+      "protectedByAuth": true,
+      "protectedByRole": false
+    },
+    {
+      "file": "src/routes/portal.ts",
+      "line": 1830,
+      "owner": "router",
+      "method": "GET",
+      "path": "/portal/my-orders",
+      "apiPath": "/api/v1/portal/my-orders",
+      "protectedByAuth": true,
+      "protectedByRole": false
+    },
+    {
+      "file": "src/routes/portal.ts",
+      "line": 1977,
+      "owner": "router",
+      "method": "GET",
+      "path": "/portal/products",
+      "apiPath": "/api/v1/portal/products",
+      "protectedByAuth": false,
+      "protectedByRole": false
+    },
+    {
+      "file": "src/routes/portal.ts",
+      "line": 2017,
+      "owner": "router",
+      "method": "GET",
+      "path": "/portal/products/:id",
+      "apiPath": "/api/v1/portal/products/:id",
+      "protectedByAuth": false,
+      "protectedByRole": false
+    },
+    {
+      "file": "src/routes/portal.ts",
+      "line": 2079,
+      "owner": "router",
+      "method": "POST",
+      "path": "/portal/orders",
+      "apiPath": "/api/v1/portal/orders",
+      "protectedByAuth": true,
+      "protectedByRole": false
+    },
+    {
+      "file": "src/routes/portal.ts",
+      "line": 2259,
+      "owner": "router",
+      "method": "POST",
+      "path": "/portal/orders/:id/cancel",
+      "apiPath": "/api/v1/portal/orders/:id/cancel",
+      "protectedByAuth": true,
+      "protectedByRole": false
+    },
+    {
+      "file": "src/routes/production-cycle.ts",
+      "line": 22,
+      "owner": "router",
+      "method": "GET",
+      "path": "/production-cycle/stages",
+      "apiPath": "/api/v1/production-cycle/stages",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/production-cycle.ts",
+      "line": 31,
+      "owner": "router",
+      "method": "GET",
+      "path": "/production-cycle/dashboard",
+      "apiPath": "/api/v1/production-cycle/dashboard",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/production-execution.ts",
+      "line": 35,
+      "owner": "router",
+      "method": "PATCH",
+      "path": "/production-execution/batches/:id/confirm",
+      "apiPath": "/api/v1/production-execution/batches/:id/confirm",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/production-execution.ts",
+      "line": 91,
+      "owner": "router",
+      "method": "PATCH",
+      "path": "/production-execution/batches/:id/close",
+      "apiPath": "/api/v1/production-execution/batches/:id/close",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/production-execution.ts",
+      "line": 131,
+      "owner": "router",
+      "method": "POST",
+      "path": "/production-execution/batches/:id/downtimes",
+      "apiPath": "/api/v1/production-execution/batches/:id/downtimes",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/production-execution.ts",
+      "line": 167,
+      "owner": "router",
+      "method": "GET",
+      "path": "/production-execution/batches/:id/downtimes",
+      "apiPath": "/api/v1/production-execution/batches/:id/downtimes",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/production-execution.ts",
+      "line": 188,
+      "owner": "router",
+      "method": "POST",
+      "path": "/production-execution/ncrs",
+      "apiPath": "/api/v1/production-execution/ncrs",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/production-execution.ts",
+      "line": 214,
+      "owner": "router",
+      "method": "GET",
+      "path": "/production-execution/ncrs",
+      "apiPath": "/api/v1/production-execution/ncrs",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/production-execution.ts",
+      "line": 232,
+      "owner": "router",
+      "method": "POST",
+      "path": "/production-execution/traceability",
+      "apiPath": "/api/v1/production-execution/traceability",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/production-execution.ts",
+      "line": 253,
+      "owner": "router",
+      "method": "GET",
+      "path": "/production-execution/traceability/:lotNumber",
+      "apiPath": "/api/v1/production-execution/traceability/:lotNumber",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/production-requests.ts",
+      "line": 48,
+      "owner": "router",
+      "method": "POST",
+      "path": "/production-requests",
+      "apiPath": "/api/v1/production-requests",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/production-requests.ts",
+      "line": 123,
+      "owner": "router",
+      "method": "GET",
+      "path": "/production-requests/recipes",
+      "apiPath": "/api/v1/production-requests/recipes",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/production-requests.ts",
+      "line": 147,
+      "owner": "router",
+      "method": "GET",
+      "path": "/production-requests",
+      "apiPath": "/api/v1/production-requests",
+      "protectedByAuth": true,
+      "protectedByRole": false
+    },
+    {
+      "file": "src/routes/production-requests.ts",
+      "line": 210,
+      "owner": "router",
+      "method": "GET",
+      "path": "/production-requests/:id",
+      "apiPath": "/api/v1/production-requests/:id",
+      "protectedByAuth": true,
+      "protectedByRole": false
+    },
+    {
+      "file": "src/routes/production-requests.ts",
+      "line": 245,
+      "owner": "router",
+      "method": "PATCH",
+      "path": "/production-requests/:id/warehouse-action",
+      "apiPath": "/api/v1/production-requests/:id/warehouse-action",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/production-requests.ts",
+      "line": 363,
+      "owner": "router",
+      "method": "PATCH",
+      "path": "/production-requests/:id/director-action",
+      "apiPath": "/api/v1/production-requests/:id/director-action",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/production-requests.ts",
+      "line": 578,
+      "owner": "router",
+      "method": "PATCH",
+      "path": "/production-requests/:id/cancel",
+      "apiPath": "/api/v1/production-requests/:id/cancel",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/production-workflow.ts",
+      "line": 201,
+      "owner": "router",
+      "method": "GET",
+      "path": "/production-workflow/dashboard",
+      "apiPath": "/api/v1/production-workflow/dashboard",
+      "protectedByAuth": true,
+      "protectedByRole": false
+    },
+    {
+      "file": "src/routes/production-workflow.ts",
+      "line": 290,
+      "owner": "router",
+      "method": "GET",
+      "path": "/production-workflow",
+      "apiPath": "/api/v1/production-workflow",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/production-workflow.ts",
+      "line": 368,
+      "owner": "router",
+      "method": "GET",
+      "path": "/production-workflow/team-options",
+      "apiPath": "/api/v1/production-workflow/team-options",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/production-workflow.ts",
+      "line": 441,
+      "owner": "router",
+      "method": "GET",
+      "path": "/production-workflow/quality-records",
+      "apiPath": "/api/v1/production-workflow/quality-records",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/production-workflow.ts",
+      "line": 459,
+      "owner": "router",
+      "method": "GET",
+      "path": "/production-workflow/:id",
+      "apiPath": "/api/v1/production-workflow/:id",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/production-workflow.ts",
+      "line": 504,
+      "owner": "router",
+      "method": "POST",
+      "path": "/production-workflow",
+      "apiPath": "/api/v1/production-workflow",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/production-workflow.ts",
+      "line": 617,
+      "owner": "router",
+      "method": "PATCH",
+      "path": "/production-workflow/:id/needed-by",
+      "apiPath": "/api/v1/production-workflow/:id/needed-by",
+      "protectedByAuth": true,
+      "protectedByRole": false
+    },
+    {
+      "file": "src/routes/production-workflow.ts",
+      "line": 692,
+      "owner": "router",
+      "method": "PATCH",
+      "path": "/production-workflow/:id/receive",
+      "apiPath": "/api/v1/production-workflow/:id/receive",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/production-workflow.ts",
+      "line": 860,
+      "owner": "router",
+      "method": "GET",
+      "path": "/production-workflow/:id/materials-check",
+      "apiPath": "/api/v1/production-workflow/:id/materials-check",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/production-workflow.ts",
+      "line": 906,
+      "owner": "router",
+      "method": "PATCH",
+      "path": "/production-workflow/:id/warehouse-action",
+      "apiPath": "/api/v1/production-workflow/:id/warehouse-action",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/production-workflow.ts",
+      "line": 1286,
+      "owner": "router",
+      "method": "PATCH",
+      "path": "/production-workflow/:id/dispatch",
+      "apiPath": "/api/v1/production-workflow/:id/dispatch",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/production-workflow.ts",
+      "line": 1424,
+      "owner": "router",
+      "method": "PATCH",
+      "path": "/production-workflow/:id/advance-stage",
+      "apiPath": "/api/v1/production-workflow/:id/advance-stage",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/production-workflow.ts",
+      "line": 1543,
+      "owner": "router",
+      "method": "PATCH",
+      "path": "/production-workflow/:id/quality-done",
+      "apiPath": "/api/v1/production-workflow/:id/quality-done",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/production-workflow.ts",
+      "line": 1740,
+      "owner": "router",
+      "method": "PATCH",
+      "path": "/production-workflow/:id/deliver",
+      "apiPath": "/api/v1/production-workflow/:id/deliver",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/production-workflow.ts",
+      "line": 1871,
+      "owner": "router",
+      "method": "PATCH",
+      "path": "/production-workflow/:id/confirm-delivery",
+      "apiPath": "/api/v1/production-workflow/:id/confirm-delivery",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/production-workflow.ts",
+      "line": 2064,
+      "owner": "router",
+      "method": "PATCH",
+      "path": "/production-workflow/:id/cancel",
+      "apiPath": "/api/v1/production-workflow/:id/cancel",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/production.ts",
+      "line": 16,
+      "owner": "router",
+      "method": "GET",
+      "path": "/production-orders",
+      "apiPath": "/api/v1/production-orders",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/production.ts",
+      "line": 36,
+      "owner": "router",
+      "method": "POST",
+      "path": "/production-orders",
+      "apiPath": "/api/v1/production-orders",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/production.ts",
+      "line": 100,
+      "owner": "router",
+      "method": "GET",
+      "path": "/production-orders/:id",
+      "apiPath": "/api/v1/production-orders/:id",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/production.ts",
+      "line": 126,
+      "owner": "router",
+      "method": "PATCH",
+      "path": "/production-orders/:id",
+      "apiPath": "/api/v1/production-orders/:id",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/production.ts",
+      "line": 185,
+      "owner": "router",
+      "method": "DELETE",
+      "path": "/production-orders/:id",
+      "apiPath": "/api/v1/production-orders/:id",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/quality.ts",
+      "line": 18,
+      "owner": "router",
+      "method": "GET",
+      "path": "/quality",
+      "apiPath": "/api/v1/quality",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/quality.ts",
+      "line": 46,
+      "owner": "router",
+      "method": "POST",
+      "path": "/quality",
+      "apiPath": "/api/v1/quality",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/quality.ts",
+      "line": 65,
+      "owner": "router",
+      "method": "GET",
+      "path": "/quality/:id",
+      "apiPath": "/api/v1/quality/:id",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/quality.ts",
+      "line": 91,
+      "owner": "router",
+      "method": "PATCH",
+      "path": "/quality/:id",
+      "apiPath": "/api/v1/quality/:id",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/quality.ts",
+      "line": 118,
+      "owner": "router",
+      "method": "DELETE",
+      "path": "/quality/:id",
+      "apiPath": "/api/v1/quality/:id",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/sales.ts",
+      "line": 420,
+      "owner": "router",
+      "method": "GET",
+      "path": "/sales/integrity-report",
+      "apiPath": "/api/v1/sales/integrity-report",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/sales.ts",
+      "line": 515,
+      "owner": "router",
+      "method": "GET",
+      "path": "/sales",
+      "apiPath": "/api/v1/sales",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/sales.ts",
+      "line": 644,
+      "owner": "router",
+      "method": "POST",
+      "path": "/sales",
+      "apiPath": "/api/v1/sales",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/sales.ts",
+      "line": 764,
+      "owner": "router",
+      "method": "GET",
+      "path": "/sales/:id",
+      "apiPath": "/api/v1/sales/:id",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/sales.ts",
+      "line": 798,
+      "owner": "router",
+      "method": "PATCH",
+      "path": "/sales/:id",
+      "apiPath": "/api/v1/sales/:id",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/sales.ts",
+      "line": 999,
+      "owner": "router",
+      "method": "DELETE",
+      "path": "/sales/:id",
+      "apiPath": "/api/v1/sales/:id",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/sales.ts",
+      "line": 1087,
+      "owner": "router",
+      "method": "POST",
+      "path": "/sales/:id/items",
+      "apiPath": "/api/v1/sales/:id/items",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/sales.ts",
+      "line": 1193,
+      "owner": "router",
+      "method": "DELETE",
+      "path": "/sales/:id/items/:itemId",
+      "apiPath": "/api/v1/sales/:id/items/:itemId",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/settings.ts",
+      "line": 54,
+      "owner": "router",
+      "method": "GET",
+      "path": "/settings",
+      "apiPath": "/api/v1/settings",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/settings.ts",
+      "line": 67,
+      "owner": "router",
+      "method": "PUT",
+      "path": "/settings",
+      "apiPath": "/api/v1/settings",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/settings.ts",
+      "line": 109,
+      "owner": "router",
+      "method": "GET",
+      "path": "/users",
+      "apiPath": "/api/v1/users",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/settings.ts",
+      "line": 134,
+      "owner": "router",
+      "method": "POST",
+      "path": "/users",
+      "apiPath": "/api/v1/users",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/settings.ts",
+      "line": 169,
+      "owner": "router",
+      "method": "PATCH",
+      "path": "/users/:id",
+      "apiPath": "/api/v1/users/:id",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/settings.ts",
+      "line": 242,
+      "owner": "router",
+      "method": "GET",
+      "path": "/users/:id/sessions",
+      "apiPath": "/api/v1/users/:id/sessions",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/settings.ts",
+      "line": 263,
+      "owner": "router",
+      "method": "DELETE",
+      "path": "/users/:id/sessions/:sessionId",
+      "apiPath": "/api/v1/users/:id/sessions/:sessionId",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/settings.ts",
+      "line": 303,
+      "owner": "router",
+      "method": "DELETE",
+      "path": "/users/:id",
+      "apiPath": "/api/v1/users/:id",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/settings.ts",
+      "line": 343,
+      "owner": "router",
+      "method": "GET",
+      "path": "/action-registry",
+      "apiPath": "/api/v1/action-registry",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/settings.ts",
+      "line": 356,
+      "owner": "router",
+      "method": "GET",
+      "path": "/my-permission-overrides",
+      "apiPath": "/api/v1/my-permission-overrides",
+      "protectedByAuth": true,
+      "protectedByRole": false
+    },
+    {
+      "file": "src/routes/settings.ts",
+      "line": 386,
+      "owner": "router",
+      "method": "GET",
+      "path": "/users/:id/permission-overrides",
+      "apiPath": "/api/v1/users/:id/permission-overrides",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/settings.ts",
+      "line": 407,
+      "owner": "router",
+      "method": "POST",
+      "path": "/permission-overrides",
+      "apiPath": "/api/v1/permission-overrides",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/settings.ts",
+      "line": 482,
+      "owner": "router",
+      "method": "DELETE",
+      "path": "/permission-overrides/:id",
+      "apiPath": "/api/v1/permission-overrides/:id",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/settings.ts",
+      "line": 534,
+      "owner": "router",
+      "method": "GET",
+      "path": "/system-info",
+      "apiPath": "/api/v1/system-info",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/settings.ts",
+      "line": 590,
+      "owner": "router",
+      "method": "GET",
+      "path": "/settings/delivery-rules",
+      "apiPath": "/api/v1/settings/delivery-rules",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/settings.ts",
+      "line": 607,
+      "owner": "router",
+      "method": "POST",
+      "path": "/settings/delivery-rules",
+      "apiPath": "/api/v1/settings/delivery-rules",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/settings.ts",
+      "line": 625,
+      "owner": "router",
+      "method": "PATCH",
+      "path": "/settings/delivery-rules/:id",
+      "apiPath": "/api/v1/settings/delivery-rules/:id",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/settings.ts",
+      "line": 650,
+      "owner": "router",
+      "method": "DELETE",
+      "path": "/settings/delivery-rules/:id",
+      "apiPath": "/api/v1/settings/delivery-rules/:id",
+      "protectedByAuth": true,
+      "protectedByRole": true
+    },
+    {
+      "file": "src/routes/state.ts",
+      "line": 12,
+      "owner": "router",
+      "method": "GET",
+      "path": "/state",
+      "apiPath": "/api/v1/state",
+      "protectedByAuth": true,
+      "protectedByRole": false
+    },
+    {
+      "file": "src/routes/state.ts",
+      "line": 28,
+      "owner": "router",
+      "method": "PUT",
+      "path": "/state/:key",
+      "apiPath": "/api/v1/state/:key",
+      "protectedByAuth": true,
+      "protectedByRole": false
+    },
+    {
+      "file": "src/routes/state.ts",
+      "line": 50,
+      "owner": "router",
+      "method": "DELETE",
+      "path": "/state/:key",
+      "apiPath": "/api/v1/state/:key",
+      "protectedByAuth": true,
+      "protectedByRole": false
+    },
+    {
       "file": "src/main.ts",
-      "line": 99,
+      "line": 108,
       "owner": "app",
       "method": "GET",
       "path": "/api/v1/health",
@@ -27,7 +2537,7 @@
     },
     {
       "file": "src/main.ts",
-      "line": 150,
+      "line": 160,
       "owner": "app",
       "method": "GET",
       "path": "/*splat",
@@ -36,13 +2546,1837 @@
       "protectedByRole": false
     }
   ],
-  "pages": [],
+  "pages": [
+    {
+      "file": "public/admin-health.html",
+      "lang": "ar",
+      "dir": "rtl",
+      "allowedRoles": [],
+      "scripts": [
+        "JS/auth.js"
+      ],
+      "styles": []
+    },
+    {
+      "file": "public/bom.html",
+      "lang": "ar",
+      "dir": "rtl",
+      "allowedRoles": [
+        "hr",
+        "hr_manager",
+        "production_manager",
+        "production_controller",
+        "supervisor",
+        "chairman"
+      ],
+      "scripts": [
+        "JS/theme-switcher.js",
+        "JS/auth.js",
+        "JS/page-guard.js",
+        "JS/api-client.js",
+        "JS/nav-loader.js",
+        "JS/bom.js",
+        "JS/responsive.js",
+        "JS/enhancements.js",
+        "JS/password-toggle.js"
+      ],
+      "styles": [
+        "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css",
+        "CSS/theme.css",
+        "CSS/style.css",
+        "CSS/bom.css",
+        "CSS/responsive.css",
+        "CSS/enhancements.css"
+      ]
+    },
+    {
+      "file": "public/contacts.html",
+      "lang": "ar",
+      "dir": "rtl",
+      "allowedRoles": [
+        "executive_manager",
+        "sales_manager",
+        "online_seller",
+        "offline_seller",
+        "hr",
+        "hr_manager",
+        "chairman"
+      ],
+      "scripts": [
+        "JS/theme-switcher.js",
+        "JS/auth.js",
+        "JS/page-guard.js",
+        "JS/api-client.js",
+        "JS/nav-loader.js",
+        "JS/egypt-governorates.js",
+        "JS/contact-segments.js",
+        "JS/contacts.js",
+        "JS/responsive.js",
+        "JS/enhancements.js",
+        "JS/password-toggle.js"
+      ],
+      "styles": [
+        "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css",
+        "CSS/theme.css",
+        "CSS/style.css",
+        "CSS/contacts.css",
+        "CSS/responsive.css",
+        "CSS/enhancements.css"
+      ]
+    },
+    {
+      "file": "public/engineering.html",
+      "lang": "ar",
+      "dir": "rtl",
+      "allowedRoles": [
+        "chairman",
+        "production_manager",
+        "production_controller",
+        "production_quality_controller"
+      ],
+      "scripts": [
+        "JS/theme-switcher.js",
+        "JS/auth.js",
+        "JS/page-guard.js",
+        "JS/advanced-screen.js?v=2",
+        "JS/engineering.js?v=2"
+      ],
+      "styles": [
+        "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css",
+        "CSS/theme.css",
+        "CSS/style.css",
+        "CSS/production.css",
+        "CSS/advanced-production.css"
+      ]
+    },
+    {
+      "file": "public/execution-control.html",
+      "lang": "ar",
+      "dir": "rtl",
+      "allowedRoles": [
+        "chairman",
+        "production_manager",
+        "production_controller",
+        "supervisor",
+        "production_quality_controller"
+      ],
+      "scripts": [
+        "JS/theme-switcher.js",
+        "JS/auth.js",
+        "JS/page-guard.js",
+        "JS/advanced-screen.js?v=2",
+        "JS/execution-control.js?v=2"
+      ],
+      "styles": [
+        "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css",
+        "CSS/theme.css",
+        "CSS/style.css",
+        "CSS/advanced-production.css"
+      ]
+    },
+    {
+      "file": "public/factory-intake.html",
+      "lang": "ar",
+      "dir": "rtl",
+      "allowedRoles": [
+        "chairman",
+        "production_manager",
+        "supervisor"
+      ],
+      "scripts": [
+        "JS/theme-switcher.js",
+        "JS/auth.js",
+        "JS/page-guard.js",
+        "JS/nav-loader.js",
+        "JS/enhancements.js",
+        "JS/production-workflow-shared.js",
+        "JS/factory-intake.js"
+      ],
+      "styles": [
+        "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css",
+        "CSS/theme.css",
+        "CSS/style.css",
+        "CSS/contacts.css",
+        "CSS/responsive.css",
+        "CSS/enhancements.css"
+      ]
+    },
+    {
+      "file": "public/factory-production-manager.html",
+      "lang": "ar",
+      "dir": "rtl",
+      "allowedRoles": [
+        "chairman",
+        "executive_manager",
+        "production_manager",
+        "operations_manager"
+      ],
+      "scripts": [
+        "JS/theme-switcher.js",
+        "JS/auth.js",
+        "JS/page-guard.js",
+        "JS/nav-loader.js",
+        "JS/enhancements.js",
+        "JS/production-workflow-shared.js",
+        "JS/factory-production-manager.js"
+      ],
+      "styles": [
+        "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css",
+        "CSS/theme.css",
+        "CSS/style.css",
+        "CSS/contacts.css",
+        "CSS/responsive.css",
+        "CSS/enhancements.css"
+      ]
+    },
+    {
+      "file": "public/factory-quality-controller.html",
+      "lang": "ar",
+      "dir": "rtl",
+      "allowedRoles": [
+        "chairman",
+        "production_quality_controller",
+        "raw_material_quality_controller",
+        "quality_engineer"
+      ],
+      "scripts": [
+        "JS/theme-switcher.js",
+        "JS/auth.js",
+        "JS/page-guard.js",
+        "JS/nav-loader.js",
+        "JS/enhancements.js",
+        "JS/production-workflow-shared.js",
+        "JS/factory-quality-controller.js"
+      ],
+      "styles": [
+        "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css",
+        "CSS/theme.css",
+        "CSS/style.css",
+        "CSS/contacts.css",
+        "CSS/responsive.css",
+        "CSS/enhancements.css"
+      ]
+    },
+    {
+      "file": "public/factory-supervisor.html",
+      "lang": "ar",
+      "dir": "rtl",
+      "allowedRoles": [
+        "chairman",
+        "production_manager",
+        "supervisor"
+      ],
+      "scripts": [
+        "JS/theme-switcher.js",
+        "JS/auth.js",
+        "JS/page-guard.js",
+        "JS/nav-loader.js",
+        "JS/enhancements.js",
+        "JS/production-workflow-shared.js",
+        "JS/factory-supervisor.js"
+      ],
+      "styles": [
+        "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css",
+        "CSS/theme.css",
+        "CSS/style.css",
+        "CSS/contacts.css",
+        "CSS/responsive.css",
+        "CSS/enhancements.css"
+      ]
+    },
+    {
+      "file": "public/factory-warehouse-manager.html",
+      "lang": "ar",
+      "dir": "rtl",
+      "allowedRoles": [
+        "chairman",
+        "warehouse_manager",
+        "storekeeper",
+        "operations_manager"
+      ],
+      "scripts": [
+        "JS/theme-switcher.js",
+        "JS/auth.js",
+        "JS/page-guard.js",
+        "JS/nav-loader.js",
+        "JS/enhancements.js",
+        "JS/production-workflow-shared.js",
+        "JS/factory-warehouse-manager.js"
+      ],
+      "styles": [
+        "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css",
+        "CSS/theme.css",
+        "CSS/style.css",
+        "CSS/contacts.css",
+        "CSS/responsive.css",
+        "CSS/enhancements.css"
+      ]
+    },
+    {
+      "file": "public/foundation.html",
+      "lang": "ar",
+      "dir": "rtl",
+      "allowedRoles": [
+        "chairman",
+        "executive_manager",
+        "operations_manager",
+        "production_manager",
+        "warehouse_manager"
+      ],
+      "scripts": [
+        "JS/theme-switcher.js",
+        "JS/auth.js",
+        "JS/page-guard.js",
+        "JS/foundation.js"
+      ],
+      "styles": [
+        "CSS/theme.css",
+        "CSS/style.css",
+        "CSS/foundation.css"
+      ]
+    },
+    {
+      "file": "public/governance.html",
+      "lang": "ar",
+      "dir": "rtl",
+      "allowedRoles": [
+        "chairman",
+        "executive_manager",
+        "sales_manager"
+      ],
+      "scripts": [
+        "JS/theme-switcher.js",
+        "JS/auth.js",
+        "JS/page-guard.js",
+        "JS/governance.js"
+      ],
+      "styles": [
+        "CSS/theme.css",
+        "CSS/style.css",
+        "CSS/governance.css"
+      ]
+    },
+    {
+      "file": "public/index.html",
+      "lang": "ar",
+      "dir": "rtl",
+      "allowedRoles": [],
+      "scripts": [
+        "JS/theme-switcher.js",
+        "JS/auth.js",
+        "JS/api-client.js",
+        "JS/nav-loader.js",
+        "JS/index.js",
+        "JS/responsive.js",
+        "JS/enhancements.js",
+        "JS/password-toggle.js"
+      ],
+      "styles": [
+        "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css",
+        "CSS/theme.css",
+        "CSS/style.css",
+        "CSS/responsive.css",
+        "CSS/enhancements.css"
+      ]
+    },
+    {
+      "file": "public/inventory.html",
+      "lang": "ar",
+      "dir": "rtl",
+      "allowedRoles": [
+        "warehouse_manager",
+        "storekeeper",
+        "chairman"
+      ],
+      "scripts": [
+        "JS/theme-switcher.js",
+        "JS/auth.js",
+        "JS/page-guard.js",
+        "JS/api-client.js",
+        "JS/nav-loader.js",
+        "JS/inventory.js",
+        "JS/responsive.js",
+        "JS/enhancements.js",
+        "JS/password-toggle.js"
+      ],
+      "styles": [
+        "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css",
+        "CSS/theme.css",
+        "CSS/style.css",
+        "CSS/inventory.css",
+        "CSS/responsive.css",
+        "CSS/enhancements.css"
+      ]
+    },
+    {
+      "file": "public/login.html",
+      "lang": "ar",
+      "dir": "rtl",
+      "allowedRoles": [],
+      "scripts": [
+        "JS/auth.js",
+        "JS/password-toggle.js"
+      ],
+      "styles": []
+    },
+    {
+      "file": "public/material.html",
+      "lang": "ar",
+      "dir": "rtl",
+      "allowedRoles": [
+        "warehouse_manager",
+        "storekeeper",
+        "chairman"
+      ],
+      "scripts": [
+        "JS/theme-switcher.js",
+        "JS/auth.js",
+        "JS/page-guard.js",
+        "JS/api-client.js",
+        "JS/nav-loader.js",
+        "JS/material.js",
+        "JS/responsive.js",
+        "JS/enhancements.js",
+        "JS/password-toggle.js"
+      ],
+      "styles": [
+        "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css",
+        "CSS/theme.css",
+        "CSS/style.css",
+        "CSS/material.css",
+        "CSS/responsive.css",
+        "CSS/enhancements.css"
+      ]
+    },
+    {
+      "file": "public/movements.html",
+      "lang": "ar",
+      "dir": "rtl",
+      "allowedRoles": [
+        "warehouse_manager",
+        "storekeeper",
+        "chairman"
+      ],
+      "scripts": [
+        "JS/theme-switcher.js",
+        "JS/auth.js",
+        "JS/page-guard.js",
+        "JS/api-client.js",
+        "JS/nav-loader.js",
+        "JS/movements.js",
+        "JS/responsive.js",
+        "JS/enhancements.js",
+        "JS/password-toggle.js"
+      ],
+      "styles": [
+        "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css",
+        "CSS/theme.css",
+        "CSS/style.css",
+        "CSS/movements.css",
+        "CSS/responsive.css",
+        "CSS/enhancements.css"
+      ]
+    },
+    {
+      "file": "public/operations-manager.html",
+      "lang": "ar",
+      "dir": "rtl",
+      "allowedRoles": [
+        "chairman",
+        "executive_manager",
+        "operations_manager"
+      ],
+      "scripts": [
+        "JS/theme-switcher.js",
+        "JS/auth.js",
+        "JS/page-guard.js",
+        "JS/operations-manager.js"
+      ],
+      "styles": [
+        "CSS/theme.css",
+        "CSS/style.css",
+        "CSS/operations-manager.css"
+      ]
+    },
+    {
+      "file": "public/operations.html",
+      "lang": "ar",
+      "dir": "rtl",
+      "allowedRoles": [
+        "chairman",
+        "executive_manager",
+        "operations_manager"
+      ],
+      "scripts": [
+        "JS/theme-switcher.js",
+        "JS/auth.js",
+        "JS/page-guard.js",
+        "JS/operations-manager.js"
+      ],
+      "styles": [
+        "CSS/theme.css",
+        "CSS/style.css",
+        "CSS/operations-manager.css"
+      ]
+    },
+    {
+      "file": "public/planning.html",
+      "lang": "ar",
+      "dir": "rtl",
+      "allowedRoles": [
+        "chairman",
+        "production_manager",
+        "production_controller",
+        "warehouse_manager"
+      ],
+      "scripts": [
+        "JS/theme-switcher.js",
+        "JS/auth.js",
+        "JS/page-guard.js",
+        "JS/advanced-screen.js?v=2",
+        "JS/planning.js?v=2"
+      ],
+      "styles": [
+        "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css",
+        "CSS/theme.css",
+        "CSS/style.css",
+        "CSS/advanced-production.css"
+      ]
+    },
+    {
+      "file": "public/portal-activate.html",
+      "lang": "ar",
+      "dir": "rtl",
+      "allowedRoles": [],
+      "scripts": [
+        "JS/portal-activate.js"
+      ],
+      "styles": [
+        "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+      ]
+    },
+    {
+      "file": "public/portal-activation-requests-admin.html",
+      "lang": "ar",
+      "dir": "rtl",
+      "allowedRoles": [
+        "sales_manager",
+        "executive_manager",
+        "chairman"
+      ],
+      "scripts": [
+        "JS/theme-switcher.js",
+        "JS/auth.js",
+        "JS/page-guard.js",
+        "JS/portal-activation-requests-admin.js"
+      ],
+      "styles": [
+        "CSS/theme.css",
+        "CSS/style.css",
+        "CSS/portal-customers-admin.css"
+      ]
+    },
+    {
+      "file": "public/portal-applications-admin.html",
+      "lang": "ar",
+      "dir": "rtl",
+      "allowedRoles": [
+        "sales_manager",
+        "executive_manager",
+        "chairman"
+      ],
+      "scripts": [
+        "JS/theme-switcher.js",
+        "JS/auth.js",
+        "JS/page-guard.js",
+        "JS/egypt-governorates.js",
+        "JS/portal-applications-admin.js"
+      ],
+      "styles": [
+        "CSS/theme.css",
+        "CSS/style.css",
+        "CSS/portal-customers-admin.css"
+      ]
+    },
+    {
+      "file": "public/portal-customers-admin.html",
+      "lang": "ar",
+      "dir": "rtl",
+      "allowedRoles": [
+        "sales_manager",
+        "executive_manager",
+        "chairman"
+      ],
+      "scripts": [
+        "JS/theme-switcher.js",
+        "JS/auth.js",
+        "JS/page-guard.js",
+        "JS/egypt-governorates.js",
+        "JS/contact-segments.js",
+        "JS/portal-customers-admin.js"
+      ],
+      "styles": [
+        "CSS/theme.css",
+        "CSS/style.css",
+        "CSS/portal-customers-admin.css"
+      ]
+    },
+    {
+      "file": "public/portal-login.html",
+      "lang": "ar",
+      "dir": "rtl",
+      "allowedRoles": [],
+      "scripts": [
+        "JS/egypt-governorates.js",
+        "JS/portal-auth.js",
+        "JS/password-toggle.js"
+      ],
+      "styles": [
+        "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+      ]
+    },
+    {
+      "file": "public/portal-orders.html",
+      "lang": "ar",
+      "dir": "rtl",
+      "allowedRoles": [
+        "executive_manager",
+        "sales_manager",
+        "online_seller",
+        "offline_seller",
+        "hr",
+        "hr_manager",
+        "chairman"
+      ],
+      "scripts": [
+        "JS/theme-switcher.js",
+        "JS/auth.js",
+        "JS/page-guard.js",
+        "JS/portal-orders.js"
+      ],
+      "styles": [
+        "CSS/theme.css",
+        "CSS/style.css",
+        "CSS/sales.css"
+      ]
+    },
+    {
+      "file": "public/portal.html",
+      "lang": "ar",
+      "dir": "rtl",
+      "allowedRoles": [],
+      "scripts": [
+        "JS/egypt-governorates.js",
+        "JS/portal.js"
+      ],
+      "styles": [
+        "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css",
+        "CSS/portal.css"
+      ]
+    },
+    {
+      "file": "public/production-control.html",
+      "lang": "ar",
+      "dir": "rtl",
+      "allowedRoles": [
+        "chairman",
+        "production_manager",
+        "production_controller",
+        "warehouse_manager",
+        "supervisor",
+        "production_quality_controller"
+      ],
+      "scripts": [
+        "JS/theme-switcher.js",
+        "JS/auth.js",
+        "JS/page-guard.js",
+        "JS/api-client.js",
+        "JS/production-control.js"
+      ],
+      "styles": [
+        "CSS/theme.css",
+        "CSS/style.css",
+        "CSS/production-control.css"
+      ]
+    },
+    {
+      "file": "public/production-requests.html",
+      "lang": "ar",
+      "dir": "rtl",
+      "allowedRoles": [
+        "supervisor",
+        "production_manager",
+        "chairman",
+        "warehouse_manager",
+        "storekeeper"
+      ],
+      "scripts": [
+        "JS/theme-switcher.js",
+        "JS/auth.js",
+        "JS/page-guard.js",
+        "JS/production-requests.js"
+      ],
+      "styles": [
+        "CSS/theme.css",
+        "CSS/style.css",
+        "CSS/production-requests.css"
+      ]
+    },
+    {
+      "file": "public/production.html",
+      "lang": "ar",
+      "dir": "rtl",
+      "allowedRoles": [
+        "executive_manager",
+        "operations_manager",
+        "production_manager",
+        "production_controller",
+        "chairman"
+      ],
+      "scripts": [
+        "JS/theme-switcher.js",
+        "JS/auth.js",
+        "JS/page-guard.js",
+        "JS/api-client.js",
+        "JS/nav-loader.js",
+        "JS/production-workflow-shared.js",
+        "JS/production.js",
+        "JS/factory-control-tower.js",
+        "JS/responsive.js",
+        "JS/enhancements.js",
+        "JS/password-toggle.js"
+      ],
+      "styles": [
+        "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css",
+        "CSS/theme.css",
+        "CSS/style.css",
+        "CSS/production.css",
+        "CSS/responsive.css",
+        "CSS/enhancements.css"
+      ]
+    },
+    {
+      "file": "public/sales.html",
+      "lang": "ar",
+      "dir": "rtl",
+      "allowedRoles": [
+        "executive_manager",
+        "sales_manager",
+        "online_seller",
+        "offline_seller",
+        "hr",
+        "hr_manager",
+        "chairman"
+      ],
+      "scripts": [
+        "JS/theme-switcher.js",
+        "JS/auth.js",
+        "JS/page-guard.js",
+        "JS/api-client.js",
+        "JS/nav-loader.js",
+        "JS/sales.js",
+        "JS/responsive.js",
+        "JS/enhancements.js",
+        "JS/password-toggle.js"
+      ],
+      "styles": [
+        "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css",
+        "CSS/theme.css",
+        "CSS/style.css",
+        "CSS/sales.css",
+        "CSS/responsive.css",
+        "CSS/enhancements.css"
+      ]
+    },
+    {
+      "file": "public/settings.html",
+      "lang": "ar",
+      "dir": "rtl",
+      "allowedRoles": [
+        "chairman"
+      ],
+      "scripts": [
+        "JS/theme-switcher.js",
+        "JS/egypt-governorates.js",
+        "JS/auth.js",
+        "JS/page-guard.js",
+        "JS/api-client.js",
+        "JS/nav-loader.js",
+        "JS/settings.js",
+        "JS/responsive.js",
+        "JS/enhancements.js",
+        "JS/password-toggle.js"
+      ],
+      "styles": [
+        "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css",
+        "CSS/theme.css",
+        "CSS/style.css",
+        "CSS/settings.css",
+        "CSS/responsive.css",
+        "CSS/enhancements.css"
+      ]
+    }
+  ],
   "tables": {
-    "schemaDefinitions": [],
-    "migrationTables": [],
-    "schemaTables": []
+    "schemaDefinitions": [
+      {
+        "table": "production_requests",
+        "file": "src/db/schema/approvals.ts",
+        "line": 19
+      },
+      {
+        "table": "notifications",
+        "file": "src/db/schema/approvals.ts",
+        "line": 76
+      },
+      {
+        "table": "bom_recipes",
+        "file": "src/db/schema/bom.ts",
+        "line": 15
+      },
+      {
+        "table": "bom_recipe_items",
+        "file": "src/db/schema/bom.ts",
+        "line": 46
+      },
+      {
+        "table": "contacts",
+        "file": "src/db/schema/contacts.ts",
+        "line": 48
+      },
+      {
+        "table": "delivery_method_rules",
+        "file": "src/db/schema/delivery-rules.ts",
+        "line": 22
+      },
+      {
+        "table": "engineering_products",
+        "file": "src/db/schema/engineering.ts",
+        "line": 19
+      },
+      {
+        "table": "engineering_product_versions",
+        "file": "src/db/schema/engineering.ts",
+        "line": 39
+      },
+      {
+        "table": "engineering_routings",
+        "file": "src/db/schema/engineering.ts",
+        "line": 69
+      },
+      {
+        "table": "engineering_change_requests",
+        "file": "src/db/schema/engineering.ts",
+        "line": 96
+      },
+      {
+        "table": "foundation_items",
+        "file": "src/db/schema/foundation.ts",
+        "line": 23
+      },
+      {
+        "table": "foundation_unit_conversions",
+        "file": "src/db/schema/foundation.ts",
+        "line": 51
+      },
+      {
+        "table": "foundation_locations",
+        "file": "src/db/schema/foundation.ts",
+        "line": 75
+      },
+      {
+        "table": "foundation_work_centers",
+        "file": "src/db/schema/foundation.ts",
+        "line": 102
+      },
+      {
+        "table": "foundation_machines",
+        "file": "src/db/schema/foundation.ts",
+        "line": 134
+      },
+      {
+        "table": "foundation_shifts",
+        "file": "src/db/schema/foundation.ts",
+        "line": 163
+      },
+      {
+        "table": "foundation_state_transitions",
+        "file": "src/db/schema/foundation.ts",
+        "line": 185
+      },
+      {
+        "table": "foundation_audit",
+        "file": "src/db/schema/foundation.ts",
+        "line": 212
+      },
+      {
+        "table": "delegations",
+        "file": "src/db/schema/governance.ts",
+        "line": 7
+      },
+      {
+        "table": "sod_rules",
+        "file": "src/db/schema/governance.ts",
+        "line": 27
+      },
+      {
+        "table": "approval_policies",
+        "file": "src/db/schema/governance.ts",
+        "line": 35
+      },
+      {
+        "table": "approval_requests",
+        "file": "src/db/schema/governance.ts",
+        "line": 48
+      },
+      {
+        "table": "audit_events",
+        "file": "src/db/schema/governance.ts",
+        "line": 66
+      },
+      {
+        "table": "inventory_items",
+        "file": "src/db/schema/inventory.ts",
+        "line": 16
+      },
+      {
+        "table": "stock_movements",
+        "file": "src/db/schema/movements.ts",
+        "line": 15
+      },
+      {
+        "table": "fulfillment_allocations",
+        "file": "src/db/schema/operations-control.ts",
+        "line": 14
+      },
+      {
+        "table": "purchase_requisitions",
+        "file": "src/db/schema/operations-control.ts",
+        "line": 39
+      },
+      {
+        "table": "operation_transfers",
+        "file": "src/db/schema/operations-control.ts",
+        "line": 68
+      },
+      {
+        "table": "workflow_events",
+        "file": "src/db/schema/operations-control.ts",
+        "line": 89
+      },
+      {
+        "table": "operations_cases",
+        "file": "src/db/schema/operations-manager.ts",
+        "line": 51
+      },
+      {
+        "table": "operations_case_lines",
+        "file": "src/db/schema/operations-manager.ts",
+        "line": 91
+      },
+      {
+        "table": "operations_case_revisions",
+        "file": "src/db/schema/operations-manager.ts",
+        "line": 131
+      },
+      {
+        "table": "production_batches",
+        "file": "src/db/schema/operations.ts",
+        "line": 6
+      },
+      {
+        "table": "production_cost_entries",
+        "file": "src/db/schema/operations.ts",
+        "line": 26
+      },
+      {
+        "table": "production_exceptions",
+        "file": "src/db/schema/operations.ts",
+        "line": 44
+      },
+      {
+        "table": "document_revisions",
+        "file": "src/db/schema/operations.ts",
+        "line": 65
+      },
+      {
+        "table": "phase0_number_sequences",
+        "file": "src/db/schema/phase0.ts",
+        "line": 19
+      },
+      {
+        "table": "_migrations_applied",
+        "file": "src/db/schema/phase1.ts",
+        "line": 19
+      },
+      {
+        "table": "system_health_checks",
+        "file": "src/db/schema/phase1.ts",
+        "line": 29
+      },
+      {
+        "table": "command_idempotency",
+        "file": "src/db/schema/phase1.ts",
+        "line": 52
+      },
+      {
+        "table": "data_audit_findings",
+        "file": "src/db/schema/phase1.ts",
+        "line": 81
+      },
+      {
+        "table": "production_plans",
+        "file": "src/db/schema/planning.ts",
+        "line": 9
+      },
+      {
+        "table": "material_requirements",
+        "file": "src/db/schema/planning.ts",
+        "line": 20
+      },
+      {
+        "table": "planning_purchase_requisitions",
+        "file": "src/db/schema/planning.ts",
+        "line": 36
+      },
+      {
+        "table": "planning_runs",
+        "file": "src/db/schema/planning.ts",
+        "line": 48
+      },
+      {
+        "table": "planning_run_inputs",
+        "file": "src/db/schema/planning.ts",
+        "line": 68
+      },
+      {
+        "table": "planning_capacity_loads",
+        "file": "src/db/schema/planning.ts",
+        "line": 82
+      },
+      {
+        "table": "planning_shortage_messages",
+        "file": "src/db/schema/planning.ts",
+        "line": 98
+      },
+      {
+        "table": "planning_pegging_links",
+        "file": "src/db/schema/planning.ts",
+        "line": 112
+      },
+      {
+        "table": "planning_release_decisions",
+        "file": "src/db/schema/planning.ts",
+        "line": 124
+      },
+      {
+        "table": "portal_activation_requests",
+        "file": "src/db/schema/portal-activation-requests.ts",
+        "line": 21
+      },
+      {
+        "table": "portal_activation_tokens",
+        "file": "src/db/schema/portal-activation-tokens.ts",
+        "line": 15
+      },
+      {
+        "table": "portal_applications",
+        "file": "src/db/schema/portal-applications.ts",
+        "line": 20
+      },
+      {
+        "table": "portal_cart_items",
+        "file": "src/db/schema/portal-cart.ts",
+        "line": 14
+      },
+      {
+        "table": "portal_customers",
+        "file": "src/db/schema/portal-customers.ts",
+        "line": 24
+      },
+      {
+        "table": "portal_password_reset_requests",
+        "file": "src/db/schema/portal-customers.ts",
+        "line": 59
+      },
+      {
+        "table": "portal_order_batches",
+        "file": "src/db/schema/portal-order-batches.ts",
+        "line": 22
+      },
+      {
+        "table": "portal_order_reviews",
+        "file": "src/db/schema/portal-order-reviews.ts",
+        "line": 13
+      },
+      {
+        "table": "portal_otp_codes",
+        "file": "src/db/schema/portal-otp.ts",
+        "line": 14
+      },
+      {
+        "table": "portal_notifications",
+        "file": "src/db/schema/portal-otp.ts",
+        "line": 41
+      },
+      {
+        "table": "portal_sessions",
+        "file": "src/db/schema/portal-sessions.ts",
+        "line": 14
+      },
+      {
+        "table": "portal_wishlist_items",
+        "file": "src/db/schema/portal-wishlist.ts",
+        "line": 13
+      },
+      {
+        "table": "production_downtimes",
+        "file": "src/db/schema/production-execution.ts",
+        "line": 9
+      },
+      {
+        "table": "production_operation_confirmations",
+        "file": "src/db/schema/production-execution.ts",
+        "line": 29
+      },
+      {
+        "table": "production_ncrs",
+        "file": "src/db/schema/production-execution.ts",
+        "line": 50
+      },
+      {
+        "table": "production_traceability",
+        "file": "src/db/schema/production-execution.ts",
+        "line": 75
+      },
+      {
+        "table": "production_workflow_orders",
+        "file": "src/db/schema/production-workflow.ts",
+        "line": 38
+      },
+      {
+        "table": "production_orders",
+        "file": "src/db/schema/production.ts",
+        "line": 17
+      },
+      {
+        "table": "quality_records",
+        "file": "src/db/schema/quality-records.ts",
+        "line": 22
+      },
+      {
+        "table": "quality_inspections",
+        "file": "src/db/schema/quality.ts",
+        "line": 14
+      },
+      {
+        "table": "sales_orders",
+        "file": "src/db/schema/sales.ts",
+        "line": 17
+      },
+      {
+        "table": "sales_order_items",
+        "file": "src/db/schema/sales.ts",
+        "line": 53
+      },
+      {
+        "table": "system_settings",
+        "file": "src/db/schema/settings.ts",
+        "line": 15
+      },
+      {
+        "table": "system_users",
+        "file": "src/db/schema/settings.ts",
+        "line": 24
+      },
+      {
+        "table": "login_sessions",
+        "file": "src/db/schema/settings.ts",
+        "line": 50
+      },
+      {
+        "table": "permission_overrides",
+        "file": "src/db/schema/settings.ts",
+        "line": 100
+      },
+      {
+        "table": "app_state",
+        "file": "src/db/schema/state.ts",
+        "line": 6
+      },
+      {
+        "table": "trash",
+        "file": "src/db/schema/trash.ts",
+        "line": 16
+      }
+    ],
+    "migrationTables": [
+      "approval_policies",
+      "approval_requests",
+      "audit_events",
+      "command_idempotency",
+      "data_audit_findings",
+      "delegations",
+      "delivery_method_rules",
+      "document_revisions",
+      "engineering_change_requests",
+      "engineering_product_versions",
+      "engineering_products",
+      "engineering_routings",
+      "foundation_audit",
+      "foundation_items",
+      "foundation_locations",
+      "foundation_machines",
+      "foundation_shifts",
+      "foundation_state_transitions",
+      "foundation_unit_conversions",
+      "foundation_work_centers",
+      "fulfillment_allocations",
+      "material_requirements",
+      "operation_transfers",
+      "operations_case_lines",
+      "operations_case_revisions",
+      "operations_cases",
+      "permission_overrides",
+      "phase0_number_sequences",
+      "planning_capacity_loads",
+      "planning_pegging_links",
+      "planning_purchase_requisitions",
+      "planning_release_decisions",
+      "planning_run_inputs",
+      "planning_runs",
+      "planning_shortage_messages",
+      "portal_activation_requests",
+      "portal_activation_tokens",
+      "portal_applications",
+      "portal_cart_items",
+      "portal_customers",
+      "portal_notifications",
+      "portal_order_batches",
+      "portal_otp_codes",
+      "portal_sessions",
+      "portal_wishlist_items",
+      "production_batches",
+      "production_cost_entries",
+      "production_downtimes",
+      "production_exceptions",
+      "production_ncrs",
+      "production_operation_confirmations",
+      "production_plans",
+      "production_traceability",
+      "purchase_requisitions",
+      "sod_rules",
+      "system_health_checks",
+      "workflow_events"
+    ],
+    "schemaTables": [
+      "_migrations_applied",
+      "app_state",
+      "approval_policies",
+      "approval_requests",
+      "audit_events",
+      "bom_recipe_items",
+      "bom_recipes",
+      "command_idempotency",
+      "contacts",
+      "data_audit_findings",
+      "delegations",
+      "delivery_method_rules",
+      "document_revisions",
+      "engineering_change_requests",
+      "engineering_product_versions",
+      "engineering_products",
+      "engineering_routings",
+      "foundation_audit",
+      "foundation_items",
+      "foundation_locations",
+      "foundation_machines",
+      "foundation_shifts",
+      "foundation_state_transitions",
+      "foundation_unit_conversions",
+      "foundation_work_centers",
+      "fulfillment_allocations",
+      "inventory_items",
+      "login_sessions",
+      "material_requirements",
+      "notifications",
+      "operation_transfers",
+      "operations_case_lines",
+      "operations_case_revisions",
+      "operations_cases",
+      "permission_overrides",
+      "phase0_number_sequences",
+      "planning_capacity_loads",
+      "planning_pegging_links",
+      "planning_purchase_requisitions",
+      "planning_release_decisions",
+      "planning_run_inputs",
+      "planning_runs",
+      "planning_shortage_messages",
+      "portal_activation_requests",
+      "portal_activation_tokens",
+      "portal_applications",
+      "portal_cart_items",
+      "portal_customers",
+      "portal_notifications",
+      "portal_order_batches",
+      "portal_order_reviews",
+      "portal_otp_codes",
+      "portal_password_reset_requests",
+      "portal_sessions",
+      "portal_wishlist_items",
+      "production_batches",
+      "production_cost_entries",
+      "production_downtimes",
+      "production_exceptions",
+      "production_ncrs",
+      "production_operation_confirmations",
+      "production_orders",
+      "production_plans",
+      "production_requests",
+      "production_traceability",
+      "production_workflow_orders",
+      "purchase_requisitions",
+      "quality_inspections",
+      "quality_records",
+      "sales_order_items",
+      "sales_orders",
+      "sod_rules",
+      "stock_movements",
+      "system_health_checks",
+      "system_settings",
+      "system_users",
+      "trash",
+      "workflow_events"
+    ]
   },
-  "migrations": [],
+  "migrations": [
+    {
+      "file": "migrations/0001_permission_overrides.sql",
+      "sha256": "bfcec5495c279bb245e0359f95f58b2a717f94d28c084eff73018721f25f7d5a",
+      "bytes": 1532,
+      "createsTables": [
+        "permission_overrides"
+      ],
+      "altersTables": []
+    },
+    {
+      "file": "migrations/0002_schema_completion.sql",
+      "sha256": "9a97a77317edf3241a394dbbf30f90bf41ffad21da85cabfb7f8701fcabcb457",
+      "bytes": 1097,
+      "createsTables": [
+        "portal_customers"
+      ],
+      "altersTables": [
+        "inventory_items",
+        "production_workflow_orders"
+      ]
+    },
+    {
+      "file": "migrations/0003_governance.sql",
+      "sha256": "0c370b56a17b9a62535c0e85aec0fa455b244a1a2efb5b16f8a3b333b3255365",
+      "bytes": 2693,
+      "createsTables": [
+        "approval_policies",
+        "approval_requests",
+        "audit_events",
+        "delegations"
+      ],
+      "altersTables": []
+    },
+    {
+      "file": "migrations/0004_operations_costing_exceptions.sql",
+      "sha256": "3a44b0e436415736bf72e38afed5f325041de894861633aeb941015bb71940a9",
+      "bytes": 2628,
+      "createsTables": [
+        "document_revisions",
+        "production_batches",
+        "production_cost_entries",
+        "production_exceptions"
+      ],
+      "altersTables": []
+    },
+    {
+      "file": "migrations/0005_portal_profile_fields.sql",
+      "sha256": "cb4b300044afb1a680afaa109262eae0a0c33f692d336a3754024533ccc351b1",
+      "bytes": 61,
+      "createsTables": [],
+      "altersTables": [
+        "contacts"
+      ]
+    },
+    {
+      "file": "migrations/0006_portal_order_rules.sql",
+      "sha256": "66fb07bb8d72ed66a958bb1c6c9899d780792787263a7842bcf2f131c2b7b76e",
+      "bytes": 271,
+      "createsTables": [],
+      "altersTables": [
+        "portal_customers",
+        "portal_order_reviews",
+        "production_workflow_orders"
+      ]
+    },
+    {
+      "file": "migrations/0007_stock_reservations.sql",
+      "sha256": "7acb009eb351cb098be5fbaf55a5b47264f6b1936a62124078832e99bf895eb8",
+      "bytes": 288,
+      "createsTables": [],
+      "altersTables": [
+        "inventory_items"
+      ]
+    },
+    {
+      "file": "migrations/0008_sales_scope.sql",
+      "sha256": "8d58fe89611d4c9430e739e4b4e36cc97ae8eda9ac18044688dbc96383bc26b6",
+      "bytes": 453,
+      "createsTables": [],
+      "altersTables": [
+        "contacts",
+        "sales_orders"
+      ]
+    },
+    {
+      "file": "migrations/0009_operations_control.sql",
+      "sha256": "6c48ceba0d0ea05c235a1691fee22a5f21742478e08de19961a3be014f4acc4a",
+      "bytes": 4661,
+      "createsTables": [
+        "fulfillment_allocations",
+        "operation_transfers",
+        "purchase_requisitions",
+        "workflow_events"
+      ],
+      "altersTables": [
+        "production_workflow_orders"
+      ]
+    },
+    {
+      "file": "migrations/0010_quality_gate.sql",
+      "sha256": "60753fd4116c35b21003d4bd8a716e3baf78c6ac4595711f92e8ad2346f27da2",
+      "bytes": 465,
+      "createsTables": [],
+      "altersTables": [
+        "inventory_items"
+      ]
+    },
+    {
+      "file": "migrations/0011_sod_rules.sql",
+      "sha256": "da84fdff0978b946878c7cc8a253a13fa1c19f43dba74d3ab074395c58f1d8ca",
+      "bytes": 975,
+      "createsTables": [
+        "sod_rules"
+      ],
+      "altersTables": []
+    },
+    {
+      "file": "migrations/0012_approval_matrix.sql",
+      "sha256": "8c42dc6422139d1b09669d960ae0117e8f813fd0ba9ed000b24a9b6728e4960d",
+      "bytes": 232,
+      "createsTables": [],
+      "altersTables": []
+    },
+    {
+      "file": "migrations/0013_user_scopes.sql",
+      "sha256": "6a2c33ed8c9afddb66581c15547e5ef84e8a321b0f90492dc92636b6a6eb822d",
+      "bytes": 64,
+      "createsTables": [],
+      "altersTables": [
+        "system_users"
+      ]
+    },
+    {
+      "file": "migrations/0014_delegation_indexes.sql",
+      "sha256": "013babcc4de76d9f4bf2bb2891e32c53a642cb852c2029e82bfeb2c58d658566",
+      "bytes": 136,
+      "createsTables": [],
+      "altersTables": []
+    },
+    {
+      "file": "migrations/0015_field_masking.sql",
+      "sha256": "33f251ae4e20c8ae8910807b0be86507b2c1aff8363a3ee2151a9ca6f5a3a4e2",
+      "bytes": 80,
+      "createsTables": [],
+      "altersTables": []
+    },
+    {
+      "file": "migrations/0016_audit_hash_chain.sql",
+      "sha256": "5b80296a4132877dfbc5e7649f1ae5e8b400bdadba061e2b570c6e8678bb0ebf",
+      "bytes": 331,
+      "createsTables": [],
+      "altersTables": [
+        "audit_events"
+      ]
+    },
+    {
+      "file": "migrations/0017_permission_simulator.sql",
+      "sha256": "93ee325dc2ad41a5022c10d95c476251d3cefb2e539a33f89d74b41e8f0c795b",
+      "bytes": 84,
+      "createsTables": [],
+      "altersTables": []
+    },
+    {
+      "file": "migrations/0018_session_limits.sql",
+      "sha256": "69b8c1a98c62171bc9d1bae4fa3f2490518e5696a1265330dca636bfb09e4b2f",
+      "bytes": 84,
+      "createsTables": [],
+      "altersTables": [
+        "system_users"
+      ]
+    },
+    {
+      "file": "migrations/0019_production_cost_approval.sql",
+      "sha256": "f45250bb2c9185307dce39eb549441b39128f8024e92764475f4777fd0d8af3f",
+      "bytes": 224,
+      "createsTables": [],
+      "altersTables": [
+        "production_cost_entries"
+      ]
+    },
+    {
+      "file": "migrations/0020_phase0_hardening.sql",
+      "sha256": "3f881e98adcfbfb2dce68018fc3d7540068987e3965e63f8a05e074bae18c2f7",
+      "bytes": 3372,
+      "createsTables": [
+        "foundation_state_transitions",
+        "phase0_number_sequences"
+      ],
+      "altersTables": [
+        "stock_movements"
+      ]
+    },
+    {
+      "file": "migrations/0021_foundation_inventory_link.sql",
+      "sha256": "0fb47ef7b3ee0fb7791022c8662f947107b26104148a056a9936f494bf45aea4",
+      "bytes": 6213,
+      "createsTables": [
+        "foundation_audit",
+        "foundation_items",
+        "foundation_locations",
+        "foundation_machines",
+        "foundation_shifts",
+        "foundation_unit_conversions",
+        "foundation_work_centers"
+      ],
+      "altersTables": [
+        "inventory_items"
+      ]
+    },
+    {
+      "file": "migrations/0022_engineering_product_lifecycle.sql",
+      "sha256": "acb84c6816b20b19c2fc8bbb4188184bc886767e3e01c98c4847aac0b7f3708b",
+      "bytes": 3188,
+      "createsTables": [
+        "engineering_change_requests",
+        "engineering_product_versions",
+        "engineering_products",
+        "engineering_routings"
+      ],
+      "altersTables": []
+    },
+    {
+      "file": "migrations/0023_production_execution_quality_traceability.sql",
+      "sha256": "776abe67f2ce96c0d3ea9a57d188e90f7e46f682427fe0c7cc1e0942e30b0637",
+      "bytes": 3267,
+      "createsTables": [
+        "production_downtimes",
+        "production_ncrs",
+        "production_operation_confirmations",
+        "production_traceability"
+      ],
+      "altersTables": []
+    },
+    {
+      "file": "migrations/0024_planning_mrp_quarantine.sql",
+      "sha256": "563738b5b0ae3711837384e6433ada1b0d6409f9bf6770250dcb95335f250056",
+      "bytes": 2082,
+      "createsTables": [
+        "material_requirements",
+        "planning_purchase_requisitions",
+        "production_plans"
+      ],
+      "altersTables": [
+        "inventory_items"
+      ]
+    },
+    {
+      "file": "migrations/0025_approval_policies_seed.sql",
+      "sha256": "36de062fd9739d90ebf5d5e112c1323590d64df64d4ec286e21c49e357a8e322",
+      "bytes": 3910,
+      "createsTables": [],
+      "altersTables": []
+    },
+    {
+      "file": "migrations/0026_purchase_orders_created_by.sql",
+      "sha256": "55b5945fb0ffe088ad8a47bf2308ea7524ed58d0dbb8948fba4805c2dad4e48f",
+      "bytes": 377,
+      "createsTables": [],
+      "altersTables": []
+    },
+    {
+      "file": "migrations/0027_portal_customers_email.sql",
+      "sha256": "9557fd5991e7ef5d33e51f2af1988d5116ae801d75fbf0836bea977ef1ed5b96",
+      "bytes": 491,
+      "createsTables": [],
+      "altersTables": [
+        "portal_customers"
+      ]
+    },
+    {
+      "file": "migrations/0028_production_workflow_portal_customer.sql",
+      "sha256": "95235dcba210a2a910d7bc8e95fe859c6f000c8784dc91561389af8faa192d30",
+      "bytes": 843,
+      "createsTables": [],
+      "altersTables": [
+        "production_workflow_orders"
+      ]
+    },
+    {
+      "file": "migrations/0029_portal_cart_wishlist.sql",
+      "sha256": "f168c4b720098d3d75711854acad17be7178a6f57b028c0e4d9dc46425ac5acc",
+      "bytes": 2645,
+      "createsTables": [
+        "portal_cart_items",
+        "portal_wishlist_items"
+      ],
+      "altersTables": [
+        "portal_cart_items",
+        "portal_wishlist_items"
+      ]
+    },
+    {
+      "file": "migrations/0030_portal_applications.sql",
+      "sha256": "9d4a52e45a382f7f3bd6660abf41567eb4f37480adb3b8860c69b8c642ab227c",
+      "bytes": 1236,
+      "createsTables": [
+        "portal_applications"
+      ],
+      "altersTables": []
+    },
+    {
+      "file": "migrations/0031_portal_activation_requests.sql",
+      "sha256": "0af3a4b692b5c6a6c0ca619e82b2f964ed1bf2ad0694d697d834abf9f8d47c53",
+      "bytes": 1316,
+      "createsTables": [
+        "portal_activation_requests"
+      ],
+      "altersTables": []
+    },
+    {
+      "file": "migrations/0032_portal_activation_tokens.sql",
+      "sha256": "5eeabd95a490a5244ab838c321fd96439f063bf042e5483b5b6848e8d8257ced",
+      "bytes": 900,
+      "createsTables": [
+        "portal_activation_tokens"
+      ],
+      "altersTables": []
+    },
+    {
+      "file": "migrations/0033_portal_sessions.sql",
+      "sha256": "a045b468c22d3837d63fea0c1bb3b983805a666ffb7c377c4819b3a331082b89",
+      "bytes": 938,
+      "createsTables": [
+        "portal_sessions"
+      ],
+      "altersTables": []
+    },
+    {
+      "file": "migrations/0034_portal_customer_contact_unique.sql",
+      "sha256": "e9463566eb36a502fe925d5aa409b1d0e5899be0b472b34a8fe483acd506bf26",
+      "bytes": 316,
+      "createsTables": [],
+      "altersTables": []
+    },
+    {
+      "file": "migrations/0035_portal_otp_notifications.sql",
+      "sha256": "c1c88663c5ddda788caf7b4719e5c77e216e9b801127a4ab7b9c3186020b3155",
+      "bytes": 1545,
+      "createsTables": [
+        "portal_notifications",
+        "portal_otp_codes"
+      ],
+      "altersTables": []
+    },
+    {
+      "file": "migrations/0036_operations_planning_boundary.sql",
+      "sha256": "beeacd4e9237184a0e807624067a3e01c93b85b9ed3bea99d9bf0651072f915e",
+      "bytes": 273,
+      "createsTables": [],
+      "altersTables": []
+    },
+    {
+      "file": "migrations/0037_operations_cases.sql",
+      "sha256": "d5d95ec85045723ad441822d19a6449eff12a3ae7a86c8431e9022703857d8d2",
+      "bytes": 3021,
+      "createsTables": [
+        "operations_case_lines",
+        "operations_case_revisions",
+        "operations_cases"
+      ],
+      "altersTables": [
+        "sales_order_items",
+        "sales_orders"
+      ]
+    },
+    {
+      "file": "migrations/0038_identity_normalization.sql",
+      "sha256": "459118b962f928ed46732a6adb945dc013c7a40583ac408939aacb6ba4045c23",
+      "bytes": 7610,
+      "createsTables": [],
+      "altersTables": [
+        "portal_activation_requests",
+        "portal_applications",
+        "portal_customers"
+      ]
+    },
+    {
+      "file": "migrations/0039_operations_stage_00_03_hardening.sql",
+      "sha256": "a2e57a4e7e301cb625dc78c5430fe6ea4723c7e5eae03fc38589c34404287fa0",
+      "bytes": 1567,
+      "createsTables": [],
+      "altersTables": [
+        "sales_order_items"
+      ]
+    },
+    {
+      "file": "migrations/0040_bom_recipe_active.sql",
+      "sha256": "9dde5b4ee6e3d1fafcb8a4746f3ce3721b669539fa314c499e03449dc2150ed0",
+      "bytes": 174,
+      "createsTables": [],
+      "altersTables": [
+        "bom_recipes"
+      ]
+    },
+    {
+      "file": "migrations/0041_portal_order_submission_integrity.sql",
+      "sha256": "6d608a2e11ac19554a5bc6b6954ac5ac06566704a687ea73a6f87d16eded96e0",
+      "bytes": 535,
+      "createsTables": [
+        "portal_order_batches"
+      ],
+      "altersTables": []
+    },
+    {
+      "file": "migrations/0042_sales_stock_sync_status.sql",
+      "sha256": "2b8c7cfc3ef1e6fbeb29bdc6528dae8ff4348a25190258312a43d19c2e751c35",
+      "bytes": 631,
+      "createsTables": [],
+      "altersTables": [
+        "sales_orders"
+      ]
+    },
+    {
+      "file": "migrations/0043_portal_customer_status.sql",
+      "sha256": "11b180c48c51a0a333ce68fb509c190618c6489b9ad38f85a020ad6e3cf90e3a",
+      "bytes": 189,
+      "createsTables": [],
+      "altersTables": [
+        "portal_customers"
+      ]
+    },
+    {
+      "file": "migrations/0044_portal_governorate.sql",
+      "sha256": "dd9ccd8588aeac0f12fa246591e574c1aa8e981d4f7893f8087e5dbecad80240",
+      "bytes": 522,
+      "createsTables": [],
+      "altersTables": [
+        "contacts",
+        "portal_applications",
+        "portal_customers"
+      ]
+    },
+    {
+      "file": "migrations/0045_operations_manager_filter_indexes.sql",
+      "sha256": "463cff4e4c9d043c4f2d5881294faabd0835d1193b9ace47bb194ebd11eb0880",
+      "bytes": 300,
+      "createsTables": [],
+      "altersTables": []
+    },
+    {
+      "file": "migrations/0046_contacts_portal_search_indexes.sql",
+      "sha256": "9f696e395c21e033d3f4de32ffdc3cec076f6828cdeec73c8c8e3a068fabec0e",
+      "bytes": 627,
+      "createsTables": [],
+      "altersTables": [
+        "contacts"
+      ]
+    },
+    {
+      "file": "migrations/0047_production_workflow_hardening.sql",
+      "sha256": "ae0c85d1e687a123d28321a4ad2d0abab7a31bfdb907ca93e0a978d72e753b85",
+      "bytes": 856,
+      "createsTables": [],
+      "altersTables": []
+    },
+    {
+      "file": "migrations/0048_audit_events_created_at_index.sql",
+      "sha256": "0f96b30691ce67f4c63259c1f1d86d5caedb56f4a0ea37f3fdcae7dbf5e0f0a4",
+      "bytes": 924,
+      "createsTables": [],
+      "altersTables": []
+    },
+    {
+      "file": "migrations/0049_phase2_drop_accounting_hr_purchases.sql",
+      "sha256": "a802eef881cb9bd015b68a90f9f801e92a929a1f7ba8339380c13b2328bdc20c",
+      "bytes": 901,
+      "createsTables": [],
+      "altersTables": []
+    },
+    {
+      "file": "migrations/0050_phase3_recipe_price_and_duration.sql",
+      "sha256": "16f7dcf678da16ae543c7768d249a0d01f8479da237f48bbbeefedcdf1c37114",
+      "bytes": 704,
+      "createsTables": [],
+      "altersTables": [
+        "bom_recipes"
+      ]
+    },
+    {
+      "file": "migrations/0051_phase3_due_dates_delivery_rules_cancellation.sql",
+      "sha256": "192d3fadd54a9c663c0a4bf89a3eadcdf06da97307f9ad24c8594f292136da15",
+      "bytes": 2349,
+      "createsTables": [
+        "delivery_method_rules"
+      ],
+      "altersTables": [
+        "production_workflow_orders"
+      ]
+    },
+    {
+      "file": "migrations/0052_phase4_operations_claim_gate.sql",
+      "sha256": "156e13395ed4e1ee6d61355180aa7b98ce86d0bec5ba8714c7a2917398d4310f",
+      "bytes": 1195,
+      "createsTables": [],
+      "altersTables": [
+        "production_workflow_orders"
+      ]
+    },
+    {
+      "file": "migrations/0053_phase5_planning_cockpit.sql",
+      "sha256": "9eae2a5c5a5fc11bcafa2b5ee124dc74115c8d468adcab2ecb3ae1aa7c924e85",
+      "bytes": 3653,
+      "createsTables": [
+        "planning_capacity_loads",
+        "planning_pegging_links",
+        "planning_release_decisions",
+        "planning_run_inputs",
+        "planning_runs",
+        "planning_shortage_messages"
+      ],
+      "altersTables": []
+    },
+    {
+      "file": "migrations/0054_phase1_baseline_metadata.sql",
+      "sha256": "7cdfd4927a710ef6b667576838b7a6d6a8461a60add333f956c46129082b9527",
+      "bytes": 2334,
+      "createsTables": [
+        "command_idempotency",
+        "data_audit_findings",
+        "system_health_checks"
+      ],
+      "altersTables": [
+        "_migrations_applied"
+      ]
+    }
+  ],
   "roles": {
     "declared": [
       "buyer",
@@ -725,12 +5059,36 @@
     "duplicateRoutes": [],
     "duplicateTables": [],
     "frontendRoleDrift": [],
-    "unmountedRouteModules": [],
+    "unmountedRouteModules": [
+      "src/routes/production.ts"
+    ],
     "intentionalLegacyModules": [
       "src/routes/production.ts"
     ],
     "unexpectedUnmountedRouteModules": [],
-    "schemaTablesWithoutMigrationCreate": [],
+    "schemaTablesWithoutMigrationCreate": [
+      "_migrations_applied",
+      "app_state",
+      "bom_recipe_items",
+      "bom_recipes",
+      "contacts",
+      "inventory_items",
+      "login_sessions",
+      "notifications",
+      "portal_order_reviews",
+      "portal_password_reset_requests",
+      "production_orders",
+      "production_requests",
+      "production_workflow_orders",
+      "quality_inspections",
+      "quality_records",
+      "sales_order_items",
+      "sales_orders",
+      "stock_movements",
+      "system_settings",
+      "system_users",
+      "trash"
+    ],
     "baselineSchemaTables": [
       "accounting_transactions",
       "app_state",
@@ -773,7 +5131,9 @@
       "trash",
       "workflow_events"
     ],
-    "schemaTablesWithoutAnyDeliverySource": [],
+    "schemaTablesWithoutAnyDeliverySource": [
+      "_migrations_applied"
+    ],
     "migrationTablesWithoutSchemaDefinition": [],
     "databaseVerified": false
   },

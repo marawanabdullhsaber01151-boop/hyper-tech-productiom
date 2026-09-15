@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>صحة النظام والتدقيق — هايبر تك</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root { color-scheme: dark; --bg:#0b0f1a; --card:#121a29; --border:#263449; --text:#f4f7fb; --muted:#9cadc4; --green:#24c58a; --amber:#f6b73c; --red:#ef6262; --blue:#67a7ff; }
+      * { box-sizing: border-box; }
+      body { margin:0; min-height:100vh; background:var(--bg); color:var(--text); font-family:Tajawal, sans-serif; }
+      main { max-width:1180px; margin:0 auto; padding:32px 20px 60px; }
+      header { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:24px; }
+      h1 { margin:0 0 6px; font-size:28px; } h2 { font-size:18px; margin:0; } p { color:var(--muted); margin:0; }
+      button { border:1px solid var(--border); background:#172337; color:var(--text); border-radius:9px; padding:10px 16px; cursor:pointer; font:inherit; }
+      button:hover { border-color:var(--blue); } .grid { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:18px; }
+      .card { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:18px; }
+      .metric { font-size:26px; font-weight:800; margin-top:12px; } .label { color:var(--muted); font-size:13px; }
+      .status { display:inline-flex; align-items:center; gap:7px; font-weight:700; font-size:13px; } .dot { width:9px; height:9px; border-radius:50%; background:var(--muted); }
+      .ok .dot { background:var(--green); } .warning .dot { background:var(--amber); } .blocked .dot { background:var(--red); } .unknown .dot { background:var(--muted); }
+      .checks { display:grid; grid-template-columns:repeat(2,1fr); gap:12px; margin-top:16px; }
+      .check { border:1px solid var(--border); border-radius:10px; padding:14px; display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+      .check small { color:var(--muted); display:block; margin-top:7px; line-height:1.5; } .check pre { white-space:pre-wrap; color:var(--muted); font-size:11px; max-width:45%; margin:0; }
+      .table-wrap { overflow:auto; margin-top:14px; } table { width:100%; border-collapse:collapse; font-size:13px; } th,td { text-align:right; border-bottom:1px solid var(--border); padding:11px 8px; } th { color:var(--muted); font-weight:500; }
+      .notice { border-right:3px solid var(--blue); background:#10213a; padding:13px 15px; border-radius:8px; color:#cfe3ff; margin-bottom:18px; }
+      .error { color:var(--red); } .loading { opacity:.65; } @media(max-width:760px){ .grid,.checks{grid-template-columns:1fr 1fr;} header{align-items:flex-start; flex-direction:column;} } @media(max-width:480px){ .grid,.checks{grid-template-columns:1fr;} }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <div>
+          <h1>صحة النظام والتدقيق</h1>
+          <p>فحوصات التشغيل، سجل migrations، وملاحظات reconciliation بدون حذف بيانات legacy.</p>
+        </div>
+        <button id="refresh">تحديث الفحوصات</button>
+      </header>
+      <div id="notice" class="notice">جارٍ تحميل فحوصات الأساس…</div>
+      <section id="metrics" class="grid"></section>
+      <section class="card">
+        <h2>الفحوصات الحالية</h2>
+        <div id="checks" class="checks loading">جارٍ التحميل…</div>
+      </section>
+      <section class="card" style="margin-top:18px">
+        <h2>آخر نتائج تدقيق البيانات</h2>
+        <div id="findings" class="table-wrap loading">جارٍ التحميل…</div>
+      </section>
+    </main>
+    <script src="JS/auth.js"></script>
+    <script>
+      const esc = (value) => {
+        const node = document.createElement("span");
+        node.textContent = value == null ? "" : String(value);
+        return node.innerHTML;
+      };
+      const api = (path) => window.HyperTechAuth.request(path);
+      const statusLabel = { ok:"سليم", warning:"تحذير", blocked:"محجوب", unknown:"غير متحقق" };
+      function statusMarkup(status) {
+        return `<span class="status ${esc(status)}"><span class="dot"></span>${esc(statusLabel[status] || status)}</span>`;
+      }
+      async function load() {
+        const notice = document.getElementById("notice");
+        try {
+          const [health, findings] = await Promise.all([
+            api("/admin/health"),
+            api("/admin/audit/findings?limit=50"),
+          ]);
+          const checks = health.checks || [];
+          const blocked = checks.filter((check) => check.status === "blocked").length;
+          const warnings = checks.filter((check) => check.status === "warning").length;
+          document.getElementById("metrics").innerHTML = [
+            ["الحالة العامة", statusLabel[health.status] || health.status],
+            ["فحوصات الأساس", checks.length],
+            ["محجوب", blocked],
+            ["تحذيرات", warnings],
+          ].map(([label,value]) => `<div class="card"><div class="label">${esc(label)}</div><div class="metric">${esc(value)}</div></div>`).join("");
+          document.getElementById("checks").classList.remove("loading");
+          document.getElementById("checks").innerHTML = checks.map((check) => `<div class="check ${esc(check.status)}"><div>${statusMarkup(check.status)}<small>${esc(check.summary)}</small></div><pre>${esc(check.details ? JSON.stringify(check.details, null, 2) : "")}</pre></div>`).join("");
+          const rows = (findings || []).map((finding) => `<tr><td>${esc(finding.severity)}</td><td>${esc(finding.entityType)}</td><td>${esc(finding.title)}</td><td>${esc(finding.status)}</td></tr>`).join("");
+          document.getElementById("findings").classList.remove("loading");
+          document.getElementById("findings").innerHTML = rows ? `<table><thead><tr><th>الحدة</th><th>الكيان</th><th>الوصف</th><th>الحالة</th></tr></thead><tbody>${rows}</tbody></table>` : "<p>لا توجد نتائج تدقيق محفوظة.</p>";
+          notice.textContent = `آخر فحص: ${new Date(health.checkedAt).toLocaleString("ar-EG")} — كل نتيجة تعرض سببها بدل رسالة 500 عامة.`;
+        } catch (error) {
+          notice.className = "notice error";
+          notice.textContent = error.message || "تعذر تحميل فحوصات النظام";
+          document.getElementById("checks").textContent = "تعذر تحميل البيانات.";
+          document.getElementById("findings").textContent = "تعذر تحميل البيانات.";
+        }
+      }
+      document.getElementById("refresh").addEventListener("click", load);
+      window.HyperTechAuth.ready.then(load);
+    </script>
+  </body>
+</html>

@@ -1,55 +1,75 @@
+#!/usr/bin/env node
 /**
- * ✅ سكريبت تشغيل migrations من التيرمنال مباشرة — بديل عن اللصق اليدوي
- * في Neon SQL Editor.
+ * Ordered SQL migration runner for the production portal.
  *
- * ليه محتاجين السكريبت ده تحديدًا بدل "npm run db:migrate" (drizzle-kit
- * migrate) الموجود أصلًا؟ لأن drizzle.config.ts معرّف بـ out: "./drizzle"،
- * يعني drizzle-kit بيدوّر على الـ migrations في مجلد "./drizzle" بس (فيه
- * ملف واحد قديم بس)، بينما كل ملفات المشروع الحقيقية (26+ ملف SQL
- * بما فيهم كل حاجة اتعملت في هذه الجلسة) موجودة في "./migrations" وهي
- * ملفات SQL مكتوبة يدويًا، مش مبنية بصيغة drizzle-kit (مفيش
- * meta/_journal.json). فاستخدام drizzle-kit migrate هيتجاهلهم تمامًا.
- *
- * السكريبت ده:
- *  1. يعمل جدول تتبّع بسيط (_migrations_applied) في قاعدة البيانات نفسها
- *     لو مش موجود، عشان يعرف إيه اللي اتشغّل قبل كده.
- *  2. يقرأ كل ملفات migrations/*.sql بالترتيب الأبجدي (يعني بترتيب الرقم
- *     0001, 0002... تلقائيًا لأن أسماء الملفات مرقّمة).
- *  3. يشغّل بس الملفات اللي لسه متسجلتش كـ "applied"، كل ملف جوه
- *     transaction واحدة (لو فشل السطر يرجع كله، مش نص تنفيذ).
- *  4. آمن للتشغيل المتكرر (idempotent) — تشغيله مرتين من غير خطر.
- *
- * الاستخدام: npm run db:migrate
- * (أو مباشرة: node scripts/run-migrations.mjs)
+ * The runner keeps a checksum and execution duration for every migration,
+ * refuses checksum drift, runs one migration per transaction, and emits a
+ * machine-readable report. It does not silently skip a partial baseline.
  */
-
-import { existsSync, readdirSync, readFileSync } from "fs";
-import { fileURLToPath } from "url";
-import path from "path";
 import "dotenv/config";
+import { createHash, randomUUID } from "node:crypto";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import path from "node:path";
 import pkg from "pg";
 
 const { Pool } = pkg;
-
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const migrationsDir = path.join(__dirname, "..", "migrations");
+const root = path.join(__dirname, "..");
+const migrationsDir = path.join(root, "migrations");
 const baselineSchemaPath = path.join(
-  __dirname,
-  "..",
+  root,
   "drizzle",
   "0000_0000_initial_schema.sql",
 );
+const runnerVersion = "phase1-1";
+const runId = `migration-${new Date().toISOString()}-${randomUUID().slice(0, 8)}`;
 
-/**
- * The supplied repository has a canonical initial schema in drizzle/, while
- * the real incremental delivery lives in migrations/. A fresh database must
- * receive that baseline before migration 0001 can reference system_users.
- * Existing databases are not rewritten: the marker makes the bootstrap
- * idempotent and the guard rejects a partial/ambiguous database instead of
- * guessing.
- */
-async function ensureBaselineSchema(client) {
-  const { rows } = await client.query(`
+function checksum(sql) {
+  return createHash("sha256").update(sql).digest("hex");
+}
+
+function migrationFiles() {
+  return readdirSync(migrationsDir)
+    .filter((file) => /^\d{4}.*\.sql$/.test(file))
+    .sort();
+}
+
+function validateFiles(files) {
+  const seen = new Set();
+  for (const file of files) {
+    const number = file.slice(0, 4);
+    if (seen.has(number)) throw new Error(`تكرار رقم migration: ${number}`);
+    seen.add(number);
+    if (!readFileSync(path.join(migrationsDir, file), "utf8").trim()) {
+      throw new Error(`ملف migration فارغ: ${file}`);
+    }
+  }
+  if (!existsSync(baselineSchemaPath)) {
+    throw new Error(`ملف baseline غير موجود: ${baselineSchemaPath}`);
+  }
+}
+
+async function ensureLedger(pool) {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS "_migrations_applied" (
+      filename text PRIMARY KEY,
+      checksum text,
+      applied_at timestamptz NOT NULL DEFAULT now(),
+      duration_ms integer,
+      runner_version text
+    )
+  `);
+  await pool.query(`
+    ALTER TABLE "_migrations_applied"
+      ADD COLUMN IF NOT EXISTS checksum text,
+      ADD COLUMN IF NOT EXISTS duration_ms integer,
+      ADD COLUMN IF NOT EXISTS runner_version text
+  `);
+}
+
+async function ensureBaselineSchema(pool, report) {
+  const { rows } = await pool.query(`
     SELECT
       to_regclass('public.system_users') AS system_users,
       to_regclass('public.inventory_items') AS inventory_items,
@@ -57,121 +77,154 @@ async function ensureBaselineSchema(client) {
   `);
   const baseline = rows[0];
   if (baseline.system_users && baseline.inventory_items && baseline.contacts) {
-    return false;
+    report.checks.baseline = "present";
+    return;
   }
 
-  const present = [baseline.system_users, baseline.inventory_items, baseline.contacts]
-    .filter(Boolean).length;
+  const present = [
+    baseline.system_users,
+    baseline.inventory_items,
+    baseline.contacts,
+  ].filter(Boolean).length;
   if (present > 0) {
     throw new Error(
-      "قاعدة البيانات تحتوي جزءًا من الـbaseline فقط؛ أوقف الترحيل وافحصها يدويًا قبل المتابعة.",
+      "قاعدة البيانات تحتوي جزءًا من baseline فقط؛ أوقف الترحيل وافحصها يدويًا.",
     );
-  }
-  if (!existsSync(baselineSchemaPath)) {
-    throw new Error(`ملف baseline غير موجود: ${baselineSchemaPath}`);
   }
 
-  const baselineSql = readFileSync(baselineSchemaPath, "utf8")
-    .replaceAll(/--> statement-breakpoint/g, "");
-  await client.query("BEGIN");
+  const baselineSql = readFileSync(baselineSchemaPath, "utf8").replaceAll(
+    /--> statement-breakpoint/g,
+    "",
+  );
+  const started = Date.now();
+  const client = await pool.connect();
   try {
+    await client.query("BEGIN");
     await client.query(baselineSql);
     await client.query(
-      `INSERT INTO "_migrations_applied" (filename)
-       VALUES ('0000_0000_initial_schema.sql')
-       ON CONFLICT (filename) DO NOTHING`,
+      `INSERT INTO "_migrations_applied"
+       (filename, checksum, duration_ms, runner_version)
+       VALUES ($1, $2, $3, $4)
+       ON CONFLICT (filename) DO UPDATE SET
+         checksum = EXCLUDED.checksum,
+         duration_ms = EXCLUDED.duration_ms,
+         runner_version = EXCLUDED.runner_version`,
+      [
+        "0000_0000_initial_schema.sql",
+        checksum(baselineSql),
+        Date.now() - started,
+        runnerVersion,
+      ],
     );
     await client.query("COMMIT");
-    console.log("✅ تم تهيئة baseline schema من drizzle/0000_0000_initial_schema.sql");
-    return true;
+    report.checks.baseline = "bootstrapped";
+    report.applied.push({
+      file: "0000_0000_initial_schema.sql",
+      durationMs: Date.now() - started,
+    });
   } catch (error) {
     await client.query("ROLLBACK");
     throw error;
+  } finally {
+    client.release();
   }
 }
 
 async function main() {
   if (!process.env.DATABASE_URL) {
-    console.error(
-      "❌ DATABASE_URL مش موجودة. لازم تكون متسجلة في ملف .env قبل تشغيل السكريبت ده.",
-    );
+    console.error("❌ DATABASE_URL is required. No migration was executed.");
     process.exit(1);
   }
 
-  const useStrictSSL = process.env.PGSSL_STRICT === "true";
+  const files = migrationFiles();
+  validateFiles(files);
+  const report = {
+    runId,
+    runnerVersion,
+    startedAt: new Date().toISOString(),
+    checks: {
+      fileOrder: "ok",
+      baseline: "not_checked",
+      checksumDrift: "not_checked",
+    },
+    pending: [],
+    applied: [],
+  };
+
   const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
-    ssl: useStrictSSL ? true : { rejectUnauthorized: false },
+    ssl:
+      process.env.PGSSL_STRICT === "true" ?
+        true
+      : { rejectUnauthorized: false },
   });
 
   try {
-    // ✅ جدول تتبّع الـ migrations اللي اتشغّلت قبل كده
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS "_migrations_applied" (
-        filename text PRIMARY KEY,
-        applied_at timestamptz NOT NULL DEFAULT now()
-      );
-    `);
-
-    const bootstrapClient = await pool.connect();
-    try {
-      await ensureBaselineSchema(bootstrapClient);
-    } finally {
-      bootstrapClient.release();
-    }
+    await ensureLedger(pool);
+    await ensureBaselineSchema(pool, report);
 
     const { rows: appliedRows } = await pool.query(
-      `SELECT filename FROM "_migrations_applied"`,
+      `SELECT filename, checksum FROM "_migrations_applied"`,
     );
-    const applied = new Set(appliedRows.map((r) => r.filename));
+    const appliedByFile = new Map(
+      appliedRows.map((row) => [row.filename, row]),
+    );
 
-    const allFiles = readdirSync(migrationsDir)
-      .filter((f) => f.endsWith(".sql"))
-      .sort(); // ترتيب أبجدي = ترتيب رقمي لأن الأسماء مرقّمة 0001, 0002...
+    for (const file of files) {
+      const sql = readFileSync(path.join(migrationsDir, file), "utf8");
+      const currentChecksum = checksum(sql);
+      const previous = appliedByFile.get(file);
+      if (previous?.checksum && previous.checksum !== currentChecksum) {
+        report.checks.checksumDrift = "blocked";
+        throw new Error(`checksum drift detected for ${file}`);
+      }
+      if (previous) {
+        if (!previous.checksum) {
+          await pool.query(
+            `UPDATE "_migrations_applied" SET checksum = $2, runner_version = COALESCE(runner_version, $3) WHERE filename = $1`,
+            [file, currentChecksum, runnerVersion],
+          );
+        }
+        report.pending.push({ file, state: "already_applied" });
+        continue;
+      }
 
-    const pending = allFiles.filter((f) => !applied.has(f));
-
-    if (pending.length === 0) {
-      console.log("✅ كل الـ migrations متطبّقة بالفعل — مفيش حاجة جديدة.");
-      return;
-    }
-
-    console.log(`📋 هيتم تشغيل ${pending.length} migration:`);
-    pending.forEach((f) => console.log(`   - ${f}`));
-    console.log("");
-
-    for (const file of pending) {
-      const filePath = path.join(migrationsDir, file);
-      const sql = readFileSync(filePath, "utf8");
+      report.pending.push({ file, state: "pending" });
+      const started = Date.now();
       const client = await pool.connect();
       try {
         await client.query("BEGIN");
         await client.query(sql);
+        const durationMs = Date.now() - started;
         await client.query(
-          `INSERT INTO "_migrations_applied" (filename) VALUES ($1)`,
-          [file],
+          `INSERT INTO "_migrations_applied"
+           (filename, checksum, duration_ms, runner_version)
+           VALUES ($1, $2, $3, $4)`,
+          [file, currentChecksum, durationMs, runnerVersion],
         );
         await client.query("COMMIT");
-        console.log(`✅ ${file}`);
-      } catch (err) {
+        report.applied.push({ file, durationMs });
+        console.log(`✅ ${file} (${durationMs}ms)`);
+      } catch (error) {
         await client.query("ROLLBACK");
-        console.error(`❌ ${file} فشل — تم التراجع عن كل تغييراته:`);
-        console.error(`   ${err.message}`);
-        client.release();
-        await pool.end();
-        process.exit(1);
+        throw new Error(`${file} failed and was rolled back: ${error.message}`);
       } finally {
         client.release();
       }
     }
 
-    console.log("\n🎉 كل الـ migrations الجديدة اتطبّقت بنجاح.");
+    report.checks.checksumDrift = "ok";
+    report.finishedAt = new Date().toISOString();
+    report.pendingCount = report.pending.filter(
+      (entry) => entry.state === "pending",
+    ).length;
+    console.log(`MIGRATION_REPORT ${JSON.stringify(report)}`);
   } finally {
     await pool.end();
   }
 }
 
-main().catch((err) => {
-  console.error("❌ خطأ غير متوقع:", err);
+main().catch((error) => {
+  console.error(`❌ Migration preflight/runner stopped: ${error.message}`);
   process.exit(1);
 });

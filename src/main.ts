@@ -33,10 +33,12 @@ import engineeringRouter from "./routes/engineering";
 import productionExecutionRouter from "./routes/production-execution";
 import planningRouter from "./routes/planning";
 import navRouter from "./routes/nav";
+import healthRouter from "./routes/health";
 
 import { errorHandler, notFound } from "./middleware/errorHandler";
 import { apiRateLimiter } from "./middleware/rateLimiter";
 import { requestLogger } from "./middleware/requestLogger";
+import { requestContext } from "./middleware/requestContext";
 import { mutationAudit } from "./middleware/mutationAudit";
 import { logger } from "./lib/logger";
 import { apiEnvelope } from "./middleware/apiEnvelope";
@@ -86,12 +88,19 @@ app.use(
     origin: corsOrigin,
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+      "X-Correlation-Id",
+      "Idempotency-Key",
+      "If-Match-Version",
+    ],
   }),
 );
 
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
+app.use(requestContext);
 app.use(apiEnvelope);
 app.use(requestLogger);
 app.use(mutationAudit);
@@ -106,6 +115,7 @@ app.get("/api/v1/health", (_req, res) => {
 
 const apiRouter = express.Router();
 apiRouter.use(apiRateLimiter);
+apiRouter.use(healthRouter);
 apiRouter.use(productionWorkflowRoutes);
 apiRouter.use(productionCycleRouter);
 apiRouter.use(engineeringRouter);

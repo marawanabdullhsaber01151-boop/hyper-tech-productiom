@@ -3,8 +3,10 @@
 ## الحالة الحالية
 
 - المرحلة 00: مكتملة توثيقيًا.
-- المرحلة 01: مكتملة بالنسبة لحدود التطبيق؛ جدول `production_orders` ما زال
-  مؤجلًا للترحيل والفحص.
+- المرحلة 01: طبقة baseline والتنفيذ الآمن مضافة: migration ledger مع checksums،
+  preflight، correlation IDs، idempotent command contract، شاشة صحة النظام،
+  وتدقيق بيانات legacy غير هدّام. ما زال فحص PostgreSQL الفعلي وترحيل
+  `production_orders` مؤجلين إلى ما بعد backup وdata audit.
 - المرحلة 02: مكتملة كطبقة نقل متوافقة؛ كل استجابات API تمر عبر envelope موحّد،
   وأخطاء auth وvalidation وHTTP لها codes ثابتة، مع إبقاء payloads القديمة داخل
   `data` حتى لا تنكسر الصفحات الحالية.

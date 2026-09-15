@@ -60,6 +60,7 @@ export const DEPARTMENTS: readonly NavDepartment[] = [
         pages: [
           { id: "governance", label: "الحوكمة والاعتمادات", href: "governance.html", roles: TOP_MGMT },
           { id: "settings", label: "الإعدادات", href: "settings.html", roles: ["chairman"] },
+          { id: "admin-health", label: "صحة النظام والتدقيق", href: "admin-health.html", roles: TOP_MGMT },
         ],
       },
     ],

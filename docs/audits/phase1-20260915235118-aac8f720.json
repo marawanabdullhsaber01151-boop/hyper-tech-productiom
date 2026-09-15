@@ -1,0 +1,72 @@
+{
+  "runId": "phase1-20260915235118-aac8f720",
+  "generatedAt": "2026-09-15T23:51:19.518Z",
+  "readOnly": true,
+  "legacyProductionOrders": {
+    "present": true,
+    "count": 0,
+    "byStatus": []
+  },
+  "workflowProductionOrders": {
+    "present": true,
+    "count": 5,
+    "byStatus": [
+      {
+        "status": "cancelled",
+        "count": 2
+      },
+      {
+        "status": "claimed",
+        "count": 2
+      },
+      {
+        "status": "awaiting_operations_claim",
+        "count": 1
+      }
+    ]
+  },
+  "openOperationsCases": {
+    "present": true,
+    "count": 1,
+    "byStatus": [
+      {
+        "status": "analysis_ready",
+        "count": 1
+      }
+    ]
+  },
+  "activeMasterData": {
+    "inventory_items": {
+      "present": true,
+      "total": 2,
+      "active": 2,
+      "activitySource": "all rows"
+    },
+    "bom_recipes": {
+      "present": true,
+      "total": 2,
+      "active": 2,
+      "activitySource": "is_active"
+    },
+    "work_centers": {
+      "present": false
+    },
+    "machines": {
+      "present": false
+    },
+    "foundation_items": {
+      "present": true,
+      "total": 1,
+      "active": 1,
+      "activitySource": "active"
+    },
+    "contacts": {
+      "present": true,
+      "total": 1,
+      "active": 1,
+      "activitySource": "all rows"
+    }
+  },
+  "orphanedReferences": [],
+  "findings": []
+}

@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+export const API_CONTRACT_VERSION = "1.0";
+
 export const apiErrorSchema = z.object({
   code: z.string(),
   message: z.string(),
@@ -9,6 +11,12 @@ export const apiErrorSchema = z.object({
 
 export const apiErrorResponseSchema = z.object({
   error: apiErrorSchema,
+  meta: z
+    .object({
+      apiVersion: z.string().optional(),
+      correlationId: z.string().optional(),
+    })
+    .optional(),
 });
 
 export type ApiError = z.infer<typeof apiErrorSchema>;

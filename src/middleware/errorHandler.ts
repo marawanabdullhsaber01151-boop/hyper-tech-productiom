@@ -99,6 +99,7 @@ export function errorHandler(
     reference: errorRef,
     path: req.originalUrl,
     method: req.method,
+    correlationId: req.correlationId,
     stack: err instanceof Error ? err.stack : undefined,
   });
   res.status(500).json(

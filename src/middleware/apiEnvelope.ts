@@ -24,6 +24,7 @@ export function apiEnvelope(req: Request, res: Response, next: NextFunction) {
 
   const originalJson = res.json.bind(res);
   res.json = ((payload: unknown) => {
+    const correlationId = req.correlationId;
     if (res.statusCode >= 400) {
       const body =
         payload && typeof payload === "object"
@@ -40,7 +41,11 @@ export function apiEnvelope(req: Request, res: Response, next: NextFunction) {
             ? { reference: body.error.reference }
             : {}),
         };
-        return originalJson(body);
+        return originalJson(
+          correlationId ?
+            { ...body, meta: { ...(body.meta ?? {}), correlationId } }
+          : body,
+        );
       }
       return originalJson({
         error: {
@@ -50,6 +55,7 @@ export function apiEnvelope(req: Request, res: Response, next: NextFunction) {
               ? body.message
               : "تعذر إتمام الطلب",
         },
+        ...(correlationId ? { meta: { correlationId } } : {}),
       });
     }
 
@@ -60,7 +66,10 @@ export function apiEnvelope(req: Request, res: Response, next: NextFunction) {
     ) {
       return originalJson(payload);
     }
-    return originalJson({ data: payload });
+    return originalJson({
+      data: payload,
+      ...(correlationId ? { meta: { correlationId } } : {}),
+    });
   }) as Response["json"];
 
   next();
