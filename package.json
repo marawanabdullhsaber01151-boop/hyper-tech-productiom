@@ -20,6 +20,7 @@
     "check:roles": "node scripts/check-role-consistency.mjs",
     "audit:baseline": "node scripts/phase0-baseline-audit.mjs",
     "audit:phase1": "node scripts/phase1-data-audit.mjs",
+    "audit:foundation": "node scripts/foundation-reconciliation-audit.mjs",
     "check:repository": "node scripts/repository-self-check.mjs"
   },
   "dependencies": {
