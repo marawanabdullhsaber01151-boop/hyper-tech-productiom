@@ -3,52 +3,311 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>صحة النظام والتدقيق — هايبر تك</title>
+    <title>حالة النظام — هايبر تك</title>
     <link
       href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap"
       rel="stylesheet"
     />
     <style>
-      :root { color-scheme: dark; --bg:#0b0f1a; --card:#121a29; --border:#263449; --text:#f4f7fb; --muted:#9cadc4; --green:#24c58a; --amber:#f6b73c; --red:#ef6262; --blue:#67a7ff; }
+      :root {
+        color-scheme: dark;
+        --background: #0b1020;
+        --surface: #131b2e;
+        --surface-soft: #18233a;
+        --border: #293956;
+        --text: #f7f9fc;
+        --muted: #aebbd0;
+        --green: #35d39a;
+        --green-soft: #12392f;
+        --amber: #f6bd4b;
+        --amber-soft: #3d3018;
+        --red: #ff7474;
+        --red-soft: #3d2028;
+        --blue: #7eb2ff;
+      }
+
       * { box-sizing: border-box; }
-      body { margin:0; min-height:100vh; background:var(--bg); color:var(--text); font-family:Tajawal, sans-serif; }
-      main { max-width:1180px; margin:0 auto; padding:32px 20px 60px; }
-      header { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:24px; }
-      h1 { margin:0 0 6px; font-size:28px; } h2 { font-size:18px; margin:0; } p { color:var(--muted); margin:0; }
-      button { border:1px solid var(--border); background:#172337; color:var(--text); border-radius:9px; padding:10px 16px; cursor:pointer; font:inherit; }
-      button:hover { border-color:var(--blue); } .grid { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:18px; }
-      .card { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:18px; }
-      .metric { font-size:26px; font-weight:800; margin-top:12px; } .label { color:var(--muted); font-size:13px; }
-      .status { display:inline-flex; align-items:center; gap:7px; font-weight:700; font-size:13px; } .dot { width:9px; height:9px; border-radius:50%; background:var(--muted); }
-      .ok .dot { background:var(--green); } .warning .dot { background:var(--amber); } .blocked .dot { background:var(--red); } .unknown .dot { background:var(--muted); }
-      .checks { display:grid; grid-template-columns:repeat(2,1fr); gap:12px; margin-top:16px; }
-      .check { border:1px solid var(--border); border-radius:10px; padding:14px; display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
-      .check small { color:var(--muted); display:block; margin-top:7px; line-height:1.5; } .check pre { white-space:pre-wrap; color:var(--muted); font-size:11px; max-width:45%; margin:0; }
-      .table-wrap { overflow:auto; margin-top:14px; } table { width:100%; border-collapse:collapse; font-size:13px; } th,td { text-align:right; border-bottom:1px solid var(--border); padding:11px 8px; } th { color:var(--muted); font-weight:500; }
-      .notice { border-right:3px solid var(--blue); background:#10213a; padding:13px 15px; border-radius:8px; color:#cfe3ff; margin-bottom:18px; }
-      .error { color:var(--red); } .loading { opacity:.65; } @media(max-width:760px){ .grid,.checks{grid-template-columns:1fr 1fr;} header{align-items:flex-start; flex-direction:column;} } @media(max-width:480px){ .grid,.checks{grid-template-columns:1fr;} }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background:
+          radial-gradient(circle at 85% -10%, #1c3158 0, transparent 34%),
+          var(--background);
+        color: var(--text);
+        font-family: Tajawal, Arial, sans-serif;
+      }
+
+      main {
+        width: min(1120px, calc(100% - 32px));
+        margin: 0 auto;
+        padding: 42px 0 64px;
+      }
+
+      header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 24px;
+        margin-bottom: 28px;
+      }
+
+      .heading h1 {
+        margin: 0 0 8px;
+        font-size: clamp(26px, 4vw, 36px);
+        letter-spacing: -0.5px;
+      }
+
+      .heading p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 16px;
+      }
+
+      button {
+        border: 1px solid #3a4d71;
+        border-radius: 10px;
+        padding: 11px 18px;
+        background: var(--surface-soft);
+        color: var(--text);
+        cursor: pointer;
+        font: 700 14px Tajawal, Arial, sans-serif;
+        white-space: nowrap;
+        transition: 160ms ease;
+      }
+
+      button:hover {
+        border-color: var(--blue);
+        background: #20304e;
+      }
+
+      button:disabled {
+        cursor: wait;
+        opacity: 0.65;
+      }
+
+      .notice {
+        margin-bottom: 20px;
+        border: 1px solid #31527d;
+        border-right: 4px solid var(--blue);
+        border-radius: 12px;
+        padding: 14px 18px;
+        background: #142642;
+        color: #d9e8ff;
+        font-size: 14px;
+      }
+
+      .notice.error {
+        border-color: #703740;
+        border-right-color: var(--red);
+        background: var(--red-soft);
+        color: #ffd8d8;
+      }
+
+      .metrics {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 14px;
+        margin-bottom: 20px;
+      }
+
+      .metric,
+      .section {
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        background: rgba(19, 27, 46, 0.92);
+        box-shadow: 0 16px 40px rgba(0, 0, 0, 0.12);
+      }
+
+      .metric {
+        min-height: 112px;
+        padding: 18px 20px;
+      }
+
+      .metric-label {
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      .metric-value {
+        margin-top: 14px;
+        font-size: 26px;
+        font-weight: 800;
+      }
+
+      .metric:first-child .metric-value { color: var(--green); }
+
+      .section {
+        padding: 24px;
+        margin-top: 20px;
+      }
+
+      .section-heading {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 6px;
+      }
+
+      h2 {
+        margin: 0;
+        font-size: 21px;
+      }
+
+      .section-description {
+        margin: 0 0 18px;
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      .checks {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+      }
+
+      .check {
+        display: flex;
+        align-items: flex-start;
+        gap: 14px;
+        min-height: 94px;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 17px;
+        background: #111a2d;
+      }
+
+      .check-icon {
+        display: grid;
+        flex: 0 0 34px;
+        place-items: center;
+        width: 34px;
+        height: 34px;
+        border-radius: 50%;
+        background: var(--surface-soft);
+        color: var(--muted);
+        font-size: 17px;
+        font-weight: 800;
+      }
+
+      .check.ok .check-icon { background: var(--green-soft); color: var(--green); }
+      .check.warning .check-icon,
+      .check.unknown .check-icon { background: var(--amber-soft); color: var(--amber); }
+      .check.blocked .check-icon { background: var(--red-soft); color: var(--red); }
+
+      .check-title {
+        margin: 0 0 7px;
+        font-size: 16px;
+        font-weight: 700;
+      }
+
+      .check-message {
+        margin: 0;
+        color: var(--muted);
+        font-size: 14px;
+        line-height: 1.6;
+      }
+
+      .status {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        margin-top: 9px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--muted);
+      }
+
+      .ok .status-dot { background: var(--green); }
+      .warning .status-dot,
+      .unknown .status-dot { background: var(--amber); }
+      .blocked .status-dot { background: var(--red); }
+
+      .empty {
+        margin: 0;
+        border: 1px dashed var(--border);
+        border-radius: 12px;
+        padding: 22px;
+        color: var(--muted);
+        text-align: center;
+      }
+
+      .table-wrap { overflow-x: auto; }
+      table { width: 100%; border-collapse: collapse; font-size: 14px; }
+      th, td {
+        padding: 14px 10px;
+        border-bottom: 1px solid var(--border);
+        text-align: right;
+      }
+      th { color: var(--muted); font-weight: 500; }
+      td { color: #e6edf8; }
+      tr:last-child td { border-bottom: 0; }
+
+      .level,
+      .finding-status {
+        display: inline-block;
+        border-radius: 999px;
+        padding: 4px 10px;
+        font-size: 12px;
+        white-space: nowrap;
+      }
+
+      .level { background: var(--amber-soft); color: #ffd77a; }
+      .finding-status { background: #243454; color: #c9dcff; }
+
+      .loading { opacity: 0.65; }
+
+      @media (max-width: 780px) {
+        main { padding-top: 28px; }
+        header { flex-direction: column; }
+        .metrics { grid-template-columns: repeat(2, 1fr); }
+      }
+
+      @media (max-width: 540px) {
+        main { width: min(100% - 22px, 1120px); }
+        .metrics, .checks { grid-template-columns: 1fr; }
+        .section { padding: 18px; }
+        table { min-width: 560px; }
+      }
     </style>
   </head>
   <body>
     <main>
       <header>
-        <div>
-          <h1>صحة النظام والتدقيق</h1>
-          <p>فحوصات التشغيل، سجل migrations، وملاحظات reconciliation بدون حذف بيانات legacy.</p>
+        <div class="heading">
+          <h1>حالة النظام</h1>
+          <p>تابع حالة النظام وقاعدة البيانات من مكان واحد.</p>
         </div>
-        <button id="refresh">تحديث الفحوصات</button>
+        <button id="refresh" type="button">تحديث الحالة</button>
       </header>
-      <div id="notice" class="notice">جارٍ تحميل فحوصات الأساس…</div>
-      <section id="metrics" class="grid"></section>
-      <section class="card">
-        <h2>الفحوصات الحالية</h2>
+
+      <div id="notice" class="notice">جارٍ التحقق من حالة النظام…</div>
+      <section id="metrics" class="metrics"></section>
+
+      <section class="section">
+        <div class="section-heading">
+          <h2>حالة أجزاء النظام</h2>
+        </div>
+        <p class="section-description">إذا ظهرت علامة خضراء، فالجزء يعمل بشكل طبيعي.</p>
         <div id="checks" class="checks loading">جارٍ التحميل…</div>
       </section>
-      <section class="card" style="margin-top:18px">
-        <h2>آخر نتائج تدقيق البيانات</h2>
+
+      <section class="section">
+        <div class="section-heading">
+          <h2>ملاحظات تحتاج متابعة</h2>
+        </div>
+        <p class="section-description">أي ملاحظات ظهرت أثناء مراجعة بيانات النظام.</p>
         <div id="findings" class="table-wrap loading">جارٍ التحميل…</div>
       </section>
     </main>
+
     <script src="JS/auth.js"></script>
     <script>
       const esc = (value) => {
@@ -56,40 +315,197 @@
         node.textContent = value == null ? "" : String(value);
         return node.innerHTML;
       };
+
       const api = (path) => window.HyperTechAuth.request(path);
-      const statusLabel = { ok:"سليم", warning:"تحذير", blocked:"محجوب", unknown:"غير متحقق" };
-      function statusMarkup(status) {
-        return `<span class="status ${esc(status)}"><span class="dot"></span>${esc(statusLabel[status] || status)}</span>`;
+
+      const statusLabels = {
+        ok: "يعمل بشكل طبيعي",
+        warning: "يحتاج مراجعة",
+        blocked: "يحتاج تدخل",
+        unknown: "لم يتم التحقق بعد",
+      };
+
+      const overallLabels = {
+        ok: "كل شيء يعمل",
+        warning: "توجد ملاحظات",
+        blocked: "يوجد جزء متوقف",
+        unknown: "المراجعة غير مكتملة",
+      };
+
+      const checkNames = {
+        database: "الاتصال بقاعدة البيانات",
+        migrations: "تحديثات النظام",
+        configuration: "إعدادات التشغيل",
+        "data-audit": "مراجعة البيانات",
+      };
+
+      const checkMessages = {
+        database: {
+          ok: "الاتصال بقاعدة البيانات يعمل بشكل طبيعي.",
+          warning: "الاتصال بقاعدة البيانات يحتاج مراجعة.",
+          blocked: "لا يمكن الاتصال بقاعدة البيانات الآن.",
+          unknown: "لم نتمكن من التحقق من الاتصال بقاعدة البيانات.",
+        },
+        migrations: {
+          ok: "تحديثات النظام مطبقة بشكل صحيح.",
+          warning: "توجد تحديثات تحتاج إلى مراجعة.",
+          blocked: "لا يمكن التأكد من تحديثات النظام.",
+          unknown: "لم نتمكن من التحقق من تحديثات النظام.",
+        },
+        configuration: {
+          ok: "إعدادات التشغيل مكتملة.",
+          warning: "بعض إعدادات التشغيل تحتاج مراجعة.",
+          blocked: "توجد إعدادات ضرورية ناقصة.",
+          unknown: "لم نتمكن من التحقق من إعدادات التشغيل.",
+        },
+        "data-audit": {
+          ok: "لا توجد ملاحظات تحتاج إلى معالجة.",
+          warning: "توجد ملاحظات على البيانات تحتاج إلى متابعة.",
+          blocked: "تعذر إكمال مراجعة البيانات.",
+          unknown: "لم تتم مراجعة البيانات بعد.",
+        },
+      };
+
+      const levelLabels = {
+        error: "عاجل",
+        critical: "عاجل",
+        warning: "مهم",
+        info: "معلومة",
+        low: "منخفض",
+      };
+
+      const findingStatusLabels = {
+        open: "يحتاج متابعة",
+        resolved: "تم الحل",
+        ignored: "تم التجاهل",
+      };
+
+      const entityLabels = {
+        production_orders: "طلبات إنتاج قديمة",
+        production_workflow_orders: "طلبات الإنتاج",
+        operations_cases: "حالات التشغيل",
+      };
+
+      function checkMessage(check) {
+        return checkMessages[check.key]?.[check.status] ||
+          "لم نتمكن من الحصول على تفاصيل هذه المراجعة.";
       }
+
+      function friendlyFindingTitle(finding) {
+        const title = String(finding.title || "");
+        if (title.includes("production_orders")) {
+          return "توجد طلبات إنتاج قديمة تحتاج إلى مراجعة";
+        }
+        if (title.includes("references missing")) {
+          return "يوجد رابط غير مكتمل بين بعض البيانات";
+        }
+        return "توجد ملاحظة تحتاج إلى مراجعة";
+      }
+
+      function checkMarkup(check) {
+        const label = statusLabels[check.status] || statusLabels.unknown;
+        const icon = check.status === "ok" ? "✓" : check.status === "blocked" ? "!" : "؟";
+        return `
+          <article class="check ${esc(check.status)}">
+            <div class="check-icon" aria-hidden="true">${icon}</div>
+            <div>
+              <h3 class="check-title">${esc(checkNames[check.key] || "جزء من النظام")}</h3>
+              <p class="check-message">${esc(checkMessage(check))}</p>
+              <span class="status"><span class="status-dot"></span>${esc(label)}</span>
+            </div>
+          </article>
+        `;
+      }
+
+      function metricMarkup(label, value, className = "") {
+        return `
+          <article class="metric ${className}">
+            <div class="metric-label">${esc(label)}</div>
+            <div class="metric-value">${esc(value)}</div>
+          </article>
+        `;
+      }
+
+      function findingsMarkup(findings) {
+        if (!findings.length) {
+          return '<p class="empty">لا توجد ملاحظات تحتاج إلى متابعة حاليًا.</p>';
+        }
+
+        const rows = findings.map((finding) => `
+          <tr>
+            <td><span class="level">${esc(levelLabels[finding.severity] || "مراجعة")}</span></td>
+            <td>${esc(entityLabels[finding.entityType] || "بيانات النظام")}</td>
+            <td>${esc(friendlyFindingTitle(finding))}</td>
+            <td><span class="finding-status">${esc(findingStatusLabels[finding.status] || "قيد المراجعة")}</span></td>
+          </tr>
+        `).join("");
+
+        return `
+          <table>
+            <thead>
+              <tr>
+                <th>الأولوية</th>
+                <th>القسم</th>
+                <th>الملاحظة</th>
+                <th>الحالة</th>
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+        `;
+      }
+
       async function load() {
         const notice = document.getElementById("notice");
+        const refresh = document.getElementById("refresh");
+        refresh.disabled = true;
+        notice.className = "notice";
+        notice.textContent = "جارٍ التحقق من حالة النظام…";
+
         try {
           const [health, findings] = await Promise.all([
             api("/admin/health"),
             api("/admin/audit/findings?limit=50"),
           ]);
+
           const checks = health.checks || [];
+          const healthy = checks.filter((check) => check.status === "ok").length;
+          const needsReview = checks.filter((check) =>
+            check.status === "warning" || check.status === "unknown"
+          ).length;
           const blocked = checks.filter((check) => check.status === "blocked").length;
-          const warnings = checks.filter((check) => check.status === "warning").length;
+
           document.getElementById("metrics").innerHTML = [
-            ["الحالة العامة", statusLabel[health.status] || health.status],
-            ["فحوصات الأساس", checks.length],
-            ["محجوب", blocked],
-            ["تحذيرات", warnings],
-          ].map(([label,value]) => `<div class="card"><div class="label">${esc(label)}</div><div class="metric">${esc(value)}</div></div>`).join("");
-          document.getElementById("checks").classList.remove("loading");
-          document.getElementById("checks").innerHTML = checks.map((check) => `<div class="check ${esc(check.status)}"><div>${statusMarkup(check.status)}<small>${esc(check.summary)}</small></div><pre>${esc(check.details ? JSON.stringify(check.details, null, 2) : "")}</pre></div>`).join("");
-          const rows = (findings || []).map((finding) => `<tr><td>${esc(finding.severity)}</td><td>${esc(finding.entityType)}</td><td>${esc(finding.title)}</td><td>${esc(finding.status)}</td></tr>`).join("");
-          document.getElementById("findings").classList.remove("loading");
-          document.getElementById("findings").innerHTML = rows ? `<table><thead><tr><th>الحدة</th><th>الكيان</th><th>الوصف</th><th>الحالة</th></tr></thead><tbody>${rows}</tbody></table>` : "<p>لا توجد نتائج تدقيق محفوظة.</p>";
-          notice.textContent = `آخر فحص: ${new Date(health.checkedAt).toLocaleString("ar-EG")} — كل نتيجة تعرض سببها بدل رسالة 500 عامة.`;
+            metricMarkup("الحالة العامة", overallLabels[health.status] || "غير معروفة"),
+            metricMarkup("تعمل بشكل طبيعي", healthy),
+            metricMarkup("تحتاج مراجعة", needsReview),
+            metricMarkup("تحتاج تدخل", blocked),
+          ].join("");
+
+          const checksElement = document.getElementById("checks");
+          checksElement.classList.remove("loading");
+          checksElement.innerHTML = checks.length
+            ? checks.map(checkMarkup).join("")
+            : '<p class="empty">لا توجد بيانات لعرضها حاليًا.</p>';
+
+          const findingsElement = document.getElementById("findings");
+          findingsElement.classList.remove("loading");
+          findingsElement.innerHTML = findingsMarkup(findings || []);
+
+          notice.textContent = `آخر تحديث: ${new Date(health.checkedAt).toLocaleString("ar-EG")}`;
         } catch (error) {
           notice.className = "notice error";
-          notice.textContent = error.message || "تعذر تحميل فحوصات النظام";
-          document.getElementById("checks").textContent = "تعذر تحميل البيانات.";
-          document.getElementById("findings").textContent = "تعذر تحميل البيانات.";
+          notice.textContent = error.message || "تعذر تحميل حالة النظام. حاول مرة أخرى.";
+          document.getElementById("metrics").innerHTML = "";
+          document.getElementById("checks").innerHTML =
+            '<p class="empty">تعذر تحميل حالة النظام حاليًا.</p>';
+          document.getElementById("findings").innerHTML =
+            '<p class="empty">تعذر تحميل الملاحظات حاليًا.</p>';
+        } finally {
+          refresh.disabled = false;
         }
       }
+
       document.getElementById("refresh").addEventListener("click", load);
       window.HyperTechAuth.ready.then(load);
     </script>
