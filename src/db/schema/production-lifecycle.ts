@@ -9,6 +9,7 @@ import {
   unique,
 } from "drizzle-orm/pg-core";
 import { productionWorkflowOrdersTable } from "./production-workflow";
+import { systemUsersTable } from "./settings";
 
 export const productionTransitionEventsTable = pgTable(
   "production_transition_events",
@@ -70,7 +71,50 @@ export const productionLegacyOrderMappingsTable = pgTable(
   }),
 );
 
+/**
+ * A separate record is kept for every non-routine lifecycle operation.
+ * Transition events describe the state machine; these records describe the
+ * business consequence (split, partial completion, correction, reversal, or
+ * cancellation) and its evidence.
+ */
+export const productionLifecycleAdjustmentsTable = pgTable(
+  "production_lifecycle_adjustments",
+  {
+    id: serial("id").primaryKey(),
+    workflowOrderId: integer("workflow_order_id")
+      .notNull()
+      .references(() => productionWorkflowOrdersTable.id, { onDelete: "cascade" }),
+    relatedWorkflowOrderId: integer("related_workflow_order_id").references(
+      () => productionWorkflowOrdersTable.id,
+      { onDelete: "set null" },
+    ),
+    adjustmentType: text("adjustment_type").notNull(),
+    fromStatus: text("from_status"),
+    toStatus: text("to_status"),
+    quantity: text("quantity"),
+    reason: text("reason").notNull(),
+    evidence: jsonb("evidence"),
+    actorUserId: integer("actor_user_id").references(() => systemUsersTable.id),
+    actorName: text("actor_name"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => ({
+    orderCreatedIdx: index("production_lifecycle_adjustments_order_idx").on(
+      table.workflowOrderId,
+      table.createdAt,
+    ),
+    typeIdx: index("production_lifecycle_adjustments_type_idx").on(
+      table.adjustmentType,
+      table.createdAt,
+    ),
+  }),
+);
+
 export type ProductionTransitionEvent =
   typeof productionTransitionEventsTable.$inferSelect;
 export type ProductionLegacyOrderMapping =
   typeof productionLegacyOrderMappingsTable.$inferSelect;
+export type ProductionLifecycleAdjustment =
+  typeof productionLifecycleAdjustmentsTable.$inferSelect;

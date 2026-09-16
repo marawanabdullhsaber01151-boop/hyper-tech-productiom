@@ -7,9 +7,12 @@
   preflight، correlation IDs، idempotent command contract، شاشة صحة النظام،
   وتدقيق بيانات legacy غير هدّام. ما زال فحص PostgreSQL الفعلي وترحيل
   `production_orders` مؤجلين إلى ما بعد backup وdata audit.
-- المرحلة 02: مكتملة كطبقة نقل متوافقة؛ كل استجابات API تمر عبر envelope موحّد،
-  وأخطاء auth وvalidation وHTTP لها codes ثابتة، مع إبقاء payloads القديمة داخل
-  `data` حتى لا تنكسر الصفحات الحالية.
+- المرحلة 02: تم تسليم طبقتي الهوية canonical ودورة الحياة. أوامر الإنتاج
+  الجديدة تُنشأ من `production_workflow_orders` مع snapshots وبصمة مصدر، وتوجد
+  انتقالات محمية بالـrevision، سجلات adjustment صريحة، تحويل idempotent من
+  Operations Case، شاشة تفاصيل بالـgates والـtimeline، وفحص conformance وتدقيق
+  legacy مع quarantine غير هدّام. لا يُعتبر ترحيل قاعدة فعلية أو happy-path
+  E2E مثبتًا قبل تشغيله على بيئة الإنتاج.
 - المرحلة 03: مكتملة برمجيًا؛ شاشة Foundation والتحقق والعدادات والتحويلات وربط
   الأصناف بالمخزون موجودة. يتبقى فقط تشغيل migration وفحص البيانات على قاعدة
   فعلية قبل إغلاق الترحيل التشغيلي.

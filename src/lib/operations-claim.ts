@@ -132,7 +132,7 @@ export async function claimOperationsLine(
   // The unit-test fake predates the transition ledger and intentionally does
   // not expose insert(). Real PostgreSQL transactions always do.
   if (typeof tx.insert === "function" && claimed.lifecycleRevision !== undefined) {
-    await recordProductionTransitionEvent(tx, {
+    await recordProductionTransitionEvent(tx as any, {
       workflowOrderId: claimed.id,
       revision: claimed.lifecycleRevision,
       fromStatus: OPERATIONS_CLAIM_STATUS,

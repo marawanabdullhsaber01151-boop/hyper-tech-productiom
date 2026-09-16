@@ -32,7 +32,8 @@ export type ProductionSourceType =
   | "production_request"
   | "operations_case"
   | "sales_order"
-  | "legacy_production_order";
+  | "legacy_production_order"
+  | "split_order";
 
 export type ProductionOrderSnapshot = {
   product: {
@@ -196,6 +197,86 @@ export function requiredReasonForCanonicalTransition(
     to === "corrected" ||
     from === "partially_completed"
   );
+}
+
+export const LIFECYCLE_ADJUSTMENT_TYPES = [
+  "cancellation",
+  "split",
+  "partial_completion",
+  "correction",
+  "reversal",
+  "closure",
+] as const;
+
+export type LifecycleAdjustmentType =
+  (typeof LIFECYCLE_ADJUSTMENT_TYPES)[number];
+
+export function isLifecycleAdjustmentType(
+  value: string,
+): value is LifecycleAdjustmentType {
+  return (LIFECYCLE_ADJUSTMENT_TYPES as readonly string[]).includes(value);
+}
+
+export function assertReason(reason: string | null | undefined, message = "سبب الإجراء مطلوب") {
+  if (!reason?.trim()) {
+    throw Object.assign(new Error(message), {
+      status: 400,
+      code: "LIFECYCLE_REASON_REQUIRED",
+    });
+  }
+}
+
+export type LifecycleGate = {
+  key: string;
+  label: string;
+  blocked: boolean;
+  detail: string;
+};
+
+export function lifecycleGates(order: {
+  workflowStatus: string;
+  bomRecipeId?: number | null;
+  snapshotHash?: string | null;
+  supervisorId?: number | null;
+  qualityControllerUserId?: number | null;
+  closureEvidence?: unknown;
+}): LifecycleGate[] {
+  const gates: LifecycleGate[] = [
+    {
+      key: "canonical_identity",
+      label: "هوية الأمر canonical",
+      blocked: !order.snapshotHash,
+      detail: order.snapshotHash
+        ? "تم تجميد لقطة المصدر"
+        : "لا توجد بصمة snapshot",
+    },
+    {
+      key: "recipe",
+      label: "وصفة التصنيع",
+      blocked: !order.bomRecipeId,
+      detail: order.bomRecipeId ? "مرتبطة" : "الوصفة غير مرتبطة",
+    },
+  ];
+  if (["materials_approved", "materials_partial", "in_production", "quality_check"].includes(order.workflowStatus)) {
+    gates.push({
+      key: "team",
+      label: "تعيين فريق التنفيذ",
+      blocked: !order.supervisorId || !order.qualityControllerUserId,
+      detail:
+        order.supervisorId && order.qualityControllerUserId
+          ? "المشرف ومراقب الجودة معيّنان"
+          : "التعيين غير مكتمل",
+    });
+  }
+  if (["closed"].includes(order.workflowStatus)) {
+    gates.push({
+      key: "closure_evidence",
+      label: "دليل الإغلاق",
+      blocked: !order.closureEvidence,
+      detail: order.closureEvidence ? "الدليل محفوظ" : "دليل الإغلاق مفقود",
+    });
+  }
+  return gates;
 }
 
 export type ConformanceOrder = {

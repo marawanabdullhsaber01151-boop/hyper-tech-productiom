@@ -25,6 +25,9 @@
 The second delivery will add the mutation/API integration, legacy audit
 reconciliation, lifecycle commands, UI, and high-assurance tests.
 
+Completed by `docs/reports/phase-02-canonical-domain-part-2.md` and the exact
+change manifest in that report.
+
 ## Contract
 
 Only files added or modified for this delivery are included in the delivery

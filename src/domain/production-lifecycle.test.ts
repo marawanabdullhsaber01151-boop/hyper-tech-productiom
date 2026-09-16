@@ -4,6 +4,9 @@ import {
   buildProductionOrderSnapshot,
   findProductionConformanceIssues,
   hashProductionSnapshot,
+  CANONICAL_PRODUCTION_STATUSES,
+  CANONICAL_PRODUCTION_TRANSITIONS,
+  lifecycleGates,
   requiredReasonForCanonicalTransition,
   stableSnapshotJson,
 } from "./production-lifecycle";
@@ -69,6 +72,39 @@ describe("phase 02 canonical production lifecycle", () => {
         "EVENT_REVISION_MISMATCH",
         "EVENT_REVISION_GAP",
       ]),
+    );
+  });
+
+  it("exhaustively accepts only declared transitions and never silently permits a reverse jump", () => {
+    for (const from of CANONICAL_PRODUCTION_STATUSES) {
+      for (const to of CANONICAL_PRODUCTION_STATUSES) {
+        const declared = CANONICAL_PRODUCTION_TRANSITIONS[from].includes(to);
+        expect(
+          (() => {
+            try {
+              assertCanonicalProductionTransition(from, to);
+              return true;
+            } catch {
+              return false;
+            }
+          })(),
+        ).toBe(declared);
+      }
+    }
+    expect(CANONICAL_PRODUCTION_TRANSITIONS.closed).toEqual([]);
+    expect(CANONICAL_PRODUCTION_TRANSITIONS.cancelled).toEqual([]);
+  });
+
+  it("exposes blocked gates instead of hiding incomplete production prerequisites", () => {
+    const gates = lifecycleGates({
+      workflowStatus: "in_production",
+      bomRecipeId: null,
+      snapshotHash: null,
+      supervisorId: null,
+      qualityControllerUserId: 4,
+    });
+    expect(gates.filter((gate) => gate.blocked).map((gate) => gate.key)).toEqual(
+      expect.arrayContaining(["canonical_identity", "recipe", "team"]),
     );
   });
 });

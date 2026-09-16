@@ -9,6 +9,7 @@ import { fileURLToPath } from "url";
 import foundationRouter from "./routes/foundation";
 
 import productionWorkflowRoutes from "./routes/production-workflow";
+import productionLifecycleRoutes from "./routes/production-lifecycle";
 import authRouter from "./routes/auth";
 import dashboardRouter from "./routes/dashboard";
 import inventoryRouter from "./routes/inventory";
@@ -116,6 +117,7 @@ app.get("/api/v1/health", (_req, res) => {
 const apiRouter = express.Router();
 apiRouter.use(apiRateLimiter);
 apiRouter.use(healthRouter);
+apiRouter.use(productionLifecycleRoutes);
 apiRouter.use(productionWorkflowRoutes);
 apiRouter.use(productionCycleRouter);
 apiRouter.use(engineeringRouter);

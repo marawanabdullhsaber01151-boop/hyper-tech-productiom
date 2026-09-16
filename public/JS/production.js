@@ -13,6 +13,12 @@ async function apiCall(path, options = {}) {
 /* ── حالات الـ workflow ── */
 const statusMap = {
   new: { label: "جديد", cls: "blue", icon: "fa-star" },
+  awaiting_operations_claim: {
+    label: "في انتظار استلام التشغيل",
+    cls: "amber",
+    icon: "fa-hand",
+  },
+  claimed: { label: "تم استلامه من التشغيل", cls: "blue", icon: "fa-handshake" },
   pending_supervisor: {
     label: "بانتظار مشرف",
     cls: "amber",
@@ -66,6 +72,11 @@ const statusMap = {
     icon: "fa-boxes-stacked",
   },
   cancelled: { label: "ملغي", cls: "red", icon: "fa-ban" },
+  held: { label: "معلّق", cls: "amber", icon: "fa-pause" },
+  rework: { label: "إعادة تشغيل", cls: "purple", icon: "fa-rotate" },
+  partially_completed: { label: "مكتمل جزئياً", cls: "purple", icon: "fa-circle-half-stroke" },
+  corrected: { label: "يحتاج تصحيحاً", cls: "red", icon: "fa-wand-magic-sparkles" },
+  closed: { label: "مغلق", cls: "green", icon: "fa-lock" },
 };
 const priorityColor = {
   low: "var(--text-muted)",
@@ -268,9 +279,14 @@ function renderOrders() {
 /* ── Detail Drawer ── */
 async function openDetail(id) {
   let order;
+  let lifecycle = null;
   try {
-    const res = await apiCall(`/production-workflow/${id}`);
+    const [res, lifecycleRes] = await Promise.all([
+      apiCall(`/production-workflow/${id}`),
+      apiCall(`/production-workflow/${id}/lifecycle`).catch(() => null),
+    ]);
     order = res;
+    lifecycle = lifecycleRes;
   } catch (e) {
     showToast("تعذّر تحميل الأمر: " + e.message, "warn");
     return;
@@ -306,6 +322,7 @@ async function openDetail(id) {
       ${order.startDate ? `<div class="detail-row"><span class="detail-row-label">بداية الإنتاج</span><span class="detail-row-val">${fmtDate(order.startDate)}</span></div>` : ""}
       ${order.endDate ? `<div class="detail-row"><span class="detail-row-label">نهاية الإنتاج</span><span class="detail-row-val">${fmtDate(order.endDate)}</span></div>` : ""}
     </div>
+    ${renderLifecycleSection(order, lifecycle)}
     ${order.workflowStatus === "in_production" ? renderStagesSection(order) : ""}
     ${order.qualityNotes ? `<div class="detail-section"><div class="detail-section-title">ملاحظات الجودة</div><p style="font-size:13px;color:var(--text-muted);line-height:1.6">${escHtml(order.qualityNotes)}</p></div>` : ""}
     ${order.notes ? `<div class="detail-section"><div class="detail-section-title">ملاحظات</div><p style="font-size:13px;color:var(--text-muted);line-height:1.6">${escHtml(order.notes)}</p></div>` : ""}
@@ -314,6 +331,65 @@ async function openDetail(id) {
   `;
   document.getElementById("detail-overlay").classList.add("open");
   document.body.style.overflow = "hidden";
+}
+
+function renderLifecycleSection(order, lifecycle) {
+  if (!lifecycle) return "";
+  const gates = (lifecycle.blockedGates || []).map((gate) =>
+    `<div class="lifecycle-gate ${gate.blocked ? "blocked" : "ok"}"><i class="fa-solid ${gate.blocked ? "fa-lock" : "fa-check"}"></i><span>${escHtml(gate.label)}</span><small>${escHtml(gate.detail)}</small></div>`,
+  ).join("");
+  const timeline = (lifecycle.timeline || []).slice().reverse().map((event) =>
+    `<div class="lifecycle-event"><span class="lifecycle-dot"></span><div><strong>${escHtml(event.to?.label || event.toStatus)}</strong><small>${escHtml(event.actorName || "النظام")} · ${fmtDate(event.createdAt)}</small>${event.reason ? `<p>${escHtml(event.reason)}</p>` : ""}</div></div>`,
+  ).join("");
+  const health = lifecycle.conformance?.ok
+    ? `<span class="lifecycle-health ok">متوافق</span>`
+    : `<span class="lifecycle-health blocked">يحتاج مراجعة</span>`;
+  const canAdjust = !["closed", "cancelled"].includes(order.workflowStatus);
+  return `<div class="detail-section lifecycle-section">
+    <div class="detail-section-title">الهوية ودورة الحياة ${health}</div>
+    <div class="lifecycle-summary"><span><b>نوع السجل</b> أمر إنتاج canonical</span><span><b>المصدر</b> ${escHtml(lifecycle.sourceSnapshot?.sourceType || "غير محدد")} · ${escHtml(lifecycle.sourceSnapshot?.reference || "—")}</span><span><b>Revision</b> ${order.lifecycleRevision ?? 0}</span></div>
+    <div class="lifecycle-gates">${gates || "<span class='muted'>لا توجد بوابات محجوبة</span>"}</div>
+    ${canAdjust ? `<div class="lifecycle-actions">
+      ${["in_production", "quality_check", "partially_completed"].includes(order.workflowStatus) ? `<button class="btn-ghost lifecycle-action" onclick="openLifecyclePrompt('held')"><i class="fa-solid fa-pause"></i> تعليق</button>` : ""}
+      ${["quality_check", "held", "rework"].includes(order.workflowStatus) ? `<button class="btn-ghost lifecycle-action" onclick="openLifecyclePrompt('rework')"><i class="fa-solid fa-rotate"></i> إعادة تشغيل</button>` : ""}
+      ${["in_production", "quality_check"].includes(order.workflowStatus) ? `<button class="btn-ghost lifecycle-action" onclick="openPartialCompletion()"><i class="fa-solid fa-circle-half-stroke"></i> إكمال جزئي</button>` : ""}
+      ${["completed", "delivered_customer", "delivered_warehouse"].includes(order.workflowStatus) ? `<button class="btn-ghost lifecycle-action" onclick="openLifecyclePrompt('corrected')"><i class="fa-solid fa-wand-magic-sparkles"></i> تصحيح</button>` : ""}
+    </div>` : ""}
+    <div class="lifecycle-timeline">${timeline || "<span class='muted'>لا يوجد سجل انتقالات</span>"}</div>
+  </div>`;
+}
+
+async function openLifecyclePrompt(targetStatus) {
+  const reason = window.prompt(`اذكر سبب الانتقال إلى ${statusMap[targetStatus]?.label || targetStatus}`);
+  if (!reason?.trim()) return;
+  try {
+    await apiCall(`/production-workflow/${currentOrder.id}/transition`, {
+      method: "POST",
+      body: JSON.stringify({ targetStatus, reason, expectedRevision: currentOrder.lifecycleRevision }),
+    });
+    showToast("تم تسجيل الانتقال مع السبب");
+    await openDetail(currentOrder.id);
+    await loadInitialData();
+  } catch (error) {
+    showToast(error.message, "warn");
+  }
+}
+
+async function openPartialCompletion() {
+  const quantity = window.prompt("الكمية التي اكتملت جزئياً");
+  const reason = window.prompt("سبب الإكمال الجزئي");
+  if (!quantity || !reason?.trim()) return;
+  try {
+    await apiCall(`/production-workflow/${currentOrder.id}/partial-completion`, {
+      method: "POST",
+      body: JSON.stringify({ quantity, reason, expectedRevision: currentOrder.lifecycleRevision }),
+    });
+    showToast("تم تسجيل الإكمال الجزئي");
+    await openDetail(currentOrder.id);
+    await loadInitialData();
+  } catch (error) {
+    showToast(error.message, "warn");
+  }
 }
 
 function renderStagesSection(order) {
