@@ -10,10 +10,12 @@
 import { and, eq, isNull } from "drizzle-orm";
 import { productionWorkflowOrdersTable } from "../db/schema";
 import { writeAuditEvent } from "./governance";
+import { recordProductionTransitionEvent } from "./production-lifecycle";
 
 type ClaimTransaction = {
   update: (...args: any[]) => any;
   select: (...args: any[]) => any;
+  insert?: (...args: any[]) => any;
 };
 
 export const OPERATIONS_CLAIM_STATUS = "awaiting_operations_claim" as const;
@@ -127,6 +129,20 @@ export async function claimOperationsLine(
     ipAddress: input.ipAddress,
     userAgent: input.userAgent,
   });
+  // The unit-test fake predates the transition ledger and intentionally does
+  // not expose insert(). Real PostgreSQL transactions always do.
+  if (typeof tx.insert === "function" && claimed.lifecycleRevision !== undefined) {
+    await recordProductionTransitionEvent(tx, {
+      workflowOrderId: claimed.id,
+      revision: claimed.lifecycleRevision,
+      fromStatus: OPERATIONS_CLAIM_STATUS,
+      toStatus: claimed.workflowStatus,
+      actionKey: input.actionKey,
+      actorUserId: input.actorUserId,
+      actorName: input.actorName,
+      reason: input.reason,
+    });
+  }
 
   return claimed;
 }

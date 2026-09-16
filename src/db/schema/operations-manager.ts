@@ -57,6 +57,7 @@ export const operationsCasesTable = pgTable(
       .notNull()
       .references(() => salesOrdersTable.id),
     salesOrderRevision: integer("sales_order_revision").notNull(),
+    workflowOrderId: integer("workflow_order_id"),
     status: text("status").notNull().default("received"),
     priority: text("priority").notNull().default("normal"),
     dueDate: date("due_date", { mode: "string" }),

@@ -4,26 +4,17 @@
  * @format
  */
 
-export const PRODUCTION_STATUSES = [
-  "new",
-  "awaiting_operations_claim",
-  "claimed",
-  "pending_supervisor",
-  "materials_requested",
-  "materials_approved",
-  "materials_partial",
-  "materials_rejected",
-  "in_production",
-  "quality_check",
-  "completed",
-  "delivery_pending_customer",
-  "delivery_pending_warehouse",
-  "delivered_customer",
-  "delivered_warehouse",
-  "cancelled",
-] as const;
+import {
+  CANONICAL_PRODUCTION_STATUSES,
+  CANONICAL_PRODUCTION_TRANSITIONS,
+  type CanonicalProductionStatus,
+  isCanonicalProductionStatus,
+  canTransitionCanonicalProduction,
+} from "./production-lifecycle";
 
-export type ProductionStatus = (typeof PRODUCTION_STATUSES)[number];
+export const PRODUCTION_STATUSES = CANONICAL_PRODUCTION_STATUSES;
+
+export type ProductionStatus = CanonicalProductionStatus;
 
 export const PRODUCTION_STATUS_LABELS: Record<ProductionStatus, string> = {
   new: "جديد",
@@ -42,53 +33,26 @@ export const PRODUCTION_STATUS_LABELS: Record<ProductionStatus, string> = {
   delivered_customer: "تم التسليم للعميل",
   delivered_warehouse: "تم التسليم للمخزن",
   cancelled: "ملغي",
+  held: "معلّق",
+  rework: "إعادة تشغيل",
+  partially_completed: "مكتمل جزئياً",
+  corrected: "يحتاج تصحيحاً",
+  closed: "مغلق",
 };
 
 export const PRODUCTION_TRANSITIONS: Readonly<
   Record<ProductionStatus, readonly ProductionStatus[]>
-> = {
-  new: ["awaiting_operations_claim", "cancelled"],
-  awaiting_operations_claim: ["claimed", "cancelled"],
-  claimed: ["materials_requested", "cancelled"],
-  pending_supervisor: ["materials_requested", "cancelled"],
-  materials_requested: [
-    "materials_approved",
-    "materials_partial",
-    "materials_rejected",
-    "cancelled",
-  ],
-  materials_approved: ["in_production", "cancelled"],
-  materials_partial: ["in_production", "cancelled"],
-  materials_rejected: ["cancelled"],
-  in_production: ["quality_check", "cancelled"],
-  // A failed quality inspection is recorded while the order remains in
-  // quality_check so it can be inspected again.
-  quality_check: ["quality_check", "completed", "cancelled"],
-  completed: [
-    "delivery_pending_customer",
-    "delivery_pending_warehouse",
-    "cancelled",
-  ],
-  delivery_pending_customer: ["delivered_customer", "cancelled"],
-  delivery_pending_warehouse: ["delivered_warehouse", "cancelled"],
-  delivered_customer: [],
-  delivered_warehouse: [],
-  cancelled: [],
-};
+> = CANONICAL_PRODUCTION_TRANSITIONS;
 
 export function isProductionStatus(value: string): value is ProductionStatus {
-  return (PRODUCTION_STATUSES as readonly string[]).includes(value);
+  return isCanonicalProductionStatus(value);
 }
 
 export function canTransitionProduction(
   from: string,
   to: string,
 ): to is ProductionStatus {
-  return (
-    isProductionStatus(from) &&
-    isProductionStatus(to) &&
-    PRODUCTION_TRANSITIONS[from].includes(to)
-  );
+  return canTransitionCanonicalProduction(from, to);
 }
 
 export function assertProductionTransition(from: string, to: string): void {

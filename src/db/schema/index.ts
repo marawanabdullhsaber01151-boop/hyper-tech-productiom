@@ -12,6 +12,7 @@ export * from "./delivery-rules";
 export * from "./state";
 export * from "./approvals";
 export * from "./production-workflow";
+export * from "./production-lifecycle";
 export * from "./trash";
 export * from "./quality-records";
 export * from "./portal-customers";

@@ -45,6 +45,26 @@ export const productionWorkflowOrdersTable = pgTable(
     workflowStatus: text("workflow_status")
       .notNull()
       .default("awaiting_operations_claim"),
+    // Phase 02: immutable canonical identity and revision counter. The
+    // existing workflowStatus remains the compatibility-facing status field.
+    lifecycleRevision: integer("lifecycle_revision").notNull().default(0),
+    canonicalSourceType: text("canonical_source_type"),
+    canonicalSourceId: integer("canonical_source_id"),
+    canonicalSourceRevision: integer("canonical_source_revision"),
+    sourceReference: text("source_reference"),
+    productSnapshot: jsonb("product_snapshot"),
+    bomSnapshot: jsonb("bom_snapshot"),
+    routingSnapshot: jsonb("routing_snapshot"),
+    customerRequirementSnapshot: jsonb("customer_requirement_snapshot"),
+    quantitySnapshot: jsonb("quantity_snapshot"),
+    dueDateSnapshot: date("due_date_snapshot", { mode: "string" }),
+    prioritySnapshot: text("priority_snapshot"),
+    snapshotHash: text("snapshot_hash"),
+    rootWorkflowOrderId: integer("root_workflow_order_id"),
+    splitSequence: integer("split_sequence"),
+    closureEvidence: jsonb("closure_evidence"),
+    closedAt: timestamp("closed_at", { withTimezone: true }),
+    closedById: integer("closed_by_id"),
     // Phase 4: explicit Operations Manager gate. These are intentionally
     // stored on each line so ownership is queryable, not inferred.
     claimedById: integer("claimed_by_id"),

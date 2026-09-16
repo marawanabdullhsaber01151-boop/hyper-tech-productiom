@@ -16,6 +16,11 @@ import { parseIdParam } from "../lib/validate";
 import { notifyRole, notifyUser, notifyRoles } from "../lib/notifications";
 import { generateWorkflowOrderNumber } from "./production-workflow";
 import { writeAuditEvent } from "../lib/governance";
+import {
+  buildProductionOrderSnapshot,
+  hashProductionSnapshot,
+} from "../domain/production-lifecycle";
+import { recordProductionTransitionEvent } from "../lib/production-lifecycle";
 
 const router = Router();
 
@@ -486,11 +491,36 @@ router.patch(
           return { request: updatedRequest, workflowOrder: null };
         }
 
+        const snapshot = buildProductionOrderSnapshot({
+          productName: locked.productName,
+          bomRecipeId: locked.bomRecipeId,
+          qty: newFinalQty ?? locked.requestedQty,
+          unit: locked.unit,
+          neededBy: locked.neededBy,
+          priority: locked.priority,
+          customerRequirement: {
+            source: "production_request",
+            requestNumber: locked.requestNumber,
+            reason: locked.reason ?? null,
+          },
+        });
         const [workflowOrder] = await tx
           .insert(productionWorkflowOrdersTable)
           .values({
             orderNumber: await generateWorkflowOrderNumber(tx),
             workflowStatus: "awaiting_operations_claim",
+            canonicalSourceType: "production_request",
+            canonicalSourceId: locked.id,
+            canonicalSourceRevision: 1,
+            sourceReference: locked.requestNumber,
+            productSnapshot: snapshot.product,
+            bomSnapshot: snapshot.product.bom,
+            routingSnapshot: snapshot.product.routing,
+            customerRequirementSnapshot: snapshot.customerRequirement,
+            quantitySnapshot: snapshot.quantity,
+            dueDateSnapshot: snapshot.dueDate,
+            prioritySnapshot: snapshot.priority,
+            snapshotHash: hashProductionSnapshot(snapshot),
             productName: locked.productName,
             qty: newFinalQty ?? locked.requestedQty,
             unit: locked.unit,
@@ -506,6 +536,22 @@ router.patch(
             createdByName: user.username,
           })
           .returning();
+
+        await recordProductionTransitionEvent(tx, {
+          workflowOrderId: workflowOrder.id,
+          revision: workflowOrder.lifecycleRevision,
+          fromStatus: null,
+          toStatus: workflowOrder.workflowStatus,
+          actionKey: "production_request.convert",
+          actorUserId: user.userId,
+          actorName: user.username,
+          reason: comment,
+          metadata: {
+            sourceType: "production_request",
+            sourceId: locked.id,
+            sourceRevision: 1,
+          },
+        });
 
         const [linkedRequest] = await tx
           .update(productionRequestsTable)

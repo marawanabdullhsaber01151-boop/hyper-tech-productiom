@@ -38,7 +38,12 @@ import { applyStockMovement } from "../lib/stock";
 import { computeRequiredMaterialsForOrder } from "../lib/materials";
 import { PERMISSIONS } from "../lib/permissions";
 import { assertProductionTransition } from "../domain/production-status";
+import {
+  buildProductionOrderSnapshot,
+  hashProductionSnapshot,
+} from "../domain/production-lifecycle";
 import { writeAuditEvent } from "../lib/governance";
+import { recordProductionTransitionEvent } from "../lib/production-lifecycle";
 import { maskProductionWorkflowPayload } from "../lib/fieldMasking";
 import {
   notificationsTable,
@@ -102,6 +107,16 @@ async function auditWorkflowTransition(
       orderNumber: after.orderNumber,
     },
     reason: reason ?? null,
+  });
+  await recordProductionTransitionEvent(tx, {
+    workflowOrderId: after.id,
+    revision: after.lifecycleRevision,
+    fromStatus: before.workflowStatus,
+    toStatus: after.workflowStatus,
+    actionKey,
+    actorUserId: user.userId,
+    actorName: user.username,
+    reason,
   });
 }
 
@@ -544,11 +559,39 @@ router.post(
       // ✅ إنشاء الرقم + الصف في transaction واحدة مع advisory lock
       const order = await db.transaction(async (tx) => {
         const orderNumber = await generateWorkflowOrderNumber(tx);
+        const snapshot = buildProductionOrderSnapshot({
+          productName: recipe.productName,
+          bomRecipeId: recipe.id,
+          qty: data.qty,
+          unit: data.unit,
+          neededBy: data.neededBy,
+          priority: data.priority,
+          customerRequirement: {
+            salesOrderId: data.salesOrderId ?? null,
+            salesOrderRef: data.salesOrderRef ?? null,
+            customerName: data.customerName,
+            customerPhone: data.customerPhone ?? null,
+            customerEmail: data.customerEmail || null,
+            orderDetails: data.orderDetails ?? null,
+          },
+          bom: recipe,
+        });
         const [inserted] = await tx
           .insert(productionWorkflowOrdersTable)
           .values({
             orderNumber,
             workflowStatus: "awaiting_operations_claim",
+            canonicalSourceType: "direct_workflow",
+            canonicalSourceRevision: 1,
+            sourceReference: orderNumber,
+            productSnapshot: snapshot.product,
+            bomSnapshot: snapshot.product.bom,
+            routingSnapshot: snapshot.product.routing,
+            customerRequirementSnapshot: snapshot.customerRequirement,
+            quantitySnapshot: snapshot.quantity,
+            dueDateSnapshot: snapshot.dueDate,
+            prioritySnapshot: snapshot.priority,
+            snapshotHash: hashProductionSnapshot(snapshot),
             productName: recipe.productName,
             qty: data.qty,
             unit: data.unit,
@@ -579,6 +622,17 @@ router.post(
             workflowStatus: inserted.workflowStatus,
             orderNumber: inserted.orderNumber,
           },
+        });
+        await recordProductionTransitionEvent(tx, {
+          workflowOrderId: inserted.id,
+          revision: inserted.lifecycleRevision,
+          fromStatus: null,
+          toStatus: inserted.workflowStatus,
+          actionKey: "production_workflow.create",
+          actorUserId: user.userId,
+          actorName: user.username,
+          source: "api",
+          metadata: { sourceType: "direct_workflow" },
         });
         return inserted;
       });
