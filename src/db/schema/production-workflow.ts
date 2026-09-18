@@ -336,6 +336,16 @@ export const deliverProductSchema = z.object({
   addToInventory: z.boolean().optional().default(false),
 });
 
+// Phase 02 (delivery 3): cancellation through the legacy-compatible
+// /production-workflow/:id/cancel endpoint must carry the same mandatory
+// reason and evidence trail as the centralized lifecycle command service
+// (domain/production-lifecycle.ts → requiredReasonForCanonicalTransition).
+// This is the one place a cancel reason is accepted for this route; do not
+// add a second, looser schema elsewhere for the same endpoint.
+export const cancelWorkflowOrderSchema = z.object({
+  reason: z.string().trim().min(3, "سبب إلغاء أمر الإنتاج مطلوب"),
+});
+
 export type ProductionWorkflowOrder =
   typeof productionWorkflowOrdersTable.$inferSelect;
 export type CreateWorkflowOrder = z.infer<typeof createWorkflowOrderSchema>;

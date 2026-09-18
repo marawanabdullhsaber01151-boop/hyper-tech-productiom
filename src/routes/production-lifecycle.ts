@@ -192,6 +192,24 @@ router.post(
       const id = parseIdParam(req.params.id, res);
       if (id === null) return;
       const input = transitionSchema.parse(req.body);
+      // Phase 02 (delivery 3): cancellation is deliberately excluded from
+      // this generic command endpoint. PATCH /production-workflow/:id/cancel
+      // is the one authoritative cancellation path because it also reverses
+      // any stock already deducted for the order inside the same database
+      // transaction (see production-workflow.ts). This generic transition
+      // command has no stock-reversal step, so allowing "cancelled" here
+      // would silently leave issued material deducted from inventory for any
+      // order cancelled past the materials_approved/materials_partial gate —
+      // a parallel-source-of-truth bug, not a stylistic one. Every other
+      // target status in CANONICAL_PRODUCTION_TRANSITIONS is unaffected.
+      if (input.targetStatus === "cancelled") {
+        throw Object.assign(
+          new Error(
+            "استخدم PATCH /production-workflow/:id/cancel لإلغاء الأمر — هذا المسار العام لا يعكس حركات المخزون المخصومة",
+          ),
+          { status: 409, code: "USE_DEDICATED_CANCEL_ENDPOINT" },
+        );
+      }
       assertLifecycleRole(req.user!.role, input.targetStatus);
       const updated = await db.transaction((tx) =>
         transitionCanonicalProductionOrder(tx, {

@@ -327,7 +327,7 @@ async function openDetail(id) {
     ${order.qualityNotes ? `<div class="detail-section"><div class="detail-section-title">ملاحظات الجودة</div><p style="font-size:13px;color:var(--text-muted);line-height:1.6">${escHtml(order.qualityNotes)}</p></div>` : ""}
     ${order.notes ? `<div class="detail-section"><div class="detail-section-title">ملاحظات</div><p style="font-size:13px;color:var(--text-muted);line-height:1.6">${escHtml(order.notes)}</p></div>` : ""}
     ${actionsHtml}
-    ${!["delivered_customer", "delivered_warehouse", "cancelled"].includes(order.workflowStatus) ? `<div class="detail-section"><button class="btn-ghost" style="width:100%;color:var(--red);border-color:rgba(239,68,68,0.3)" onclick="if(confirm('متأكد من إلغاء أمر الإنتاج؟ الإجراء لا يمكن التراجع عنه.'))doCancel(${order.id})"><i class="fa-solid fa-ban"></i> إلغاء أمر الإنتاج</button></div>` : ""}
+    ${!["delivered_customer", "delivered_warehouse", "cancelled"].includes(order.workflowStatus) ? `<div class="detail-section"><button class="btn-ghost" style="width:100%;color:var(--red);border-color:rgba(239,68,68,0.3)" onclick="promptCancel(${order.id})"><i class="fa-solid fa-ban"></i> إلغاء أمر الإنتاج</button></div>` : ""}
   `;
   document.getElementById("detail-overlay").classList.add("open");
   document.body.style.overflow = "hidden";
@@ -689,9 +689,33 @@ async function doConfirmDelivery(id) {
   }
 }
 
-async function doCancel(id) {
+async function promptCancel(id) {
+  // Phase 02 (delivery 3): the backend now requires a cancellation reason
+  // (see cancelWorkflowOrderSchema in src/db/schema/production-workflow.ts)
+  // so it can be recorded on the transition event, the audit log, and the
+  // lifecycle adjustments ledger. prompt() matches the existing style used
+  // by openEditNeededBy() in this same file rather than introducing a new
+  // dialog component for a single button.
+  const reason = prompt(
+    "سبب إلغاء أمر الإنتاج (إجباري — سيُسجَّل في سجل التدقيق):",
+    "",
+  );
+  if (reason === null) return; // المستخدم ألغى العملية
+  if (!reason.trim() || reason.trim().length < 3) {
+    showToast("سبب الإلغاء مطلوب (٣ أحرف على الأقل)", "warn");
+    return;
+  }
+  if (!confirm("متأكد من إلغاء أمر الإنتاج؟ الإجراء لا يمكن التراجع عنه."))
+    return;
+  await doCancel(id, reason.trim());
+}
+
+async function doCancel(id, reason) {
   try {
-    await apiCall(`/production-workflow/${id}/cancel`, { method: "PATCH" });
+    await apiCall(`/production-workflow/${id}/cancel`, {
+      method: "PATCH",
+      body: JSON.stringify({ reason }),
+    });
     showToast("تم إلغاء أمر الإنتاج");
     closeDetail();
     await loadInitialData();

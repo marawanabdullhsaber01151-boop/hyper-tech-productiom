@@ -20,8 +20,10 @@ import {
   warehouseWorkflowActionSchema,
   qualityDoneSchema,
   deliverProductSchema,
+  cancelWorkflowOrderSchema,
   stockMovementsTable,
   operationTransfersTable,
+  productionLifecycleAdjustmentsTable,
 } from "../db/schema";
 import { nextPhase0Number } from "../lib/phase0";
 import {
@@ -2124,6 +2126,12 @@ router.patch(
       const id = parseIdParam(req.params.id, res);
       if (id === null) return;
       const user = req.user!;
+      // Phase 02 (delivery 3): a cancellation reason is now mandatory on this
+      // endpoint too, matching requiredReasonForCanonicalTransition() in
+      // domain/production-lifecycle.ts and the acceptance criterion that
+      // "every status change has an allowed transition, actor, reason, and
+      // audit event." zod raises a 400 with a clear message if it is missing.
+      const cancelInput = cancelWorkflowOrderSchema.parse(req.body ?? {});
 
       const [existing] = await db
         .select()
@@ -2192,7 +2200,14 @@ router.patch(
 
         const [up] = await tx
           .update(productionWorkflowOrdersTable)
-          .set({ workflowStatus: "cancelled", updatedAt: new Date() })
+          .set({
+            workflowStatus: "cancelled",
+            cancelledById: user.userId,
+            cancelledByName: user.username,
+            cancelReason: cancelInput.reason,
+            cancelledAt: new Date(),
+            updatedAt: new Date(),
+          })
           .where(
             and(
               eq(productionWorkflowOrdersTable.id, id),
@@ -2213,7 +2228,27 @@ router.patch(
           locked,
           up,
           "production_workflow.cancel",
+          cancelInput.reason,
         );
+        // Recorded on the same ledger the centralized lifecycle transition
+        // endpoint (POST /production-workflow/:id/transition) writes to, so
+        // the lifecycle timeline and adjustments view show this cancellation
+        // even though it went through the stock-reversal-aware endpoint
+        // rather than the generic command service (see the delivery-3 report
+        // for why cancellation intentionally still has one dedicated route).
+        await tx.insert(productionLifecycleAdjustmentsTable).values({
+          workflowOrderId: up.id,
+          adjustmentType: "cancellation",
+          fromStatus: locked.workflowStatus,
+          toStatus: "cancelled",
+          reason: cancelInput.reason,
+          evidence:
+            priorDeductions.length > 0
+              ? { reversedStockMovements: priorDeductions.length }
+              : null,
+          actorUserId: user.userId,
+          actorName: user.username,
+        });
         return up;
       });
 
