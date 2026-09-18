@@ -33,6 +33,9 @@ import {
   portalWishlistItemsTable,
   portalOtpCodesTable,
   portalNotificationsTable,
+  foundationItemsTable,
+  foundationUnitConversionsTable,
+  productImagesTable,
 } from "../db/schema";
 import {
   requirePortalAuth,
@@ -48,6 +51,9 @@ import { sendCustomerAlert, sendOtpCode } from "../lib/otpDelivery";
 import { generateWorkflowOrderNumber } from "./production-workflow";
 import { toPortalOrderItem, computeBatchRollupStatus } from "../domain/portal-orders";
 import { suggestDueDate } from "../lib/dueDateSuggestion";
+import { resolvePortalProductIdentity } from "../lib/portalCatalog";
+import { toPortalFeaturedIngredients } from "../lib/featuredIngredients";
+import { CartonConversion } from "../lib/cartonConversion";
 import { computeDeliveryMethod } from "../lib/deliveryMethod";
 import { assertCancellable, isCancellableStatus } from "../lib/cancellation";
 import { z } from "zod";
@@ -1978,6 +1984,11 @@ router.get(
   "/portal/products",
   async (_req: Request, res: Response, next: NextFunction) => {
     try {
+      // Phase 1 (Governance & Portal project): the catalog is now sourced
+      // from صفحة البيانات الأساسية (Foundation) when a recipe is linked —
+      // Foundation's code/name/base unit are preferred over the BOM
+      // recipe's own denormalized fields. Legacy recipes without a
+      // foundation_item_id yet keep working exactly as before, unaffected.
       const recipes = await db
         .select({
           id: bomRecipesTable.id,
@@ -1985,6 +1996,10 @@ router.get(
           productName: bomRecipesTable.productName,
           description: bomRecipesTable.description,
           isActive: bomRecipesTable.isActive,
+          foundationItemId: bomRecipesTable.foundationItemId,
+          foundationCode: foundationItemsTable.code,
+          foundationName: foundationItemsTable.name,
+          foundationBaseUnit: foundationItemsTable.baseUnit,
           orderCount: sql<number>`count(${productionWorkflowOrdersTable.id})::int`,
         })
         .from(bomRecipesTable)
@@ -1995,6 +2010,10 @@ router.get(
             bomRecipesTable.id,
           ),
         )
+        .leftJoin(
+          foundationItemsTable,
+          eq(foundationItemsTable.id, bomRecipesTable.foundationItemId),
+        )
         .where(eq(bomRecipesTable.isActive, true))
         .groupBy(
           bomRecipesTable.id,
@@ -2002,9 +2021,57 @@ router.get(
           bomRecipesTable.productName,
           bomRecipesTable.description,
           bomRecipesTable.isActive,
+          bomRecipesTable.foundationItemId,
+          foundationItemsTable.code,
+          foundationItemsTable.name,
+          foundationItemsTable.baseUnit,
         )
         .orderBy(bomRecipesTable.productName);
-      res.json(recipes);
+
+      // Phase 2 (Governance & Portal project): attach each product's primary
+      // image (if any) in one extra query rather than joining (joining would
+      // multiply rows once secondary images exist too, which would break the
+      // groupBy above).
+      const recipeIds = recipes.map((r) => r.id);
+      const primaryImages = recipeIds.length
+        ? await db
+            .select({
+              bomRecipeId: productImagesTable.bomRecipeId,
+              imageData: productImagesTable.imageData,
+            })
+            .from(productImagesTable)
+            .where(
+              and(
+                inArray(productImagesTable.bomRecipeId, recipeIds),
+                eq(productImagesTable.role, "primary"),
+              ),
+            )
+        : [];
+      const primaryImageByRecipe = new Map(
+        primaryImages.map((img) => [img.bomRecipeId, img.imageData]),
+      );
+
+      const products = recipes.map((r) => {
+        const identity = resolvePortalProductIdentity(
+          { productCode: r.productCode, productName: r.productName },
+          r.foundationCode
+            ? {
+                code: r.foundationCode,
+                name: r.foundationName!,
+                baseUnit: r.foundationBaseUnit!,
+              }
+            : null,
+        );
+        return {
+          id: r.id,
+          ...identity,
+          description: r.description,
+          isActive: r.isActive,
+          orderCount: r.orderCount,
+          primaryImage: primaryImageByRecipe.get(r.id) ?? null,
+        };
+      });
+      res.json(products);
     } catch (err) {
       next(err);
     }
@@ -2036,16 +2103,97 @@ router.get(
         return;
       }
 
+      // Phase 1 (Governance & Portal project): prefer Foundation's code/name/
+      // base unit when this recipe is linked, same rule as GET /portal/products.
+      let foundationItem: typeof foundationItemsTable.$inferSelect | undefined;
+      if (recipe.foundationItemId) {
+        [foundationItem] = await db
+          .select()
+          .from(foundationItemsTable)
+          .where(eq(foundationItemsTable.id, recipe.foundationItemId))
+          .limit(1);
+      }
+
+      // Phase 5 (Governance & Portal project): carton ↔ piece ordering. A
+      // "carton" conversion is any صفحة البيانات الأساسية unit conversion
+      // for this item whose toUnit is the item's own base selling unit —
+      // i.e. "1 <fromUnit> = <factor> <baseUnit>" (e.g. "1 box = 12 piece").
+      // Only exposed when it's a real whole-number multiple > 1; otherwise
+      // there is no carton option and the portal only offers the base unit.
+      let cartonConversion: CartonConversion | null = null;
+      if (foundationItem) {
+        const [conversion] = await db
+          .select()
+          .from(foundationUnitConversionsTable)
+          .where(
+            and(
+              eq(foundationUnitConversionsTable.itemId, foundationItem.id),
+              eq(foundationUnitConversionsTable.toUnit, foundationItem.baseUnit),
+            ),
+          )
+          .limit(1);
+        const factor = conversion ? Number(conversion.factor) : 0;
+        if (conversion && Number.isInteger(factor) && factor > 1) {
+          cartonConversion = { cartonUnit: conversion.fromUnit, piecesPerCarton: factor };
+        }
+      }
+
       const items = await db
         .select()
         .from(bomRecipeItemsTable)
         .where(eq(bomRecipeItemsTable.recipeId, id));
+
+      // Phase 3 (Governance & Portal project): "أهم مكونات هذا المنتج".
+      // ⚠️ أمان: بنختار الأعمدة المسموحة بالاسم فقط (الاسم + الصورة) —
+      // مش بنعمل spread للصف كله — عشان الكمية والوحدة وسعر التكلفة
+      // (بيانات داخلية) يستحيل تتسرب لردّ العميل بالغلط لو الجدول اتوسّع بعدين.
+      // نفس القاعدة دي مطبّقة ومختبرة في src/lib/featuredIngredients.ts.
+      const featuredRows = await db
+        .select({
+          materialName: bomRecipeItemsTable.materialName,
+          isFeatured: bomRecipeItemsTable.isFeatured,
+          featuredImageData: bomRecipeItemsTable.featuredImageData,
+        })
+        .from(bomRecipeItemsTable)
+        .where(
+          and(
+            eq(bomRecipeItemsTable.recipeId, id),
+            eq(bomRecipeItemsTable.isFeatured, true),
+          ),
+        );
+      const featuredIngredients = toPortalFeaturedIngredients(featuredRows);
+
+      // Phase 2 (Governance & Portal project): primary + ordered secondary
+      // images, never leaked with any cost/qty data (this route never
+      // selected those fields anyway).
+      const images = await db
+        .select({
+          role: productImagesTable.role,
+          imageData: productImagesTable.imageData,
+          sortOrder: productImagesTable.sortOrder,
+        })
+        .from(productImagesTable)
+        .where(eq(productImagesTable.bomRecipeId, id))
+        .orderBy(productImagesTable.sortOrder);
+      const primaryImage =
+        images.find((img) => img.role === "primary")?.imageData ?? null;
+      const secondaryImages = images
+        .filter((img) => img.role === "secondary")
+        .map((img) => img.imageData);
+
+      const identity = resolvePortalProductIdentity(
+        { productCode: recipe.productCode, productName: recipe.productName },
+        foundationItem ?? null,
+      );
       res.json({
         id: recipe.id,
-        productCode: recipe.productCode,
-        productName: recipe.productName,
-         description: recipe.description,
+        ...identity,
+        description: recipe.description,
         componentsCount: items.length,
+        primaryImage,
+        secondaryImages,
+        featuredIngredients,
+        cartonConversion,
       });
     } catch (err) {
       next(err);
@@ -2067,6 +2215,11 @@ export const submitOrderSchema = z.object({
           .string()
           .regex(/^(?=.*[1-9])[0-9]{1,6}(?:\.[0-9]{1,3})?$/),
         unit: z.string().optional().default("قطعة"),
+        // Phase 5 (Governance & Portal project): which unit the customer
+        // typed `qty` in. "piece" (default) means qty is already canonical.
+        // "carton" means qty is a carton count and must be converted to
+        // pieces server-side (never trust a client-computed piece count).
+        orderUnit: z.enum(["piece", "carton"]).optional().default("piece"),
       }),
     )
     .min(1, "لازم تختار منتج واحد على الأقل")
@@ -2093,7 +2246,65 @@ router.post(
         res.status(404).json({ error: { message: "الحساب غير موجود" } });
         return;
       }
-      for (const item of data.items) {
+      // Phase 5 (Governance & Portal project): canonicalize every carton-
+      // entered item to a piece quantity BEFORE any validation or storage,
+      // using the conversion looked up server-side (never trust a
+      // client-computed piece count — a customer could otherwise claim any
+      // conversion factor to sneak under the minimum-quantity check).
+      const canonicalItems = await Promise.all(
+        data.items.map(async (item) => {
+          if (item.orderUnit !== "carton") {
+            return { ...item, qty: item.qty, unit: item.unit };
+          }
+          const [recipeForConversion] = await db
+            .select({ foundationItemId: bomRecipesTable.foundationItemId })
+            .from(bomRecipesTable)
+            .where(eq(bomRecipesTable.id, item.bomRecipeId))
+            .limit(1);
+          if (!recipeForConversion?.foundationItemId) {
+            throw Object.assign(
+              new Error(
+                "المنتج ده مش متاح للطلب بالكرتونة — اطلبه بالقطعة",
+              ),
+              { status: 400 },
+            );
+          }
+          const [foundationItemForConversion] = await db
+            .select()
+            .from(foundationItemsTable)
+            .where(eq(foundationItemsTable.id, recipeForConversion.foundationItemId))
+            .limit(1);
+          const [conversion] = await db
+            .select()
+            .from(foundationUnitConversionsTable)
+            .where(
+              and(
+                eq(
+                  foundationUnitConversionsTable.itemId,
+                  recipeForConversion.foundationItemId,
+                ),
+                eq(
+                  foundationUnitConversionsTable.toUnit,
+                  foundationItemForConversion?.baseUnit ?? "",
+                ),
+              ),
+            )
+            .limit(1);
+          const factor = conversion ? Number(conversion.factor) : 0;
+          if (!conversion || !Number.isInteger(factor) || factor <= 1) {
+            throw Object.assign(
+              new Error(
+                "المنتج ده مش متاح للطلب بالكرتونة — اطلبه بالقطعة",
+              ),
+              { status: 400 },
+            );
+          }
+          const pieceQty = Number(item.qty) * factor;
+          return { ...item, qty: String(pieceQty), unit: "قطعة" };
+        }),
+      );
+
+      for (const item of canonicalItems) {
         const quantity = Number(item.qty);
         if (
           !Number.isFinite(quantity) ||
@@ -2125,7 +2336,7 @@ router.post(
 
       const createdOrders = await db.transaction(async (tx: Transaction) => {
         const results = [];
-        for (const item of data.items) {
+        for (const item of canonicalItems) {
           const [recipe] = await tx
             .select()
             .from(bomRecipesTable)

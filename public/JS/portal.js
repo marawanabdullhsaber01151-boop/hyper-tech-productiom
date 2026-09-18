@@ -73,6 +73,7 @@ function handleExpiredPortalSession() {
   updateAccountLink();
   document.getElementById("btn-my-orders")?.style.setProperty("display", "none");
   document.getElementById("btn-wishlist")?.style.setProperty("display", "none");
+  document.getElementById("btn-price-inquiries")?.style.setProperty("display", "none");
   const toast = document.getElementById("toast-msg");
   if (toast) {
     toast.textContent = "انتهت جلسة الدخول. سيتم تحويلك لتسجيل الدخول.";
@@ -141,6 +142,9 @@ let products = [];
 let searchQuery = "";
 let popularOnly = false;
 let activeProduct = null; // المنتج المفتوح في المودال حاليًا
+// Phase 5 (Governance & Portal project): الوحدة اللي العميل مختارها دلوقتي
+// في مودال المنتج المفتوح — "piece" أو "carton". قطعة هي الافتراضي دايمًا.
+let selectedOrderUnit = "piece";
 let cart = JSON.parse(sessionStorage.getItem(CART_KEY) || "[]");
 let wishlistIds = new Set();
 let wishlistItems = [];
@@ -354,6 +358,7 @@ function updateAccountLink() {
   const link = document.getElementById("account-link");
   const myOrdersBtn = document.getElementById("btn-my-orders");
   const wishlistBtn = document.getElementById("btn-wishlist");
+  const priceInquiriesBtn = document.getElementById("btn-price-inquiries");
   const session = getSession();
   if (session?.customer) {
     link.innerHTML = `<i class="fa-solid fa-circle-user"></i> ${escHtml(session.customer.fullName)}`;
@@ -367,12 +372,17 @@ function updateAccountLink() {
       myOrdersBtn.onclick = openMyOrders;
     }
     if (wishlistBtn) wishlistBtn.style.display = "flex";
+    if (priceInquiriesBtn) {
+      priceInquiriesBtn.style.display = "flex";
+      priceInquiriesBtn.onclick = openPriceInquiriesList;
+    }
   } else {
     link.innerHTML = `<i class="fa-regular fa-user"></i> تسجيل الدخول بحساب آخر`;
     link.href = "portal-login.html";
     link.onclick = null;
     if (myOrdersBtn) myOrdersBtn.style.display = "none";
     if (wishlistBtn) wishlistBtn.style.display = "none";
+    if (priceInquiriesBtn) priceInquiriesBtn.style.display = "none";
   }
 }
 
@@ -949,7 +959,13 @@ function renderGrid() {
       <button class="p-wishlist-btn ${wishlistIds.has(Number(p.id)) ? "active" : ""}" onclick="toggleWishlist(${p.id}, event)" aria-label="${wishlistIds.has(Number(p.id)) ? "إزالة من المفضلة" : "إضافة للمفضلة"}">
         <i class="fa-${wishlistIds.has(Number(p.id)) ? "solid" : "regular"} fa-heart"></i>
       </button>
-      <div class="p-card-icon"><i class="fa-solid ${iconFor(p.productName)}"></i></div>
+      <div class="p-card-media">
+        ${
+          p.primaryImage
+            ? `<img class="p-card-photo" src="${p.primaryImage}" alt="${escHtml(p.productName)}" loading="lazy" />`
+            : `<div class="p-card-icon"><i class="fa-solid ${iconFor(p.productName)}"></i></div>`
+        }
+      </div>
       <div class="p-card-name">${escHtml(p.productName)}</div>
       <div class="p-card-code">${escHtml(p.productCode) || "—"}</div>
       <div class="p-card-footer">
@@ -971,8 +987,41 @@ async function openProduct(id) {
     return;
   }
   activeProduct = detail;
-  document.getElementById("modal-icon").className =
-    `fa-solid ${iconFor(detail.productName)}`;
+  // Phase 2 (Governance & Portal project): لو فيه صورة رئيسية نعرضها في الهيرو
+  // بدل الأيقونة، والصور الفرعية كشرايط صغيرة تحتها قابلة للضغط.
+  const heroIcon = document.getElementById("modal-icon");
+  const heroPhoto = document.getElementById("modal-hero-photo");
+  const gallery = document.getElementById("modal-gallery");
+  const allImages = [
+    ...(detail.primaryImage ? [detail.primaryImage] : []),
+    ...(detail.secondaryImages || []),
+  ];
+  if (allImages.length) {
+    heroIcon.style.display = "none";
+    heroPhoto.style.display = "block";
+    heroPhoto.src = allImages[0];
+    heroPhoto.alt = detail.productName;
+  } else {
+    heroPhoto.style.display = "none";
+    heroPhoto.removeAttribute("src");
+    heroIcon.style.display = "";
+    heroIcon.className = `fa-solid ${iconFor(detail.productName)}`;
+  }
+  // الشرايط تبان بس لو فيه أكتر من صورة واحدة
+  if (allImages.length > 1) {
+    gallery.innerHTML = allImages
+      .map(
+        (src, i) =>
+          `<button type="button" class="p-gallery-thumb ${i === 0 ? "active" : ""}" onclick="showProductImage(${i})"><img src="${src}" alt="" /></button>`,
+      )
+      .join("");
+    gallery.style.display = "flex";
+    window.__portalProductImages = allImages;
+  } else {
+    gallery.innerHTML = "";
+    gallery.style.display = "none";
+    window.__portalProductImages = allImages;
+  }
   document.getElementById("modal-title").textContent = detail.productName;
   document.getElementById("modal-code").textContent = detail.productCode || "—";
   document.getElementById("modal-desc").textContent =
@@ -980,18 +1029,70 @@ async function openProduct(id) {
     (detail.componentsCount > 0 ?
       `منتج مصنّع من ${detail.componentsCount} ${detail.componentsCount === 1 ? "مكوّن" : "مكوّنات"} بأعلى معايير الجودة. متاح للطلب بكميات الجملة.`
     : `منتج متاح للطلب بكميات الجملة.`);
+  // Phase 3 (Governance & Portal project): قسم "أهم مكونات هذا المنتج" —
+  // بيبان بس لو صاحب النظام حدّد مكوّنات تظهر للعميل، وإلا القسم كلّه
+  // مايتعرضش خالص (مش عنوان فاضي تحته مفيش حاجة).
+  const featuredSection = document.getElementById("modal-featured");
+  const featuredGrid = document.getElementById("modal-featured-grid");
+  const featured = detail.featuredIngredients || [];
+  if (featured.length) {
+    featuredGrid.innerHTML = featured
+      .map(
+        (ing) => `
+        <div class="p-featured-item">
+          ${
+            ing.image
+              ? `<img class="p-featured-img" src="${ing.image}" alt="${escHtml(ing.name)}" loading="lazy" />`
+              : `<div class="p-featured-img p-featured-img-placeholder"><i class="fa-solid fa-cube"></i></div>`
+          }
+          <span class="p-featured-name">${escHtml(ing.name)}</span>
+        </div>`,
+      )
+      .join("");
+    featuredSection.style.display = "block";
+  } else {
+    featuredGrid.innerHTML = "";
+    featuredSection.style.display = "none";
+  }
+
   const wishlistButton = document.getElementById("modal-wishlist");
   wishlistButton.classList.toggle("active", wishlistIds.has(Number(detail.id)));
   wishlistButton.innerHTML = `<i class="fa-${wishlistIds.has(Number(detail.id)) ? "solid" : "regular"} fa-heart"></i> ${wishlistIds.has(Number(detail.id)) ? "في المفضلة" : "إضافة للمفضلة"}`;
   wishlistButton.onclick = () => toggleWishlist(detail.id);
   document.getElementById("modal-qty").value = minimumOrderQuantity;
   document.getElementById("modal-qty").min = minimumOrderQuantity;
+
+  // Phase 5 (Governance & Portal project): كرتونة/قطعة — نبان زرار الاختيار
+  // بس لو المنتج له تحويل حقيقي في صفحة البيانات الأساسية.
+  selectedOrderUnit = "piece";
+  const unitRow = document.getElementById("p-unit-row");
+  if (detail.cartonConversion) {
+    unitRow.style.display = "flex";
+    document.getElementById("unit-btn-piece").classList.add("active");
+    document.getElementById("unit-btn-carton").classList.remove("active");
+  } else {
+    unitRow.style.display = "none";
+  }
+  updateUnitEquivalentAndSuggestion();
+
   document.getElementById("product-overlay").classList.add("open");
 }
 function closeProductModal() {
   document.getElementById("product-overlay").classList.remove("open");
   activeProduct = null;
 }
+
+// Phase 2: تبديل الصورة المعروضة في الهيرو لما العميل يدوس على شريطة
+function showProductImage(index) {
+  const images = window.__portalProductImages || [];
+  if (!images[index]) return;
+  const heroPhoto = document.getElementById("modal-hero-photo");
+  heroPhoto.src = images[index];
+  document
+    .querySelectorAll("#modal-gallery .p-gallery-thumb")
+    .forEach((el, i) => el.classList.toggle("active", i === index));
+}
+window.showProductImage = showProductImage;
 
 async function toggleWishlist(id, event) {
   event?.stopPropagation();
@@ -1134,17 +1235,175 @@ async function addProductToCart(product, qty) {
   return cart.find((item) => item.recipeId === Number(product.id));
 }
 
+// Phase 5 (Governance & Portal project): كرتونة/قطعة.
+// نفس منطق src/lib/cartonConversion.ts بس نسخة بسيطة هنا للواجهة —
+// الحساب الحقيقي والملزم بيتعمل في الباك اند وقت الإرسال فعليًا.
+function getCanonicalPieceQty() {
+  const raw = parseInt(document.getElementById("modal-qty").value) || 0;
+  if (
+    selectedOrderUnit === "carton" &&
+    activeProduct?.cartonConversion?.piecesPerCarton
+  ) {
+    return raw * activeProduct.cartonConversion.piecesPerCarton;
+  }
+  return raw;
+}
+
+function updateUnitEquivalentAndSuggestion() {
+  const equivalentEl = document.getElementById("p-unit-equivalent");
+  const suggestionEl = document.getElementById("p-carton-suggestion");
+  const conversion = activeProduct?.cartonConversion;
+  const rawQty = parseInt(document.getElementById("modal-qty").value) || 0;
+
+  if (!conversion) {
+    equivalentEl.style.display = "none";
+    suggestionEl.style.display = "none";
+    return;
+  }
+
+  const pieceQty = getCanonicalPieceQty();
+  const perCarton = conversion.piecesPerCarton;
+
+  // معادلة العرض: لو بيطلب بالقطعة نوريه كام كرتونة، ولو بالكرتونة نوريه كام قطعة
+  if (selectedOrderUnit === "carton") {
+    equivalentEl.textContent = `= ${pieceQty} قطعة`;
+  } else {
+    const cartons = rawQty / perCarton;
+    equivalentEl.textContent = `= ${cartons % 1 === 0 ? cartons : cartons.toFixed(2)} كرتونة`;
+  }
+  equivalentEl.style.display = "block";
+
+  // الاقتراح بيبان بس وإحنا في وضع "بالقطعة" ولسه مش مكمّل عدد كراتين صحيح
+  if (
+    selectedOrderUnit === "piece" &&
+    pieceQty >= minimumOrderQuantity &&
+    pieceQty % perCarton !== 0
+  ) {
+    const suggestedCartons = Math.ceil(pieceQty / perCarton);
+    const suggestedPieces = suggestedCartons * perCarton;
+    document.getElementById("p-carton-suggestion-text").textContent =
+      `لو تحب تكمّلها لعدد كراتين كامل، هتحتاج ${suggestedPieces} قطعة (${suggestedCartons} كرتونة) — أو تقدر تكمل الطلب زي ما هو`;
+    document.getElementById("btn-apply-carton-suggestion").dataset.suggested =
+      String(suggestedPieces);
+    suggestionEl.style.display = "flex";
+  } else {
+    suggestionEl.style.display = "none";
+  }
+}
+
+document.getElementById("unit-btn-piece")?.addEventListener("click", () => {
+  selectedOrderUnit = "piece";
+  document.getElementById("unit-btn-piece").classList.add("active");
+  document.getElementById("unit-btn-carton").classList.remove("active");
+  document.getElementById("modal-qty").value = minimumOrderQuantity;
+  updateUnitEquivalentAndSuggestion();
+});
+document.getElementById("unit-btn-carton")?.addEventListener("click", () => {
+  selectedOrderUnit = "carton";
+  document.getElementById("unit-btn-carton").classList.add("active");
+  document.getElementById("unit-btn-piece").classList.remove("active");
+  document.getElementById("modal-qty").value = 1;
+  updateUnitEquivalentAndSuggestion();
+});
+document.getElementById("btn-apply-carton-suggestion")?.addEventListener(
+  "click",
+  (e) => {
+    const suggested = Number(e.target.dataset.suggested || 0);
+    if (!suggested) return;
+    document.getElementById("modal-qty").value = suggested;
+    updateUnitEquivalentAndSuggestion();
+  },
+);
+document.getElementById("modal-qty")?.addEventListener("input", () => {
+  updateUnitEquivalentAndSuggestion();
+});
+
+// ===================================================
+//  Phase 6 — اطلب سعر (ask-before-you-order)
+// ===================================================
+function openPriceInquiryModal() {
+  if (!activeProduct) return;
+  document.getElementById("price-inquiry-product").textContent =
+    `${activeProduct.productName} — هيتبعت للمبيعات وهيردّوا عليك بالسعر`;
+  document.getElementById("price-inquiry-qty").value = minimumOrderQuantity;
+  document.getElementById("price-inquiry-qty").min = minimumOrderQuantity;
+  document.getElementById("price-inquiry-overlay").classList.add("open");
+}
+function closePriceInquiryModal() {
+  document.getElementById("price-inquiry-overlay").classList.remove("open");
+}
+
+async function sendPriceInquiry() {
+  if (!activeProduct) return;
+  const qty = Math.max(
+    minimumOrderQuantity,
+    parseInt(document.getElementById("price-inquiry-qty").value) ||
+      minimumOrderQuantity,
+  );
+  const button = document.getElementById("btn-send-price-inquiry");
+  setPortalButtonBusy(button, true, "جاري الإرسال...");
+  try {
+    await portalApiCall("/portal/price-inquiries", {
+      method: "POST",
+      body: JSON.stringify({
+        bomRecipeId: Number(activeProduct.id),
+        qty: String(qty),
+        orderUnit: "piece",
+      }),
+    });
+    closePriceInquiryModal();
+    closeProductModal();
+    showToast("تم إرسال طلبك للمبيعات، هيردّوا عليك قريب");
+  } catch (err) {
+    showToast("تعذّر إرسال الطلب: " + err.message, true);
+  } finally {
+    setPortalButtonBusy(button, false);
+  }
+}
+
+async function openPriceInquiriesList() {
+  const overlay = document.getElementById("price-inquiries-list-overlay");
+  const list = document.getElementById("price-inquiries-list");
+  overlay.classList.add("open");
+  list.innerHTML = `<div class="p-empty" style="padding:30px 0"><i class="fa-solid fa-spinner fa-spin"></i></div>`;
+  try {
+    const inquiries = await portalApiCall("/portal/price-inquiries");
+    if (!inquiries.length) {
+      list.innerHTML = `<div class="p-empty"><i class="fa-solid fa-tags"></i><p>لسه مفيش طلبات سعر</p></div>`;
+      return;
+    }
+    list.innerHTML = inquiries
+      .map(
+        (inq) => `
+        <div class="p-price-inquiry-card">
+          <div class="p-price-inquiry-q">
+            <strong>سألت عن:</strong> ${escHtml(inq.productName)} — كمية ${escHtml(inq.requestedQty)} قطعة
+          </div>
+          ${
+            inq.status === "answered"
+              ? `<div class="p-price-inquiry-a"><strong>الردّ:</strong> السعر ${escHtml(inq.finalPrice)} جنيه للقطعة</div>`
+              : `<div class="p-price-inquiry-pending"><i class="fa-solid fa-clock"></i> مستنيين ردّ المبيعات</div>`
+          }
+        </div>`,
+      )
+      .join("");
+  } catch (err) {
+    list.innerHTML = `<div class="p-empty"><i class="fa-solid fa-triangle-exclamation"></i><p>تعذّر تحميل الطلبات: ${escHtml(err.message)}</p></div>`;
+  }
+}
+function closePriceInquiriesList() {
+  document.getElementById("price-inquiries-list-overlay").classList.remove("open");
+}
+
 async function addActiveToCart() {
   if (!activeProduct) {
     showToast("اختَر منتجًا أولًا قبل الإضافة للطلب", true);
     return;
   }
   const productName = activeProduct.productName;
-  const qty = Math.max(
-    minimumOrderQuantity,
-    parseInt(document.getElementById("modal-qty").value) ||
-      minimumOrderQuantity,
-  );
+  // Phase 5: بنحوّل لقطع دايمًا قبل ما ننزل السلة — الكرتونة اختيار عرض بس،
+  // والسلة والطلب دايمًا بيتعاملوا بالقطعة الموحّدة.
+  const qty = Math.max(minimumOrderQuantity, getCanonicalPieceQty());
   const button = document.getElementById("btn-add-cart");
   setPortalButtonBusy(button, true, "جاري إضافة المنتج...");
   try {
@@ -1363,14 +1622,15 @@ function bindEvents() {
   });
   document.getElementById("qty-minus").addEventListener("click", () => {
     const el = document.getElementById("modal-qty");
-    el.value = Math.max(
-      minimumOrderQuantity,
-      (parseInt(el.value) || minimumOrderQuantity) - 1,
-    );
+    const floor = selectedOrderUnit === "carton" ? 1 : minimumOrderQuantity;
+    el.value = Math.max(floor, (parseInt(el.value) || floor) - 1);
+    updateUnitEquivalentAndSuggestion();
   });
   document.getElementById("qty-plus").addEventListener("click", () => {
     const el = document.getElementById("modal-qty");
-    el.value = (parseInt(el.value) || minimumOrderQuantity) + 1;
+    const floor = selectedOrderUnit === "carton" ? 1 : minimumOrderQuantity;
+    el.value = (parseInt(el.value) || floor) + 1;
+    updateUnitEquivalentAndSuggestion();
   });
   document
     .getElementById("btn-add-cart")
@@ -1403,6 +1663,19 @@ function bindEvents() {
     if (e.target.id === "account-overlay") e.target.classList.remove("open");
   });
   document.getElementById("btn-wishlist")?.addEventListener("click", openWishlist);
+  // Phase 6 — اطلب سعر
+  document.getElementById("btn-ask-price")?.addEventListener("click", openPriceInquiryModal);
+  document.getElementById("price-inquiry-close")?.addEventListener("click", closePriceInquiryModal);
+  document.getElementById("btn-send-price-inquiry")?.addEventListener("click", sendPriceInquiry);
+  document.getElementById("price-inquiries-list-close")?.addEventListener("click", closePriceInquiriesList);
+  document.getElementById("pi-qty-minus")?.addEventListener("click", () => {
+    const el = document.getElementById("price-inquiry-qty");
+    el.value = Math.max(minimumOrderQuantity, (parseInt(el.value) || minimumOrderQuantity) - 1);
+  });
+  document.getElementById("pi-qty-plus")?.addEventListener("click", () => {
+    const el = document.getElementById("price-inquiry-qty");
+    el.value = (parseInt(el.value) || minimumOrderQuantity) + 1;
+  });
   document.getElementById("wishlist-close")?.addEventListener("click", closeWishlist);
   document.getElementById("wishlist-overlay")?.addEventListener("click", (e) => {
     if (e.target.id === "wishlist-overlay") closeWishlist();

@@ -439,6 +439,160 @@
         color: var(--accent);
         opacity: 0.55;
       }
+      /* Phase 2 (Governance & Portal project): product photos in the portal. */
+      .p-modal-hero {
+        overflow: hidden;
+      }
+      .p-modal-hero-photo {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+      .p-modal-gallery {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-bottom: 12px;
+      }
+      .p-gallery-thumb {
+        width: 56px;
+        height: 44px;
+        padding: 0;
+        border-radius: 8px;
+        overflow: hidden;
+        border: 2px solid transparent;
+        background: none;
+        cursor: pointer;
+        transition: border-color 0.15s ease;
+      }
+      .p-gallery-thumb.active {
+        border-color: var(--accent);
+      }
+      .p-gallery-thumb img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+      }
+      .p-card-media {
+        margin-bottom: 14px;
+      }
+      .p-card-media .p-card-icon {
+        margin-bottom: 0;
+      }
+      .p-card-photo {
+        width: 100%;
+        height: 118px;
+        object-fit: cover;
+        border-radius: 14px;
+        display: block;
+      }
+      /* Phase 3 (Governance & Portal project): "أهم مكونات هذا المنتج" —
+         its own section, separate from the product description. */
+      .p-featured-section {
+        margin: 16px 0;
+        padding: 14px;
+        border-radius: 14px;
+        background: var(--accent-soft);
+      }
+      .p-featured-title {
+        font-weight: 700;
+        font-size: 14px;
+        margin-bottom: 12px;
+        color: var(--accent);
+      }
+      .p-featured-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
+        gap: 12px;
+      }
+      .p-featured-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 6px;
+        text-align: center;
+      }
+      .p-featured-img {
+        width: 100%;
+        aspect-ratio: 1 / 1;
+        object-fit: cover;
+        border-radius: 12px;
+        display: block;
+      }
+      .p-featured-img-placeholder {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(148, 163, 184, 0.16);
+        color: var(--text-muted);
+        font-size: 20px;
+      }
+      .p-featured-name {
+        font-size: 12px;
+        font-weight: 600;
+        line-height: 1.35;
+      }
+      @media (max-width: 480px) {
+        .p-featured-grid {
+          grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+        }
+      }
+      /* Phase 5 (Governance & Portal project): كرتونة/قطعة. */
+      .p-unit-row {
+        display: flex;
+        gap: 8px;
+        margin: 10px 0;
+      }
+      .p-unit-btn {
+        flex: 1;
+        padding: 9px 0;
+        border-radius: 10px;
+        border: 1px solid var(--border, rgba(148, 163, 184, 0.3));
+        background: transparent;
+        color: var(--text-muted);
+        font-size: 13px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.15s ease;
+      }
+      .p-unit-btn.active {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: #fff;
+      }
+      .p-unit-equivalent {
+        font-size: 12px;
+        color: var(--text-muted);
+        margin-bottom: 8px;
+      }
+      .p-carton-suggestion {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        flex-wrap: wrap;
+        background: rgba(234, 179, 8, 0.12);
+        color: #b45309;
+        padding: 10px 12px;
+        border-radius: 10px;
+        font-size: 12px;
+        margin-bottom: 12px;
+      }
+      .p-carton-suggestion button {
+        border: none;
+        background: #b45309;
+        color: #fff;
+        padding: 6px 12px;
+        border-radius: 8px;
+        font-size: 11px;
+        font-weight: 700;
+        cursor: pointer;
+        white-space: nowrap;
+      }
+      .p-carton-suggestion button:hover {
+        opacity: 0.9;
+      }
       .p-modal-close {
         position: absolute;
         top: 14px;
@@ -571,6 +725,53 @@
       }
       .p-add-btn:hover {
         filter: brightness(1.08);
+      }
+      /* Phase 6 (Governance & Portal project): اطلب سعر. */
+      .p-ask-price-btn {
+        width: 100%;
+        background: transparent;
+        border: 1px dashed var(--border, rgba(148, 163, 184, 0.4));
+        border-radius: 12px;
+        padding: 11px;
+        color: var(--text-muted);
+        font-weight: 700;
+        font-size: 12px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        margin-top: 8px;
+        transition: 0.2s;
+      }
+      .p-ask-price-btn:hover {
+        border-color: var(--accent);
+        color: var(--accent);
+      }
+      .p-modal-sm .p-modal-body {
+        padding-top: 40px;
+      }
+      .p-price-inquiry-card {
+        border: 1px solid var(--border, rgba(148, 163, 184, 0.2));
+        border-radius: 12px;
+        padding: 12px 14px;
+        margin-bottom: 10px;
+      }
+      .p-price-inquiry-q {
+        font-size: 13px;
+        margin-bottom: 6px;
+      }
+      .p-price-inquiry-a {
+        font-size: 13px;
+        color: var(--green, #16a34a);
+        font-weight: 700;
+      }
+      .p-price-inquiry-pending {
+        font-size: 12px;
+        color: var(--text-muted);
+        display: flex;
+        align-items: center;
+        gap: 6px;
       }
 
       /* ✨ إضافة: لوحة بيانات الحساب + تتبع الطلبات — أعدنا استخدام نفس

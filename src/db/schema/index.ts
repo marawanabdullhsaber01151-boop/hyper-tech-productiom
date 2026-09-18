@@ -5,6 +5,8 @@ export * from "./contacts";
 export * from "./sales";
 export * from "./production";
 export * from "./bom";
+export * from "./product-images";
+export * from "./portal-price-inquiries";
 export * from "./quality";
 export * from "./movements";
 export * from "./settings";

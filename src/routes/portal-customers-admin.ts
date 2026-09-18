@@ -17,6 +17,7 @@ import {
   salesOrdersTable,
   egyptGovernorateSchema,
   contactSegmentSchema,
+  systemUsersTable,
 } from "../db/schema";
 import { requireAuth, requireRole } from "../middleware/auth";
 import { revokeAllPortalSessions } from "../middleware/portal-auth";
@@ -277,6 +278,67 @@ const customerCitySchema = z.object({
 const customerSegmentSchema = z.object({
   segment: contactSegmentSchema.nullable(),
 });
+// Phase 7 (Governance & Portal project): تعيين مسؤول مبيعات للعميل.
+const customerAssignedSalesSchema = z.object({
+  assignedSalesUserId: z.number().int().positive().nullable(),
+});
+
+router.patch(
+  "/portal-customers/:id/assigned-sales",
+  requireAuth,
+  requireRole(...PERMISSIONS.portalCustomers.write),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const id = parsePositiveId(req.params.id);
+      const { assignedSalesUserId } = customerAssignedSalesSchema.parse(req.body);
+
+      if (assignedSalesUserId) {
+        const [salesUser] = await db
+          .select({ id: systemUsersTable.id, role: systemUsersTable.role })
+          .from(systemUsersTable)
+          .where(eq(systemUsersTable.id, assignedSalesUserId))
+          .limit(1);
+        if (!salesUser || !(PERMISSIONS.sales.write as readonly string[]).includes(salesUser.role)) {
+          res.status(400).json({ error: { message: "لازم تختار موظف مبيعات موجود بالفعل" } });
+          return;
+        }
+      }
+
+      const [before] = await db
+        .select()
+        .from(portalCustomersTable)
+        .where(eq(portalCustomersTable.id, id))
+        .limit(1);
+      if (!before) {
+        res.status(404).json({ error: { message: "الحساب غير موجود" } });
+        return;
+      }
+      const [updated] = await db
+        .update(portalCustomersTable)
+        .set({ assignedSalesUserId })
+        .where(eq(portalCustomersTable.id, id))
+        .returning();
+
+      await writeAuditEvent({
+        executor: db,
+        actorUserId: req.user!.userId,
+        actorName: req.user!.username,
+        actionKey: "portal.customer.assigned_sales.update",
+        resourceType: "portal_customer",
+        resourceId: id,
+        beforeData: { assignedSalesUserId: before.assignedSalesUserId },
+        afterData: { assignedSalesUserId },
+        reason: "تحديث المسؤول عن حساب عميل البوابة",
+        ipAddress: req.ip,
+        userAgent: req.get("user-agent"),
+      });
+
+      res.json({ message: "تم تحديث المسؤول", customer: updated });
+    } catch (err) {
+      next(err);
+    }
+  },
+);
 
 router.patch(
   "/portal-customers/:id/status",

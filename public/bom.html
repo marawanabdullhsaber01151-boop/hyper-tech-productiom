@@ -168,23 +168,41 @@
         <div class="modal-body">
           <div class="form-row">
             <div class="form-group">
+              <label>المنتج (من صفحة البيانات الأساسية)</label>
+              <select id="modal-foundation-item" class="form-input">
+                <option value="">-- اختار المنتج --</option>
+              </select>
+              <small id="modal-foundation-hint" class="form-hint">
+                مش لاقي المنتج في القايمة؟
+                <a href="/foundation.html" target="_blank" rel="noopener">ضيفه الأول من صفحة البيانات الأساسية</a>
+                وارجع هنا تاني.
+              </small>
+              <small id="modal-foundation-legacy-note" class="form-hint" style="display:none">
+                الوصفة دي لسه مش متوصّلة بصفحة البيانات الأساسية — اختار المنتج بتاعها من القايمة فوق عشان تتوصل.
+              </small>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
               <label>اسم المنتج</label>
               <input
                 type="text"
                 id="modal-name"
                 class="form-input"
                 placeholder="مثال: مشترك 5 أرجل مع مفتاح رئيسي"
+                readonly
               />
             </div>
           </div>
           <div class="form-row two-col">
             <div class="form-group">
-              <label>كود المنتج (اختياري)</label>
+              <label>كود المنتج</label>
               <input
                 type="text"
                 id="modal-code"
                 class="form-input"
                 placeholder="مثال: PRD-001"
+                readonly
               />
             </div>
             <div class="form-group">
@@ -233,6 +251,36 @@
                 placeholder="أي تفاصيل إضافية عن الوصفة..."
               ></textarea>
             </div>
+          </div>
+          <div class="images-section" id="images-section" style="display:none">
+            <div class="components-head">
+              <label>صور المنتج</label>
+            </div>
+            <div class="image-primary-row">
+              <div class="image-primary-preview" id="image-primary-preview">
+                <i class="fa-solid fa-image"></i>
+                <span>لسه مفيش صورة رئيسية</span>
+              </div>
+              <div class="image-primary-actions">
+                <label class="btn-upload-image">
+                  <i class="fa-solid fa-upload"></i> رفع/استبدال الصورة الرئيسية
+                  <input type="file" accept="image/png,image/jpeg,image/webp" id="input-primary-image" hidden />
+                </label>
+                <button type="button" class="btn-remove-image" id="btn-remove-primary-image" style="display:none">
+                  <i class="fa-solid fa-trash"></i> حذف الصورة الرئيسية
+                </button>
+              </div>
+            </div>
+            <div class="image-secondary-row">
+              <label class="btn-upload-image btn-upload-image-sm">
+                <i class="fa-solid fa-plus"></i> إضافة صورة فرعية
+                <input type="file" accept="image/png,image/jpeg,image/webp" id="input-secondary-image" hidden />
+              </label>
+              <div class="image-secondary-gallery" id="image-secondary-gallery"></div>
+            </div>
+          </div>
+          <div class="components-head" id="images-locked-note" style="margin-top:8px">
+            <small class="form-hint">احفظ الوصفة الأول، وبعدين هتقدر تضيف صور المنتج ليها.</small>
           </div>
           <div class="components-section">
             <div class="components-head">

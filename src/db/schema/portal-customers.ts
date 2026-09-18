@@ -20,6 +20,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { z } from "zod";
 import { contactsTable, egyptGovernorateSchema } from "./contacts";
+import { systemUsersTable } from "./settings";
 
 export const portalCustomersTable = pgTable(
   "portal_customers",
@@ -42,6 +43,15 @@ export const portalCustomersTable = pgTable(
     contactId: integer("contact_id")
       .notNull()
       .references(() => contactsTable.id),
+    // Phase 7 (Governance & Portal project): المسؤول عن حساب العميل ده —
+    // بيستخدمها ورشة عمل المبيعات (طلبات معلّقة + طلبات أسعار) عشان تعرض
+    // "المسؤول" على كل عنصر، وهتستخدمها المرحلة 9 كمان لتوجيه شات
+    // العميل مع مسؤوله مباشرة. اختياري تمامًا — لو فاضي، أي موظف مبيعات
+    // يقدر يرد عادي.
+    assignedSalesUserId: integer("assigned_sales_user_id").references(
+      () => systemUsersTable.id,
+      { onDelete: "set null" },
+    ),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

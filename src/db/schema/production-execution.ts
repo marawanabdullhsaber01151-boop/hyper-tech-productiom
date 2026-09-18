@@ -5,6 +5,7 @@ import { z } from "zod";
 import { productionBatchesTable } from "./operations";
 import { productionWorkflowOrdersTable } from "./production-workflow";
 import { systemUsersTable } from "./settings";
+import { foundationMachinesTable } from "./foundation";
 
 export const productionDowntimesTable = pgTable(
   "production_downtimes",
@@ -33,7 +34,12 @@ export const productionOperationConfirmationsTable = pgTable(
     batchId: integer("batch_id").notNull().references(() => productionBatchesTable.id),
     workflowOrderId: integer("workflow_order_id").notNull().references(() => productionWorkflowOrdersTable.id),
     operationNo: integer("operation_no").notNull(),
-    machineId: integer("machine_id"),
+    // Phase 4: was a bare integer with no foreign key; now linked to the
+    // Foundation machine register.
+    machineId: integer("machine_id").references(
+      () => foundationMachinesTable.id,
+      { onDelete: "set null" },
+    ),
     shiftCode: text("shift_code"),
     goodQty: text("good_qty").notNull(),
     scrapQty: text("scrap_qty").notNull().default("0"),

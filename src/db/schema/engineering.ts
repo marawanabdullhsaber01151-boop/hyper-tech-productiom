@@ -15,6 +15,11 @@ import {
 } from "drizzle-orm/pg-core";
 import { z } from "zod";
 import { systemUsersTable } from "./settings";
+import {
+  foundationItemsTable,
+  foundationWorkCentersTable,
+  foundationMachinesTable,
+} from "./foundation";
 
 export const engineeringProductsTable = pgTable(
   "engineering_products",
@@ -26,6 +31,15 @@ export const engineeringProductsTable = pgTable(
     baseUnit: text("base_unit").notNull().default("وحدة"),
     status: text("status").notNull().default("active"),
     description: text("description"),
+    // Phase 4 (Governance & Portal project): engineering_products duplicates
+    // the Foundation item concept (code/name/base unit/type/status). Nullable
+    // link + conservative exact-code backfill, same pattern as
+    // inventory_items (0021) and bom_recipes (0057). Legacy unmatched rows
+    // stay NULL and keep working on their own fields.
+    foundationItemId: integer("foundation_item_id").references(
+      () => foundationItemsTable.id,
+      { onDelete: "set null" },
+    ),
     createdBy: integer("created_by").references(() => systemUsersTable.id),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -75,8 +89,17 @@ export const engineeringRoutingsTable = pgTable(
       .references(() => engineeringProductVersionsTable.id, { onDelete: "cascade" }),
     operationNo: integer("operation_no").notNull(),
     name: text("name").notNull(),
-    workCenterId: integer("work_center_id"),
-    machineId: integer("machine_id"),
+    // Phase 4: these were bare integers with no foreign key — they always
+    // meant Foundation records, so nothing stopped them pointing at a
+    // deleted or non-existent work center/machine. Now properly linked.
+    workCenterId: integer("work_center_id").references(
+      () => foundationWorkCentersTable.id,
+      { onDelete: "set null" },
+    ),
+    machineId: integer("machine_id").references(
+      () => foundationMachinesTable.id,
+      { onDelete: "set null" },
+    ),
     setupMinutes: integer("setup_minutes").notNull().default(0),
     runMinutesPerUnit: numeric("run_minutes_per_unit", { precision: 12, scale: 4 }).notNull().default("0"),
     workersRequired: integer("workers_required").notNull().default(1),

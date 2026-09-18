@@ -12,6 +12,7 @@ import {
   unique,
 } from "drizzle-orm/pg-core";
 import { z } from "zod";
+import { foundationItemsTable } from "./foundation";
 
 export const inventoryItemsTable = pgTable(
   "inventory_items",
@@ -38,7 +39,13 @@ export const inventoryItemsTable = pgTable(
       .notNull()
       .default(false),
     supplierId: integer("supplier_id"),
-    foundationItemId: integer("foundation_item_id"),
+    // Phase 4 (Governance & Portal project): the FK already existed in the
+    // database (migration 0021) but was never declared here, so Drizzle
+    // didn't know about the relation. Declared now — no migration needed.
+    foundationItemId: integer("foundation_item_id").references(
+      () => foundationItemsTable.id,
+      { onDelete: "set null" },
+    ),
     leadDays: integer("lead_days"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()

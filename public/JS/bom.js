@@ -110,6 +110,10 @@ function buildCard(recipe) {
       <span class="bom-card-status ${recipe.isActive === false ? "inactive" : ""}">
         ${recipe.isActive === false ? "متوقف" : "نشط"}
       </span>
+      <span class="bom-card-foundation-link ${recipe.foundationItemId ? "linked" : "unlinked"}" title="${recipe.foundationItemId ? "متوصّل بصفحة البيانات الأساسية" : "لسه مش متوصّل بصفحة البيانات الأساسية"}">
+        <i class="fa-solid ${recipe.foundationItemId ? "fa-link" : "fa-link-slash"}"></i>
+        ${recipe.foundationItemId ? "متوصّل" : "غير متوصّل"}
+      </span>
     </div>
     <div class="bom-card-stats">
       <div class="bom-stat">
@@ -324,6 +328,8 @@ async function doDelete() {
 const modalOverlay = document.getElementById("modal-overlay");
 const fName = document.getElementById("modal-name");
 const fCode = document.getElementById("modal-code");
+const fFoundationItem = document.getElementById("modal-foundation-item");
+const fFoundationLegacyNote = document.getElementById("modal-foundation-legacy-note");
 const fOutputQty = document.getElementById("modal-output-qty");
 const fReferencePrice = document.getElementById("modal-reference-price");
 const fExpectedDays = document.getElementById("modal-expected-days");
@@ -331,6 +337,226 @@ const fNotes = document.getElementById("modal-notes");
 const componentsRows = document.getElementById("components-rows");
 const componentsEmpty = document.getElementById("components-empty");
 const componentsTable = document.getElementById("components-table");
+
+// ===================================================
+//  صفحة البيانات الأساسية — قايمة "المنتجات التامة" لاختيار المنتج بتاع الوصفة
+// ===================================================
+let foundationFinishedGoods = []; // من GET /foundation/items، مفلترة على النوع + النشط
+let foundationItemsLoaded = false;
+
+async function loadFoundationFinishedGoods() {
+  if (foundationItemsLoaded) return;
+  try {
+    const all = await api("/foundation/items");
+    foundationFinishedGoods = (all || []).filter(
+      (it) => it.itemType === "finished_good" && it.active,
+    );
+    foundationItemsLoaded = true;
+  } catch (e) {
+    // ✅ لو المستخدم مالوش صلاحية يشوف صفحة البيانات الأساسية أصلاً، منسيبش
+    // الفورم يقفل — بس القايمة هتفضل فاضية وهيبان له رابط صفحة البيانات الأساسية
+    foundationFinishedGoods = [];
+  }
+  renderFoundationItemOptions();
+}
+
+function renderFoundationItemOptions(selectedId) {
+  fFoundationItem.innerHTML =
+    '<option value="">-- اختار المنتج --</option>' +
+    foundationFinishedGoods
+      .map(
+        (it) =>
+          `<option value="${it.id}">${escHtml(it.name)} (${escHtml(it.code)})</option>`,
+      )
+      .join("");
+  if (selectedId) fFoundationItem.value = String(selectedId);
+}
+
+function applySelectedFoundationItem() {
+  const id = fFoundationItem.value;
+  const item = foundationFinishedGoods.find((it) => String(it.id) === id);
+  if (item) {
+    fName.value = item.name;
+    fCode.value = item.code;
+    fFoundationLegacyNote.style.display = "none";
+  } else {
+    fName.value = "";
+    fCode.value = "";
+  }
+}
+fFoundationItem?.addEventListener("change", applySelectedFoundationItem);
+
+// ===================================================
+//  صور المنتج (رئيسية + فرعية) — Phase 2
+//  الصور بتتحفظ كـ base64 data URL في قاعدة البيانات (شوف
+//  src/db/schema/product-images.ts لسبب الاختيار ده).
+// ===================================================
+const MAX_IMAGE_BYTES_CLIENT = 2 * 1024 * 1024; // نفس الحد الموجود في الباك اند
+const imagesSection = document.getElementById("images-section");
+const imagesLockedNote = document.getElementById("images-locked-note");
+const imagePrimaryPreview = document.getElementById("image-primary-preview");
+const imageSecondaryGallery = document.getElementById("image-secondary-gallery");
+const inputPrimaryImage = document.getElementById("input-primary-image");
+const inputSecondaryImage = document.getElementById("input-secondary-image");
+const btnRemovePrimaryImage = document.getElementById("btn-remove-primary-image");
+
+let currentImages = []; // [{ id, role, imageData, sortOrder }]
+
+function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(new Error("تعذّر قراءة الصورة"));
+    reader.readAsDataURL(file);
+  });
+}
+
+function validateImageFile(file) {
+  const okTypes = ["image/png", "image/jpeg", "image/jpg", "image/webp"];
+  if (!okTypes.includes(file.type)) {
+    showToast("لازم تكون صورة بصيغة png أو jpg أو webp", true);
+    return false;
+  }
+  if (file.size > MAX_IMAGE_BYTES_CLIENT) {
+    showToast("حجم الصورة كبير أوي — الحد الأقصى 2 ميجا", true);
+    return false;
+  }
+  return true;
+}
+
+function renderImagesSection() {
+  // الصور محتاجة وصفة محفوظة الأول عشان يكون لها id تتربط بيه
+  const unlocked = Boolean(editingId);
+  imagesSection.style.display = unlocked ? "block" : "none";
+  imagesLockedNote.style.display = unlocked ? "none" : "block";
+  if (!unlocked) return;
+
+  const primary = currentImages.find((img) => img.role === "primary");
+  if (primary) {
+    imagePrimaryPreview.innerHTML = `<img src="${primary.imageData}" alt="الصورة الرئيسية للمنتج" />`;
+    btnRemovePrimaryImage.style.display = "inline-flex";
+    btnRemovePrimaryImage.dataset.imageId = String(primary.id);
+  } else {
+    imagePrimaryPreview.innerHTML = `<i class="fa-solid fa-image"></i><span>لسه مفيش صورة رئيسية</span>`;
+    btnRemovePrimaryImage.style.display = "none";
+    delete btnRemovePrimaryImage.dataset.imageId;
+  }
+
+  const secondaries = currentImages
+    .filter((img) => img.role === "secondary")
+    .sort((a, b) => a.sortOrder - b.sortOrder);
+  if (!secondaries.length) {
+    imageSecondaryGallery.innerHTML = `<div class="image-gallery-empty">مفيش صور فرعية لسه</div>`;
+    return;
+  }
+  imageSecondaryGallery.innerHTML = secondaries
+    .map(
+      (img, i) => `
+      <div class="image-thumb">
+        <img src="${img.imageData}" alt="صورة فرعية للمنتج" />
+        <div class="image-thumb-actions">
+          <button type="button" title="تحريك لليمين" ${i === 0 ? "disabled" : ""} onclick="moveSecondaryImage(${img.id}, -1)">
+            <i class="fa-solid fa-arrow-right"></i>
+          </button>
+          <button type="button" title="تحريك لليسار" ${i === secondaries.length - 1 ? "disabled" : ""} onclick="moveSecondaryImage(${img.id}, 1)">
+            <i class="fa-solid fa-arrow-left"></i>
+          </button>
+          <button type="button" class="danger" title="حذف الصورة" onclick="deleteProductImage(${img.id})">
+            <i class="fa-solid fa-trash"></i>
+          </button>
+        </div>
+      </div>`,
+    )
+    .join("");
+}
+
+async function reloadCurrentImages() {
+  if (!editingId) return;
+  try {
+    const recipe = await api(`/bom/${editingId}`);
+    currentImages = recipe.images || [];
+  } catch (e) {
+    currentImages = [];
+  }
+  renderImagesSection();
+}
+
+inputPrimaryImage?.addEventListener("change", async (e) => {
+  const file = e.target.files?.[0];
+  e.target.value = ""; // نفضّي الحقل عشان يقدر يرفع نفس الصورة تاني لو حب
+  if (!file || !validateImageFile(file)) return;
+  if (!editingId) return;
+  try {
+    const imageData = await readFileAsDataUrl(file);
+    await api(`/bom/${editingId}/images/primary`, {
+      method: "POST",
+      body: JSON.stringify({ imageData }),
+    });
+    showToast("تم حفظ الصورة الرئيسية");
+    await reloadCurrentImages();
+  } catch (err) {
+    showToast("تعذّر رفع الصورة: " + err.message, true);
+  }
+});
+
+inputSecondaryImage?.addEventListener("change", async (e) => {
+  const file = e.target.files?.[0];
+  e.target.value = "";
+  if (!file || !validateImageFile(file)) return;
+  if (!editingId) return;
+  try {
+    const imageData = await readFileAsDataUrl(file);
+    await api(`/bom/${editingId}/images/secondary`, {
+      method: "POST",
+      body: JSON.stringify({ imageData }),
+    });
+    showToast("تمت إضافة الصورة");
+    await reloadCurrentImages();
+  } catch (err) {
+    showToast("تعذّر رفع الصورة: " + err.message, true);
+  }
+});
+
+btnRemovePrimaryImage?.addEventListener("click", () => {
+  const imageId = btnRemovePrimaryImage.dataset.imageId;
+  if (imageId) deleteProductImage(Number(imageId));
+});
+
+async function deleteProductImage(imageId) {
+  if (!editingId) return;
+  try {
+    await api(`/bom/${editingId}/images/${imageId}`, { method: "DELETE" });
+    showToast("تم حذف الصورة");
+    await reloadCurrentImages();
+  } catch (err) {
+    showToast("تعذّر حذف الصورة: " + err.message, true);
+  }
+}
+window.deleteProductImage = deleteProductImage;
+
+async function moveSecondaryImage(imageId, direction) {
+  const secondaries = currentImages
+    .filter((img) => img.role === "secondary")
+    .sort((a, b) => a.sortOrder - b.sortOrder);
+  const index = secondaries.findIndex((img) => img.id === imageId);
+  const target = index + direction;
+  if (index === -1 || target < 0 || target >= secondaries.length) return;
+  // نبدّل مكان الصورتين ونبعت الترتيب الجديد كامل
+  [secondaries[index], secondaries[target]] = [
+    secondaries[target],
+    secondaries[index],
+  ];
+  try {
+    await api(`/bom/${editingId}/images/reorder`, {
+      method: "PATCH",
+      body: JSON.stringify({ order: secondaries.map((img) => img.id) }),
+    });
+    await reloadCurrentImages();
+  } catch (err) {
+    showToast("تعذّر تغيير الترتيب: " + err.message, true);
+  }
+}
+window.moveSecondaryImage = moveSecondaryImage;
 
 function updateComponentsEmptyState() {
   const hasRows = currentItems.length > 0;
@@ -379,6 +605,28 @@ function renderComponentRows() {
       <input type="number" class="form-input comp-qty" placeholder="0" min="0" step="0.001" value="${escHtml(item.qty)}" />
       <input type="number" class="form-input comp-cost" placeholder="0" min="0" step="0.01" value="${escHtml(item.unitCost)}" />
       <button type="button" class="btn-remove-component" title="حذف المكوّن"><i class="fa-solid fa-trash"></i></button>
+    `;
+
+    // Phase 3: صف إضافي تحت كل مكوّن — "يظهر للعميل؟" + صورة اختيارية.
+    // بيتحط في صف منفصل عشان مايزحمش أعمدة الجدول الأساسية.
+    const featuredRow = document.createElement("div");
+    featuredRow.className = "component-featured-row";
+    featuredRow.innerHTML = `
+      <label class="component-featured-toggle">
+        <input type="checkbox" class="comp-featured" ${item.isFeatured ? "checked" : ""} />
+        يظهر للعميل في "أهم مكونات هذا المنتج"
+      </label>
+      <div class="component-featured-image" ${item.isFeatured ? "" : 'style="display:none"'}>
+        ${
+          item.featuredImageData
+            ? `<img src="${item.featuredImageData}" alt="صورة المكوّن" class="comp-featured-thumb" />
+               <button type="button" class="btn-remove-comp-image" title="حذف صورة المكوّن"><i class="fa-solid fa-trash"></i></button>`
+            : `<label class="btn-upload-image btn-upload-image-sm">
+                 <i class="fa-solid fa-image"></i> صورة للمكوّن (اختياري)
+                 <input type="file" accept="image/png,image/jpeg,image/webp" class="comp-featured-file" hidden />
+               </label>`
+        }
+      </div>
     `;
 
     // ✅ لو اختار "من المخزون"، تتحول الخانة الأولى لقايمة اختيار حقيقية
@@ -441,7 +689,40 @@ function renderComponentRows() {
       renderComponentRows();
     });
 
+    // Phase 3: تشغيل/إيقاف ظهور المكوّن للعميل + إدارة صورته
+    featuredRow
+      .querySelector(".comp-featured")
+      .addEventListener("change", (e) => {
+        currentItems[idx].isFeatured = e.target.checked;
+        // لو وقّف الظهور، بنشيل الصورة كمان عشان مانسيبش صورة متعلقة بمكوّن
+        // مش ظاهر أصلاً
+        if (!e.target.checked) currentItems[idx].featuredImageData = null;
+        renderComponentRows();
+      });
+
+    featuredRow
+      .querySelector(".comp-featured-file")
+      ?.addEventListener("change", async (e) => {
+        const file = e.target.files?.[0];
+        e.target.value = "";
+        if (!file || !validateImageFile(file)) return;
+        try {
+          currentItems[idx].featuredImageData = await readFileAsDataUrl(file);
+          renderComponentRows();
+        } catch (err) {
+          showToast("تعذّر قراءة الصورة: " + err.message, true);
+        }
+      });
+
+    featuredRow
+      .querySelector(".btn-remove-comp-image")
+      ?.addEventListener("click", () => {
+        currentItems[idx].featuredImageData = null;
+        renderComponentRows();
+      });
+
     componentsRows.appendChild(row);
+    componentsRows.appendChild(featuredRow);
   });
   updateComponentsEmptyState();
 }
@@ -454,6 +735,8 @@ function addComponentRow() {
     unit: "",
     qty: "",
     unitCost: "0",
+    isFeatured: false,
+    featuredImageData: null,
   });
   renderComponentRows();
 }
@@ -467,10 +750,15 @@ function openCreateModal() {
     '<i class="fa-solid fa-check"></i> حفظ الوصفة';
   fName.value = "";
   fCode.value = "";
+  fFoundationLegacyNote.style.display = "none";
+  renderFoundationItemOptions();
+  loadFoundationFinishedGoods();
   fOutputQty.value = "1";
   fReferencePrice.value = "";
   fExpectedDays.value = "";
   fNotes.value = "";
+  currentImages = [];
+  renderImagesSection();
   renderComponentRows();
   modalOverlay.classList.add("open");
   document.body.style.overflow = "hidden";
@@ -490,8 +778,13 @@ async function openEditModal(id) {
   document.getElementById("modal-save").innerHTML =
     '<i class="fa-solid fa-check"></i> حفظ التعديلات';
 
+  await loadFoundationFinishedGoods();
+  renderFoundationItemOptions(recipe.foundationItemId);
   fName.value = recipe.productName;
   fCode.value = recipe.productCode || "";
+  fFoundationLegacyNote.style.display = recipe.foundationItemId
+    ? "none"
+    : "block";
   fOutputQty.value = recipe.outputQty || "1";
   fReferencePrice.value = recipe.referencePrice || "";
   fExpectedDays.value = recipe.expectedProductionDays || "";
@@ -504,7 +797,11 @@ async function openEditModal(id) {
     qty: i.qty,
     unitCost: i.unitCost,
     available: i.available,
+    isFeatured: i.isFeatured === true,
+    featuredImageData: i.featuredImageData || null,
   }));
+  currentImages = recipe.images || [];
+  renderImagesSection();
   renderComponentRows();
   modalOverlay.classList.add("open");
   document.body.style.overflow = "hidden";
@@ -516,6 +813,16 @@ function closeModal() {
 }
 
 async function saveBom() {
+  const foundationItemId = fFoundationItem.value
+    ? Number(fFoundationItem.value)
+    : null;
+  // ✅ لازم يختار منتج من صفحة البيانات الأساسية عند إنشاء وصفة جديدة —
+  // الوصفات القديمة الغير متربطة (editingId موجود بس foundationItemId فاضي)
+  // تفضل تتحفظ عادي من غير ما نجبرها تتربط دلوقتي.
+  if (!editingId && !foundationItemId) {
+    showToast("اختار المنتج من صفحة البيانات الأساسية الأول", true);
+    return;
+  }
   const productName = fName.value.trim();
   if (!productName) {
     showToast("اسم المنتج مطلوب", true);
@@ -529,6 +836,8 @@ async function saveBom() {
       qty: String(i.qty || "0"),
       unit: i.unit || "pcs",
       unitCost: String(i.unitCost || "0"),
+      isFeatured: i.isFeatured === true,
+      featuredImageData: i.isFeatured ? i.featuredImageData || null : null,
     }));
 
   const payload = {
@@ -539,6 +848,12 @@ async function saveBom() {
     expectedProductionDays: fExpectedDays.value.trim() ? Number(fExpectedDays.value.trim()) : null,
     description: fNotes.value.trim() || null,
   };
+  // ✅ منبعتش foundationItemId: null وإحنا بنعدّل وصفة — عشان لو الصنف
+  // المربوط اتشال من القايمة (اتوقف مثلاً) والفورم ماقدرش يحدده، ميتمسحش
+  // الربط بالغلط. بنبعته بس لو فيه قيمة، أو لو دي وصفة جديدة (foundationItemId مطلوب أصلاً).
+  if (foundationItemId || !editingId) {
+    payload.foundationItemId = foundationItemId;
+  }
 
   try {
     if (editingId) {
@@ -561,11 +876,17 @@ async function saveBom() {
       }
       showToast("تم تحديث الوصفة بنجاح");
     } else {
-      await api("/bom", {
+      const created = await api("/bom", {
         method: "POST",
         body: JSON.stringify({ ...payload, items }),
       });
-      showToast("تمت إضافة الوصفة بنجاح");
+      showToast("تمت إضافة الوصفة بنجاح — تقدر تضيف صور المنتج دلوقتي");
+      // ✅ الصور محتاجة وصفة محفوظة الأول، فبعد الحفظ بنفضل في نفس النافذة
+      // ونحوّلها لوضع التعديل عشان يقدر يضيف الصور على طول من غير ما يقفل
+      // ويفتح تاني.
+      await loadRecipes();
+      await openEditModal(created.id);
+      return;
     }
     closeModal();
     await loadRecipes();

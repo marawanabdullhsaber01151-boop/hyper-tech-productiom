@@ -5,6 +5,11 @@ import { z } from "zod";
 import { inventoryItemsTable } from "./inventory";
 import { productionWorkflowOrdersTable } from "./production-workflow";
 import { systemUsersTable } from "./settings";
+import {
+  foundationWorkCentersTable,
+  foundationMachinesTable,
+  foundationShiftsTable,
+} from "./foundation";
 
 export const productionPlansTable = pgTable("production_plans", {
   id: serial("id").primaryKey(),
@@ -82,9 +87,20 @@ export const planningRunInputsTable = pgTable("planning_run_inputs", {
 export const planningCapacityLoadsTable = pgTable("planning_capacity_loads", {
   id: serial("id").primaryKey(),
   runId: integer("run_id").notNull().references(() => planningRunsTable.id, { onDelete: "cascade" }),
-  workCenterId: integer("work_center_id"),
-  machineId: integer("machine_id"),
-  shiftId: integer("shift_id"),
+  // Phase 4 (Governance & Portal project): were bare integers with no
+  // foreign key — always meant Foundation records, now properly linked so
+  // they can't point at a deleted work center / machine / shift.
+  workCenterId: integer("work_center_id").references(
+    () => foundationWorkCentersTable.id,
+    { onDelete: "set null" },
+  ),
+  machineId: integer("machine_id").references(
+    () => foundationMachinesTable.id,
+    { onDelete: "set null" },
+  ),
+  shiftId: integer("shift_id").references(() => foundationShiftsTable.id, {
+    onDelete: "set null",
+  }),
   loadDate: date("load_date", { mode: "string" }).notNull(),
   requiredMinutes: integer("required_minutes").notNull().default(0),
   availableMinutes: integer("available_minutes").notNull().default(0),

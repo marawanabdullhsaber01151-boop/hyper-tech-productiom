@@ -66,6 +66,9 @@
         <button class="p-cart-btn" id="btn-wishlist" type="button" style="display: none">
           <i class="fa-regular fa-heart"></i> المفضلة
         </button>
+        <button class="p-cart-btn" id="btn-price-inquiries" type="button" style="display: none">
+          <i class="fa-solid fa-tags"></i> طلبات السعر
+        </button>
         <button class="p-cart-btn" id="btn-cart">
           <i class="fa-solid fa-cart-shopping"></i> السلة
           <span class="p-cart-badge" id="cart-count" style="display: none"
@@ -109,16 +112,22 @@
     <!-- Product Detail Modal -->
     <div class="p-overlay" id="product-overlay">
       <div class="p-modal">
-        <div class="p-modal-hero">
+        <div class="p-modal-hero" id="modal-hero">
          <button class="p-modal-close" id="modal-close" type="button" aria-label="إغلاق تفاصيل المنتج">
             <i class="fa-solid fa-xmark"></i>
           </button>
           <i class="fa-solid fa-cube" id="modal-icon"></i>
+          <img id="modal-hero-photo" class="p-modal-hero-photo" alt="" style="display:none" />
         </div>
         <div class="p-modal-body">
+          <div class="p-modal-gallery" id="modal-gallery"></div>
           <div class="p-modal-title" id="modal-title">—</div>
           <div class="p-modal-code" id="modal-code">—</div>
           <p class="p-modal-desc" id="modal-desc">—</p>
+          <div class="p-featured-section" id="modal-featured" style="display:none">
+            <div class="p-featured-title">أهم مكونات هذا المنتج</div>
+            <div class="p-featured-grid" id="modal-featured-grid"></div>
+          </div>
           <button class="p-modal-wishlist" id="modal-wishlist">
             <i class="fa-regular fa-heart"></i> إضافة للمفضلة
           </button>
@@ -137,9 +146,58 @@
               <button id="qty-plus">+</button>
             </div>
           </div>
+          <div class="p-unit-row" id="p-unit-row" style="display:none">
+            <button type="button" class="p-unit-btn active" id="unit-btn-piece" data-unit="piece">بالقطعة</button>
+            <button type="button" class="p-unit-btn" id="unit-btn-carton" data-unit="carton">بالكرتونة</button>
+          </div>
+          <div class="p-unit-equivalent" id="p-unit-equivalent" style="display:none"></div>
+          <div class="p-carton-suggestion" id="p-carton-suggestion" style="display:none">
+            <span id="p-carton-suggestion-text"></span>
+            <button type="button" id="btn-apply-carton-suggestion">أكمل الكمية</button>
+          </div>
           <button class="p-add-btn" id="btn-add-cart">
             <i class="fa-solid fa-cart-plus"></i> إضافة للطلب
           </button>
+          <button class="p-ask-price-btn" id="btn-ask-price">
+            <i class="fa-solid fa-circle-question"></i> مش عارف السعر؟ اطلب سعر الأول
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Phase 6: نافذة طلب السعر -->
+    <div class="p-overlay" id="price-inquiry-overlay">
+      <div class="p-modal p-modal-sm">
+        <div class="p-modal-body">
+          <button class="p-modal-close" id="price-inquiry-close" type="button" aria-label="إغلاق">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+          <div class="p-modal-title">اطلب سعر</div>
+          <p class="p-modal-desc" id="price-inquiry-product">—</p>
+          <div class="p-qty-row">
+            <label>الكمية</label>
+            <div class="p-qty-controls">
+              <button id="pi-qty-minus">−</button>
+              <input type="number" id="price-inquiry-qty" value="1" min="1" />
+              <button id="pi-qty-plus">+</button>
+            </div>
+          </div>
+          <button class="p-add-btn" id="btn-send-price-inquiry">
+            <i class="fa-solid fa-paper-plane"></i> إرسال للمبيعات
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Phase 6: قايمة طلبات السعر بتاعتي -->
+    <div class="p-overlay" id="price-inquiries-list-overlay">
+      <div class="p-modal">
+        <div class="p-modal-body">
+          <button class="p-modal-close" id="price-inquiries-list-close" type="button" aria-label="إغلاق">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+          <div class="p-modal-title">طلبات السعر بتاعتي</div>
+          <div id="price-inquiries-list"></div>
         </div>
       </div>
     </div>

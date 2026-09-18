@@ -88,6 +88,225 @@
   color: var(--text-muted);
 }
 
+/* Phase 1 (Governance & Portal project): badge showing whether a recipe is
+   linked to صفحة البيانات الأساسية (Foundation) or is still a legacy,
+   unlinked recipe. */
+.bom-card-foundation-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  flex-basis: 100%;
+  order: 3;
+}
+.bom-card-foundation-link.linked {
+  background: rgba(59, 130, 246, 0.14);
+  color: #3b82f6;
+}
+.bom-card-foundation-link.unlinked {
+  background: rgba(234, 179, 8, 0.16);
+  color: #b45309;
+}
+.form-hint {
+  display: block;
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.form-hint a {
+  color: var(--accent, #3b82f6);
+  font-weight: 700;
+}
+
+/* Phase 2 (Governance & Portal project): product images — primary + gallery. */
+.images-section {
+  margin-top: 14px;
+  padding: 12px;
+  border: 1px solid var(--border, rgba(148, 163, 184, 0.25));
+  border-radius: 12px;
+}
+.image-primary-row {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+.image-primary-preview {
+  width: 140px;
+  height: 140px;
+  border-radius: 12px;
+  border: 1px dashed var(--border, rgba(148, 163, 184, 0.4));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: center;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: rgba(148, 163, 184, 0.06);
+}
+.image-primary-preview i {
+  font-size: 26px;
+  opacity: 0.6;
+}
+.image-primary-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.image-primary-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.btn-upload-image {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 10px;
+  background: rgba(59, 130, 246, 0.14);
+  color: #3b82f6;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  border: none;
+  transition: background 0.15s ease;
+}
+.btn-upload-image:hover {
+  background: rgba(59, 130, 246, 0.24);
+}
+.btn-upload-image-sm {
+  align-self: flex-start;
+}
+.btn-remove-image {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 10px;
+  background: rgba(239, 68, 68, 0.12);
+  color: #ef4444;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  border: none;
+}
+.btn-remove-image:hover {
+  background: rgba(239, 68, 68, 0.22);
+}
+.image-secondary-row {
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.image-secondary-gallery {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.image-gallery-empty {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.image-thumb {
+  width: 92px;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--border, rgba(148, 163, 184, 0.25));
+}
+.image-thumb img {
+  width: 100%;
+  height: 72px;
+  object-fit: cover;
+  display: block;
+}
+.image-thumb-actions {
+  display: flex;
+}
+.image-thumb-actions button {
+  flex: 1;
+  border: none;
+  background: rgba(148, 163, 184, 0.14);
+  color: var(--text-muted);
+  padding: 5px 0;
+  font-size: 10px;
+  cursor: pointer;
+}
+.image-thumb-actions button:hover:not(:disabled) {
+  background: rgba(148, 163, 184, 0.28);
+}
+.image-thumb-actions button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+.image-thumb-actions button.danger {
+  color: #ef4444;
+}
+@media (max-width: 560px) {
+  .image-primary-preview {
+    width: 100%;
+    height: 160px;
+  }
+  .image-primary-actions {
+    width: 100%;
+  }
+}
+
+/* Phase 3 (Governance & Portal project): per-ingredient "show to customer"
+   toggle + optional image, shown on its own row under each component. */
+.component-featured-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 6px 4px 12px;
+  margin-bottom: 4px;
+  border-bottom: 1px dashed var(--border, rgba(148, 163, 184, 0.2));
+}
+.component-featured-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.component-featured-toggle input {
+  cursor: pointer;
+}
+.component-featured-image {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.comp-featured-thumb {
+  width: 44px;
+  height: 44px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid var(--border, rgba(148, 163, 184, 0.25));
+}
+.btn-remove-comp-image {
+  border: none;
+  background: rgba(239, 68, 68, 0.12);
+  color: #ef4444;
+  border-radius: 8px;
+  padding: 6px 9px;
+  font-size: 11px;
+  cursor: pointer;
+}
+.btn-remove-comp-image:hover {
+  background: rgba(239, 68, 68, 0.22);
+}
+
 .btn-sm {
   display: inline-flex;
   align-items: center;
@@ -618,6 +837,7 @@ textarea.form-input {
   align-items: flex-start;
   justify-content: space-between;
   gap: 10px;
+  flex-wrap: wrap;
 }
 .bom-card-icon {
   width: 46px;

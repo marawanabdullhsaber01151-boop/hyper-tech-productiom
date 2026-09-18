@@ -23,6 +23,7 @@ import {
   bomRecipesTable,
 } from "../db/schema";
 import { requireAuth, requireRole } from "../middleware/auth";
+import { getAssignedSalesByCustomerId } from "../lib/salesAssignment";
 import { PERMISSIONS } from "../lib/permissions";
 import { notifyRole, notifyRoles } from "../lib/notifications";
 import { notifyPortalCustomer } from "../lib/portalNotifications";
@@ -117,6 +118,7 @@ router.get(
           batchRef,
           customerName: items[0].customerName,
           customerPhone: items[0].customerPhone,
+          portalCustomerId: items[0].portalCustomerId,
           priority: items[0].priority,
           neededBy: items[0].neededBy,
           notes: items[0].notes,
@@ -137,7 +139,20 @@ router.get(
             suggestedDeliveryMethod: i.suggestedDeliveryMethod,
           })),
         }));
-      res.json(data);
+
+      // Phase 7 (Governance & Portal project): اسم مسؤول المبيعات لكل عميل،
+      // باستعلام إضافي واحد بس لكل العملاء الظاهرين في الصفحة دي — مش
+      // استعلام منفصل لكل إرسالية (شوف src/lib/salesAssignment.ts).
+      const assignedByCustomer = await getAssignedSalesByCustomerId(
+        data.map((d) => d.portalCustomerId).filter((id): id is number => Boolean(id)),
+      );
+      const dataWithAssignment = data.map((d) => ({
+        ...d,
+        assignedSales: d.portalCustomerId
+          ? assignedByCustomer.get(d.portalCustomerId) ?? null
+          : null,
+      }));
+      res.json(dataWithAssignment);
     } catch (err) {
       next(err);
     }

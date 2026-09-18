@@ -101,7 +101,16 @@ router.get("/foundation/summary", requireRole(...FOUNDATION_ROLES), async (_req,
   } catch (err) { next(err); }
 });
 
-router.get("/foundation/items", requireRole(...FOUNDATION_ROLES), async (req, res, next) => {
+// Phase 1 (Governance & Portal project) audit finding: "hr"/"hr_manager" can
+// create/edit BOM recipes (see PERMISSIONS.bom.write in src/lib/permissions.ts)
+// and now need to pick a Foundation "finished_good" item when linking a
+// recipe, but were not in FOUNDATION_ROLES and so could never call this
+// read-only list endpoint at all. Added them here, read-only, without
+// touching any of the write endpoints below (still FOUNDATION_ROLES only).
+router.get(
+  "/foundation/items",
+  requireRole(...FOUNDATION_ROLES, "hr", "hr_manager"),
+  async (req, res, next) => {
   try {
     const search = typeof req.query.search === "string" ? req.query.search.trim() : "";
     const rows = await db.select().from(foundationItemsTable)
