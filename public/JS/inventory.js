@@ -222,6 +222,72 @@ const f = (name) => overlay.querySelector(`[data-field="${name}"]`);
 const itemSection = document.getElementById("modal-item-fields");
 const moveSection = document.getElementById("modal-move-fields");
 
+// إجابة على سؤال المستخدم: "المخزن المفروض يبقى select من البيانات
+// الأساسية بس" — بدل ما ندخل اسم صنف حر ممكن يبقى تكرار لصنف موجود
+// أصلاً في Foundation، الصنف الجديد بيتاخد من قائمة فعلية من
+// GET /foundation/items (أي نوع: خامة/تام/تحت التشغيل/تعبئة/مستهلكات،
+// المفعّل منها بس). الاسم/الكود/الوحدة بتتملى تلقائيًا ومقفولة
+// (readonly) عشان تفضل مطابقة تمامًا لتعريفها الأساسي، ونحفظ
+// foundationItemId مع الصنف عشان الربط يبقى حقيقي في القاعدة، مش
+// بالاسم بس. الأصناف القديمة اللي اتعملت قبل كده من غير ربط لسه
+// بتتعدل بنفس الطريقة القديمة (اسم حر) عشان معدلش سلوكها الحالي.
+let foundationItemsCache = null;
+const FOUNDATION_TYPE_TO_CAT = {
+  raw_material: "raw",
+  wip: "wip",
+  finished_good: "finished",
+  packaging: "raw",
+  consumable: "raw",
+};
+const FOUNDATION_TYPE_LABELS = {
+  raw_material: "خامة",
+  wip: "تحت التشغيل",
+  finished_good: "منتج تام",
+  packaging: "تعبئة وتغليف",
+  consumable: "مستهلكات",
+};
+async function loadFoundationItemsForSelect() {
+  if (foundationItemsCache) return foundationItemsCache;
+  try {
+    const all = await apiCall("/foundation/items");
+    foundationItemsCache = (all || []).filter((it) => it.active);
+  } catch (e) {
+    foundationItemsCache = [];
+  }
+  return foundationItemsCache;
+}
+async function populateFoundationItemSelect(selectedId) {
+  const select = document.getElementById("foundation-item-select");
+  const hint = document.getElementById("foundation-item-hint");
+  const list = await loadFoundationItemsForSelect();
+  select.innerHTML =
+    '<option value="">-- اختار الصنف --</option>' +
+    list
+      .map(
+        (it) =>
+          `<option value="${it.id}">${it.code} — ${it.name} (${FOUNDATION_TYPE_LABELS[it.itemType] || it.itemType})</option>`,
+      )
+      .join("");
+  if (list.length === 0) {
+    hint.textContent = "مفيش أصناف نشطة في البيانات الأساسية — ضيف الصنف هناك أولًا";
+  } else {
+    hint.textContent = "";
+  }
+  select.value = selectedId ? String(selectedId) : "";
+}
+function applyFoundationItemToForm(id) {
+  const item = (foundationItemsCache || []).find((it) => String(it.id) === String(id));
+  if (!item) return;
+  f("name").value = item.name;
+  f("code").value = item.code;
+  f("unit").value = item.baseUnit;
+  f("cat").value = FOUNDATION_TYPE_TO_CAT[item.itemType] || "raw";
+}
+document.getElementById("foundation-item-select").addEventListener("change", (e) => {
+  if (e.target.value) applyFoundationItemToForm(e.target.value);
+  else { f("name").value = ""; f("code").value = ""; f("unit").value = ""; }
+});
+
 function setModalMode(mode) {
   isMovementMode = mode === "movement";
   if (itemSection) itemSection.style.display = isMovementMode ? "none" : "flex";
@@ -239,6 +305,11 @@ function openCreateModal() {
   f("qty").value = "";
   f("min").value = "";
   f("unitPrice").value = "";
+  document.getElementById("foundation-item-select").closest(".form-row").style.display = "";
+  f("name").setAttribute("readonly", true);
+  f("code").setAttribute("readonly", true);
+  f("unit").setAttribute("readonly", true);
+  populateFoundationItemSelect(null);
   overlay.classList.add("open");
   document.body.style.overflow = "hidden";
 }
@@ -259,6 +330,23 @@ function openEditModal(id) {
   f("min").value = item.minQty;
   f("unitPrice").value = item.unitPrice;
   f("notes").value = "";
+  // صنف قديم مربوط أصلًا بالبيانات الأساسية: نعرض نفس القائمة مقفولة على
+  // اختياره الحالي عشان الاسم/الكود يفضلوا متزامنين معاها. صنف قديم غير
+  // مربوط (من قبل هذا التعديل): نخفي القائمة تمامًا ونسيب الاسم قابل
+  // للتعديل الحر زي ما كان، عشان معدلش سلوك الأصناف الموجودة فعلًا.
+  const foundationRow = document.getElementById("foundation-item-select").closest(".form-row");
+  if (item.foundationItemId) {
+    foundationRow.style.display = "";
+    f("name").setAttribute("readonly", true);
+    f("code").setAttribute("readonly", true);
+    f("unit").setAttribute("readonly", true);
+    populateFoundationItemSelect(item.foundationItemId);
+  } else {
+    foundationRow.style.display = "none";
+    f("name").removeAttribute("readonly");
+    f("code").removeAttribute("readonly");
+    f("unit").removeAttribute("readonly");
+  }
   overlay.classList.add("open");
   document.body.style.overflow = "hidden";
 }
@@ -342,6 +430,13 @@ async function saveItem() {
   const qty = parseFloat(f("qty").value) || 0;
   const min = parseFloat(f("min").value) || 0;
   const unitPrice = parseFloat(f("unitPrice").value) || 0;
+  const foundationItemId = document.getElementById("foundation-item-select").value || null;
+  // صنف جديد لازم يتربط بصنف موجود فعلًا في البيانات الأساسية — مفيش اسم
+  // حر تاني هنا (كان بيسمح بتكرار أصناف مش متطابقة مع Foundation).
+  if (!editingId && !foundationItemId) {
+    showToast("اختار الصنف من البيانات الأساسية أولًا", "warn");
+    return;
+  }
   if (!name) {
     showToast("من فضلك أدخل اسم الصنف", "warn");
     return;
@@ -356,6 +451,7 @@ async function saveItem() {
     minQty: String(min),
     unitPrice: String(unitPrice),
   };
+  if (foundationItemId) data.foundationItemId = Number(foundationItemId);
   saveBtn.disabled = true;
   try {
     if (editingId) {

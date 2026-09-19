@@ -65,6 +65,15 @@ export const engineeringProductVersionsTable = pgTable(
     changeReason: text("change_reason"),
     approvedBy: integer("approved_by").references(() => systemUsersTable.id),
     approvedAt: timestamp("approved_at", { withTimezone: true }),
+    // Phase 04 (delivery 1): governance additions. status now also accepts
+    // "in_review", "released", "superseded", "retired" — see
+    // ../domain/engineering-governance.ts for the allowed transitions.
+    validationStatus: text("validation_status").notNull().default("not_validated"),
+    validatedAt: timestamp("validated_at", { withTimezone: true }),
+    validationIssues: jsonb("validation_issues"),
+    releasedBy: integer("released_by").references(() => systemUsersTable.id),
+    releasedAt: timestamp("released_at", { withTimezone: true }),
+    supersededByVersionId: integer("superseded_by_version_id"),
     createdBy: integer("created_by").references(() => systemUsersTable.id),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -76,6 +85,47 @@ export const engineeringProductVersionsTable = pgTable(
     productStatusIdx: index("engineering_product_versions_status_idx").on(
       table.productId,
       table.status,
+    ),
+  }),
+);
+
+// Phase 04 (delivery 1): structured, editable BOM components — replaces
+// the untyped bom_snapshot jsonb array as the source of truth while a
+// version is draft/in_review. bom_snapshot itself becomes a frozen copy of
+// these rows, written once at release time (see freezeVersionSnapshot in
+// ../lib/engineering-governance.ts), never edited afterward.
+export const engineeringBomComponentsTable = pgTable(
+  "engineering_bom_components",
+  {
+    id: serial("id").primaryKey(),
+    productVersionId: integer("product_version_id")
+      .notNull()
+      .references(() => engineeringProductVersionsTable.id, {
+        onDelete: "cascade",
+      }),
+    lineNo: integer("line_no").notNull(),
+    componentType: text("component_type").notNull().default("raw_material"),
+    foundationItemId: integer("foundation_item_id").references(
+      () => foundationItemsTable.id,
+    ),
+    subAssemblyProductId: integer("sub_assembly_product_id").references(
+      () => engineeringProductsTable.id,
+    ),
+    qty: numeric("qty", { precision: 14, scale: 4 }).notNull(),
+    unit: text("unit").notNull(),
+    scrapFactorPct: numeric("scrap_factor_pct", { precision: 6, scale: 3 })
+      .notNull()
+      .default("0"),
+    isAlternate: boolean("is_alternate").notNull().default(false),
+    alternateGroup: text("alternate_group"),
+    notes: text("notes"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => ({
+    versionIdx: index("engineering_bom_components_version_idx").on(
+      table.productVersionId,
     ),
   }),
 );
@@ -165,6 +215,46 @@ export const createRoutingSchema = z.object({
   workersRequired: z.number().int().positive().default(1),
   qualityPoint: z.boolean().default(false),
   safetyInstructions: z.string().trim().max(2000).optional().nullable(),
+});
+
+export const createBomComponentSchema = z
+  .object({
+    lineNo: z.number().int().positive(),
+    componentType: z
+      .enum([
+        "raw_material",
+        "sub_assembly",
+        "substitute",
+        "co_product",
+        "by_product",
+      ])
+      .default("raw_material"),
+    foundationItemId: z.number().int().positive().optional().nullable(),
+    subAssemblyProductId: z.number().int().positive().optional().nullable(),
+    qty: z.union([z.string(), z.number()]).refine(
+      (v) => Number(v) > 0,
+      { message: "الكمية يجب أن تكون أكبر من صفر" },
+    ),
+    unit: z.string().trim().min(1).max(20),
+    scrapFactorPct: z.union([z.string(), z.number()]).default(0),
+    isAlternate: z.boolean().default(false),
+    alternateGroup: z.string().trim().max(80).optional().nullable(),
+    notes: z.string().trim().max(1000).optional().nullable(),
+  })
+  .refine(
+    (v) => Boolean(v.foundationItemId) !== Boolean(v.subAssemblyProductId),
+    {
+      message: "حدد صنفًا أساسيًا أو منتجًا فرعيًا واحدًا فقط، وليس الاثنين معًا أو لا شيء",
+    },
+  );
+
+export const decideEngineeringVersionSchema = z.object({
+  reason: z.string().trim().min(3, "سبب القرار مطلوب").optional(),
+});
+
+export const supersedeEngineeringVersionSchema = z.object({
+  supersededByVersionId: z.number().int().positive(),
+  reason: z.string().trim().min(3, "سبب الاستبدال مطلوب"),
 });
 
 export const createChangeRequestSchema = z.object({

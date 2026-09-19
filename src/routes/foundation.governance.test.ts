@@ -50,7 +50,15 @@ describe("phase 03 delivery 3 — governed master data route wiring", () => {
   it("the PATCH handler still records a version snapshot inside the same transaction as the update", () => {
     const patchIndex = source.indexOf('router.patch("/foundation/items/:id"');
     expect(patchIndex).toBeGreaterThan(-1);
-    const patchBody = source.slice(patchIndex, patchIndex + 1800);
+    // Wide enough to comfortably outlast the USE_REQUEST_CHANGE_ENDPOINT and
+    // inactivation-impact guard blocks that sit between the route
+    // registration and db.transaction(...) — a previous, narrower window
+    // (1800 chars) broke this exact test the first time either guard block
+    // grew, with no change to the actual behavior being checked. Sliced to
+    // the next route registration instead of a fixed length so it can't
+    // happen again the same way.
+    const nextRouteIndex = source.indexOf("router.", patchIndex + 40);
+    const patchBody = source.slice(patchIndex, nextRouteIndex > -1 ? nextRouteIndex : patchIndex + 4000);
     const txIndex = patchBody.indexOf("db.transaction");
     const versionIndex = patchBody.indexOf("recordFoundationItemVersion");
     const updateIndex = patchBody.indexOf(".update(foundationItemsTable)");
