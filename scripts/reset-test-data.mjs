@@ -32,7 +32,23 @@ import pkg from "pg";
 
 const { Pool } = pkg;
 
-const ALWAYS_PROTECTED = ["system_users", "system_settings", "_migrations_applied"];
+// ⚠️ هذه القائمة اتوسّعت بعد حادثة حقيقية: تشغيل هذا السكريبت قبل
+// إضافة الجداول أدناه مسح phase0_number_sequences فعليًا على بيئة
+// المستخدم، فبطلت كل عملية إنشاء أمر إنتاج/دفعة/طلب شراء... (رسالة
+// الخطأ: "ترقيم المرحلة 00 غير مُعرّف: production_order") لحد ما
+// استُعيدت البيانات يدويًا (scripts/restore-seeded-config.sql).
+// أي جدول مستقبلي يتزرع بصفوف تهيئة أساسية من migration (مش بيانات
+// اختبار المستخدم) لازم يتضاف هنا فورًا، مش بعد ما حد يتفاجئ.
+const ALWAYS_PROTECTED = [
+  "system_users",
+  "system_settings",
+  "_migrations_applied",
+  "phase0_number_sequences", // ترقيم أوامر الإنتاج/الدفعات/طلبات الشراء...
+  "approval_policies", // سقوف اعتماد المبيعات/المشتريات/المحاسبة
+  "sod_rules", // قواعد فصل المهام (مين يقدر يعتمد اللي هو نفسه أنشأه)
+  "foundation_state_transitions", // قواعد أداة اختبار انتقال الحالة
+  "delivery_method_rules", // قاعدة التوصيل الافتراضية
+];
 
 function parseArgs(argv) {
   const dryRun = argv.includes("--dry-run");
