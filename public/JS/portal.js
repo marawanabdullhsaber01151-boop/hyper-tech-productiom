@@ -989,24 +989,35 @@ async function openProduct(id) {
   activeProduct = detail;
   // Phase 2 (Governance & Portal project): لو فيه صورة رئيسية نعرضها في الهيرو
   // بدل الأيقونة، والصور الفرعية كشرايط صغيرة تحتها قابلة للضغط.
-  const heroIcon = document.getElementById("modal-icon");
+  // (تحديث لاحق: حالة "لا توجد صورة" بقت واجهة واضحة بدل أيقونة مكبّرة
+  // لوحدها، وإضافة أسهم تنقل + زرار تكبير + lightbox حقيقي.)
+  const heroEmpty = document.getElementById("modal-icon-wrap");
   const heroPhoto = document.getElementById("modal-hero-photo");
+  const heroZoom = document.getElementById("modal-hero-zoom");
+  const heroPrev = document.getElementById("modal-hero-prev");
+  const heroNext = document.getElementById("modal-hero-next");
   const gallery = document.getElementById("modal-gallery");
   const allImages = [
     ...(detail.primaryImage ? [detail.primaryImage] : []),
     ...(detail.secondaryImages || []),
   ];
+  window.__portalProductImages = allImages;
+  window.__portalProductImageIndex = 0;
   if (allImages.length) {
-    heroIcon.style.display = "none";
+    heroEmpty.style.display = "none";
     heroPhoto.style.display = "block";
     heroPhoto.src = allImages[0];
     heroPhoto.alt = detail.productName;
+    heroZoom.style.display = "flex";
   } else {
     heroPhoto.style.display = "none";
     heroPhoto.removeAttribute("src");
-    heroIcon.style.display = "";
-    heroIcon.className = `fa-solid ${iconFor(detail.productName)}`;
+    heroEmpty.style.display = "flex";
+    heroZoom.style.display = "none";
   }
+  const hasMultiple = allImages.length > 1;
+  heroPrev.style.display = hasMultiple ? "flex" : "none";
+  heroNext.style.display = hasMultiple ? "flex" : "none";
   // الشرايط تبان بس لو فيه أكتر من صورة واحدة
   if (allImages.length > 1) {
     gallery.innerHTML = allImages
@@ -1016,11 +1027,9 @@ async function openProduct(id) {
       )
       .join("");
     gallery.style.display = "flex";
-    window.__portalProductImages = allImages;
   } else {
     gallery.innerHTML = "";
     gallery.style.display = "none";
-    window.__portalProductImages = allImages;
   }
   document.getElementById("modal-title").textContent = detail.productName;
   document.getElementById("modal-code").textContent = detail.productCode || "—";
@@ -1086,13 +1095,115 @@ function closeProductModal() {
 function showProductImage(index) {
   const images = window.__portalProductImages || [];
   if (!images[index]) return;
+  window.__portalProductImageIndex = index;
   const heroPhoto = document.getElementById("modal-hero-photo");
-  heroPhoto.src = images[index];
+  // Cross-fade بدل التبديل المفاجئ للصورة: نطفي الصورة، نغيّر src وقت
+  // ما تكون مختفية، ونرجّعها تظهر — طلب "انتقالات حلوة وواضحة".
+  heroPhoto.classList.add("p-fading");
+  window.setTimeout(() => {
+    heroPhoto.src = images[index];
+    heroPhoto.classList.remove("p-fading");
+  }, 180);
   document
     .querySelectorAll("#modal-gallery .p-gallery-thumb")
     .forEach((el, i) => el.classList.toggle("active", i === index));
+  if (lightboxEl.classList.contains("open")) openLightbox(index);
 }
 window.showProductImage = showProductImage;
+
+function stepProductImage(delta) {
+  const images = window.__portalProductImages || [];
+  if (images.length < 2) return;
+  const current = window.__portalProductImageIndex || 0;
+  const next = (current + delta + images.length) % images.length;
+  showProductImage(next);
+}
+
+/* ── Lightbox: عرض مكبّر للصور مع تنقل وتكبير إضافي بالضغط ── */
+const lightboxEl = document.getElementById("image-lightbox");
+const lightboxImg = document.getElementById("lightbox-img");
+const lightboxStage = document.getElementById("lightbox-stage");
+
+function openLightbox(index) {
+  const images = window.__portalProductImages || [];
+  if (!images.length) return;
+  window.__portalProductImageIndex = index;
+  lightboxImg.src = images[index];
+  lightboxStage.classList.remove("p-zoomed");
+  lightboxImg.style.transform = "";
+  const hasMultiple = images.length > 1;
+  document.getElementById("lightbox-prev").style.display = hasMultiple ? "flex" : "none";
+  document.getElementById("lightbox-next").style.display = hasMultiple ? "flex" : "none";
+  document.getElementById("lightbox-thumbs").innerHTML = hasMultiple
+    ? images
+        .map(
+          (src, i) =>
+            `<button type="button" class="${i === index ? "active" : ""}" onclick="openLightbox(${i})"><img src="${src}" alt="" /></button>`,
+        )
+        .join("")
+    : "";
+  lightboxEl.classList.add("open");
+  lightboxEl.setAttribute("aria-hidden", "false");
+  document.body.style.overflow = "hidden";
+  // نزامن الصورة الرئيسية في المودال والشرايط تحتها كمان
+  document
+    .querySelectorAll("#modal-gallery .p-gallery-thumb")
+    .forEach((el, i) => el.classList.toggle("active", i === index));
+  const heroPhoto = document.getElementById("modal-hero-photo");
+  if (heroPhoto.src !== images[index]) heroPhoto.src = images[index];
+}
+window.openLightbox = openLightbox;
+
+function closeLightbox() {
+  lightboxEl.classList.remove("open");
+  lightboxEl.setAttribute("aria-hidden", "true");
+  lightboxStage.classList.remove("p-zoomed");
+  lightboxImg.style.transform = "";
+  document.body.style.overflow = "";
+}
+
+function toggleLightboxZoom(event) {
+  const zoomed = lightboxStage.classList.toggle("p-zoomed");
+  if (!zoomed) {
+    lightboxImg.style.transform = "";
+    return;
+  }
+  // نكبّر ونركّز حوالين نقطة الضغط عشان التكبير يبان طبيعي، مش دايمًا من النص.
+  const rect = lightboxStage.getBoundingClientRect();
+  const originX = ((event.clientX - rect.left) / rect.width) * 100;
+  const originY = ((event.clientY - rect.top) / rect.height) * 100;
+  lightboxImg.style.transformOrigin = `${originX}% ${originY}%`;
+}
+
+document.getElementById("modal-hero-zoom").addEventListener("click", () => {
+  openLightbox(window.__portalProductImageIndex || 0);
+});
+document.getElementById("modal-hero-photo").addEventListener("click", () => {
+  if ((window.__portalProductImages || []).length) openLightbox(window.__portalProductImageIndex || 0);
+});
+document.getElementById("modal-hero-prev").addEventListener("click", () => stepProductImage(-1));
+document.getElementById("modal-hero-next").addEventListener("click", () => stepProductImage(1));
+document.getElementById("lightbox-close").addEventListener("click", closeLightbox);
+document.getElementById("lightbox-prev").addEventListener("click", () => {
+  const images = window.__portalProductImages || [];
+  const current = window.__portalProductImageIndex || 0;
+  openLightbox((current - 1 + images.length) % images.length);
+});
+document.getElementById("lightbox-next").addEventListener("click", () => {
+  const images = window.__portalProductImages || [];
+  const current = window.__portalProductImageIndex || 0;
+  openLightbox((current + 1) % images.length);
+});
+lightboxStage.addEventListener("click", toggleLightboxZoom);
+lightboxEl.addEventListener("click", (e) => {
+  if (e.target === lightboxEl) closeLightbox();
+});
+document.addEventListener("keydown", (e) => {
+  if (!lightboxEl.classList.contains("open")) return;
+  if (e.key === "Escape") closeLightbox();
+  else if (e.key === "ArrowLeft") document.getElementById("lightbox-next").click();
+  else if (e.key === "ArrowRight") document.getElementById("lightbox-prev").click();
+});
 
 async function toggleWishlist(id, event) {
   event?.stopPropagation();

@@ -582,6 +582,7 @@ function renderComponentRows() {
     const row = document.createElement("div");
     row.className = "components-row";
     const isLinked = !!item.inventoryItemId;
+    const sourceIsInventory = isLinked || !!item._pendingInventoryPick;
     const availabilityBadge =
       item.id && !isLinked ?
         item.available ?
@@ -598,8 +599,8 @@ function renderComponentRows() {
         }
       </div>
       <select class="form-input comp-source">
-        <option value="manual" ${!isLinked ? "selected" : ""}>يدوي</option>
-        <option value="inventory" ${isLinked ? "selected" : ""}>من المخزون</option>
+        <option value="manual" ${!sourceIsInventory ? "selected" : ""}>يدوي</option>
+        <option value="inventory" ${sourceIsInventory ? "selected" : ""}>من المخزون</option>
       </select>
       <input type="text" class="form-input comp-unit" placeholder="الوحدة" value="${escHtml(item.unit)}" ${isLinked ? "readonly" : ""} />
       <input type="number" class="form-input comp-qty" placeholder="0" min="0" step="0.001" value="${escHtml(item.qty)}" />
@@ -737,6 +738,10 @@ function addComponentRow() {
     unitCost: "0",
     isFeatured: false,
     featuredImageData: null,
+    // القاعدة الجديدة: أي مكوّن جديد يبدأ بقائمة اختيار حقيقية من المخزون
+    // بدل خانة اسم حرة — "يدوي" لسه متاح كخيار احتياطي من قائمة "المصدر"
+    // لو الصنف مش موجود في المخزون فعلًا، لكن مش الافتراضي.
+    _pendingInventoryPick: true,
   });
   renderComponentRows();
 }
@@ -845,7 +850,14 @@ async function saveBom() {
     productCode: fCode.value.trim() || null,
     outputQty: String(fOutputQty.value || "1"),
     referencePrice: fReferencePrice.value.trim() ? String(fReferencePrice.value.trim()) : null,
-    expectedProductionDays: fExpectedDays.value.trim() ? Number(fExpectedDays.value.trim()) : null,
+    // expectedProductionDays مربوط بعمود integer في القاعدة — مينفعش
+    // يتبعت كسر زي 0.1. الحقل نفسه فيه step="1" بس ده بيتحكم في زرار
+    // الأسهم بس مش الكتابة اليدوية، فبنقرّب أي رقم مكتوب يدويًا لأقرب
+    // عدد صحيح (بحد أدنى يوم واحد) بدل ما نسيب السيرفر يرفضه برسالة
+    // تقنية للمستخدم.
+    expectedProductionDays: fExpectedDays.value.trim()
+      ? Math.max(1, Math.round(Number(fExpectedDays.value.trim())))
+      : null,
     description: fNotes.value.trim() || null,
   };
   // ✅ منبعتش foundationItemId: null وإحنا بنعدّل وصفة — عشان لو الصنف

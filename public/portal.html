@@ -116,8 +116,20 @@
          <button class="p-modal-close" id="modal-close" type="button" aria-label="إغلاق تفاصيل المنتج">
             <i class="fa-solid fa-xmark"></i>
           </button>
-          <i class="fa-solid fa-cube" id="modal-icon"></i>
+          <div class="p-modal-hero-empty" id="modal-icon-wrap">
+            <i class="fa-solid fa-image" id="modal-icon"></i>
+            <span>لا توجد صورة لهذا المنتج بعد</span>
+          </div>
           <img id="modal-hero-photo" class="p-modal-hero-photo" alt="" style="display:none" />
+          <button class="p-hero-zoom" id="modal-hero-zoom" type="button" aria-label="تكبير الصورة" style="display:none">
+            <i class="fa-solid fa-magnifying-glass-plus"></i>
+          </button>
+          <button class="p-hero-nav p-hero-nav-prev" id="modal-hero-prev" type="button" aria-label="الصورة السابقة" style="display:none">
+            <i class="fa-solid fa-chevron-right"></i>
+          </button>
+          <button class="p-hero-nav p-hero-nav-next" id="modal-hero-next" type="button" aria-label="الصورة التالية" style="display:none">
+            <i class="fa-solid fa-chevron-left"></i>
+          </button>
         </div>
         <div class="p-modal-body">
           <div class="p-modal-gallery" id="modal-gallery"></div>
@@ -163,6 +175,24 @@
           </button>
         </div>
       </div>
+    </div>
+
+    <!-- Image Lightbox: عرض مكبّر لصور المنتج مع تنقل وتكبير إضافي -->
+    <div class="p-lightbox" id="image-lightbox" aria-hidden="true">
+      <button class="p-lightbox-close" id="lightbox-close" type="button" aria-label="إغلاق">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+      <button class="p-lightbox-nav p-lightbox-nav-prev" id="lightbox-prev" type="button" aria-label="الصورة السابقة">
+        <i class="fa-solid fa-chevron-right"></i>
+      </button>
+      <div class="p-lightbox-stage" id="lightbox-stage">
+        <img id="lightbox-img" alt="" />
+      </div>
+      <button class="p-lightbox-nav p-lightbox-nav-next" id="lightbox-next" type="button" aria-label="الصورة التالية">
+        <i class="fa-solid fa-chevron-left"></i>
+      </button>
+      <div class="p-lightbox-hint">اضغط على الصورة للتكبير — واسحب للتحريك وأنت مكبّر</div>
+      <div class="p-lightbox-thumbs" id="lightbox-thumbs"></div>
     </div>
 
     <!-- Phase 6: نافذة طلب السعر -->

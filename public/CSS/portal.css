@@ -1610,3 +1610,225 @@
           width: 100%;
         }
       }
+
+/* ── Product gallery polish + lightbox (requested: real photo display,
+   a proper "no image" placeholder, smooth transitions between multiple
+   images, click-to-zoom) ── */
+.p-modal-hero-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--text-muted);
+  background: linear-gradient(
+    135deg,
+    var(--accent-soft),
+    rgba(59, 130, 246, 0.08)
+  );
+}
+.p-modal-hero-empty i {
+  font-size: 40px;
+  color: var(--accent);
+  opacity: 0.45;
+}
+.p-modal-hero-empty span {
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.p-modal-hero-photo {
+  opacity: 1;
+  transition: opacity 0.22s ease;
+}
+.p-modal-hero-photo.p-fading {
+  opacity: 0;
+}
+.p-hero-zoom {
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(15, 17, 26, 0.55);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: zoom-in;
+  backdrop-filter: blur(2px);
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+.p-hero-zoom:hover {
+  background: rgba(15, 17, 26, 0.8);
+  transform: scale(1.06);
+}
+.p-hero-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(15, 17, 26, 0.5);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.p-hero-nav:hover {
+  background: rgba(15, 17, 26, 0.8);
+}
+.p-hero-nav-prev {
+  right: 10px;
+}
+.p-hero-nav-next {
+  left: 10px;
+}
+.p-featured-img-placeholder {
+  background: linear-gradient(
+    135deg,
+    rgba(148, 163, 184, 0.14),
+    rgba(148, 163, 184, 0.06)
+  );
+}
+
+/* ── Lightbox ── */
+.p-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 600;
+  background: rgba(6, 7, 12, 0.92);
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+.p-lightbox.open {
+  display: flex;
+}
+.p-lightbox-stage {
+  flex: 1;
+  width: 100%;
+  max-width: 900px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  cursor: zoom-in;
+}
+.p-lightbox-stage.p-zoomed {
+  cursor: grab;
+}
+.p-lightbox-stage.p-zoomed:active {
+  cursor: grabbing;
+}
+#lightbox-img {
+  max-width: 100%;
+  max-height: 78vh;
+  object-fit: contain;
+  border-radius: 10px;
+  transition: transform 0.2s ease, opacity 0.18s ease;
+  transform-origin: center center;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+.p-lightbox-stage.p-zoomed #lightbox-img {
+  transform: scale(2.2);
+}
+.p-lightbox-close {
+  position: absolute;
+  top: 18px;
+  left: 18px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.p-lightbox-close:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+.p-lightbox-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+.p-lightbox-nav:hover {
+  background: rgba(255, 255, 255, 0.22);
+  transform: translateY(-50%) scale(1.06);
+}
+.p-lightbox-nav-prev {
+  right: 16px;
+}
+.p-lightbox-nav-next {
+  left: 16px;
+}
+.p-lightbox-hint {
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 12px;
+  margin-top: 10px;
+}
+.p-lightbox-thumbs {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+  max-width: 100%;
+}
+.p-lightbox-thumbs button {
+  width: 54px;
+  height: 42px;
+  padding: 0;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 2px solid transparent;
+  background: none;
+  cursor: pointer;
+  opacity: 0.6;
+  transition: opacity 0.15s ease, border-color 0.15s ease;
+}
+.p-lightbox-thumbs button.active {
+  opacity: 1;
+  border-color: var(--accent);
+}
+.p-lightbox-thumbs img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+@media (max-width: 640px) {
+  .p-lightbox-nav {
+    width: 38px;
+    height: 38px;
+  }
+  .p-lightbox-thumbs button {
+    width: 44px;
+    height: 34px;
+  }
+}
