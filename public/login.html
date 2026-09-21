@@ -130,6 +130,23 @@
         <button id="submit" type="submit">تسجيل الدخول</button>
         <div id="message" role="alert"></div>
       </form>
+      <!-- الخطوة الثانية: تظهر بس لو الحساب مفعّل عليه مصادقة ثنائية (2FA) -->
+      <form id="totp-form" style="display: none">
+        <label for="totp-code">رمز التحقق من تطبيق المصادقة</label>
+        <input
+          id="totp-code"
+          name="totp-code"
+          inputmode="numeric"
+          autocomplete="one-time-code"
+          placeholder="123456 — أو كود احتياطي زي XXXX-XXXX"
+          autofocus
+        />
+        <button id="totp-submit" type="submit">تأكيد</button>
+        <button id="totp-back" type="button" style="background: transparent; color: #85a0b2; margin-top: 10px; box-shadow: none">
+          رجوع
+        </button>
+        <div id="totp-message" role="alert" style="min-height: 22px; color: #ffb4ae; margin: 14px 0 0; font-size: 14px"></div>
+      </form>
       <p class="hint">
         لأول تشغيل، تظهر بيانات المدير الأولي في نافذة التشغيل على جهاز المسؤول.
       </p>

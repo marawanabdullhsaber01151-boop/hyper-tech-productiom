@@ -227,6 +227,7 @@ const avatarColors = [
   await refreshUsers();
   renderSystemInfo();
   bindEvents();
+  await loadTfaStatus();
 })();
 
 // ---- Company ----
@@ -333,6 +334,99 @@ async function changeMyPassword() {
     showToast("تم تغيير كلمة المرور بنجاح");
   } catch (e) {
     showToast("تعذر تغيير كلمة المرور: " + e.message, "warn");
+  }
+}
+
+// ---- Security hardening: التحقق بخطوتين (2FA) ----
+let tfaPendingSecret = null;
+async function loadTfaStatus() {
+  try {
+    const status = await apiCall("/auth/2fa/status");
+    renderTfaPanel(status.totpEnabled);
+  } catch (e) {
+    document.getElementById("tfa-status").textContent = "تعذر تحميل حالة المصادقة الثنائية";
+  }
+}
+function renderTfaPanel(enabled) {
+  const statusEl = document.getElementById("tfa-status");
+  const actionsEl = document.getElementById("tfa-actions");
+  document.getElementById("tfa-setup-panel").style.display = "none";
+  document.getElementById("tfa-backup-codes-panel").style.display = "none";
+  if (enabled) {
+    statusEl.innerHTML = '<span style="color: var(--green)"><i class="fa-solid fa-circle-check"></i> مفعّلة</span>';
+    actionsEl.innerHTML = `
+      <button class="btn-ghost" id="tfa-regen-btn"><i class="fa-solid fa-rotate"></i> توليد أكواد احتياطية جديدة</button>
+      <button class="btn-ghost" id="tfa-disable-btn" style="color: var(--red)"><i class="fa-solid fa-shield-halved"></i> تعطيل</button>`;
+    document.getElementById("tfa-regen-btn").onclick = regenerateBackupCodes;
+    document.getElementById("tfa-disable-btn").onclick = disableTfa;
+  } else {
+    statusEl.innerHTML = '<span style="color: var(--text-muted)"><i class="fa-solid fa-circle-xmark"></i> غير مفعّلة</span>';
+    actionsEl.innerHTML = `<button class="btn-primary" id="tfa-start-setup-btn"><i class="fa-solid fa-shield-halved"></i> تفعيل المصادقة الثنائية</button>`;
+    document.getElementById("tfa-start-setup-btn").onclick = startTfaSetup;
+  }
+}
+async function startTfaSetup() {
+  try {
+    const result = await apiCall("/auth/2fa/setup", { method: "POST" });
+    tfaPendingSecret = result.secret;
+    document.getElementById("tfa-secret").textContent = result.secret;
+    document.getElementById("tfa-setup-panel").style.display = "";
+    document.getElementById("tfa-actions").innerHTML =
+      '<button class="btn-primary" id="tfa-confirm-btn"><i class="fa-solid fa-check"></i> تأكيد وتفعيل</button>';
+    document.getElementById("tfa-confirm-btn").onclick = confirmTfaSetup;
+    document.getElementById("tfa-confirm-code").focus();
+  } catch (e) {
+    showToast("تعذر بدء إعداد المصادقة الثنائية: " + e.message, "warn");
+  }
+}
+async function confirmTfaSetup() {
+  const code = getValue("tfa-confirm-code").trim();
+  if (!code) { showToast("أدخل الكود من تطبيق المصادقة", "warn"); return; }
+  try {
+    const result = await apiCall("/auth/2fa/confirm", {
+      method: "POST",
+      body: JSON.stringify({ code }),
+    });
+    document.getElementById("tfa-setup-panel").style.display = "none";
+    showBackupCodes(result.backupCodes);
+    renderTfaPanel(true);
+    showToast("تم تفعيل المصادقة الثنائية بنجاح");
+  } catch (e) {
+    showToast("تعذر التأكيد: " + e.message, "warn");
+  }
+}
+function showBackupCodes(codes) {
+  const panel = document.getElementById("tfa-backup-codes-panel");
+  const list = document.getElementById("tfa-backup-codes-list");
+  list.innerHTML = codes.map((c) => `<div>${c}</div>`).join("");
+  panel.style.display = "";
+}
+async function disableTfa() {
+  const password = prompt("أدخل كلمة المرور الحالية لتعطيل المصادقة الثنائية:");
+  if (!password) return;
+  try {
+    await apiCall("/auth/2fa/disable", {
+      method: "POST",
+      body: JSON.stringify({ password }),
+    });
+    showToast("تم تعطيل المصادقة الثنائية");
+    renderTfaPanel(false);
+  } catch (e) {
+    showToast("تعذر التعطيل: " + e.message, "warn");
+  }
+}
+async function regenerateBackupCodes() {
+  const password = prompt("أدخل كلمة المرور الحالية لتوليد أكواد احتياطية جديدة (القديمة هتتلغي):");
+  if (!password) return;
+  try {
+    const result = await apiCall("/auth/2fa/regenerate-backup-codes", {
+      method: "POST",
+      body: JSON.stringify({ password }),
+    });
+    showBackupCodes(result.backupCodes);
+    showToast("تم توليد أكواد احتياطية جديدة");
+  } catch (e) {
+    showToast("تعذر التوليد: " + e.message, "warn");
   }
 }
 
@@ -747,6 +841,10 @@ function bindEvents() {
   document
     .getElementById("btn-change-my-password")
     ?.addEventListener("click", changeMyPassword);
+  document.getElementById("tfa-copy-secret")?.addEventListener("click", () => {
+    navigator.clipboard?.writeText(document.getElementById("tfa-secret").textContent || "");
+    showToast("تم نسخ الكود");
+  });
   // Notifications
   document
     .getElementById("btn-save-notif")

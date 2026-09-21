@@ -51,6 +51,34 @@ export function generateToken(payload: SessionTokenPayload): string {
   });
 }
 
+// Security hardening — 2FA pre-auth token: issued right after a correct
+// password when the account has TOTP enabled, before any real session
+// exists. Deliberately a distinct claim shape ({mfaUserId, purpose}, no
+// sessionId) and a short 5-minute expiry, signed with the same JWT_SECRET,
+// so it can never be accepted by requireAuth (which only ever looks up
+// payload.sessionId) even if someone tried to reuse it there — the lookup
+// would simply find no matching session and be rejected the normal way.
+interface MfaPreAuthPayload {
+  mfaUserId: number;
+  purpose: "mfa_pending";
+}
+
+export function generateMfaPreAuthToken(userId: number): string {
+  return jwt.sign({ mfaUserId: userId, purpose: "mfa_pending" } satisfies MfaPreAuthPayload, JWT_SECRET, {
+    expiresIn: "5m",
+  });
+}
+
+export function verifyMfaPreAuthToken(token: string): number | null {
+  try {
+    const payload = jwt.verify(token, JWT_SECRET) as Partial<MfaPreAuthPayload>;
+    if (payload.purpose !== "mfa_pending" || typeof payload.mfaUserId !== "number") return null;
+    return payload.mfaUserId;
+  } catch {
+    return null;
+  }
+}
+
 function authError(
   res: Response,
   status: 401 | 403,

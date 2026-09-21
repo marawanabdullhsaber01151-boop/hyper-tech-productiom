@@ -7,6 +7,7 @@ import {
   timestamp,
   integer,
   boolean,
+  jsonb,
   index,
 } from "drizzle-orm/pg-core";
 import { z } from "zod";
@@ -35,6 +36,17 @@ export const systemUsersTable = pgTable("system_users", {
   vaultPasswordHash: text("vault_password_hash"),
   vaultSecurityQuestion: text("vault_security_question"),
   vaultSecurityAnswerHash: text("vault_security_answer_hash"),
+  // Security hardening: account-level brute-force lockout (independent of
+  // the IP-based rate limiter) + optional TOTP 2FA — see
+  // src/domain/auth-security.ts for the algorithm (verified against the
+  // official RFC 6238 test vectors) and src/routes/auth.ts for the flow.
+  failedLoginAttempts: integer("failed_login_attempts").notNull().default(0),
+  lockedUntil: timestamp("locked_until", { withTimezone: true }),
+  totpSecret: text("totp_secret"),
+  totpPendingSecret: text("totp_pending_secret"),
+  totpEnabled: boolean("totp_enabled").notNull().default(false),
+  totpEnabledAt: timestamp("totp_enabled_at", { withTimezone: true }),
+  totpBackupCodes: jsonb("totp_backup_codes"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
