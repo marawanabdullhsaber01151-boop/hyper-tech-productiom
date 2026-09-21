@@ -447,6 +447,8 @@ router.post("/auth/2fa/setup", requireAuth, async (req, res, next) => {
 // الزمن ده ينزل لأجزاء من الثانية، من غير ما يضعّف الحماية الفعلية للكود.
 const BACKUP_CODE_BCRYPT_COST = 8;
 
+const totpConfirmSchema = z.object({ code: z.string().min(1) });
+
 // POST /api/v1/auth/2fa/confirm — يتأكد إن المستخدم فعلًا ضاف السر صح
 // لتطبيق المصادقة (بطلب كود حالي منه)، وبعدين وبعدين بس يفعّل 2FA
 // فعليًا ويولّد أكواد احتياطية بتتعرض نص واحد مرة واحدة بس.

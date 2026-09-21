@@ -32,6 +32,7 @@ import { logger } from "../lib/logger";
 import { assertCancellable } from "../lib/cancellation";
 import { writeAuditEvent } from "../lib/governance";
 import { claimOperationsLine } from "../lib/operations-claim";
+import { createApprovalRequest } from "../lib/approvals";
 import { z } from "zod";
 
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
@@ -248,6 +249,43 @@ router.post(
             total: subtotal.toFixed(2),
           })
           .returning();
+
+        // ✅ إصلاح: أوامر البيع اللي بتتعمل من مسار البوابة كانت بتتعمل
+        // "draft" وتقف، من غير ما تعدّي بنفس بوابة اعتماد المبيعات
+        // (sales.approve) اللي كل فاتورة عادية من شاشة المبيعات بتعديها —
+        // فكانت بتفضل "مسودة" للأبد من غير ما حد يقدر يعتمدها من قائمة
+        // الاعتمادات المعلّقة. دلوقتي بتاخد نفس المعاملة بالظبط.
+        const approval = await createApprovalRequest(
+          {
+            actionKey: "sales.approve",
+            resourceType: "sales_order",
+            resourceId: salesOrder.id,
+            amount: subtotal,
+            requestedBy: req.user!.userId,
+            metadata: { orderNumber: salesOrder.orderNumber, batchRef, originalStatus: salesOrder.status },
+          },
+          tx,
+        );
+        let approvalRequestId: number | null = null;
+        if (approval) {
+          await tx
+            .update(salesOrdersTable)
+            .set({ status: "pending_approval", updatedAt: new Date() })
+            .where(eq(salesOrdersTable.id, salesOrder.id));
+          salesOrder.status = "pending_approval";
+          approvalRequestId = approval.request.id;
+        }
+        await writeAuditEvent({
+          executor: tx,
+          actorUserId: req.user!.userId,
+          actorName: req.user!.username,
+          actionKey: "sales.create",
+          resourceType: "sales_order",
+          resourceId: salesOrder.id,
+          afterData: { ...salesOrder, source: "portal_order", batchRef },
+          ipAddress: req.ip,
+          userAgent: req.get("user-agent"),
+        });
 
         for (const order of orders) {
           const unitPrice = priceMap.get(order.id)!;

@@ -19,7 +19,7 @@ type Executor = {
   select: (...args: any[]) => any;
   update: (...args: any[]) => any;
   insert: (...args: any[]) => any;
-  execute: (...args: any[]) => any;
+  execute: <T = any>(...args: any[]) => Promise<{ rows: T[] }>;
 };
 
 /**
