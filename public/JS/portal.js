@@ -1776,6 +1776,12 @@ function bindEvents() {
   document.getElementById("btn-wishlist")?.addEventListener("click", openWishlist);
   // Phase 6 — اطلب سعر
   document.getElementById("btn-ask-price")?.addEventListener("click", openPriceInquiryModal);
+  // يفتح الشات مع إرفاق المنتج تلقائيًا (رابط عميق يفهمه portal-chat.js)
+  document.getElementById("btn-ask-chat")?.addEventListener("click", () => {
+    if (!activeProduct?.id) return;
+    const label = `منتج: ${activeProduct.productName || activeProduct.name || activeProduct.id}`;
+    location.href = `portal-chat.html?ctx=product:${activeProduct.id}&topic=product&label=${encodeURIComponent(label)}`;
+  });
   document.getElementById("price-inquiry-close")?.addEventListener("click", closePriceInquiryModal);
   document.getElementById("btn-send-price-inquiry")?.addEventListener("click", sendPriceInquiry);
   document.getElementById("price-inquiries-list-close")?.addEventListener("click", closePriceInquiriesList);

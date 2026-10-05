@@ -1,0 +1,70 @@
+<!-- @format -->
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>تواصل مع مسؤول حسابك — Hyper-Tech</title>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="CSS/chat.css" />
+  </head>
+  <body class="chat-page">
+    <header class="chat-topbar">
+      <a class="back-link" href="portal.html">→ الكتالوج</a>
+      <h1>
+        محادثة مع مسؤول حسابك
+        <div class="sub" id="handler-line">جارٍ التحميل…</div>
+      </h1>
+      <a class="btn" id="btn-wa" style="display: none" target="_blank" rel="noopener">واتساب</a>
+      <button class="btn" id="btn-push" style="display: none"></button>
+    </header>
+
+    <div class="chat-wrap">
+      <div class="chat-banner warn hidden" id="offline-banner">لا يوجد اتصال — سنعيد المحاولة تلقائيًا.</div>
+      <div class="chat-banner hidden" id="hours-banner"></div>
+
+      <div class="chat-messages" id="messages" aria-live="polite"></div>
+
+      <div class="rating-box hidden" id="rating-box">
+        <div>تم إغلاق المحادثة. كيف كانت تجربتك؟</div>
+        <div class="stars" id="stars">
+          <button data-v="1">★</button><button data-v="2">★</button><button data-v="3">★</button><button data-v="4">★</button><button data-v="5">★</button>
+        </div>
+        <textarea id="rating-comment" rows="2" maxlength="500" placeholder="تعليق (اختياري)"></textarea>
+        <button class="btn primary" id="rating-send" style="margin-top: 8px; background: var(--c-accent); border: 0; padding: 7px 18px; border-radius: 9px; color: #fff">إرسال التقييم</button>
+      </div>
+
+      <div class="composer">
+        <div class="chips" id="topic-chips"></div>
+        <div class="attach-preview" id="attach-preview"></div>
+        <div class="composer-row">
+          <button class="icon-btn" id="btn-image" title="إرفاق صورة" aria-label="إرفاق صورة">📷</button>
+          <button class="icon-btn" id="btn-context" title="ربط بطلب أو منتج" aria-label="ربط بطلب أو منتج">📎</button>
+          <textarea id="input" rows="1" maxlength="2000" placeholder="اكتب رسالتك…" aria-label="الرسالة"></textarea>
+          <button class="send-btn" id="btn-send" aria-label="إرسال">➤</button>
+        </div>
+        <div class="counter" id="counter"></div>
+        <input type="file" id="file" accept="image/png,image/jpeg,image/webp" hidden />
+      </div>
+    </div>
+
+    <div class="overlay" id="ctx-overlay">
+      <div class="sheet">
+        <h3>ما الذي تريد الإشارة إليه؟</h3>
+        <div class="tabs" id="ctx-tabs">
+          <button data-t="order" class="on">طلب</button>
+          <button data-t="product">منتج</button>
+          <button data-t="price_inquiry">طلب سعر</button>
+        </div>
+        <div class="pick-list" id="ctx-list"></div>
+        <button class="btn" id="ctx-close" style="margin-top: 12px; background: var(--c-panel2); color: var(--c-text); border: 1px solid var(--c-line); padding: 6px 14px; border-radius: 9px">إغلاق</button>
+      </div>
+    </div>
+    <div class="overlay lightbox" id="lightbox"><img alt="" /></div>
+    <div class="toast" id="toast" role="status"></div>
+
+    <script src="JS/chat-common.js"></script>
+    <script src="JS/chat-push.js"></script>
+    <script src="JS/portal-chat.js"></script>
+  </body>
+</html>

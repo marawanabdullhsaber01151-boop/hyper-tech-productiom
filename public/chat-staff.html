@@ -1,0 +1,95 @@
+<!-- @format -->
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>هايبر تك — محادثات العملاء</title>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="CSS/chat.css" />
+  </head>
+  <!-- لا data-allowed-roles هنا عمدًا: من يرد يحدده المدير من شاشة «الصلاحيات»،
+       والحماية الفعلية على الـ API (chat_staff_access + الدور). -->
+  <body class="chat-page chat-staff">
+    <header class="chat-topbar">
+      <a class="back-link" href="index.html">→ لوحة التحكم</a>
+      <h1>محادثات العملاء <span class="sub" id="mode-line"></span></h1>
+      <button class="btn" id="btn-push" style="display: none"></button>
+      <nav class="view-tabs" id="view-tabs">
+        <button data-v="inbox" class="on">المحادثات <span class="unread-dot" id="total-unread" style="display: none"></span></button>
+        <button data-v="reports" id="tab-reports" style="display: none">التقارير</button>
+        <button data-v="access" id="tab-access" style="display: none">من يرد؟</button>
+        <button data-v="quick" id="tab-quick" style="display: none">ردود جاهزة</button>
+        <button data-v="settings" id="tab-settings" style="display: none">الإعدادات</button>
+      </nav>
+    </header>
+
+    <!-- inbox -->
+    <div class="staff-layout" id="view-inbox">
+      <aside class="inbox">
+        <div class="inbox-tools">
+          <input type="search" id="q" placeholder="ابحث بالاسم أو الشركة" />
+          <select class="field" id="filter">
+            <option value="all">المفتوحة</option>
+            <option value="mine">لي</option>
+            <option value="unassigned">بدون مسؤول</option>
+            <option value="unread">غير مقروءة</option>
+            <option value="escalated">مُصعَّدة</option>
+            <option value="closed">المغلقة</option>
+          </select>
+        </div>
+        <div class="inbox-list" id="inbox-list"></div>
+        <button class="btn" id="inbox-more" style="display: none; margin: 8px">عرض المزيد</button>
+      </aside>
+      <section class="pane" id="pane">
+        <div class="pane-empty" id="pane-empty">اختر محادثة من القائمة</div>
+        <div class="pane" id="pane-body" style="display: none; flex: 1">
+          <div class="pane-head">
+            <button class="btn only-mobile" id="btn-back">→</button>
+            <div class="who"><b id="c-name"></b><div id="c-sub"></div></div>
+            <button class="btn" id="btn-claim" style="display: none">استلام</button>
+            <button class="btn" id="btn-transfer" style="display: none">تحويل</button>
+            <button class="btn danger" id="btn-close" style="display: none">إغلاق</button>
+            <button class="btn" id="btn-reopen" style="display: none">إعادة فتح</button>
+          </div>
+          <div class="chat-banner warn hidden" id="c-banner" style="margin-top: 8px"></div>
+          <div class="chat-messages" id="messages"></div>
+          <div class="composer" id="composer">
+            <div class="qr-panel hidden" id="qr-panel"></div>
+            <div class="attach-preview" id="attach-preview"></div>
+            <div class="mode-toggle" id="note-toggle">
+              <label><input type="checkbox" id="internal" /> ملاحظة داخلية (لا يراها العميل)</label>
+              <button class="btn" id="btn-qr" style="padding: 2px 10px">⚡ ردود جاهزة</button>
+            </div>
+            <div class="composer-row">
+              <button class="icon-btn" id="btn-image" aria-label="صورة">📷</button>
+              <textarea id="input" rows="1" maxlength="2000" placeholder="اكتب ردك… (اكتب / للردود الجاهزة)"></textarea>
+              <button class="send-btn" id="btn-send" aria-label="إرسال">➤</button>
+            </div>
+            <div class="counter" id="counter"></div>
+            <input type="file" id="file" accept="image/png,image/jpeg,image/webp" hidden />
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- reports -->
+    <div class="admin-view" id="view-reports" style="display: none"></div>
+    <!-- access -->
+    <div class="admin-view" id="view-access" style="display: none"></div>
+    <!-- quick replies -->
+    <div class="admin-view" id="view-quick" style="display: none"></div>
+    <div class="admin-view" id="view-settings" style="display: none"></div>
+
+    <div class="overlay" id="modal">
+      <div class="sheet" id="modal-body"></div>
+    </div>
+    <div class="overlay lightbox" id="lightbox"><img alt="" /></div>
+    <div class="toast" id="toast" role="status"></div>
+
+    <script src="JS/auth.js"></script>
+    <script src="JS/chat-common.js"></script>
+    <script src="JS/chat-push.js"></script>
+    <script src="JS/chat-staff.js"></script>
+  </body>
+</html>

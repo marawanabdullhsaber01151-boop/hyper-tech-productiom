@@ -237,8 +237,16 @@ export const DEPARTMENTS: readonly NavDepartment[] = [
     id: "customer-portal",
     label: "بوابة العملاء",
     icon: "globe",
-    roles: ["chairman", "executive_manager", "sales_manager"],
+    roles: ["chairman", "executive_manager", "sales_manager", "online_seller", "offline_seller", "hr", "hr_manager"],
     subFunctions: [
+      {
+        id: "portal-chat",
+        label: "محادثات العملاء",
+        roles: ["chairman", "executive_manager", "sales_manager", "online_seller", "offline_seller", "hr", "hr_manager"],
+        pages: [
+          { id: "chat-staff", label: "محادثات العملاء", href: "chat-staff.html", roles: ["chairman", "executive_manager", "sales_manager", "online_seller", "offline_seller", "hr", "hr_manager"] },
+        ],
+      },
       {
         id: "portal-admin",
         label: "إدارة عملاء البوابة",

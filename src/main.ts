@@ -35,6 +35,8 @@ import engineeringRouter from "./routes/engineering";
 import productionExecutionRouter from "./routes/production-execution";
 import planningRouter from "./routes/planning";
 import navRouter from "./routes/nav";
+import portalChatRouter from "./routes/portal-chat";
+import chatStaffRouter from "./routes/chat-staff";
 import healthRouter from "./routes/health";
 
 import { errorHandler, notFound } from "./middleware/errorHandler";
@@ -150,6 +152,8 @@ apiRouter.use(operationsRouter);
 apiRouter.use(operationsControlRouter);
 apiRouter.use(operationsManagerRouter);
 apiRouter.use(navRouter);
+apiRouter.use(portalChatRouter);
+apiRouter.use(chatStaffRouter);
 
 app.use("/api/v1", apiRouter);
 app.use("/api/v1", notFound);
