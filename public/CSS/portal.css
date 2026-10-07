@@ -1832,3 +1832,13 @@
     height: 34px;
   }
 }
+
+
+/* Forced password change after an admin reset (plan 00) */
+.p-force-pass{position:fixed;inset:0;z-index:9999;background:rgba(15,23,42,.72);display:flex;align-items:center;justify-content:center;padding:16px}
+.p-force-pass-box{background:var(--bg-card,#fff);color:var(--text-primary,#14213d);border-radius:16px;padding:24px;width:100%;max-width:420px;display:flex;flex-direction:column;gap:12px;box-shadow:0 20px 60px rgba(0,0,0,.35)}
+.p-force-pass-box h2{margin:0}
+.p-force-pass-box p{margin:0;opacity:.8}
+.p-force-pass-box label{display:flex;flex-direction:column;gap:6px;font-weight:700}
+.p-force-pass-box input{border:1px solid rgba(128,128,128,.4);border-radius:8px;padding:10px 12px;font:inherit;background:transparent;color:inherit}
+.p-force-pass-msg{color:#b91c1c;min-height:20px}

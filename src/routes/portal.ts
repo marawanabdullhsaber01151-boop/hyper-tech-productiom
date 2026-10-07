@@ -9,7 +9,7 @@
  * مدير التشغيل الذرية قبل ما يبدأ مسار الإنتاج.
  */
 import { Router, Request, Response, NextFunction } from "express";
-import { and, eq, desc, sql, inArray, gt, isNull, ne, count } from "drizzle-orm";
+import { and, eq, desc, sql, inArray, gt, isNull, ne, count, or } from "drizzle-orm";
 import rateLimit from "express-rate-limit";
 import bcrypt from "bcryptjs";
 import { createHash, randomInt } from "node:crypto";
@@ -46,6 +46,7 @@ import {
 } from "../middleware/portal-auth";
 import { loginRateLimiter, otpRequestRateLimiter } from "../middleware/rateLimiter";
 import { notifyRole, notifyRoles } from "../lib/notifications";
+import { PERMISSIONS } from "../lib/permissions";
 import { notifyPortalCustomer } from "../lib/portalNotifications";
 import { sendCustomerAlert, sendOtpCode } from "../lib/otpDelivery";
 import { generateWorkflowOrderNumber } from "./production-workflow";
@@ -363,7 +364,12 @@ router.post(
        const [existingCustomer] = await db
         .select({ id: portalCustomersTable.id })
         .from(portalCustomersTable)
-        .where(eq(portalCustomersTable.phone, phone))
+        .where(
+          or(
+            eq(portalCustomersTable.phone, phone),
+            eq(portalCustomersTable.normalizedPhone, normalizePhone(phone)),
+          ),
+        )
         .limit(1);
        if (existingCustomer) {
          res.status(202).json({
@@ -380,7 +386,10 @@ router.post(
         .from(portalApplicationsTable)
         .where(
           and(
-            eq(portalApplicationsTable.phone, phone),
+            or(
+              eq(portalApplicationsTable.phone, phone),
+              eq(portalApplicationsTable.normalizedPhone, normalizePhone(phone)),
+            ),
             inArray(portalApplicationsTable.status, ["pending", "needs_info"]),
           ),
         )
@@ -468,7 +477,12 @@ router.post(
       const [existingCustomer] = await db
         .select({ id: portalCustomersTable.id })
         .from(portalCustomersTable)
-        .where(eq(portalCustomersTable.phone, phone))
+        .where(
+          or(
+            eq(portalCustomersTable.phone, phone),
+            eq(portalCustomersTable.normalizedPhone, normalizePhone(phone)),
+          ),
+        )
         .limit(1);
       if (existingCustomer) {
         res.status(202).json({
@@ -605,6 +619,7 @@ router.post(
           email: customer.email,
           companyName: customer.companyName,
         },
+        mustChangePassword: customer.mustChangePassword,
       });
     } catch (err) {
       next(err);
@@ -659,7 +674,7 @@ router.post(
         await db
           .insert(portalPasswordResetRequestsTable)
           .values({ portalCustomerId: customer.id });
-        void notifyRoles(["hr", "hr_manager", "chairman"], {
+        void notifyRoles([...PERMISSIONS.portalCustomers.write], {
           type: "portal_password_reset",
           title: "طلب استرجاع كلمة مرور — بوابة العملاء",
           body: `العميل "${customer.fullName}" (${customer.phone}) طلب استرجاع كلمة المرور`,
@@ -902,7 +917,11 @@ router.post(
         const passwordHash = await bcrypt.hash(data.newPassword, 12);
         const [updatedCustomer] = await tx
           .update(portalCustomersTable)
-          .set({ passwordHash })
+          .set({
+            passwordHash,
+            mustChangePassword: false,
+            activatedAt: sql`coalesce(${portalCustomersTable.activatedAt}, ${now})`,
+          })
           .where(eq(portalCustomersTable.id, customer.id))
           .returning({ id: portalCustomersTable.id });
         if (!updatedCustomer) {
@@ -1109,6 +1128,7 @@ router.get(
         companyName: customer.contact.company || customer.portal.companyName,
         address: customer.contact.address,
           city: customer.contact.city || customer.portal.city,
+        mustChangePassword: customer.portal.mustChangePassword,
       });
     } catch (err) {
       next(err);
@@ -1372,7 +1392,11 @@ router.post(
         const passwordHash = await bcrypt.hash(data.password, 12);
         const [updatedCustomer] = await tx
           .update(portalCustomersTable)
-          .set({ passwordHash })
+          .set({
+            passwordHash,
+            mustChangePassword: false,
+            activatedAt: sql`coalesce(${portalCustomersTable.activatedAt}, ${now})`,
+          })
           .where(eq(portalCustomersTable.id, activation.portalCustomerId))
           .returning({
             id: portalCustomersTable.id,
@@ -1438,6 +1462,86 @@ router.post(
     }
   },
 );
+/* ============================================================
+   POST /portal/change-password — تغيير الباسورد بمعرفة الحالي
+   بيشيل علامة "لازم تغيّر الباسورد" وبيقفل باقي الجلسات (غير الحالية).
+============================================================ */
+const changePortalPasswordSchema = z.object({
+  currentPassword: z.string().min(1, "كلمة المرور الحالية مطلوبة"),
+  newPassword: z.string().min(6, "كلمة المرور لازم تكون 6 أحرف على الأقل"),
+});
+
+router.post(
+  "/portal/change-password",
+  requirePortalAuth,
+  loginRateLimiter,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const data = changePortalPasswordSchema.parse(req.body);
+      const customerId = getAuthenticatedPortalCustomerId(req);
+      const currentSessionId = req.portalCustomer?.sessionId;
+      const [existing] = await db
+        .select({
+          id: portalCustomersTable.id,
+          passwordHash: portalCustomersTable.passwordHash,
+        })
+        .from(portalCustomersTable)
+        .where(eq(portalCustomersTable.id, customerId))
+        .limit(1);
+      if (!existing) {
+        res.status(404).json({ error: { message: "الحساب غير موجود" } });
+        return;
+      }
+      if (!(await bcrypt.compare(data.currentPassword, existing.passwordHash))) {
+        res
+          .status(401)
+          .json({ error: { code: "WRONG_CURRENT_PASSWORD", message: "كلمة المرور الحالية غير صحيحة" } });
+        return;
+      }
+      if (data.currentPassword === data.newPassword) {
+        res.status(400).json({
+          error: { code: "PASSWORD_UNCHANGED", message: "اختار كلمة سر مختلفة عن الحالية" },
+        });
+        return;
+      }
+      const now = new Date();
+      await db.transaction(async (tx) => {
+        await tx
+          .update(portalCustomersTable)
+          .set({
+            passwordHash: await bcrypt.hash(data.newPassword, 12),
+            mustChangePassword: false,
+          })
+          .where(eq(portalCustomersTable.id, customerId));
+        await tx
+          .update(portalSessionsTable)
+          .set({ revokedAt: now })
+          .where(
+            and(
+              eq(portalSessionsTable.portalCustomerId, customerId),
+              isNull(portalSessionsTable.revokedAt),
+              currentSessionId ? ne(portalSessionsTable.id, currentSessionId) : undefined,
+            ),
+          );
+        await writeAuditEvent({
+          executor: tx,
+          actorName: "portal_customer",
+          actionKey: "portal.customer.password_changed",
+          resourceType: "portal_customer",
+          resourceId: customerId,
+          decision: "password_changed",
+          reason: "العميل غيّر كلمة المرور بنفسه",
+          ipAddress: req.ip,
+          userAgent: req.get("user-agent"),
+        });
+      });
+      res.json({ message: "اتغيّرت كلمة السر" });
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
 const updatePortalProfileSchema = z.object({
   currentPassword: z.string().min(1, "كلمة المرور الحالية مطلوبة"),
   fullName: z.string().min(2, "الاسم مطلوب (حرفين على الأقل)"),
@@ -2244,6 +2348,15 @@ router.post(
         .limit(1);
       if (!customer) {
         res.status(404).json({ error: { message: "الحساب غير موجود" } });
+        return;
+      }
+      if (customer.mustChangePassword) {
+        res.status(403).json({
+          error: {
+            code: "PASSWORD_CHANGE_REQUIRED",
+            message: "غيّر كلمة السر المؤقتة الأول، وبعدها ابعت الطلب",
+          },
+        });
         return;
       }
       // Phase 5 (Governance & Portal project): canonicalize every carton-

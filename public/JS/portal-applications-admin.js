@@ -82,11 +82,25 @@
   }
 
   async function approve(id) {
-    if (!window.confirm("سيتم إنشاء جهة اتصال وحساب بوابة وتجهيز وسيلة التفعيل. متابعة؟")) return;
+    const minutes = await window.PortalAdminDialogs.askDuration({
+      title: "قبول الطلب وتجهيز التفعيل",
+      message: "هيتعمل حساب بوابة للعميل ورابط تفعيل هتبعته له بنفسك (نسخ أو واتساب).",
+      confirmLabel: "اقبل وجهّز الرابط",
+    });
+    if (minutes === null) return;
     try {
-      await api(`/portal-applications/${id}/approve`, { method: "PATCH", body: JSON.stringify({}) });
-      status("تم اعتماد الطلب وإنشاء الحساب وتجهيز وسيلة التفعيل.");
+      const result = await api(`/portal-applications/${id}/approve`, {
+        method: "PATCH", body: JSON.stringify({ ttlMinutes: minutes }),
+      });
+      const delivered = Boolean(result?.activation?.delivered);
+      status(delivered
+        ? "اتقبل الطلب واتبعت SMS للعميل."
+        : "اتقبل الطلب. الـ SMS ما اتبعتش، ابعت الرابط للعميل بنفسك.");
       await load();
+      await window.PortalAdminDialogs.showActivation({
+        customerName: result?.customer?.fullName,
+        activation: result?.activation,
+      });
     } catch (error) {
       status(error.message, true);
     }

@@ -51,7 +51,12 @@ function readProviderConfiguration(
     channel === "phone" ? "PORTAL_SMS_PROVIDER" : "PORTAL_EMAIL_PROVIDER";
   const apiKey = process.env[`${prefix}_API_KEY`]?.trim();
   const endpoint = process.env[`${prefix}_URL`]?.trim();
-  const sender = process.env[`${prefix}_FROM`]?.trim();
+  // PORTAL_SMS_FROM is the legacy (wrongly documented) name; the
+  // *_PROVIDER_FROM name wins when both are set.
+  const sender = (
+    process.env[`${prefix}_FROM`] ??
+    (channel === "phone" ? process.env.PORTAL_SMS_FROM : undefined)
+  )?.trim();
 
   if (!apiKey || !endpoint || !sender) return undefined;
   return { apiKey, endpoint, sender };

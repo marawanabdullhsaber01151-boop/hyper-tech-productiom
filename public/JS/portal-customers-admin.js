@@ -44,13 +44,14 @@
         <td>${esc(r.email)}</td>
         <td>${esc(r.city) || "—"} <button class="button" data-city="${esc(r.id)}" data-city-value="${esc(r.city)}" data-city-name="${esc(r.fullName)}">تعديل</button></td>
         <td>${r.contactId ? segmentSelect(r) : "—"}</td>
-        <td><span class="badge ${r.isActive ? "badge-approved" : "badge-rejected"}">${r.isActive ? "نشط" : "متوقف"}</span></td>
+        <td><span class="badge ${r.isActive ? "badge-approved" : "badge-rejected"}">${r.isActive ? "نشط" : "متوقف"}</span>${r.activated === false ? ' <span class="badge badge-pending">لسه ما اتفعّلش</span>' : ""}</td>
         <td>${healthBadge(r.health)}</td>
         <td>${esc(r.minimumOrderQuantity)}</td>
         <td>${date(r.createdAt)}</td>
         <td><div class="action-stack">
           <button class="button" data-edit-minimum="${esc(r.id)}" data-current-minimum="${esc(r.minimumOrderQuantity)}">تعديل الحد الأدنى</button>
-          <button class="button" data-reset="${esc(r.id)}">تعيين كلمة مرور</button>
+          ${r.activated === false && r.isActive ? `<button class="button success" data-activation-link="${esc(r.id)}" data-customer-name="${esc(r.fullName)}">رابط تفعيل</button>` : ""}
+          <button class="button" data-reset="${esc(r.id)}" data-customer-name="${esc(r.fullName)}">تعيين كلمة مرور</button>
           <button class="button ${r.isActive ? "danger" : "success"}" data-status="${esc(r.id)}" data-active="${r.isActive ? "true" : "false"}">${r.isActive ? "إيقاف الحساب" : "تفعيل الحساب"}</button>
           <button class="button danger" data-delete-customer="${esc(r.id)}" data-customer-name="${esc(r.fullName)}">حذف نهائي</button>
         </div></td>
@@ -75,7 +76,7 @@
       ]);
       renderCustomers(customers);
       $("resetRows").innerHTML = (Array.isArray(resets) ? resets : []).map((r) =>
-        `<tr><td>${esc(r.customerName)}</td><td>${esc(r.customerPhone)}</td><td>${date(r.createdAt)}</td><td><button class="button" data-reset="${esc(r.portalCustomerId)}">تعيين كلمة مرور</button></td></tr>`,
+        `<tr><td>${esc(r.customerName)}</td><td>${esc(r.customerPhone)}</td><td>${date(r.createdAt)}</td><td><button class="button" data-reset="${esc(r.portalCustomerId)}" data-customer-name="${esc(r.customerName)}">تعيين كلمة مرور</button></td></tr>`,
       ).join("") || '<tr><td colspan="4" class="muted">لا توجد طلبات معلقة.</td></tr>';
       status("تم تحديث بيانات العملاء.");
     } catch (e) {
@@ -100,16 +101,39 @@
     } catch (e) { status(e.message, true); }
   }
 
-  async function reset(id) {
-    const password = window.prompt("اترك الحقل فارغًا ليولد النظام كلمة مؤقتة، أو اكتب كلمة جديدة:");
-    if (password === null) return;
+  async function reset(id, name) {
+    const choice = await window.PortalAdminDialogs.askResetPassword({ customerName: name });
+    if (!choice) return;
     try {
       const result = await api(`/portal-customers/${id}/reset-password`, {
-        method: "PATCH", body: JSON.stringify(password ? { newPassword: password } : {}),
+        method: "PATCH", body: JSON.stringify(choice),
       });
-      window.alert(`كلمة المرور الجديدة: ${result.newPassword}`);
-      status("تم تغيير كلمة المرور وتسجيل الإجراء. سلّمها للعميل عبر قناة آمنة فقط.");
+      status("اتغيّرت كلمة السر وجلسات العميل القديمة اتقفلت. سلّمها للعميل دلوقتي.");
       await load();
+      await window.PortalAdminDialogs.showTempPassword({
+        customerName: name,
+        password: result.newPassword,
+        whatsappUrl: result.whatsappUrl,
+      });
+    } catch (e) { status(e.message, true); }
+  }
+
+  async function issueActivationLink(id, name) {
+    const minutes = await window.PortalAdminDialogs.askDuration({
+      title: "رابط تفعيل جديد",
+      message: "أي رابط قديم لنفس العميل هيتبطل فورًا.",
+      confirmLabel: "ولّد الرابط",
+    });
+    if (minutes === null) return;
+    try {
+      const result = await api(`/portal-customers/${id}/activation-link`, {
+        method: "POST", body: JSON.stringify({ ttlMinutes: minutes }),
+      });
+      status("اتولّد رابط تفعيل جديد والروابط القديمة اتبطلت.");
+      await window.PortalAdminDialogs.showActivation({
+        customerName: name,
+        activation: result.activation,
+      });
     } catch (e) { status(e.message, true); }
   }
 
@@ -171,7 +195,9 @@
     const minimumButton = target.closest("[data-edit-minimum]");
     if (minimumButton) return void updateMinimum(minimumButton.dataset.editMinimum, minimumButton.dataset.currentMinimum);
     const resetButton = target.closest("[data-reset]");
-    if (resetButton) return void reset(resetButton.dataset.reset);
+    if (resetButton) return void reset(resetButton.dataset.reset, resetButton.dataset.customerName);
+    const linkButton = target.closest("[data-activation-link]");
+    if (linkButton) return void issueActivationLink(linkButton.dataset.activationLink, linkButton.dataset.customerName);
     const statusButton = target.closest("[data-status]");
     if (statusButton) return void toggleStatus(statusButton.dataset.status, statusButton.dataset.active === "true");
     const deleteButton = target.closest("[data-delete-customer]");

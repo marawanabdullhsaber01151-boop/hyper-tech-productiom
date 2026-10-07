@@ -31,7 +31,7 @@
       const searchButton = `<button class="button" data-manual-search="${esc(item.id)}"
         data-query="${esc(item.companyNameEntered)}">بحث يدوي</button>`;
       const confirmButton = item.matchedContact?.id
-        ? `<button class="button success" data-confirm="${esc(item.id)}" data-contact-id="${esc(item.matchedContact.id)}">تأكيد هذا العميل</button>`
+        ? `<button class="button success" data-confirm="${esc(item.id)}" data-contact-id="${esc(item.matchedContact.id)}" data-contact-name="${esc(item.matchedContact.name)}">تأكيد هذا العميل</button>`
         : "";
       return `<tr>
         <td><strong>${esc(item.companyNameEntered)}</strong><span class="subline" dir="ltr">${esc(item.phoneEntered)}</span></td>
@@ -55,14 +55,26 @@
   }
 
   async function confirmRequest(requestId, contactId, contactName) {
-    if (!window.confirm(`سيتم إنشاء حساب بوابة وربطه بالعميل «${contactName || "المحدد"}». متابعة؟`)) return;
+    const minutes = await window.PortalAdminDialogs.askDuration({
+      title: "تأكيد العميل وتجهيز التفعيل",
+      message: `هيتعمل حساب بوابة مربوط بالعميل «${contactName || "المحدد"}» ورابط تفعيل هتبعته له بنفسك.`,
+      confirmLabel: "أكّد وجهّز الرابط",
+    });
+    if (minutes === null) return;
     try {
-      await api(`/portal-activation-requests/${requestId}/confirm`, {
-        method: "PATCH", body: JSON.stringify({ contactId: Number(contactId) }),
+      const result = await api(`/portal-activation-requests/${requestId}/confirm`, {
+        method: "PATCH", body: JSON.stringify({ contactId: Number(contactId), ttlMinutes: minutes }),
       });
-      $("contactDialog").close();
-      status("تم تأكيد الطلب وإنشاء الحساب وتجهيز وسيلة التفعيل.");
+      if ($("contactDialog").open) $("contactDialog").close();
+      const delivered = Boolean(result?.activation?.delivered);
+      status(delivered
+        ? "اتأكد الطلب واتبعت SMS للعميل."
+        : "اتأكد الطلب. الـ SMS ما اتبعتش، ابعت الرابط للعميل بنفسك.");
       await load();
+      await window.PortalAdminDialogs.showActivation({
+        customerName: result?.customer?.fullName,
+        activation: result?.activation,
+      });
     } catch (error) {
       status(error.message, true);
     }
@@ -106,7 +118,7 @@
   document.addEventListener("click", (event) => {
     const confirmButton = event.target.closest("[data-confirm]");
     if (confirmButton) return void confirmRequest(
-      confirmButton.dataset.confirm, confirmButton.dataset.contactId, "الترشيح المقترح",
+      confirmButton.dataset.confirm, confirmButton.dataset.contactId, confirmButton.dataset.contactName,
     );
     const searchButton = event.target.closest("[data-manual-search]");
     if (searchButton) {

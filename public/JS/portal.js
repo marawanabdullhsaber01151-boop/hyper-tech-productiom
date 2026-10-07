@@ -108,13 +108,17 @@ async function portalApiCall(path, options = {}) {
   }
   if (!res.ok) {
     let msg = `خطأ (${res.status})`;
+    let code;
     try {
       const data = await res.json();
       msg = data?.error?.message || msg;
+      code = data?.error?.code;
     } catch {}
     const error = new Error(msg);
     error.status = res.status;
+    error.code = code;
     reportPortalError(path, error);
+    if (code === "PASSWORD_CHANGE_REQUIRED") showForcePasswordChange();
     if (res.status === 401 && session?.token) {
       handleExpiredPortalSession();
       error.sessionExpired = true;
@@ -185,7 +189,87 @@ function iconFor(name) {
   await Promise.all([loadPortalConfig(), loadProducts()]);
   await Promise.all([loadAuthenticatedCart(), loadWishlist()]);
   startPortalNotificationPolling();
+  checkForcedPasswordChange();
 })();
+
+/* ── بعد إعادة تعيين الباسورد من الإدارة: العميل لازم يغيّر الكلمة المؤقتة ── */
+async function checkForcedPasswordChange() {
+  if (!isLoggedIn()) return;
+  try {
+    const me = await portalApiCall("/portal/me");
+    if (me?.mustChangePassword) showForcePasswordChange();
+  } catch {
+    /* الجلسة المنتهية بتتعامل معاها portalApiCall نفسها */
+  }
+}
+
+function showForcePasswordChange() {
+  if (document.getElementById("force-password-overlay")) return;
+  const overlay = document.createElement("div");
+  overlay.id = "force-password-overlay";
+  overlay.className = "p-force-pass";
+  overlay.setAttribute("role", "dialog");
+  overlay.setAttribute("aria-modal", "true");
+  overlay.setAttribute("aria-labelledby", "force-password-title");
+  const box = document.createElement("form");
+  box.className = "p-force-pass-box";
+  const title = document.createElement("h2");
+  title.id = "force-password-title";
+  title.textContent = "غيّر كلمة السر";
+  const hint = document.createElement("p");
+  hint.textContent = "كلمة السر الحالية مؤقتة. اختار كلمة جديدة بس إنت اللي تعرفها، وبعدها كمّل شغلك.";
+  const field = (id, label, autocomplete) => {
+    const wrap = document.createElement("label");
+    wrap.htmlFor = id;
+    wrap.textContent = label;
+    const input = document.createElement("input");
+    input.type = "password";
+    input.id = id;
+    input.required = true;
+    input.minLength = id === "force-current" ? 1 : 6;
+    input.autocomplete = autocomplete;
+    wrap.append(input);
+    return { wrap, input };
+  };
+  const current = field("force-current", "كلمة السر المؤقتة", "current-password");
+  const next = field("force-new", "كلمة السر الجديدة (6 حروف على الأقل)", "new-password");
+  const again = field("force-confirm", "اكتبها تاني", "new-password");
+  const message = document.createElement("p");
+  message.className = "p-force-pass-msg";
+  message.setAttribute("role", "alert");
+  const submit = document.createElement("button");
+  submit.type = "submit";
+  submit.className = "p-add-btn";
+  submit.textContent = "غيّر وكمّل";
+  box.append(title, hint, current.wrap, next.wrap, again.wrap, message, submit);
+  box.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    message.textContent = "";
+    if (next.input.value !== again.input.value) {
+      message.textContent = "الكلمتين مش متطابقتين.";
+      return;
+    }
+    submit.disabled = true;
+    try {
+      await portalApiCall("/portal/change-password", {
+        method: "POST",
+        body: JSON.stringify({
+          currentPassword: current.input.value,
+          newPassword: next.input.value,
+        }),
+      });
+      overlay.remove();
+      showToast("اتغيّرت كلمة السر");
+    } catch (error) {
+      message.textContent = error.message;
+    } finally {
+      submit.disabled = false;
+    }
+  });
+  overlay.append(box);
+  document.body.append(overlay);
+  current.input.focus();
+}
 
 /* ── Portal notifications: polling فقط، متسق مع بنية المشروع الحالية ── */
 function updatePortalNotificationBadge(count) {

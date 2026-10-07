@@ -24,16 +24,20 @@ import { revokeAllPortalSessions } from "../middleware/portal-auth";
 import { PERMISSIONS } from "../lib/permissions";
 import { writeAuditEvent } from "../lib/governance";
 import { sendPortalSms } from "../lib/portalMessaging";
+import { buildPortalPageUrl } from "../lib/portalConfig";
 import {
-  buildPortalActivationUrl,
-  buildPortalPageUrl,
-} from "../lib/portalConfig";
+  buildActivationPayload,
+  buildWhatsAppLink,
+  clampActivationTtlMinutes,
+  issueActivationLink,
+  supportPhone as configuredSupportPhone,
+} from "../lib/portalActivation";
+import { normalizePhone } from "../lib/identityNormalization";
 import { z } from "zod";
-import { createHash, randomBytes, randomInt } from "node:crypto";
+import { randomBytes, randomInt } from "node:crypto";
 
 const router = Router();
 const reviewerRoles = PERMISSIONS.portalCustomers.write;
-const activationTokenLifetimeMs = 24 * 60 * 60 * 1000;
 
 function domainError(status: number, code: string, message: string): Error & { status: number; code: string } {
   return Object.assign(new Error(message), { status, code });
@@ -50,31 +54,13 @@ function parsePositiveId(value: string | string[]): number {
   return id;
 }
 
-function makeActivationToken(): {
-  rawToken: string;
-  tokenHash: string;
-  expiresAt: Date;
-} {
-  const rawToken = randomBytes(32).toString("base64url");
-  return {
-    rawToken,
-    tokenHash: createHash("sha256").update(rawToken).digest("hex"),
-    expiresAt: new Date(Date.now() + activationTokenLifetimeMs),
-  };
-}
-
 function supportPhone(): string {
-  return process.env.PORTAL_SUPPORT_PHONE?.trim() || "رقم خدمة العملاء المعلن من الشركة";
+  return configuredSupportPhone() || "رقم خدمة العملاء المعلن من الشركة";
 }
 
-function activationMessage(req: Request, customerName: string, rawToken: string): string {
-  const activationUrl = buildPortalActivationUrl(req, rawToken);
-  return [
-    `مرحبًا ${customerName}، تم قبول طلبك في Hyper-Tech.`,
-    `افتح رابط التفعيل خلال 24 ساعة لتحديد كلمة مرورك وتفعيل حسابك: ${activationUrl}`,
-    "بعد التفعيل يمكنك تسجيل الدخول من بوابة عملاء الجملة.",
-  ].join(" ");
-}
+const activationTtlSchema = z.object({
+  ttlMinutes: z.coerce.number().int().optional(),
+});
 
 function applicationContactNotes(application: typeof portalApplicationsTable.$inferSelect): string {
   const details = [
@@ -167,6 +153,8 @@ router.get(
           contactId: portalCustomersTable.contactId,
           minimumOrderQuantity: portalCustomersTable.minimumOrderQuantity,
           isActive: portalCustomersTable.isActive,
+          activatedAt: portalCustomersTable.activatedAt,
+          mustChangePassword: portalCustomersTable.mustChangePassword,
           createdAt: portalCustomersTable.createdAt,
           city: portalCustomersTable.city,
           segment: contactsTable.segment,
@@ -196,6 +184,7 @@ router.get(
       res.json({
         items: rows.map((customer) => ({
           ...customer,
+          activated: customer.activatedAt !== null,
           health: customerHealth(customer.balance, customer.creditLimit, customer.lastOrderAt),
         })),
         total: Number(total),
@@ -652,6 +641,89 @@ router.patch(
 );
 
 /* ============================================================
+   POST /portal-customers/:id/activation-link
+   يولّد رابط تفعيل جديد (ويبطل أي رابط قديم) — النسخ/واتساب من غير أي SMS.
+   الرابط بيتعرض مرة واحدة هنا فقط ومبيتسجلش في أي لوج.
+============================================================ */
+const activationLinkRateWindowMs = 60 * 60 * 1000;
+const activationLinkRateMax = Number(process.env.PORTAL_ACTIVATION_LINK_RATE_MAX) || 10;
+const activationLinkHits = new Map<number, number[]>();
+
+function activationLinkRateLimited(userId: number): boolean {
+  const now = Date.now();
+  const recent = (activationLinkHits.get(userId) ?? []).filter(
+    (at) => now - at < activationLinkRateWindowMs,
+  );
+  if (recent.length >= activationLinkRateMax) {
+    activationLinkHits.set(userId, recent);
+    return true;
+  }
+  recent.push(now);
+  activationLinkHits.set(userId, recent);
+  return false;
+}
+
+router.post(
+  "/portal-customers/:id/activation-link",
+  requireAuth,
+  requireRole(...PERMISSIONS.portalCustomers.write),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const id = parsePositiveId(req.params.id);
+      const { ttlMinutes } = activationTtlSchema.parse(req.body ?? {});
+      if (activationLinkRateLimited(req.user!.userId)) {
+        throw domainError(429, "ACTIVATION_LINK_RATE_LIMITED", "كترت طلبات روابط التفعيل، جرّب بعد شوية");
+      }
+      const result = await db.transaction(async (tx) => {
+        const [customer] = await tx
+          .select({
+            id: portalCustomersTable.id,
+            fullName: portalCustomersTable.fullName,
+            phone: portalCustomersTable.phone,
+            isActive: portalCustomersTable.isActive,
+            activatedAt: portalCustomersTable.activatedAt,
+          })
+          .from(portalCustomersTable)
+          .where(eq(portalCustomersTable.id, id))
+          .for("update");
+        if (!customer) throw domainError(404, "PORTAL_CUSTOMER_NOT_FOUND", "الحساب غير موجود");
+        // رابط التفعيل لحساب لسه ما اتفعّلش بس. الحساب المفعّل ممكن يتغير باسورده
+        // بـ "تعيين كلمة مرور" (بتقفل جلساته وبتظهر في السجل) مش برابط يستلم بيه أي حد الحساب.
+        if (customer.activatedAt) {
+          throw domainError(409, "PORTAL_ACCOUNT_ALREADY_ACTIVATED", "الحساب ده مفعّل بالفعل. استخدم «تعيين كلمة مرور» لو العميل نسي كلمة السر");
+        }
+        if (!customer.isActive) {
+          throw domainError(409, "PORTAL_ACCOUNT_SUSPENDED", "الحساب موقوف، فعّله الأول");
+        }
+        const issued = await issueActivationLink(tx, req, {
+          portalCustomerId: id,
+          ttlMinutes: clampActivationTtlMinutes(ttlMinutes),
+        });
+        await writeAuditEvent({
+          executor: tx,
+          actorUserId: req.user!.userId,
+          actorName: req.user!.username,
+          actionKey: "portal.customer.activation_link.issued",
+          resourceType: "portal_customer",
+          resourceId: id,
+          afterData: { tokenId: issued.tokenId, expiresAt: issued.expiresAt },
+          reason: "توليد رابط تفعيل جديد لحساب عميل البوابة",
+          ipAddress: req.ip,
+          userAgent: req.get("user-agent"),
+        });
+        return { customer, issued };
+      });
+      res.json({
+        message: "تم تجهيز رابط تفعيل جديد، والروابط القديمة اتبطلت",
+        activation: buildActivationPayload(result.customer, result.issued, false),
+      });
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+/* ============================================================
    GET /portal-customers/password-reset-requests — طلبات استرجاع الباسورد المعلّقة
 ============================================================ */
 router.get(
@@ -734,7 +806,10 @@ router.patch(
 
         const [updated] = await tx
           .update(portalCustomersTable)
-          .set({ passwordHash: await bcrypt.hash(finalPassword, 12) })
+          .set({
+            passwordHash: await bcrypt.hash(finalPassword, 12),
+            mustChangePassword: true,
+          })
           .where(eq(portalCustomersTable.id, id))
           .returning({
             id: portalCustomersTable.id,
@@ -742,6 +817,8 @@ router.patch(
             phone: portalCustomersTable.phone,
           });
         if (!updated) throw domainError(404, "PORTAL_CUSTOMER_NOT_FOUND", "الحساب غير موجود");
+        // الباسورد القديم مات، فأي جلسة مفتوحة بيه لازم تتقفل في نفس اللحظة.
+        const revokedSessions = await revokeAllPortalSessions(id, tx);
         await tx
           .update(portalPasswordResetRequestsTable)
           .set({
@@ -764,7 +841,7 @@ router.patch(
           resourceType: "portal_customer",
           resourceId: id,
           beforeData: { id: before.id, fullName: before.fullName, phone: before.phone },
-          afterData: updated,
+          afterData: { ...updated, sessionsRevoked: revokedSessions, mustChangePassword: true },
           reason: "إعادة تعيين كلمة مرور حساب عميل البوابة",
           ipAddress: req.ip,
           userAgent: req.get("user-agent"),
@@ -777,6 +854,14 @@ router.patch(
         message: "تم تعيين كلمة مرور جديدة",
         customer,
         newPassword: finalPassword,
+        mustChangePassword: true,
+        whatsappUrl: buildWhatsAppLink(
+          customer.phone,
+          [
+            `أهلاً ${customer.fullName}، دي كلمة السر المؤقتة لحسابك في Hyper-Tech: ${finalPassword}`,
+            "هتطلب منك تغييرها أول ما تدخل.",
+          ].join("\n"),
+        ),
       });
     } catch (err) {
       next(err);
@@ -887,6 +972,7 @@ router.patch(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const applicationId = parsePositiveId(req.params.id);
+      const ttl = activationTtlSchema.parse(req.body ?? {});
       const result = await db.transaction(async (tx) => {
         const [application] = await tx
           .select()
@@ -902,7 +988,12 @@ router.patch(
         const [samePhone] = await tx
           .select({ id: portalCustomersTable.id })
           .from(portalCustomersTable)
-          .where(eq(portalCustomersTable.phone, application.phone))
+          .where(
+            or(
+              eq(portalCustomersTable.phone, application.phone),
+              eq(portalCustomersTable.normalizedPhone, normalizePhone(application.phone)),
+            ),
+          )
           .limit(1);
         if (samePhone) {
           throw domainError(409, "PORTAL_ACCOUNT_EXISTS", "رقم الهاتف ده مرتبط بحساب بوابة بالفعل");
@@ -955,11 +1046,9 @@ router.patch(
           });
         if (!customer) throw new Error("تعذر إنشاء حساب البوابة");
 
-        const activation = makeActivationToken();
-        await tx.insert(portalActivationTokensTable).values({
+        const activation = await issueActivationLink(tx, req, {
           portalCustomerId: customer.id,
-          tokenHash: activation.tokenHash,
-          expiresAt: activation.expiresAt,
+          ttlMinutes: ttl.ttlMinutes,
         });
 
         const reviewedAt = new Date();
@@ -987,7 +1076,11 @@ router.patch(
             application: updated,
             contactId: contact.id,
             portalCustomerId: customer.id,
-            activation: { status: "ready_for_delivery", expiresAt: activation.expiresAt },
+            activation: {
+              status: "ready_for_delivery",
+              expiresAt: activation.expiresAt,
+              tokenId: activation.tokenId,
+            },
           },
           decision: "approved",
           reason: "اعتماد طلب انضمام عميل جديد",
@@ -998,18 +1091,21 @@ router.patch(
           customer,
           activationReady: true,
           activationExpiresAt: activation.expiresAt,
-          activationToken: activation.rawToken,
+          issued: activation,
         };
       });
-      const { activationToken, ...safeResult } = result;
+      const { issued, ...safeResult } = result;
+      const preview = buildActivationPayload(result.customer, issued, false);
       const sms = await sendPortalSms({
         phone: result.customer.phone,
-        message: activationMessage(req, result.customer.fullName, activationToken),
+        message: preview.message,
       });
+      const activation = { ...preview, delivered: sms.delivered };
       res.json({
         message: "تم اعتماد الطلب وإنشاء الحساب وإرسال طريقة التفعيل",
         ...safeResult,
         messaging: { delivered: sms.delivered },
+        activation,
       });
     } catch (err) {
       next(err);
@@ -1164,6 +1260,7 @@ router.patch(
     try {
       const requestId = parsePositiveId(req.params.id);
       const { contactId } = activationConfirmSchema.parse(req.body);
+      const ttl = activationTtlSchema.parse(req.body ?? {});
       const result = await db.transaction(async (tx) => {
         const [request] = await tx
           .select()
@@ -1195,7 +1292,12 @@ router.patch(
         const [existingByPhone] = await tx
           .select({ id: portalCustomersTable.id })
           .from(portalCustomersTable)
-          .where(eq(portalCustomersTable.phone, customerPhone))
+          .where(
+            or(
+              eq(portalCustomersTable.phone, customerPhone),
+              eq(portalCustomersTable.normalizedPhone, normalizePhone(customerPhone)),
+            ),
+          )
           .limit(1);
         if (existingByPhone) {
           throw domainError(409, "PORTAL_ACCOUNT_EXISTS", "رقم هاتف العميل مرتبط بحساب بوابة بالفعل");
@@ -1234,11 +1336,9 @@ router.patch(
           });
         if (!customer) throw new Error("تعذر إنشاء حساب البوابة");
 
-        const activation = makeActivationToken();
-        await tx.insert(portalActivationTokensTable).values({
+        const activation = await issueActivationLink(tx, req, {
           portalCustomerId: customer.id,
-          tokenHash: activation.tokenHash,
-          expiresAt: activation.expiresAt,
+          ttlMinutes: ttl.ttlMinutes,
         });
 
         const decidedAt = new Date();
@@ -1267,7 +1367,11 @@ router.patch(
             request: updated,
             contactId,
             portalCustomerId: customer.id,
-            activation: { status: "ready_for_delivery", expiresAt: activation.expiresAt },
+            activation: {
+              status: "ready_for_delivery",
+              expiresAt: activation.expiresAt,
+              tokenId: activation.tokenId,
+            },
           },
           decision: "confirmed",
           reason: "تأكيد ربط عميل موجود بحساب البوابة",
@@ -1277,18 +1381,21 @@ router.patch(
           customer,
           activationReady: true,
           activationExpiresAt: activation.expiresAt,
-          activationToken: activation.rawToken,
+          issued: activation,
         };
       });
-      const { activationToken, ...safeResult } = result;
+      const { issued, ...safeResult } = result;
+      const preview = buildActivationPayload(result.customer, issued, false);
       const sms = await sendPortalSms({
         phone: result.customer.phone,
-        message: activationMessage(req, result.customer.fullName, activationToken),
+        message: preview.message,
       });
+      const activation = { ...preview, delivered: sms.delivered };
       res.json({
         message: "تم تأكيد الطلب وإنشاء الحساب وإرسال طريقة التفعيل",
         ...safeResult,
         messaging: { delivered: sms.delivered },
+        activation,
       });
     } catch (err) {
       next(err);

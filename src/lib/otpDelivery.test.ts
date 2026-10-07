@@ -81,3 +81,29 @@ describe("portal delivery security boundary", () => {
     expect(JSON.stringify(result)).not.toContain("raw-secret-activation-token");
   });
 });
+describe("sender configuration names", () => {
+  it("accepts the documented PORTAL_SMS_PROVIDER_FROM and the legacy PORTAL_SMS_FROM", async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(new Response("{}", { status: 200 }));
+    process.env.PORTAL_SMS_PROVIDER_API_KEY = "k";
+    process.env.PORTAL_SMS_PROVIDER_URL = "https://sms.example.test/send";
+
+    process.env.PORTAL_SMS_FROM = "LEGACY";
+    const legacy = await sendCustomerAlert({ channel: "phone", destination: "01000000000", message: "x" });
+    expect(legacy.delivered).toBe(true);
+    expect(JSON.parse(String(fetchSpy.mock.calls[0][1]?.body)).from).toBe("LEGACY");
+
+    process.env.PORTAL_SMS_PROVIDER_FROM = "NEW";
+    await sendCustomerAlert({ channel: "phone", destination: "01000000000", message: "x" });
+    expect(JSON.parse(String(fetchSpy.mock.calls[1][1]?.body)).from).toBe("NEW");
+    delete process.env.PORTAL_SMS_PROVIDER_FROM;
+  });
+
+  it("reports not delivered (honestly) when no sender is configured", async () => {
+    process.env.PORTAL_SMS_PROVIDER_API_KEY = "k";
+    process.env.PORTAL_SMS_PROVIDER_URL = "https://sms.example.test/send";
+    const result = await sendCustomerAlert({ channel: "phone", destination: "01000000000", message: "x" });
+    expect(result.delivered).toBe(false);
+  });
+});

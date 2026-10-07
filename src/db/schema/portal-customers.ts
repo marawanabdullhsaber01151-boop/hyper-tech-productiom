@@ -39,6 +39,10 @@ export const portalCustomersTable = pgTable(
     city: text("city"),
     minimumOrderQuantity: integer("minimum_order_quantity").notNull().default(1),
     isActive: boolean("is_active").notNull().default(true),
+    // Plan 00: وقت أول تفعيل فعلي للحساب (null = لم يُفعّل بعد).
+    activatedAt: timestamp("activated_at", { withTimezone: true }),
+    // Plan 00: بعد إعادة تعيين الباسورد يدويًا من الإدارة، العميل لازم يغيّره.
+    mustChangePassword: boolean("must_change_password").notNull().default(false),
     // ربط حقيقي بجدول العملاء — يتعمل تلقائيًا عند التسجيل
     contactId: integer("contact_id")
       .notNull()
