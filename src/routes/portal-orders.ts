@@ -420,6 +420,7 @@ router.post(
       });
       if (orders[0].portalCustomerId) {
         await notifyPortalCustomer(orders[0].portalCustomerId, {
+          memberId: orders[0].submittedByMemberId,
           type: "portal_order_priced",
           title: "تم تحديد سعر طلبك",
           body: `تمت مراجعة إرسالية "${batchRef}" وتحديد السعر. ${data.replyMessage || "يمكنك متابعة التفاصيل من صفحة طلباتي."}`,
@@ -537,6 +538,7 @@ router.post(
       });
       if (orders[0]?.portalCustomerId) {
         await notifyPortalCustomer(orders[0].portalCustomerId, {
+          memberId: orders[0].submittedByMemberId,
           type: "portal_order_rejected",
           title: "تعذّر قبول طلبك",
           body: `تعذّر قبول إرسالية "${batchRef}". ${data.replyMessage || data.reason}`,
@@ -690,6 +692,7 @@ router.post(
 
       if (updated.portalCustomerId) {
         await notifyPortalCustomer(updated.portalCustomerId, {
+          memberId: updated.submittedByMemberId,
           type: "portal_order_cancelled_by_staff",
           title: "تم إلغاء صنف من طلبك",
           body: `تم إلغاء "${updated.productName}" (${updated.orderNumber}). السبب: ${data.reason}`,

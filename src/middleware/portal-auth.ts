@@ -7,21 +7,44 @@
  * a session immediately and apply sliding expiry safely.
  */
 import { Request, Response, NextFunction } from "express";
-import { and, eq, gt, isNull } from "drizzle-orm";
+import { and, eq, gt, isNull, ne } from "drizzle-orm";
 import { randomBytes } from "node:crypto";
 import { db } from "../db";
 import {
   portalCustomersTable,
+  portalMembersTable,
   portalSessionsTable,
+  portalUsersTable,
+  type PortalMemberLimits,
 } from "../db/schema";
+import { loadMemberAccess } from "../lib/portalAccess";
+import { resolveSessionIdentity } from "../lib/portalSessionIdentity";
 
 export interface PortalAuthPayload {
+  /** Equals companyId (the company id is the legacy portal_customers.id). */
   portalCustomerId: number;
   phone: string;
   sessionId: number;
+  companyId: number;
+  userId?: number;
+  memberId?: number;
+}
+
+/** What the signed-in member may do. Set on every authenticated request. */
+export interface PortalAuthContext {
+  companyId: number;
+  userId: number;
+  memberId: number;
+  isOwner: boolean;
+  roleKey: string;
+  permissions: ReadonlySet<string>;
+  limits: PortalMemberLimits;
+  can(key: string): boolean;
 }
 
 export interface CreatePortalSessionOptions {
+  userId?: number | null;
+  memberId?: number | null;
   rememberMe?: boolean;
   ip?: string | null;
   userAgent?: string | null;
@@ -33,6 +56,8 @@ export interface PortalSessionAuthRecord {
   phone: string;
   rememberMe: boolean;
   expiresAt: Date;
+  userId?: number | null;
+  memberId?: number | null;
 }
 
 export interface PortalSessionStore {
@@ -52,6 +77,7 @@ declare global {
   namespace Express {
     interface Request {
       portalCustomer?: PortalAuthPayload;
+      portalAuth?: PortalAuthContext;
     }
   }
 }
@@ -100,6 +126,9 @@ const databasePortalSessionStore: PortalSessionStore = {
       .insert(portalSessionsTable)
       .values({
         portalCustomerId,
+        companyId: portalCustomerId,
+        userId: options.userId ?? null,
+        memberId: options.memberId ?? null,
         sessionToken,
         rememberMe,
         deviceLabel: getPortalDeviceLabel(options.userAgent),
@@ -142,6 +171,13 @@ const databasePortalSessionStore: PortalSessionStore = {
 
     if (!match) return null;
 
+    const identity = await resolveSessionIdentity(
+      { id: match.session.id, userId: match.session.userId, memberId: match.session.memberId },
+      match.customer.id,
+    );
+    if (!identity) return null;
+    const { userId, memberId } = identity;
+
     const expiresAt = new Date(
       now.getTime() + sessionLifetimeMs(match.session.rememberMe),
     );
@@ -170,6 +206,8 @@ const databasePortalSessionStore: PortalSessionStore = {
       phone: match.customer.phone,
       rememberMe: match.session.rememberMe,
       expiresAt,
+      userId,
+      memberId,
     };
   },
 
@@ -221,6 +259,47 @@ export async function revokeAllPortalSessions(
     )
     .returning({ id: portalSessionsTable.id });
 
+  return revoked.length;
+}
+
+/** Revokes every session of one person (all companies), optionally keeping one. */
+export async function revokeUserSessions(
+  userId: number,
+  executor: PortalSessionUpdateExecutor = db,
+  exceptSessionId?: number,
+  now = new Date(),
+): Promise<number> {
+  const conditions = [
+    eq(portalSessionsTable.userId, userId),
+    isNull(portalSessionsTable.revokedAt),
+  ];
+  if (exceptSessionId !== undefined) {
+    conditions.push(ne(portalSessionsTable.id, exceptSessionId));
+  }
+  const revoked = await executor
+    .update(portalSessionsTable)
+    .set({ revokedAt: now })
+    .where(and(...conditions))
+    .returning({ id: portalSessionsTable.id });
+  return revoked.length;
+}
+
+/** Revokes the sessions a member holds in one company (suspend / remove). */
+export async function revokeMemberSessions(
+  memberId: number,
+  executor: PortalSessionUpdateExecutor = db,
+  now = new Date(),
+): Promise<number> {
+  const revoked = await executor
+    .update(portalSessionsTable)
+    .set({ revokedAt: now })
+    .where(
+      and(
+        eq(portalSessionsTable.memberId, memberId),
+        isNull(portalSessionsTable.revokedAt),
+      ),
+    )
+    .returning({ id: portalSessionsTable.id });
   return revoked.length;
 }
 
@@ -276,9 +355,31 @@ export function createPortalAuthMiddleware(
 
       req.portalCustomer = {
         portalCustomerId: session.portalCustomerId,
+        companyId: session.portalCustomerId,
         phone: session.phone,
         sessionId: session.id,
+        userId: session.userId ?? undefined,
+        memberId: session.memberId ?? undefined,
       };
+      if (session.memberId && session.userId) {
+        const access = await loadMemberAccess(session.memberId);
+        if (!access) {
+          res.status(401).json({
+            error: { message: "الجلسة منتهية — يرجى تسجيل الدخول مجدداً" },
+          });
+          return;
+        }
+        req.portalAuth = {
+          companyId: session.portalCustomerId,
+          userId: session.userId,
+          memberId: session.memberId,
+          isOwner: access.isOwner,
+          roleKey: access.roleKey,
+          permissions: access.permissions,
+          limits: access.limits,
+          can: (key: string) => access.permissions.has(key),
+        };
+      }
       next();
     } catch (err) {
       next(err);
@@ -287,3 +388,27 @@ export function createPortalAuthMiddleware(
 }
 
 export const requirePortalAuth = createPortalAuthMiddleware();
+
+/**
+ * Requires ALL the given permissions. Must run after requirePortalAuth.
+ * 403 never reveals whether the thing exists.
+ */
+export function requirePortalPermission(...keys: string[]) {
+  return function portalPermissionGuard(
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): void {
+    const auth = req.portalAuth;
+    if (!auth || !keys.every((k) => auth.can(k))) {
+      res.status(403).json({
+        error: {
+          code: "PORTAL_PERMISSION_DENIED",
+          message: "مفيش عندك صلاحية للحاجة دي",
+        },
+      });
+      return;
+    }
+    next();
+  };
+}

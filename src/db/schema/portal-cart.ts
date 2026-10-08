@@ -8,6 +8,7 @@ import {
   timestamp,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 import { bomRecipesTable } from "./bom";
 import { portalCustomersTable } from "./portal-customers";
 
@@ -18,6 +19,8 @@ export const portalCartItemsTable = pgTable(
     portalCustomerId: integer("portal_customer_id")
       .notNull()
       .references(() => portalCustomersTable.id, { onDelete: "cascade" }),
+    // Plan 02: NULL = shared company cart (cart.scope = company).
+    memberId: integer("member_id"),
     bomRecipeId: integer("bom_recipe_id")
       .notNull()
       .references(() => bomRecipesTable.id, { onDelete: "cascade" }),
@@ -30,9 +33,11 @@ export const portalCartItemsTable = pgTable(
       .defaultNow(),
   },
   (table) => ({
-    customerRecipeUnique: uniqueIndex(
-      "portal_cart_items_customer_recipe_unique",
-    ).on(table.portalCustomerId, table.bomRecipeId),
+    memberRecipeUnique: uniqueIndex("portal_cart_items_member_recipe_unique").on(
+      table.portalCustomerId,
+      sql`COALESCE(${table.memberId}, 0)`,
+      table.bomRecipeId,
+    ),
   }),
 );
 

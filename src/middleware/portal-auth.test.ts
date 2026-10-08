@@ -82,6 +82,18 @@ const { sessionState, fakeDb } = vi.hoisted(() => {
 });
 
 vi.mock("../db", () => ({ db: fakeDb }));
+vi.mock("../lib/portalSessionIdentity", () => ({
+  resolveSessionIdentity: async () => ({ userId: 5, memberId: 9 }),
+}));
+vi.mock("../lib/portalAccess", () => ({
+  loadMemberAccess: async () => ({
+    memberId: 9,
+    isOwner: true,
+    roleKey: "owner",
+    permissions: new Set(["catalog.view"]),
+    limits: {},
+  }),
+}));
 
 const {
   createPortalSession,
@@ -143,9 +155,14 @@ describe("portal reference-token sessions", () => {
     expect(next).toHaveBeenCalledOnce();
     expect(req.portalCustomer).toEqual({
       portalCustomerId: 7,
+      companyId: 7,
       phone: "01000000000",
       sessionId: 1,
+      userId: 5,
+      memberId: 9,
     });
+    expect(req.portalAuth.can("catalog.view")).toBe(true);
+    expect(req.portalAuth.can("orders.create")).toBe(false);
 
     vi.advanceTimersByTime(60 * 1000);
     await requirePortalAuth(req, res, next);

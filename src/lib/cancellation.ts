@@ -39,3 +39,63 @@ export function assertCancellable(workflowStatus: string): void {
     );
   }
 }
+
+/**
+ * Plan 02 — company-level cancel. The company owner (or anyone granted
+ * orders.cancel_company) may cancel an order in ANY stage that is not already
+ * finished. Cancelling after the early stages is a "late cancel": the order is
+ * cancelled and the stage is recorded in `cancel_stage`, and staff are told
+ * (`order.cancelled_late`). What a late cancel does to stock or money is
+ * deliberately NOT decided here; it is a separate policy to be added later.
+ */
+export const FINISHED_WORKFLOW_STATUSES = new Set([
+  "cancelled",
+  "completed",
+  "closed",
+  "shipped",
+  "delivered",
+]);
+
+export const WORKFLOW_STAGE_ORDER = [
+  "new",
+  "awaiting_operations_claim",
+  "claimed",
+  "pending_supervisor",
+  "materials_requested",
+  "materials_rejected",
+  "materials_approved",
+  "materials_partial",
+  "in_production",
+  "quality_check",
+  "packaging",
+  "ready_for_delivery",
+  "shipped",
+  "delivered",
+  "completed",
+  "closed",
+] as const;
+
+export type CompanyCancelDecision =
+  | { allowed: true; late: boolean }
+  | { allowed: false; reason: "finished" | "beyond_company_limit" };
+
+/**
+ * @param maxStatus company setting `orders.cancel.company_max_status`
+ *   (null/empty = any stage until finished).
+ */
+export function decideCompanyCancel(
+  workflowStatus: string,
+  maxStatus: string | null | undefined,
+): CompanyCancelDecision {
+  if (FINISHED_WORKFLOW_STATUSES.has(workflowStatus)) {
+    return { allowed: false, reason: "finished" };
+  }
+  if (maxStatus) {
+    const limit = (WORKFLOW_STAGE_ORDER as readonly string[]).indexOf(maxStatus);
+    const current = (WORKFLOW_STAGE_ORDER as readonly string[]).indexOf(workflowStatus);
+    if (limit >= 0 && current > limit) {
+      return { allowed: false, reason: "beyond_company_limit" };
+    }
+  }
+  return { allowed: true, late: !isCancellableStatus(workflowStatus) };
+}

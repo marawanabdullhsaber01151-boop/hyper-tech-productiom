@@ -118,6 +118,11 @@ export const PERMISSIONS = {
     view: ["chairman", "executive_manager", "sales_manager"],
     write: ["chairman", "executive_manager", "sales_manager"],
   },
+  // Plan 02: موظفو الشركة وكود الانضمام وإعدادات البوابة (من جهة الإدارة).
+  portalCompanies: {
+    view: ["chairman", "executive_manager", "sales_manager"],
+    manage: ["chairman", "executive_manager", "sales_manager"],
+  },
   hr: {
     view: ["chairman", "hr", "hr_manager"],
     write: ["chairman", "hr", "hr_manager"],

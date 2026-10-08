@@ -10,6 +10,7 @@
     "dev": "tsx watch src/main.ts",
     "db:push": "drizzle-kit push",
     "db:migrate": "npm run db:preflight && node scripts/run-migrations.mjs",
+    "db:migrate:identity": "tsx scripts/migrate-portal-identity.ts",
     "db:preflight": "node scripts/migration-preflight.mjs",
     "db:migrate:drizzle-kit-unused": "drizzle-kit migrate",
     "db:migrate:foundation": "node manual-migrate-foundation.js",

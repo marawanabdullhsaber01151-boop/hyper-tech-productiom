@@ -18,6 +18,7 @@ export const portalOtpCodesTable = pgTable(
     portalCustomerId: integer("portal_customer_id")
       .notNull()
       .references(() => portalCustomersTable.id, { onDelete: "cascade" }),
+    userId: integer("user_id"), // Plan 02: the person this code belongs to
     channel: text("channel").notNull(), // phone | email
     codeHash: text("code_hash").notNull(),
     purpose: text("purpose").notNull().default("password_reset"),
@@ -45,6 +46,7 @@ export const portalNotificationsTable = pgTable(
     portalCustomerId: integer("portal_customer_id")
       .notNull()
       .references(() => portalCustomersTable.id, { onDelete: "cascade" }),
+    memberId: integer("member_id"), // Plan 02: NULL = company-wide notification
     type: text("type").notNull(),
     title: text("title").notNull(),
     body: text("body").notNull(),

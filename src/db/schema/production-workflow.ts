@@ -92,6 +92,13 @@ export const productionWorkflowOrdersTable = pgTable(
     // ─── منشئ الطلب (محاسب / مدير) ──────────────────────────────────────────
     createdById: integer("created_by_id").notNull(),
     createdByName: text("created_by_name").notNull(),
+    // Plan 02: who created it — "staff" (system_users) or "portal_member".
+    // created_by_id of a portal order is a company id, NOT a system user id.
+    createdByKind: text("created_by_kind"),
+    submittedByMemberId: integer("submitted_by_member_id"),
+    cancelledByMemberId: integer("cancelled_by_member_id"),
+    // Plan 02: the workflow status the order was in when it was cancelled.
+    cancelStage: text("cancel_stage"),
 
     // ─── المنتج وكمية الإنتاج ─────────────────────────────────────────────────
     bomRecipeId: integer("bom_recipe_id").references(() => bomRecipesTable.id),

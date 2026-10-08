@@ -9,13 +9,15 @@
  * مدير التشغيل الذرية قبل ما يبدأ مسار الإنتاج.
  */
 import { Router, Request, Response, NextFunction } from "express";
-import { and, eq, desc, sql, inArray, gt, isNull, ne, count, or } from "drizzle-orm";
+import { and, eq, desc, sql, inArray, gt, gte, isNull, ne, count, or } from "drizzle-orm";
 import rateLimit from "express-rate-limit";
 import bcrypt from "bcryptjs";
 import { createHash, randomInt } from "node:crypto";
 import { db } from "../db";
 import {
   portalCustomersTable,
+  portalUsersTable,
+  portalMembersTable,
   portalPasswordResetRequestsTable,
   portalApplicationsTable,
   portalActivationRequestsTable,
@@ -39,11 +41,23 @@ import {
 } from "../db/schema";
 import {
   requirePortalAuth,
+  requirePortalPermission,
   createPortalSession,
   revokePortalSession,
   revokeAllPortalSessions,
+  revokeUserSessions,
   getAuthenticatedPortalCustomerId,
 } from "../middleware/portal-auth";
+import { makeChoiceToken, readChoiceToken } from "../lib/portalChoiceToken";
+import { applyUserPassword, syncOwnerUserFromCompany } from "../lib/portalCredentials";
+import { provisionCompanyIdentity } from "../lib/portalIdentityProvisioning";
+import {
+  buildSessionPayload,
+  listLoginMemberships,
+  provisionLegacyCompaniesForPhone,
+  registerFailedLogin,
+  registerSuccessfulLogin,
+} from "../lib/portalLogin";
 import { loginRateLimiter, otpRequestRateLimiter } from "../middleware/rateLimiter";
 import { notifyRole, notifyRoles } from "../lib/notifications";
 import { PERMISSIONS } from "../lib/permissions";
@@ -56,7 +70,13 @@ import { resolvePortalProductIdentity } from "../lib/portalCatalog";
 import { toPortalFeaturedIngredients } from "../lib/featuredIngredients";
 import { CartonConversion } from "../lib/cartonConversion";
 import { computeDeliveryMethod } from "../lib/deliveryMethod";
-import { assertCancellable, isCancellableStatus } from "../lib/cancellation";
+import {
+  assertCancellable,
+  decideCompanyCancel,
+  isCancellableStatus,
+} from "../lib/cancellation";
+import { writePortalAudit } from "../lib/portalAudit";
+import { createSettingsResolver } from "../lib/portalSettings";
 import { z } from "zod";
 import { logger } from "../lib/logger";
 import { writeAuditEvent } from "../lib/governance";
@@ -78,7 +98,7 @@ const portalDummyPasswordHash = bcrypt.hash(
 );
 const portalAccountLoginRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 5,
+  max: Number(process.env.PORTAL_ACCOUNT_LOGIN_RATE_MAX) || 5,
   keyGenerator: (req) => {
     const rawIdentifier =
       typeof req.body?.identifier === "string" ?
@@ -582,45 +602,258 @@ router.post(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const data = loginPortalCustomerSchema.parse(req.body);
-      // ✅ الدخول بقى يقبل رقم الهاتف أو الإيميل في نفس الخانة
+      // الدخول بيقبل رقم الهاتف أو الإيميل في نفس الخانة
       const identifier = normalizePortalIdentifier(data.identifier);
-      const [customer] = await db
+      const now = new Date();
+
+      let [user] = await db
         .select()
-        .from(portalCustomersTable)
+        .from(portalUsersTable)
         .where(
-          and(
-            portalIdentifierCondition(identifier.value, identifier.channel),
-            eq(portalCustomersTable.isActive, true),
-          ),
+          identifier.channel === "email"
+            ? eq(portalUsersTable.normalizedEmail, identifier.value)
+            : eq(portalUsersTable.normalizedPhone, identifier.value),
         )
         .limit(1);
 
-      const passwordMatches = await bcrypt.compare(
-        data.password,
-        customer?.passwordHash ?? (await portalDummyPasswordHash),
-      );
-      if (!customer || !passwordMatches) {
-        res.status(401).json({ error: { message: "بيانات الدخول غير صحيحة" } });
+      // حسابات قديمة لسه ما اتعملهاش هوية: بنتحقق من الباسورد القديم وبعدها نعمل الهوية.
+      let legacy:
+        | { id: number; passwordHash: string }
+        | undefined;
+      if (!user) {
+        [legacy] = await db
+          .select({
+            id: portalCustomersTable.id,
+            passwordHash: portalCustomersTable.passwordHash,
+          })
+          .from(portalCustomersTable)
+          .where(
+            and(
+              portalIdentifierCondition(identifier.value, identifier.channel),
+              eq(portalCustomersTable.isActive, true),
+            ),
+          )
+          .limit(1);
+      }
+
+      if (user?.lockedUntil && user.lockedUntil > now) {
+        res.status(429).json({
+          error: {
+            code: "ACCOUNT_LOCKED",
+            message: "المحاولات كترت. جرّب تاني بعد شوية",
+            retryAfterSeconds: Math.ceil((user.lockedUntil.getTime() - now.getTime()) / 1000),
+          },
+        });
         return;
       }
 
-      const token = await createPortalSession(customer.id, {
+      const passwordMatches = await bcrypt.compare(
+        data.password,
+        user?.passwordHash ?? legacy?.passwordHash ?? (await portalDummyPasswordHash),
+      );
+      if (!passwordMatches || (!user && !legacy) || user?.status === "disabled") {
+        if (user && !passwordMatches) {
+          const result = await registerFailedLogin(user.id, now);
+          if (result.locked) {
+            res.status(429).json({
+              error: {
+                code: "ACCOUNT_LOCKED",
+                message: "المحاولات كترت. جرّب تاني بعد شوية",
+              },
+            });
+            return;
+          }
+        }
+        res.status(401).json({ error: { message: "بيانات الدخول بتاعتك غلط" } });
+        return;
+      }
+
+      if (!user && legacy) {
+        await db.transaction(async (tx) => {
+          await provisionCompanyIdentity(tx, legacy!.id);
+        });
+        [user] = await db
+          .select()
+          .from(portalUsersTable)
+          .where(
+            identifier.channel === "email"
+              ? eq(portalUsersTable.normalizedEmail, identifier.value)
+              : eq(portalUsersTable.normalizedPhone, identifier.value),
+          )
+          .limit(1);
+        if (!user) {
+          res.status(401).json({ error: { message: "بيانات الدخول بتاعتك غلط" } });
+          return;
+        }
+      } else if (user && identifier.channel === "phone") {
+        await provisionLegacyCompaniesForPhone(user.normalizedPhone);
+      }
+
+      const { active, pending } = await listLoginMemberships(user.id);
+      if (active.length === 0) {
+        res.status(403).json({
+          error: pending
+            ? {
+                code: "MEMBERSHIP_PENDING",
+                message: "طلب انضمامك لسه مستني موافقة مسؤول الشركة",
+              }
+            : {
+                code: "NO_ACTIVE_COMPANY",
+                message: "حسابك مش مربوط بأي شركة شغالة دلوقتي",
+              },
+        });
+        return;
+      }
+      await registerSuccessfulLogin(user.id, now);
+
+      if (active.length > 1) {
+        res.json({
+          needsCompanyChoice: true,
+          choiceToken: makeChoiceToken(user.id, data.rememberMe),
+          companies: active.map((m) => ({
+            companyId: m.companyId,
+            companyName: m.companyName,
+            roleName: m.roleName,
+            isOwner: m.isOwner,
+          })),
+        });
+        return;
+      }
+
+      const membership = active[0]!;
+      const token = await createPortalSession(membership.companyId, {
+        userId: user.id,
+        memberId: membership.memberId,
         rememberMe: data.rememberMe,
         ip: req.ip,
         userAgent: req.get("user-agent"),
       });
-      res.json({
-        token,
-        rememberMe: data.rememberMe,
-        customer: {
-          id: customer.id,
-          fullName: customer.fullName,
-          phone: customer.phone,
-          email: customer.email,
-          companyName: customer.companyName,
-        },
-        mustChangePassword: customer.mustChangePassword,
+      res.json(
+        await buildSessionPayload({
+          token,
+          rememberMe: data.rememberMe,
+          user,
+          membership,
+        }),
+      );
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+/* ============================================================
+   POST /portal/login/choose-company — الشخص عضو في أكتر من شركة
+============================================================ */
+router.post(
+  "/portal/login/choose-company",
+  loginRateLimiter,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { choiceToken, companyId } = z
+        .object({ choiceToken: z.string().min(10), companyId: z.number().int().positive() })
+        .parse(req.body);
+      const choice = readChoiceToken(choiceToken);
+      if (!choice) {
+        res.status(401).json({
+          error: { code: "CHOICE_EXPIRED", message: "الجلسة انتهت، سجّل دخول من الأول" },
+        });
+        return;
+      }
+      const [user] = await db
+        .select()
+        .from(portalUsersTable)
+        .where(eq(portalUsersTable.id, choice.userId))
+        .limit(1);
+      const { active } = await listLoginMemberships(choice.userId);
+      const membership = active.find((m) => m.companyId === companyId);
+      if (!user || user.status !== "active" || !membership) {
+        res.status(403).json({
+          error: { code: "NOT_A_MEMBER", message: "مش عضو في الشركة دي" },
+        });
+        return;
+      }
+      const token = await createPortalSession(membership.companyId, {
+        userId: user.id,
+        memberId: membership.memberId,
+        rememberMe: choice.rememberMe,
+        ip: req.ip,
+        userAgent: req.get("user-agent"),
       });
+      res.json(
+        await buildSessionPayload({ token, rememberMe: choice.rememberMe, user, membership }),
+      );
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+/* ============================================================
+   GET /portal/session/companies + POST /portal/session/switch-company
+============================================================ */
+router.get(
+  "/portal/session/companies",
+  requirePortalAuth,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const userId = req.portalAuth?.userId;
+      if (!userId) {
+        res.status(401).json({ error: { message: "غير مصرح" } });
+        return;
+      }
+      const { active } = await listLoginMemberships(userId);
+      res.json({
+        currentCompanyId: req.portalAuth!.companyId,
+        companies: active.map((m) => ({
+          companyId: m.companyId,
+          companyName: m.companyName,
+          roleName: m.roleName,
+          isOwner: m.isOwner,
+        })),
+      });
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+router.post(
+  "/portal/session/switch-company",
+  requirePortalAuth,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { companyId } = z.object({ companyId: z.number().int().positive() }).parse(req.body);
+      const auth = req.portalAuth;
+      if (!auth) {
+        res.status(401).json({ error: { message: "غير مصرح" } });
+        return;
+      }
+      const { active } = await listLoginMemberships(auth.userId);
+      const membership = active.find((m) => m.companyId === companyId);
+      if (!membership) {
+        res.status(403).json({ error: { code: "NOT_A_MEMBER", message: "مش عضو في الشركة دي" } });
+        return;
+      }
+      const [user] = await db
+        .select()
+        .from(portalUsersTable)
+        .where(eq(portalUsersTable.id, auth.userId))
+        .limit(1);
+      if (!user) {
+        res.status(401).json({ error: { message: "غير مصرح" } });
+        return;
+      }
+      const oldToken = req.headers.authorization!.slice(7).trim();
+      const token = await createPortalSession(membership.companyId, {
+        userId: user.id,
+        memberId: membership.memberId,
+        rememberMe: false,
+        ip: req.ip,
+        userAgent: req.get("user-agent"),
+      });
+      await revokePortalSession(oldToken);
+      res.json(await buildSessionPayload({ token, rememberMe: false, user, membership }));
     } catch (err) {
       next(err);
     }
@@ -930,6 +1163,8 @@ router.post(
             code: "PORTAL_ACCOUNT_NOT_FOUND",
           });
         }
+        const otpOwnerUserId = await syncOwnerUserFromCompany(tx, customer.id);
+        if (otpOwnerUserId) await revokeUserSessions(otpOwnerUserId, tx, undefined, now);
 
         await tx
           .update(portalOtpCodesTable)
@@ -1001,6 +1236,19 @@ router.post(
 /* ============================================================
    Portal customer notifications — مستقلة تمامًا عن إشعارات الموظفين
 ============================================================ */
+
+/** Own notifications + (for people allowed) the company-wide ones. */
+function visibleNotifications(req: Request) {
+  const auth = req.portalAuth;
+  const customerId = getAuthenticatedPortalCustomerId(req);
+  const mine = auth ? eq(portalNotificationsTable.memberId, auth.memberId) : sql`false`;
+  const shared =
+    auth?.can("notifications.company")
+      ? isNull(portalNotificationsTable.memberId)
+      : sql`false`;
+  return and(eq(portalNotificationsTable.portalCustomerId, customerId), or(mine, shared));
+}
+
 router.get(
   "/portal/notifications",
   requirePortalAuth,
@@ -1018,12 +1266,7 @@ router.get(
       const notifications = await db
         .select()
         .from(portalNotificationsTable)
-        .where(
-          eq(
-            portalNotificationsTable.portalCustomerId,
-            getAuthenticatedPortalCustomerId(req),
-          ),
-        )
+        .where(visibleNotifications(req))
         .orderBy(desc(portalNotificationsTable.createdAt))
         .limit(limit)
         .offset(offset);
@@ -1046,13 +1289,7 @@ router.get(
         .select({ count: count() })
         .from(portalNotificationsTable)
         .where(
-          and(
-            eq(
-              portalNotificationsTable.portalCustomerId,
-              getAuthenticatedPortalCustomerId(req),
-            ),
-            eq(portalNotificationsTable.isRead, false),
-          ),
+          and(visibleNotifications(req), eq(portalNotificationsTable.isRead, false)),
         );
       res.json({ count: result?.count ?? 0 });
     } catch (err) {
@@ -1072,13 +1309,7 @@ router.patch(
         .update(portalNotificationsTable)
         .set({ isRead: true })
         .where(
-          and(
-            eq(portalNotificationsTable.id, id),
-            eq(
-              portalNotificationsTable.portalCustomerId,
-              getAuthenticatedPortalCustomerId(req),
-            ),
-          ),
+          and(eq(portalNotificationsTable.id, id), visibleNotifications(req)),
         )
         .returning();
       if (!updated) {
@@ -1128,7 +1359,24 @@ router.get(
         companyName: customer.contact.company || customer.portal.companyName,
         address: customer.contact.address,
           city: customer.contact.city || customer.portal.city,
-        mustChangePassword: customer.portal.mustChangePassword,
+        mustChangePassword: req.portalAuth
+          ? (
+              await db
+                .select({ m: portalUsersTable.mustChangePassword })
+                .from(portalUsersTable)
+                .where(eq(portalUsersTable.id, req.portalAuth.userId))
+                .limit(1)
+            )[0]?.m ?? customer.portal.mustChangePassword
+          : customer.portal.mustChangePassword,
+        member: req.portalAuth
+          ? {
+              id: req.portalAuth.memberId,
+              isOwner: req.portalAuth.isOwner,
+              roleKey: req.portalAuth.roleKey,
+              permissions: [...req.portalAuth.permissions],
+              limits: req.portalAuth.limits,
+            }
+          : null,
       });
     } catch (err) {
       next(err);
@@ -1410,6 +1658,7 @@ router.post(
             code: "PORTAL_ACCOUNT_NOT_FOUND",
           });
         }
+        await syncOwnerUserFromCompany(tx, activation.portalCustomerId);
 
         const [consumed] = await tx
           .update(portalActivationTokensTable)
@@ -1478,15 +1727,17 @@ router.post(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const data = changePortalPasswordSchema.parse(req.body);
-      const customerId = getAuthenticatedPortalCustomerId(req);
+      getAuthenticatedPortalCustomerId(req);
+      const userId = req.portalAuth?.userId;
       const currentSessionId = req.portalCustomer?.sessionId;
+      if (!userId) {
+        res.status(401).json({ error: { message: "غير مصرح" } });
+        return;
+      }
       const [existing] = await db
-        .select({
-          id: portalCustomersTable.id,
-          passwordHash: portalCustomersTable.passwordHash,
-        })
-        .from(portalCustomersTable)
-        .where(eq(portalCustomersTable.id, customerId))
+        .select({ id: portalUsersTable.id, passwordHash: portalUsersTable.passwordHash })
+        .from(portalUsersTable)
+        .where(eq(portalUsersTable.id, userId))
         .limit(1);
       if (!existing) {
         res.status(404).json({ error: { message: "الحساب غير موجود" } });
@@ -1504,25 +1755,10 @@ router.post(
         });
         return;
       }
-      const now = new Date();
+      const customerId = req.portalAuth!.companyId;
       await db.transaction(async (tx) => {
-        await tx
-          .update(portalCustomersTable)
-          .set({
-            passwordHash: await bcrypt.hash(data.newPassword, 12),
-            mustChangePassword: false,
-          })
-          .where(eq(portalCustomersTable.id, customerId));
-        await tx
-          .update(portalSessionsTable)
-          .set({ revokedAt: now })
-          .where(
-            and(
-              eq(portalSessionsTable.portalCustomerId, customerId),
-              isNull(portalSessionsTable.revokedAt),
-              currentSessionId ? ne(portalSessionsTable.id, currentSessionId) : undefined,
-            ),
-          );
+        await applyUserPassword(tx, userId, await bcrypt.hash(data.newPassword, 12));
+        await revokeUserSessions(userId, tx, currentSessionId);
         await writeAuditEvent({
           executor: tx,
           actorName: "portal_customer",
@@ -1554,6 +1790,7 @@ const updatePortalProfileSchema = z.object({
 router.patch(
   "/portal/me",
   requirePortalAuth,
+  requirePortalPermission("company.edit_profile"),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const data = updatePortalProfileSchema.parse(req.body);
@@ -1575,8 +1812,14 @@ router.patch(
         res.status(404).json({ error: { message: "الحساب غير موجود" } });
         return;
       }
+      const [editor] = await db
+        .select({ passwordHash: portalUsersTable.passwordHash })
+        .from(portalUsersTable)
+        .where(eq(portalUsersTable.id, req.portalAuth!.userId))
+        .limit(1);
       if (
-        !(await bcrypt.compare(data.currentPassword, existing.passwordHash))
+        !editor ||
+        !(await bcrypt.compare(data.currentPassword, editor.passwordHash))
       ) {
         res
           .status(401)
@@ -1621,7 +1864,51 @@ router.patch(
           return;
         }
       }
+      if (req.portalAuth!.isOwner) {
+        const [phoneUserTaken] = await db
+          .select({ id: portalUsersTable.id })
+          .from(portalUsersTable)
+          .where(
+            and(
+              eq(portalUsersTable.normalizedPhone, normalizedPhone),
+              ne(portalUsersTable.id, req.portalAuth!.userId),
+            ),
+          )
+          .limit(1);
+        if (phoneUserTaken) {
+          res.status(409).json({ error: { message: "رقم الهاتف مستخدم بالفعل" } });
+          return;
+        }
+        if (normalizedEmail) {
+          const [emailUserTaken] = await db
+            .select({ id: portalUsersTable.id })
+            .from(portalUsersTable)
+            .where(
+              and(
+                eq(portalUsersTable.normalizedEmail, normalizedEmail),
+                ne(portalUsersTable.id, req.portalAuth!.userId),
+              ),
+            )
+            .limit(1);
+          if (emailUserTaken) {
+            res.status(409).json({ error: { message: "البريد الإلكتروني مستخدم بالفعل" } });
+            return;
+          }
+        }
+      }
       const updated = await db.transaction(async (tx) => {
+        if (req.portalAuth!.isOwner) {
+          await tx
+            .update(portalUsersTable)
+            .set({
+              fullName: data.fullName,
+              phone: data.phone.trim(),
+              normalizedPhone,
+              email: normalizeOptionalText(data.email),
+              normalizedEmail: normalizedEmail || null,
+            })
+            .where(eq(portalUsersTable.id, req.portalAuth!.userId));
+        }
         const [portal] = await tx
           .update(portalCustomersTable)
           .set({
@@ -1675,11 +1962,28 @@ const portalRecipeParam = z.coerce.number().int().positive();
 /* ============================================================
    Cart + wishlist — ملكية العميل مشتقة من التوكن فقط
 ============================================================ */
+
+/** Cart/wishlist owner: one per employee (default) or shared by the company. */
+async function resolveCartOwner(req: Request): Promise<{ customerId: number; memberId: number | null }> {
+  const customerId = getAuthenticatedPortalCustomerId(req);
+  const auth = req.portalAuth;
+  if (!auth) throw Object.assign(new Error("غير مصرح"), { status: 401 });
+  const settings = await createSettingsResolver({ companyId: customerId, memberId: auth.memberId });
+  return {
+    customerId,
+    memberId: settings.get<string>("cart.scope") === "company" ? null : auth.memberId,
+  };
+}
+const memberIsSql = (column: unknown, memberId: number | null) =>
+  memberId === null ? sql`${column} IS NULL` : sql`${column} = ${memberId}`;
+
 router.get(
   "/portal/cart",
   requirePortalAuth,
+  requirePortalPermission("cart.use"),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      const owner = await resolveCartOwner(req);
       const items = await db
         .select({
           id: portalCartItemsTable.id,
@@ -1697,9 +2001,9 @@ router.get(
           eq(portalCartItemsTable.bomRecipeId, bomRecipesTable.id),
         )
         .where(
-          eq(
-            portalCartItemsTable.portalCustomerId,
-            getAuthenticatedPortalCustomerId(req),
+          and(
+            eq(portalCartItemsTable.portalCustomerId, owner.customerId),
+            memberIsSql(portalCartItemsTable.memberId, owner.memberId),
           ),
         )
         .orderBy(portalCartItemsTable.createdAt);
@@ -1713,10 +2017,11 @@ router.get(
 router.post(
   "/portal/cart",
   requirePortalAuth,
+  requirePortalPermission("cart.use"),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const data = portalCartMutationSchema.parse(req.body);
-      const customerId = getAuthenticatedPortalCustomerId(req);
+      const { customerId, memberId: cartMemberId } = await resolveCartOwner(req);
       const result = await db.transaction(async (tx) => {
         const [customer] = await tx
           .select({ minimumOrderQuantity: portalCustomersTable.minimumOrderQuantity })
@@ -1749,6 +2054,7 @@ router.post(
           .where(
             and(
               eq(portalCartItemsTable.portalCustomerId, customerId),
+              memberIsSql(portalCartItemsTable.memberId, cartMemberId),
               eq(portalCartItemsTable.bomRecipeId, data.bomRecipeId),
             ),
           )
@@ -1768,25 +2074,14 @@ router.post(
           );
         }
 
-        const [saved] = await tx
-          .insert(portalCartItemsTable)
-          .values({
-            portalCustomerId: customerId,
-            bomRecipeId: recipe.id,
-            qty: String(nextQty),
-          })
-          .onConflictDoUpdate({
-            target: [
-              portalCartItemsTable.portalCustomerId,
-              portalCartItemsTable.bomRecipeId,
-            ],
-            set: { qty: String(nextQty), updatedAt: new Date() },
-          })
-          .returning({
-            id: portalCartItemsTable.id,
-            qty: portalCartItemsTable.qty,
-            recipeId: portalCartItemsTable.bomRecipeId,
-          });
+        const upserted = await tx.execute(sql`
+          INSERT INTO portal_cart_items (portal_customer_id, member_id, bom_recipe_id, qty)
+          VALUES (${customerId}, ${cartMemberId}, ${recipe.id}, ${String(nextQty)})
+          ON CONFLICT (portal_customer_id, (COALESCE(member_id, 0)), bom_recipe_id)
+          DO UPDATE SET qty = EXCLUDED.qty, updated_at = now()
+          RETURNING id, qty, bom_recipe_id AS "recipeId"
+        `);
+        const saved = upserted.rows[0] as { id: number; qty: string; recipeId: number };
         return { ...saved, ...recipe };
       });
       res.json(result);
@@ -1803,17 +2098,17 @@ router.post(
 router.delete(
   "/portal/cart/:bomRecipeId",
   requirePortalAuth,
+  requirePortalPermission("cart.use"),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const bomRecipeId = portalRecipeParam.parse(req.params.bomRecipeId);
+      const owner = await resolveCartOwner(req);
       await db
         .delete(portalCartItemsTable)
         .where(
           and(
-            eq(
-              portalCartItemsTable.portalCustomerId,
-              getAuthenticatedPortalCustomerId(req),
-            ),
+            eq(portalCartItemsTable.portalCustomerId, owner.customerId),
+            memberIsSql(portalCartItemsTable.memberId, owner.memberId),
             eq(portalCartItemsTable.bomRecipeId, bomRecipeId),
           ),
         );
@@ -1827,8 +2122,10 @@ router.delete(
 router.get(
   "/portal/wishlist",
   requirePortalAuth,
+  requirePortalPermission("cart.use"),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      const owner = await resolveCartOwner(req);
       const items = await db
         .select({
           id: portalWishlistItemsTable.id,
@@ -1845,9 +2142,9 @@ router.get(
           eq(portalWishlistItemsTable.bomRecipeId, bomRecipesTable.id),
         )
         .where(
-          eq(
-            portalWishlistItemsTable.portalCustomerId,
-            getAuthenticatedPortalCustomerId(req),
+          and(
+            eq(portalWishlistItemsTable.portalCustomerId, owner.customerId),
+            memberIsSql(portalWishlistItemsTable.memberId, owner.memberId),
           ),
         )
         .orderBy(desc(portalWishlistItemsTable.createdAt));
@@ -1861,10 +2158,11 @@ router.get(
 router.post(
   "/portal/wishlist",
   requirePortalAuth,
+  requirePortalPermission("cart.use"),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const bomRecipeId = portalRecipeParam.parse(req.body?.bomRecipeId);
-      const customerId = getAuthenticatedPortalCustomerId(req);
+      const { customerId, memberId: wishMemberId } = await resolveCartOwner(req);
       const [recipe] = await db
         .select({
           id: bomRecipesTable.id,
@@ -1885,16 +2183,13 @@ router.post(
           .json({ error: { message: "المنتج غير موجود في الكتالوج الحالي" } });
         return;
       }
-      const [saved] = await db
-        .insert(portalWishlistItemsTable)
-        .values({ portalCustomerId: customerId, bomRecipeId })
-        .onConflictDoNothing({
-          target: [
-            portalWishlistItemsTable.portalCustomerId,
-            portalWishlistItemsTable.bomRecipeId,
-          ],
-        })
-        .returning({ id: portalWishlistItemsTable.id });
+      const wished = await db.execute(sql`
+        INSERT INTO portal_wishlist_items (portal_customer_id, member_id, bom_recipe_id)
+        VALUES (${customerId}, ${wishMemberId}, ${bomRecipeId})
+        ON CONFLICT (portal_customer_id, (COALESCE(member_id, 0)), bom_recipe_id) DO NOTHING
+        RETURNING id
+      `);
+      const saved = wished.rows[0] as { id: number } | undefined;
       res.status(201).json({
         id: saved?.id || null,
         recipeId: recipe.id,
@@ -1911,17 +2206,17 @@ router.post(
 router.delete(
   "/portal/wishlist/:bomRecipeId",
   requirePortalAuth,
+  requirePortalPermission("cart.use"),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const bomRecipeId = portalRecipeParam.parse(req.params.bomRecipeId);
+      const owner = await resolveCartOwner(req);
       await db
         .delete(portalWishlistItemsTable)
         .where(
           and(
-            eq(
-              portalWishlistItemsTable.portalCustomerId,
-              getAuthenticatedPortalCustomerId(req),
-            ),
+            eq(portalWishlistItemsTable.portalCustomerId, owner.customerId),
+            memberIsSql(portalWishlistItemsTable.memberId, owner.memberId),
             eq(portalWishlistItemsTable.bomRecipeId, bomRecipeId),
           ),
         );
@@ -1943,6 +2238,17 @@ router.get(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const customerId = getAuthenticatedPortalCustomerId(req);
+      const auth = req.portalAuth;
+      if (!auth || !(auth.can("orders.view_own") || auth.can("orders.view_company"))) {
+        res.status(403).json({
+          error: { code: "PORTAL_PERMISSION_DENIED", message: "مفيش عندك صلاحية للحاجة دي" },
+        });
+        return;
+      }
+      // "mine" = اللي أنا بعتها بس. الرئيس/اللي ليه صلاحية يشوف الشركة كلها.
+      const wantsAll = req.query.scope !== "mine" && auth.can("orders.view_company");
+      const cancelSettings = await createSettingsResolver({ companyId: customerId, memberId: auth.memberId });
+      const cancelMax = cancelSettings.get<string | null>("orders.cancel.company_max_status");
       const requestedPage = Number(req.query.page ?? 1);
       const requestedLimit = Number(req.query.limit ?? 20);
       const page =
@@ -1955,10 +2261,33 @@ router.get(
       const rawOrders = await db
         .select()
         .from(productionWorkflowOrdersTable)
-        .where(eq(productionWorkflowOrdersTable.portalCustomerId, customerId))
+        .where(
+          and(
+            eq(productionWorkflowOrdersTable.portalCustomerId, customerId),
+            wantsAll
+              ? undefined
+              : eq(productionWorkflowOrdersTable.submittedByMemberId, auth.memberId),
+          ),
+        )
         .orderBy(desc(productionWorkflowOrdersTable.createdAt))
         .limit(limit)
         .offset(offset);
+      const submitterIds = [
+        ...new Set(rawOrders.flatMap((o) => (o.submittedByMemberId ? [o.submittedByMemberId] : []))),
+      ];
+      const submitters = submitterIds.length
+        ? await db
+            .select({ memberId: portalMembersTable.id, fullName: portalUsersTable.fullName })
+            .from(portalMembersTable)
+            .innerJoin(portalUsersTable, eq(portalUsersTable.id, portalMembersTable.userId))
+            .where(
+              and(
+                inArray(portalMembersTable.id, submitterIds),
+                eq(portalMembersTable.companyId, customerId),
+              ),
+            )
+        : [];
+      const submitterName = new Map(submitters.map((m) => [m.memberId, m.fullName]));
       const recipeIds = [
         ...new Set(
           rawOrders.flatMap((order) =>
@@ -2046,7 +2375,28 @@ router.get(
               rejection,
               // Phase 3: الفرونت إند يعتمد على القيمة دي بس عشان يقرر يعرض
               // زرار الإلغاء ولا لأ — نفس منطق src/lib/cancellation.ts بالظبط.
-              canCancel: isCancellableStatus(item.workflowStatus),
+              // Plan 02: الإلغاء بيتحدد بصلاحيات الموظف مش بالمرحلة بس.
+              canCancel: (() => {
+                if (auth.can("orders.cancel_company")) {
+                  return decideCompanyCancel(item.workflowStatus, cancelMax).allowed;
+                }
+                return (
+                  auth.can("orders.cancel_own") &&
+                  item.submittedByMemberId === auth.memberId &&
+                  isCancellableStatus(item.workflowStatus)
+                );
+              })(),
+              lateCancel:
+                auth.can("orders.cancel_company") &&
+                decideCompanyCancel(item.workflowStatus, cancelMax).allowed &&
+                !isCancellableStatus(item.workflowStatus),
+              submittedBy: item.submittedByMemberId
+                ? {
+                    memberId: item.submittedByMemberId,
+                    name: submitterName.get(item.submittedByMemberId) ?? null,
+                    isMe: item.submittedByMemberId === auth.memberId,
+                  }
+                : null,
             };
           }),
           review:
@@ -2336,9 +2686,11 @@ export const submitOrderSchema = z.object({
 router.post(
   "/portal/orders",
   requirePortalAuth,
+  requirePortalPermission("orders.create"),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const data = submitOrderSchema.parse(req.body);
+      const auth = req.portalAuth!;
       const [customer] = await db
         .select()
         .from(portalCustomersTable)
@@ -2350,7 +2702,19 @@ router.post(
         res.status(404).json({ error: { message: "الحساب غير موجود" } });
         return;
       }
-      if (customer.mustChangePassword) {
+      const [submitter] = await db
+        .select({
+          fullName: portalUsersTable.fullName,
+          mustChangePassword: portalUsersTable.mustChangePassword,
+        })
+        .from(portalUsersTable)
+        .where(eq(portalUsersTable.id, auth.userId))
+        .limit(1);
+      if (!submitter) {
+        res.status(401).json({ error: { message: "غير مصرح" } });
+        return;
+      }
+      if (submitter.mustChangePassword) {
         res.status(403).json({
           error: {
             code: "PASSWORD_CHANGE_REQUIRED",
@@ -2417,23 +2781,56 @@ router.post(
         }),
       );
 
+      const orderSettings = await createSettingsResolver({
+        companyId: customer.id,
+        memberId: auth.memberId,
+      });
+      const effectiveMinQty = Math.max(
+        configuredMinimumOrderQuantity,
+        customer.minimumOrderQuantity,
+        orderSettings.get<number>("orders.min_qty"),
+      );
       for (const item of canonicalItems) {
         const quantity = Number(item.qty);
-        if (
-          !Number.isFinite(quantity) ||
-          quantity < Math.max(
-            configuredMinimumOrderQuantity,
-            customer.minimumOrderQuantity,
-          )
-        ) {
+        if (!Number.isFinite(quantity) || quantity < effectiveMinQty) {
           res.status(400).json({
             error: {
-              message: `الحد الأدنى للكمية هو ${Math.max(
-                configuredMinimumOrderQuantity,
-                customer.minimumOrderQuantity,
-              )} قطعة لكل منتج`,
+              message: `الحد الأدنى للكمية هو ${effectiveMinQty} قطعة لكل منتج`,
             },
           });
+          return;
+        }
+      }
+
+      // حدود الموظف (بتحطها إدارة الشركة): الرئيس مالوش حدود.
+      const limits = auth.isOwner ? {} : auth.limits;
+      const refusal = (message: string) => {
+        res.status(422).json({ error: { code: "MEMBER_LIMIT_EXCEEDED", message } });
+      };
+      if (limits.maxLinesPerOrder && canonicalItems.length > limits.maxLinesPerOrder) {
+        refusal(`الحد المسموح لك ${limits.maxLinesPerOrder} منتج في الطلب الواحد`);
+        return;
+      }
+      if (
+        limits.maxQtyPerLine &&
+        canonicalItems.some((i) => Number(i.qty) > limits.maxQtyPerLine!)
+      ) {
+        refusal(`أقصى كمية مسموحة لك للمنتج الواحد ${limits.maxQtyPerLine}`);
+        return;
+      }
+      if (limits.maxOrdersPerDay) {
+        const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+        const [today] = await db
+          .select({ n: sql<number>`count(distinct ${productionWorkflowOrdersTable.salesOrderRef})::int` })
+          .from(productionWorkflowOrdersTable)
+          .where(
+            and(
+              eq(productionWorkflowOrdersTable.submittedByMemberId, auth.memberId),
+              gte(productionWorkflowOrdersTable.createdAt, since),
+            ),
+          );
+        if ((today?.n ?? 0) >= limits.maxOrdersPerDay) {
+          refusal(`وصلت للحد اليومي (${limits.maxOrdersPerDay} طلبات في 24 ساعة)`);
           return;
         }
       }
@@ -2449,6 +2846,7 @@ router.post(
 
       const createdOrders = await db.transaction(async (tx: Transaction) => {
         const results = [];
+        let runningValue = 0;
         for (const item of canonicalItems) {
           const [recipe] = await tx
             .select()
@@ -2525,10 +2923,23 @@ router.post(
               // ✅ عميل البوابة مش موظف، فمفيش له userId حقيقي في نظام الموظفين —
               // بنسجّل رقمه هو نفسه هنا (namespace مختلف عن system_users، مرجعي بس)
               createdById: customer.id,
-              createdByName: `${customer.fullName} (عبر بوابة العملاء)`,
+              createdByName: `${submitter.fullName} (عبر بوابة العملاء)`,
+              createdByKind: "portal_member",
+              submittedByMemberId: auth.memberId,
             })
             .returning();
           results.push(inserted);
+          if (limits.maxOrderValue) {
+            runningValue += Number(referenceLineTotal ?? 0);
+            if (runningValue > limits.maxOrderValue) {
+              throw Object.assign(
+                new Error(
+                  `قيمة الطلب التقديرية أكبر من الحد المسموح لك (${limits.maxOrderValue})`,
+                ),
+                { status: 422, code: "MEMBER_LIMIT_EXCEEDED" },
+              );
+            }
+          }
         }
         return results;
       });
@@ -2563,7 +2974,9 @@ router.post(
       });
     } catch (err: any) {
       if (err?.status) {
-        res.status(err.status).json({ error: { message: err.message } } as any);
+        res
+          .status(err.status)
+          .json({ error: { ...(err.code ? { code: err.code } : {}), message: err.message } } as any);
         return;
       }
       next(err);
@@ -2592,22 +3005,56 @@ router.post(
       }
       const data = cancelPortalOrderSchema.parse(req.body ?? {});
       const customerId = getAuthenticatedPortalCustomerId(req);
+      const auth = req.portalAuth;
+      if (!auth) {
+        res.status(401).json({ error: { message: "غير مصرح" } });
+        return;
+      }
+      const canCompany = auth.can("orders.cancel_company");
+      const canOwn = auth.can("orders.cancel_own");
+      if (!canCompany && !canOwn) {
+        res.status(403).json({
+          error: { code: "PORTAL_PERMISSION_DENIED", message: "مفيش عندك صلاحية للحاجة دي" },
+        });
+        return;
+      }
+      const settings = await createSettingsResolver({ companyId: customerId, memberId: auth.memberId });
+      const maxStatus = settings.get<string | null>("orders.cancel.company_max_status");
 
-      const updated = await db.transaction(async (tx: Transaction) => {
+      const { updated, late, stage } = await db.transaction(async (tx: Transaction) => {
         const [order] = await tx
           .select()
           .from(productionWorkflowOrdersTable)
           .where(eq(productionWorkflowOrdersTable.id, id))
           .for("update");
+        // Another company's order is indistinguishable from a missing one.
         if (!order || order.portalCustomerId !== customerId) {
           throw Object.assign(new Error("الصنف غير موجود"), { status: 404 });
         }
-        assertCancellable(order.workflowStatus);
+        const isMine = order.submittedByMemberId === auth.memberId;
+        let late = false;
+        if (canCompany) {
+          const decision = decideCompanyCancel(order.workflowStatus, maxStatus);
+          if (!decision.allowed) {
+            throw Object.assign(
+              new Error(
+                decision.reason === "finished"
+                  ? "الصنف ده خلص أو اتلغى قبل كده، مينفعش يتلغي"
+                  : "الإلغاء في المرحلة دي محتاج تواصل مع المبيعات",
+              ),
+              { status: 409 },
+            );
+          }
+          late = decision.late;
+        } else {
+          if (!isMine) throw Object.assign(new Error("الصنف غير موجود"), { status: 404 });
+          assertCancellable(order.workflowStatus);
+        }
 
-        const [customer] = await tx
-          .select()
-          .from(portalCustomersTable)
-          .where(eq(portalCustomersTable.id, customerId))
+        const [actor] = await tx
+          .select({ fullName: portalUsersTable.fullName })
+          .from(portalUsersTable)
+          .where(eq(portalUsersTable.id, auth.userId))
           .limit(1);
 
         const [result] = await tx
@@ -2615,26 +3062,51 @@ router.post(
           .set({
             workflowStatus: "cancelled",
             cancelledById: customerId,
-            cancelledByName: customer?.fullName ?? null,
+            cancelledByName: actor?.fullName ?? null,
             cancelledByRole: "customer",
+            cancelledByMemberId: auth.memberId,
+            cancelStage: order.workflowStatus,
             cancelReason: data.reason ?? null,
             cancelledAt: new Date(),
             updatedAt: new Date(),
           })
           .where(eq(productionWorkflowOrdersTable.id, id))
           .returning();
-        return result;
+        await writePortalAudit(tx, {
+          companyId: customerId,
+          actorMemberId: auth.memberId,
+          actorLabel: `member:${auth.memberId}`,
+          action: late ? "order.cancelled_late" : "order.cancelled",
+          targetType: "order",
+          targetId: id,
+          before: { status: order.workflowStatus },
+          after: { by: isMine ? "submitter" : "company", stage: order.workflowStatus },
+          ip: req.ip,
+          userAgent: req.get("user-agent"),
+        });
+        return { updated: result, late, stage: order.workflowStatus };
       });
 
       await notifyRole("hr", {
-        type: "portal_order_cancelled_by_customer",
-        title: "العميل ألغى صنفًا من طلبه",
-        body: `${updated.customerName || "عميل البوابة"} ألغى "${updated.productName}" (${updated.orderNumber}).`,
+        type: late ? "order.cancelled_late" : "portal_order_cancelled_by_customer",
+        title: late ? "العميل ألغى صنفًا بعد بداية التنفيذ" : "العميل ألغى صنفًا من طلبه",
+        body: `${updated.customerName || "عميل البوابة"} ألغى "${updated.productName}" (${updated.orderNumber})${late ? ` وهو في مرحلة ${stage}. راجع الأثر على الإنتاج والمخزون.` : "."}`,
         referenceType: "production_workflow",
         referenceId: updated.id,
       });
+      if (late) {
+        for (const role of ["operations_manager", "chairman"] as const) {
+          await notifyRole(role, {
+            type: "order.cancelled_late",
+            title: "إلغاء متأخر لطلب بوابة",
+            body: `${updated.orderNumber} اتلغى من العميل وهو في مرحلة ${stage}. محتاج قرار إدارة.`,
+            referenceType: "production_workflow",
+            referenceId: updated.id,
+          });
+        }
+      }
 
-      res.json({ message: "تم إلغاء الصنف", order: updated });
+      res.json({ message: "تم إلغاء الصنف", order: updated, lateCancel: late });
     } catch (err: any) {
       if (err?.status) {
         res.status(err.status).json({ error: { message: err.message } });

@@ -6,7 +6,7 @@ import rateLimit from "express-rate-limit";
 /** حماية من Brute Force على صفحة تسجيل الدخول */
 export const loginRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 دقيقة
-  max: 10, // 10 محاولات فقط لكل IP
+  max: Number(process.env.LOGIN_RATE_MAX) || 10, // 10 محاولات فقط لكل IP (قابلة للضبط للاختبارات)
   standardHeaders: true,
   legacyHeaders: false,
   message: {

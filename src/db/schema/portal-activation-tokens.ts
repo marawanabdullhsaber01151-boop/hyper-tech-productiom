@@ -19,6 +19,7 @@ export const portalActivationTokensTable = pgTable(
     portalCustomerId: integer("portal_customer_id")
       .notNull()
       .references(() => portalCustomersTable.id, { onDelete: "cascade" }),
+    userId: integer("user_id"), // Plan 02: whose password this link sets
     tokenHash: text("token_hash").notNull(),
     purpose: text("purpose").notNull().default("first_activation"),
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),

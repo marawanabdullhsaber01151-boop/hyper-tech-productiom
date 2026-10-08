@@ -26,6 +26,7 @@ export const portalOrderBatchesTable = pgTable(
     portalCustomerId: integer("portal_customer_id")
       .notNull()
       .references(() => portalCustomersTable.id, { onDelete: "cascade" }),
+    submittedByMemberId: integer("submitted_by_member_id"),
     idempotencyKey: text("idempotency_key").notNull(),
     batchRef: text("batch_ref").notNull().unique(),
     responsePayload: jsonb("response_payload"),

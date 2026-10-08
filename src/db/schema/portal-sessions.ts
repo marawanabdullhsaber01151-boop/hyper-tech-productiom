@@ -18,6 +18,10 @@ export const portalSessionsTable = pgTable(
     portalCustomerId: integer("portal_customer_id")
       .notNull()
       .references(() => portalCustomersTable.id, { onDelete: "cascade" }),
+    // Plan 02: the person / membership / company this session belongs to.
+    userId: integer("user_id"),
+    memberId: integer("member_id"),
+    companyId: integer("company_id"),
     sessionToken: text("session_token").notNull().unique(),
     rememberMe: boolean("remember_me").notNull().default(false),
     deviceLabel: text("device_label"),

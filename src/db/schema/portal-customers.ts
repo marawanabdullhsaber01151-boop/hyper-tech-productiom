@@ -77,6 +77,7 @@ export const portalPasswordResetRequestsTable = pgTable(
     portalCustomerId: integer("portal_customer_id")
       .notNull()
       .references(() => portalCustomersTable.id),
+    userId: integer("user_id"), // Plan 02
     status: text("status").notNull().default("pending"), // pending / resolved
     resolvedById: integer("resolved_by_id"),
     resolvedByName: text("resolved_by_name"),

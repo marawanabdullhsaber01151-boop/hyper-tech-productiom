@@ -124,6 +124,7 @@ export const chatMessagesTable = pgTable(
     // customer | staff | system
     senderType: text("sender_type").notNull(),
     senderUserId: integer("sender_user_id"),
+    senderMemberId: integer("sender_member_id"), // Plan 02
     senderName: text("sender_name"),
     // text | image | system
     kind: text("kind").notNull().default("text"),

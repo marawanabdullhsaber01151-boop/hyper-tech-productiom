@@ -168,6 +168,7 @@ async function notifyPortalWorkflowStatus(
   if (!order.portalCustomerId) return;
   await notifyPortalCustomer(order.portalCustomerId, {
     ...payload,
+    memberId: order.submittedByMemberId,
     referenceType: "production_workflow",
     referenceId: order.id,
   });

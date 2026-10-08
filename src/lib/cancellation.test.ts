@@ -45,3 +45,26 @@ describe("pre-production cancellation guard", () => {
     );
   });
 });
+
+
+import { decideCompanyCancel } from "./cancellation";
+
+describe("company cancel decision (Plan 02)", () => {
+  it("early stages are a normal cancel", () => {
+    expect(decideCompanyCancel("awaiting_operations_claim", null)).toEqual({ allowed: true, late: false });
+  });
+  it("production stages are a late cancel, still allowed", () => {
+    expect(decideCompanyCancel("in_production", null)).toEqual({ allowed: true, late: true });
+    expect(decideCompanyCancel("packaging", "")).toEqual({ allowed: true, late: true });
+  });
+  it("finished orders can never be cancelled", () => {
+    for (const s of ["cancelled", "completed", "closed", "shipped", "delivered"]) {
+      expect(decideCompanyCancel(s, null)).toEqual({ allowed: false, reason: "finished" });
+    }
+  });
+  it("honours a configured last stage", () => {
+    expect(decideCompanyCancel("claimed", "in_production")).toEqual({ allowed: true, late: false });
+    expect(decideCompanyCancel("in_production", "in_production")).toEqual({ allowed: true, late: true });
+    expect(decideCompanyCancel("packaging", "in_production")).toEqual({ allowed: false, reason: "beyond_company_limit" });
+  });
+});

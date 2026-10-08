@@ -20,7 +20,9 @@ import {
   systemUsersTable,
 } from "../db/schema";
 import { requireAuth, requireRole } from "../middleware/auth";
-import { revokeAllPortalSessions } from "../middleware/portal-auth";
+import { revokeAllPortalSessions, revokeUserSessions } from "../middleware/portal-auth";
+import { syncOwnerUserFromCompany } from "../lib/portalCredentials";
+import { provisionCompanyIdentity } from "../lib/portalIdentityProvisioning";
 import { PERMISSIONS } from "../lib/permissions";
 import { writeAuditEvent } from "../lib/governance";
 import { sendPortalSms } from "../lib/portalMessaging";
@@ -818,7 +820,10 @@ router.patch(
           });
         if (!updated) throw domainError(404, "PORTAL_CUSTOMER_NOT_FOUND", "الحساب غير موجود");
         // الباسورد القديم مات، فأي جلسة مفتوحة بيه لازم تتقفل في نفس اللحظة.
-        const revokedSessions = await revokeAllPortalSessions(id, tx);
+        const ownerUserId = await syncOwnerUserFromCompany(tx, id);
+        const revokedSessions =
+          (await revokeAllPortalSessions(id, tx)) +
+          (ownerUserId ? await revokeUserSessions(ownerUserId, tx) : 0);
         await tx
           .update(portalPasswordResetRequestsTable)
           .set({
@@ -1045,6 +1050,7 @@ router.patch(
             contactId: portalCustomersTable.contactId,
           });
         if (!customer) throw new Error("تعذر إنشاء حساب البوابة");
+        await provisionCompanyIdentity(tx, customer.id, { joinedVia: "admin_created" });
 
         const activation = await issueActivationLink(tx, req, {
           portalCustomerId: customer.id,
@@ -1335,6 +1341,7 @@ router.patch(
             contactId: portalCustomersTable.contactId,
           });
         if (!customer) throw new Error("تعذر إنشاء حساب البوابة");
+        await provisionCompanyIdentity(tx, customer.id, { joinedVia: "admin_created" });
 
         const activation = await issueActivationLink(tx, req, {
           portalCustomerId: customer.id,
