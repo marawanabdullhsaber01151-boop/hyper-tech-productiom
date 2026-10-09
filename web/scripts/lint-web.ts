@@ -10,7 +10,9 @@ import { fileURLToPath } from "node:url";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../src");
 const problems: string[] = [];
-const rel = (p: string) => "web/src/" + relative(root, p);
+/** ويندوز بيرجّع مسارات بـ \ — كل المقارنات بتتعمل على مسار بـ / */
+const posix = (p: string) => p.replace(/\\/g, "/");
+const rel = (p: string) => "web/src/" + posix(relative(root, p));
 
 function walk(d: string, out: string[] = []) {
   for (const f of readdirSync(d)) {
@@ -29,9 +31,10 @@ const ARABIC = /[؀-ۿ]/;
 
 for (const f of walk(root)) {
   const r = rel(f);
+  const fp = "/" + posix(f);
   const src = readFileSync(f, "utf8");
   if (f.endsWith(".css")) {
-    const isTokens = /tokens\//.test(f);
+    const isTokens = /\/tokens\//.test(fp);
     src.split("\n").forEach((line, i) => {
       const code = line.replace(/\/\*.*?\*\//g, "");
       if (PHYSICAL.test(code)) problems.push(`${r}:${i + 1}: خاصية فيزيائية (استخدم logical): ${line.trim()}`);
@@ -39,7 +42,7 @@ for (const f of walk(root)) {
         problems.push(`${r}:${i + 1}: لون ثابت خارج التوكنز: ${line.trim()}`);
     });
   } else if (/\.(ts|tsx)$/.test(f) && !/\.test\./.test(f)) {
-    const inCopy = /\/copy\//.test(f) || /\/gallery\//.test(f) || /\/design\/tokens\//.test(f);
+    const inCopy = /\/copy\//.test(fp) || /\/gallery\//.test(fp) || /\/design\/tokens\//.test(fp);
     if (!inCopy) {
       src.split("\n").forEach((line, i) => {
         const code = line.replace(/\/\/.*$/, "").replace(/\/\*.*?\*\//g, "");
@@ -47,7 +50,7 @@ for (const f of walk(root)) {
         if (ARABIC.test(code)) problems.push(`${r}:${i + 1}: نص عربي ثابت (حطّه في copy/ar.ts): ${line.trim().slice(0, 80)}`);
       });
     }
-    if (!/design\/icons\.ts$/.test(f) && /from\s+["']lucide-preact["']/.test(src)) problems.push(`${r}: استورد الأيقونات من design/icons.ts`);
+    if (!/design\/icons\.ts$/.test(fp) && /from\s+["']lucide-preact["']/.test(src)) problems.push(`${r}: استورد الأيقونات من design/icons.ts`);
   }
 }
 

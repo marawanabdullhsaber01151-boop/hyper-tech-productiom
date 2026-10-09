@@ -16,5 +16,15 @@ export default defineConfig({
     setupFiles: ["./src/test/setup.ts"],
     css: false,
     restoreMocks: true,
+    // ويندوز + jsdom: تشغيل كذا worker (forks) مع بعض كان بيعدّي مهلة الـ 60 ثانية
+    // ("Timeout waiting for worker to respond"). threads + عدد محدود + مهل أطول بيحلّها.
+    pool: "threads",
+    maxWorkers: 2,
+    minWorkers: 1,
+    testTimeout: 30_000,
+    hookTimeout: 60_000,
+    teardownTimeout: 20_000,
+    // مكتبات الاختبار بتتحمّل مرة واحدة بدل ما كل ملف يحمّلها
+    server: { deps: { inline: [/@testing-library/] } },
   },
 });
