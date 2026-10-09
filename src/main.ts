@@ -169,8 +169,23 @@ const frontendPath = path.resolve(
   "../public",
 );
 
+/** الواجهة الجديدة (/v2): الملفات اللي ليها hash بتتخزّن سنة، والـ HTML عمره ما يتخزّن. */
+const v2StaticOptions = {
+  setHeaders(res: express.Response, filePath: string) {
+    if (filePath.includes(`${path.sep}v2${path.sep}assets${path.sep}`)) {
+      res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+    } else if (filePath.endsWith(".html")) {
+      res.setHeader("Cache-Control", "no-cache");
+    }
+  },
+};
+app.use("/v2", express.static(path.join(frontendPath, "v2"), v2StaticOptions));
 app.use("/api", express.static(frontendPath));
 app.use(express.static(frontendPath));
+app.get(/^\/v2\/(?!assets\/).*/, (_req, res, next) => {
+  res.setHeader("Cache-Control", "no-cache");
+  res.sendFile(path.join(frontendPath, "v2", "index.html"), (err) => (err ? next() : undefined));
+});
 app.get("/*splat", (_req, res) => {
   res.sendFile(path.join(frontendPath, "index.html"), (err) => {
     if (err) {

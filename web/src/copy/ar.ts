@@ -1,0 +1,125 @@
+/**
+ * كل نص ظاهر للمستخدم في الواجهة الجديدة بيتكتب هنا بس.
+ * الأسلوب: عربي بسيط ومباشر، إداري عصري. (راجع docs/design/voice-and-tone.md)
+ * القيمة: نص، أو كائن جموع { zero, one, two, few, many, other } بيستخدم {n}.
+ */
+export type Plural = { zero?: string; one?: string; two?: string; few?: string; many?: string; other: string };
+export type Msg = string | Plural;
+
+export const ar = {
+  "common.save": "احفظ",
+  "common.saved": "اتحفظ",
+  "common.cancel": "إلغاء",
+  "common.close": "قفل",
+  "common.confirm": "تأكيد",
+  "common.delete": "امسح",
+  "common.edit": "تعديل",
+  "common.back": "رجوع",
+  "common.next": "التالي",
+  "common.done": "تمام",
+  "common.search": "ابحث",
+  "common.loading": "ثواني...",
+  "common.retry": "جرّب تاني",
+  "common.copy": "انسخ",
+  "common.copied": "اتنسخ",
+  "common.copyFailed": "ماقدرناش ننسخ. حدّد النص وانسخه بإيدك.",
+  "common.more": "المزيد",
+  "common.required": "مطلوب",
+  "common.optional": "اختياري",
+  "common.showPassword": "اعرض الباسورد",
+  "common.hidePassword": "اخفي الباسورد",
+  "common.clearFilters": "امسح الفلاتر",
+  "common.filters": "فلاتر",
+  "common.actions": "إجراءات",
+  "common.yes": "أيوه",
+  "common.no": "لأ",
+
+  "error.generic": "حصلت مشكلة. جرّب تاني بعد شوية.",
+  "error.network": "الاتصال ضعيف أو واقف. اتأكد من النت وجرّب تاني.",
+  "error.server": "السيرفر مش بيرد دلوقتي. جرّب تاني بعد شوية.",
+  "error.forbidden": "مالكش صلاحية للحاجة دي.",
+  "error.notFound": "مش لاقيين اللي بتدوّر عليه.",
+  "error.session": "الجلسة خلصت. سجّل دخول تاني.",
+  "error.boundary.title": "الصفحة وقفت",
+  "error.boundary.body": "حصل خطأ غير متوقع. اللي كتبته متحفوظ، حدّث الصفحة وكمّل.",
+  "error.boundary.reload": "حدّث الصفحة",
+
+  "field.invalid": "في بيانات محتاجة مراجعة.",
+  "phone.label": "رقم الموبايل",
+  "phone.hint": "رقم مصري، زي 01012345678",
+  "phone.invalid": "الرقم ده مش مظبوط. اكتب 11 رقم يبدأ بـ 010 أو 011 أو 012 أو 015.",
+
+  "table.empty": "مفيش بيانات",
+  "table.rowsOf": "{from}–{to} من {total}",
+  "table.page": "صفحة {n}",
+  "table.prev": "السابق",
+  "table.next": "التالي",
+  "table.sort": "رتّب حسب {name}",
+  "table.selected": {
+    zero: "ماحددتش حاجة",
+    one: "حددت عنصر",
+    two: "حددت عنصرين",
+    few: "حددت {n} عناصر",
+    many: "حددت {n} عنصر",
+    other: "حددت {n} عنصر",
+  },
+
+  "dialog.close": "اقفل النافذة",
+  "drawer.close": "اقفل القائمة",
+  "toast.dismiss": "شيل الإشعار",
+  "tabs.label": "تبويبات",
+  "steps.progress": "الخطوة {n} من {total}",
+  "steps.back": "الخطوة اللي فاتت",
+  "steps.next": "الخطوة الجاية",
+  "steps.finish": "خلّصنا",
+
+  "code.label": "الكود",
+  "code.char": "الخانة {n} من {total}",
+  "code.paste": "تقدر تلزق الكود كله مرة واحدة.",
+  "company.codeLabel": "كود الشركة",
+  "company.codeInvalid": "الكود ده مش مظبوط. راجع الحروف والأرقام.",
+  "company.codeCopy": "انسخ الكود",
+  "share.link": "الرابط",
+  "share.copyLink": "انسخ الرابط",
+  "share.showQr": "اعرض QR",
+  "share.hideQr": "اخفي QR",
+  "share.qrAlt": "QR للرابط",
+  "share.whatsapp": "ابعت على واتساب",
+
+  "status.pending": "مستني",
+  "status.active": "شغّال",
+  "status.done": "خلص",
+  "status.canceled": "اتلغى",
+  "status.blocked": "واقف",
+  "status.draft": "مسودة",
+
+  "perm.matrix.label": "مصفوفة الصلاحيات",
+  "perm.matrix.all": "الكل",
+  "perm.matrix.none": "ولا حاجة",
+  "perm.matrix.locked": "الصلاحية دي مقفولة عليك.",
+
+  "empty.title": "مفيش حاجة هنا لسه",
+  "empty.search": "مفيش نتايج للبحث ده",
+  "empty.searchHint": "جرّب كلمة تانية أو امسح الفلاتر.",
+
+  "theme.mode.light": "فاتح",
+  "theme.mode.dark": "غامق",
+  "theme.mode.system": "زي الجهاز",
+
+  "pager.label": "التنقل بين الصفحات",
+  "toast.region": "إشعارات",
+  "money.egp": "ج.م",
+  "time.now": "دلوقتي",
+  "accent.blue": "أزرق",
+  "accent.teal": "تركواز",
+  "accent.green": "أخضر",
+  "accent.orange": "برتقالي",
+  "accent.rose": "وردي",
+  "accent.violet": "بنفسجي",
+  "accent.slate": "رمادي",
+
+  "a11y.skip": "روح للمحتوى",
+  "a11y.required": "(مطلوب)",
+} as const satisfies Record<string, Msg>;
+
+export type CopyKey = keyof typeof ar;

@@ -1,0 +1,32 @@
+/* قاعدة عامة: reset خفيف + نص + تركيز. Logical properties بس. */
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--c-surface-0);
+  color: var(--c-text-1);
+  font-family: var(--font-ui);
+  font-size: var(--fs-md);
+  line-height: var(--lh-body);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+h1, h2, h3, h4 { line-height: var(--lh-tight); margin: 0; text-wrap: balance; font-weight: 700; }
+p { margin: 0; text-wrap: pretty; }
+a { color: var(--c-brand-text); text-underline-offset: 3px; }
+button, input, select, textarea { font: inherit; color: inherit; }
+img, svg { max-inline-size: 100%; }
+:focus-visible {
+  outline: var(--ring-w) solid var(--c-focus-ring);
+  outline-offset: var(--ring-offset);
+  border-radius: var(--r-xs);
+}
+::selection { background: var(--c-brand-soft-2); color: var(--c-text-1); }
+.num, [dir="ltr"].num { font-variant-numeric: tabular-nums; }
+.sr-only {
+  position: absolute; inline-size: 1px; block-size: 1px; margin: -1px; padding: 0;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+}

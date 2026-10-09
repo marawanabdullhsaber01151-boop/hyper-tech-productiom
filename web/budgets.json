@@ -1,0 +1,7 @@
+{
+  "note": "الحدود بالكيلوبايت بعد gzip. السكربت check-budgets.ts بيقراها ويفشل البناء لو اتعدّت.",
+  "portalJsGzKb": 120,
+  "adminJsGzKb": 150,
+  "cssGzKb": 40,
+  "fontsKbTotal": 120
+}

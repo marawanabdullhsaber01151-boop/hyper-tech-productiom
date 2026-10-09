@@ -20,9 +20,9 @@ describe("portal settings", () => {
     const r = rows([
       ["global", null, "ui.theme.accent", "green"],
       ["company", 7, "ui.theme.accent", "orange"],
-      ["member", 11, "ui.theme.accent", "purple"],
+      ["member", 11, "ui.theme.accent", "violet"],
     ]);
-    expect(layerSetting("ui.theme.accent", r, { companyId: 7, memberId: 11 })).toBe("purple");
+    expect(layerSetting("ui.theme.accent", r, { companyId: 7, memberId: 11 })).toBe("violet");
     expect(layerSetting("ui.theme.accent", r, { companyId: 7, memberId: 99 })).toBe("orange");
     expect(layerSetting("ui.theme.accent", r, { companyId: 8 })).toBe("green");
     expect(layerSetting("ui.theme.accent", [], { companyId: 8 })).toBe("blue");
@@ -51,5 +51,17 @@ describe("portal settings", () => {
   });
   it("throws for an unknown key when layering", () => {
     expect(() => layerSetting("nope", [], {})).toThrow();
+  });
+});
+
+describe("ui.theme settings", () => {
+  it("بتقبل لون من القايمة أو hex وترفض غيره", () => {
+    const d = getSettingDef("ui.theme.accent")!;
+    expect(d.schema.safeParse("teal").success).toBe(true);
+    expect(d.schema.safeParse("#1D4ED8").success).toBe(true);
+    expect(d.schema.safeParse("javascript:alert(1)").success).toBe(false);
+    expect(d.schema.safeParse("#12345").success).toBe(false);
+    expect(getSettingDef("ui.theme.density")!.schema.safeParse("compact").success).toBe(true);
+    expect(getSettingDef("ui.theme.font_scale")!.schema.safeParse(2).success).toBe(false);
   });
 });

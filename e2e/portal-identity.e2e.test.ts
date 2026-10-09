@@ -94,6 +94,22 @@ suite("plan 02 — identity, team, join, permissions (HTTP + PostgreSQL)", () =>
     if (server) await new Promise((resolve) => server.close(resolve));
   });
 
+  it("theme: member → company → default, validated", async () => {
+    const before = await call("/portal/theme", {}, A.token);
+    expect(before.status).toBe(200);
+    expect(before.body).toMatchObject({ accent: "blue", radius: "soft", density: "cozy", fontScale: 1 });
+    const set = await put("/portal/company/settings", { key: "ui.theme.accent", value: "teal" }, A.token);
+    expect(set.status).toBe(200);
+    await put("/portal/company/settings", { key: "ui.theme.density", value: "compact" }, A.token);
+    const after = await call("/portal/theme", {}, A.token);
+    expect(after.body).toMatchObject({ accent: "teal", density: "compact" });
+    const other = await call("/portal/theme", {}, B.token);
+    expect(other.body.accent).toBe("blue");
+    const bad = await put("/portal/company/settings", { key: "ui.theme.accent", value: "url(javascript:x)" }, A.token);
+    expect(bad.status).toBe(400);
+    expect((await call("/portal/theme", {}, "")).status).toBe(401);
+  });
+
   it("a freshly approved company has an owner with every permission and a join code", async () => {
     expect(A.member.isOwner).toBe(true);
     expect(A.member.permissions.length).toBe(21);

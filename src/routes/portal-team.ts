@@ -92,6 +92,22 @@ async function loadMemberInCompany(companyId: number, memberId: number) {
 
 /* ---------------------------- permissions registry ---------------------------- */
 
+/** الثيم الفعلي للعضو (عضو ← شركة ← عام ← افتراضي). بيتحمّل مع أول رسم للواجهة. */
+router.get("/portal/theme", ...auth, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const a = req.portalAuth!;
+    const resolver = await createSettingsResolver({ companyId: a.companyId, memberId: a.memberId });
+    res.json({
+      accent: resolver.get<string>("ui.theme.accent"),
+      radius: resolver.get<string>("ui.theme.radius"),
+      density: resolver.get<string>("ui.theme.density"),
+      fontScale: resolver.get<number>("ui.theme.font_scale"),
+    });
+  } catch (e) {
+    next(e);
+  }
+});
+
 router.get("/portal/permissions", ...auth, requirePortalPermission("team.view"), (_req, res) => {
   res.json({ groups: PORTAL_PERMISSION_GROUPS, permissions: PORTAL_PERMISSIONS });
 });
@@ -702,6 +718,10 @@ const COMPANY_EDITABLE_SETTINGS = [
   "join.default_role",
   "cart.scope",
   "chat.mode",
+  "ui.theme.accent",
+  "ui.theme.radius",
+  "ui.theme.density",
+  "ui.theme.font_scale",
 ];
 
 router.get(

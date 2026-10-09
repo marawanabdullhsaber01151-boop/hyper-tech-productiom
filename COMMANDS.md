@@ -1,24 +1,35 @@
-# أوامر Plan 02 (انسخ الملفات فوق مشروعك بنفس المسارات)
+# أوامر Plan 01 — الأساس (نظام التصميم)
+
+انسخ الملفات اللي في الـ zip فوق مشروعك **بنفس المسارات** (فيها مجلد `web/` جديد وتعديلات صغيرة في `package.json` و`src/main.ts` و`vercel.json`).
 
 ## 1) في التيرمنال داخل مشروعك
 ```bash
-npm install                          # مفيش dependencies جديدة، للتأكيد بس
-npm run db:migrate                   # بيشغّل 0070 و 0071 (آمنين لو اتشغلوا قبل كده)
-npm run db:migrate:identity          # تجربة بس: بتعرض اللي هيتعمل ومش بتغيّر حاجة
-npm run db:migrate:identity -- --apply   # بتعمل مستخدم + رئيس + كود لكل شركة موجودة
-npm test                             # اختياري
+npm install                 # بيثبّت Vite و Preact و Lucide و Tajawal (dev dependencies)
+npm run build               # بيبني السيرفر + الواجهة الجديدة في public/v2 (ويفحص التباين والنصوص والميزانية)
+npm test                    # اختبارات الباك إند
+npm run test:web            # اختبارات الواجهة الجديدة (59 اختبار)
+npm run dev:web             # اختياري: معاينة محلية للمعرض على http://localhost:5174/v2/gallery.html
 ```
-شغّلها على Neon بنفس `DATABASE_URL` اللي في `.env`. لو ظهر "تعارض" في التجربة ابعتلي السطر قبل ما تعمل `--apply`.
+ملحوظة: مفيش migration جديد في الخطة دي، وما تحتاجش تلمس قاعدة البيانات.
 
 ## 2) الرفع
 ```bash
-git add -A && git commit -m "plan02: identity, team, join, per-member orders" && git push
+git add -A && git commit -m "plan01: design system + web foundation" && git push
 ```
-Vercel هيعمل deploy لوحده. بعدها اعمل Hard Refresh للمتصفح (Ctrl+Shift+R).
+Vercel هيعمل `npm run build` وهيبني `public/v2` لوحده. بعدها اعمل Hard Refresh (Ctrl+Shift+R).
 
-## 3) متغيرات Vercel
-مفيش متغيرات إجبارية جديدة. اختياريين (القيم دي هي الافتراضية):
-`LOGIN_RATE_MAX=10`، `PORTAL_ACCOUNT_LOGIN_RATE_MAX=5`، `PORTAL_JOIN_RATE_MAX_IP=20`، `PORTAL_JOIN_RATE_MAX_PHONE=8`.
+## 3) شوف الشغل
+افتح: `https://<موقعك>/v2/gallery.html` — ده معرض كل المكوّنات. جرّب من فوق: فاتح/غامق، مريحة/مضغوطة، دافئ/بارد، وألوان العلامة. صغّر الشاشة (أو افتحه من الموبايل) وشوف الجداول بتتحوّل لكروت.
 
-## 4) لو حصلت مشكلة
-الجداول الجديدة إضافة بس، فالرجوع للكود القديم آمن (الباسورد القديم لسه متزامن).
+لتغيير لون شركة (من حساب الرئيس أو الإدارة) من الكونسول وإنت داخل البوابة:
+```js
+const s = JSON.parse(localStorage.getItem("hyper_erp_portal_session") || sessionStorage.getItem("hyper_erp_portal_session"));
+await fetch("/api/v1/portal/company/settings", { method: "PUT", headers: { "Content-Type": "application/json", Authorization: "Bearer " + s.token }, body: JSON.stringify({ key: "ui.theme.accent", value: "teal" }) }).then(r => r.json());
+await fetch("/api/v1/portal/theme", { headers: { Authorization: "Bearer " + s.token } }).then(r => r.json());
+```
+
+## 4) متغيرات Vercel
+مفيش إجباري. اختياري: `UI_V2_PAGES=*` (أو أسماء صفحات مفصولة بفاصلة) لتشغيل الصفحات الجديدة لما تتبني.
+
+## 5) لو حصلت مشكلة
+الخطة دي بتضيف بس: الصفحات القديمة ما اتغيّرتش. لو بناء `public/v2` فشل على Vercel ابعتلي سطر الخطأ من لوج البناء.

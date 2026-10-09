@@ -280,3 +280,13 @@ export function getNavForRole(role: UserRole) {
     }))
     .filter((dept) => dept.subFunctions.length > 0);
 }
+
+/**
+ * مفتاح تشغيل الواجهة الجديدة لكل صفحة. بيتقري من UI_V2_PAGES (أسماء مفصولة بفاصلة، أو "*").
+ * الإعداد في DB (ui.v2.<page>) هو المرجع لو متاح؛ ده fallback للبيئة.
+ */
+export function isV2Enabled(pageId: string, env: string | undefined = process.env.UI_V2_PAGES): boolean {
+  if (!env) return false;
+  const list = env.split(",").map((s) => s.trim()).filter(Boolean);
+  return list.includes("*") || list.includes(pageId);
+}

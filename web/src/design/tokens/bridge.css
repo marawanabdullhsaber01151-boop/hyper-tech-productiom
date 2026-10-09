@@ -1,0 +1,24 @@
+/*
+ * جسر للصفحات القديمة: بيربط متغيرات theme.css القديمة بالتوكنز الجديدة
+ * عشان أي صفحة قديمة تتحمّل جنب /v2 تاخد نفس الشكل. بيتحمّل بعد generated.css.
+ */
+:root {
+  --bg-dark: var(--c-surface-0);
+  --bg-card: var(--c-surface-1);
+  --bg-sidebar: var(--c-surface-1);
+  --accent: var(--c-brand);
+  --accent-soft: var(--c-brand-soft);
+  --accent2: var(--c-info);
+  --accent2-soft: var(--c-info-soft);
+  --green: var(--c-success);
+  --green-soft: var(--c-success-soft);
+  --red: var(--c-danger);
+  --red-soft: var(--c-danger-soft);
+  --text-main: var(--c-text-1);
+  --text-muted: var(--c-text-2);
+  --text-dim: var(--c-text-3);
+  --border: var(--c-border-1);
+  --radius: var(--r-md);
+  --radius-sm: var(--r-sm);
+  --font-family: var(--font-ui);
+}
