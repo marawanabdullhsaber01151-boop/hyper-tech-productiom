@@ -12,14 +12,18 @@ export function navigate(to: string, opts: { replace?: boolean } = {}) {
   window.dispatchEvent(new PopStateEvent("popstate"));
 }
 
+/** المسار الحالي. بيعيد الرسم كمان لما الـ query بس يتغيّر (زي ?tab=security). */
 export function usePath(): string {
-  const [p, setP] = useState(() => strip(location.pathname));
+  const key = () => location.pathname + location.search;
+  const [k, setK] = useState(key);
   useEffect(() => {
-    const h = () => setP(strip(location.pathname));
+    const h = () => setK(key());
     window.addEventListener("popstate", h);
+    h();
     return () => window.removeEventListener("popstate", h);
   }, []);
-  return p;
+  const q = k.indexOf("?");
+  return strip(q === -1 ? k : k.slice(0, q));
 }
 
 export interface RouteDef {

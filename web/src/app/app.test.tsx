@@ -1,7 +1,7 @@
-import { fireEvent, render, screen } from "@testing-library/preact";
+import { act, fireEvent, render, screen } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
 import { ErrorBoundary } from "./ErrorBoundary";
-import { Link, matchRoute, navigate, Router } from "./router";
+import { Link, matchRoute, navigate, Router, usePath } from "./router";
 
 describe("router", () => {
   const routes = [
@@ -21,6 +21,21 @@ describe("router", () => {
     expect(screen.getByText("الفريق")).toBeInTheDocument();
     navigate("/orders/5");
     expect(location.pathname).toBe("/v2/orders/5");
+  });
+});
+
+describe("usePath", () => {
+  it("بيعيد الرسم لما الـ query بس يتغيّر (تبويبات الصفحة)", () => {
+    history.replaceState(null, "", "/v2/portal/account");
+    const Tabbed = () => {
+      usePath();
+      const tab = new URLSearchParams(location.search).get("tab") ?? "profile";
+      return <p>تبويب: {tab}</p>;
+    };
+    render(<Tabbed />);
+    expect(screen.getByText("تبويب: profile")).toBeInTheDocument();
+    act(() => navigate("/portal/account?tab=security"));
+    expect(screen.getByText("تبويب: security")).toBeInTheDocument();
   });
 });
 
