@@ -19,16 +19,20 @@
   };
   let resetToken = new URLSearchParams(location.search).get("token") || "";
 
+  // لو الطلب فشل لأي سبب، نسيب كل الطرق ظاهرة (السيرفر هو اللي بيرفض اللي مش متاح).
   fetch("/api/v1/portal/recovery/methods")
-    .then((r) => r.json())
+    .then((r) => (r.ok ? r.json() : Promise.reject(new Error("methods"))))
     .then((j) => {
-      const m = j.methods || [];
+      const m = Array.isArray(j.methods) ? j.methods : null;
       const map = { link: ["email", "telegram"], admin: ["admin"], recovery: ["recovery_code"], owner: ["owner"] };
-      [...$("r-method").options].forEach((o) => {
-        if (!map[o.value].some((k) => m.includes(k))) o.remove();
-      });
+      if (m && m.length) {
+        [...$("r-method").options].forEach((o) => {
+          if (!map[o.value].some((k) => m.includes(k))) o.remove();
+        });
+      }
       if (j.support?.whatsappUrl) $("support-link").href = j.support.whatsappUrl;
       else $("support-link").classList.add("hidden");
+      sync();
     })
     .catch(() => {});
 
@@ -42,7 +46,7 @@
 
   $("r-go").addEventListener("click", async () => {
     const identifier = $("r-identifier").value.trim();
-    const method = $("r-method").value;
+    const method = $("r-method").value || "link";
     if (!identifier) return show("r-error", "اكتب رقم الموبايل أو الإيميل.");
     $("r-go").disabled = true;
     try {

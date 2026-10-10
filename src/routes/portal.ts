@@ -457,6 +457,9 @@ router.post(
 /* ============================================================
    POST /portal/activation-requests — عميل موجود يطلب دخول البوابة
 ============================================================ */
+const ACTIVATION_REQUEST_MESSAGE =
+  "وصل طلبك. لو عندك حساب بالفعل جرّب «نسيت كلمة السر» من صفحة الدخول. غير كده فريق المبيعات هيتواصل معاك قريبًا.";
+
 const portalActivationRequestSchema = z.object({
   companyName: z.string().trim().min(2, "اسم الشركة مطلوب"),
   phone: z.string().trim().min(8, "رقم هاتف غير صحيح"),
@@ -508,10 +511,8 @@ router.post(
         )
         .limit(1);
       if (existingCustomer) {
-        res.status(202).json({
-          message:
-            "لو البيانات مؤهلة، هيتواصل معاك فريق المبيعات لاستكمال الطلب",
-        });
+        // نفس الرد بالظبط في الحالتين (من غير ما نكشف إن الرقم له حساب).
+        res.json({ message: ACTIVATION_REQUEST_MESSAGE });
         return;
       }
 
@@ -526,10 +527,7 @@ router.post(
         status: "pending",
       });
 
-      res.json({
-        message:
-          "طلبك وصل لفريق المبيعات، هيتواصلوا معاك أو هتوصلك بيانات الدخول قريبًا",
-      });
+      res.json({ message: ACTIVATION_REQUEST_MESSAGE });
     } catch (err) {
       next(err);
     }

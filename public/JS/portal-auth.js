@@ -422,11 +422,27 @@ document
         body: JSON.stringify(payload),
       });
       document.getElementById("form-new-customer").classList.add("hidden");
-      document.getElementById("application-reference").textContent =
-        result.referenceCode;
-      document
-        .getElementById("application-success")
-        .classList.remove("hidden");
+      const hasRef = Boolean(result.referenceCode);
+      document.getElementById("application-reference").textContent = hasRef
+        ? result.referenceCode
+        : "";
+      const successBox = document.getElementById("application-success");
+      successBox.classList.remove("hidden");
+      // لو مفيش رقم متابعة (الرقم متقدّم قبل كده أو له حساب) نعرض الرسالة بدل صندوق فاضي.
+      const refRow = document.getElementById("application-reference").parentElement;
+      if (refRow) refRow.classList.toggle("hidden", !hasRef);
+      const refHint = document.getElementById("application-ref-hint");
+      if (refHint) refHint.classList.toggle("hidden", !hasRef);
+      let note = document.getElementById("application-note");
+      if (!note) {
+        note = document.createElement("div");
+        note.id = "application-note";
+        note.style.marginTop = "10px";
+        successBox.appendChild(note);
+      }
+      note.textContent = hasRef
+        ? ""
+        : "الرقم ده مسجّل عندنا قبل كده، فمفيش رقم متابعة جديد. لو عندك حساب جرّب «نسيت كلمة السر» من تبويب تسجيل الدخول، وغير كده فريق المبيعات هيتواصل معاك.";
     } catch (err) {
       showAuthError(err.message);
     } finally {
