@@ -2,7 +2,8 @@ import type { ComponentChildren } from "preact";
 import { useEffect, useState } from "preact/hooks";
 import { t } from "../../copy";
 import { Banner, Icon, IconButton, Spinner } from "../../design/components";
-import { Bell, ClipboardList, House, Package, ShoppingCart, UserRound, WifiOff } from "../../design/icons";
+import { Bell, ClipboardList, House, Package, ShoppingCart, UserRound, WifiOff, Users } from "../../design/icons";
+import { ErrorBoundary } from "../../app/ErrorBoundary";
 import { Link, navigate, usePath } from "../../app/router";
 import { cartStore, loadCart, useCart } from "../cart";
 import { useUnread, useUnreadPolling } from "../notifications";
@@ -60,6 +61,7 @@ function Shell({ children, perm }: { children: ComponentChildren; perm?: string 
     { to: "/portal/products", label: t("p.nav.products"), icon: Package, show: true },
     { to: "/portal/cart", label: t("p.nav.cart"), icon: ShoppingCart, badge: cart.items.length, show: showCart },
     { to: "/portal/orders", label: can("orders.view_company") ? t("p.nav.companyOrders") : t("p.nav.orders"), icon: ClipboardList, show: can("orders.view_own") || can("orders.view_company") },
+    { to: "/portal/team", label: t("p.nav.team"), icon: Users, show: can("team.view") },
     { to: "/portal/account", label: t("p.nav.account"), icon: UserRound, show: true },
   ];
 
@@ -107,7 +109,7 @@ function Shell({ children, perm }: { children: ComponentChildren; perm?: string 
               <Icon icon={WifiOff} size={16} /> {t("p.offline")}
             </Banner>
           ) : null}
-          {perm && !can(perm) ? <Forbidden /> : children}
+          <ErrorBoundary resetKey={path}>{perm && !can(perm) ? <Forbidden /> : children}</ErrorBoundary>
         </main>
       </div>
     </div>

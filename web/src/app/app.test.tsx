@@ -34,4 +34,16 @@ describe("ErrorBoundary", () => {
     expect(screen.getByRole("alert")).toHaveTextContent("الصفحة وقفت");
     expect(screen.getByRole("button", { name: "حدّث الصفحة" })).toBeInTheDocument();
   });
+
+  it("بيرجع يشتغل لما المستخدم ينتقل لصفحة تانية (من غير ريفريش)", () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const Page = ({ bad }: { bad: boolean }) => {
+      if (bad) throw new Error("boom");
+      return <p>صفحة سليمة</p>;
+    };
+    const { rerender } = render(<ErrorBoundary resetKey="/a"><Page bad /></ErrorBoundary>);
+    expect(screen.getByRole("alert")).toBeInTheDocument();
+    rerender(<ErrorBoundary resetKey="/b"><Page bad={false} /></ErrorBoundary>);
+    expect(screen.getByText("صفحة سليمة")).toBeInTheDocument();
+  });
 });
