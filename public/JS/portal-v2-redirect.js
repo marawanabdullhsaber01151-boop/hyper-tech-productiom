@@ -18,7 +18,8 @@
     if (!target) return;
     fetch("/api/v1/portal/ui-flags", { credentials: "omit" })
       .then(function (r) { return r.ok ? r.json() : { v2: false }; })
-      .then(function (f) {
+      .then(function (raw) {
+        var f = raw && raw.data !== undefined ? raw.data : raw;
         if (f && f.v2) location.replace("/v2/portal/" + target + location.search + location.hash);
       })
       .catch(function () {});

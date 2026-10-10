@@ -90,7 +90,10 @@
         reportPortalError("activate:network", error);
         throw new Error("تعذّر الاتصال بالخادم. تحقق من الإنترنت وحاول مرة أخرى.");
       }
-      const payload = await response.json().catch(() => ({}));
+      const rawPayload = await response.json().catch(() => ({}));
+      const payload = rawPayload && typeof rawPayload === "object" && "data" in rawPayload ? rawPayload.data || {} : rawPayload;
+      // رسائل الخطأ بتيجي على مستوى الغلاف نفسه
+      if (!response.ok && rawPayload?.error) payload.error = rawPayload.error;
       if (!response.ok) {
         const error = new Error(payload?.error?.message || "تعذر تفعيل الحساب.");
         error.status = response.status;

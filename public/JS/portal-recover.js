@@ -1,6 +1,7 @@
 /** @format */
 (() => {
   const $ = (id) => document.getElementById(id);
+  const unwrap = (j) => (j && typeof j === "object" && "data" in j ? j.data : j);
   const api = async (path, body) => {
     const r = await fetch("/api/v1" + path, {
       method: "POST",
@@ -9,7 +10,7 @@
     });
     const j = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(j?.error?.message || "حصلت مشكلة، جرّب تاني.");
-    return j;
+    return unwrap(j) || {};
   };
   const show = (box, msg) => {
     $("r-error").classList.remove("show");
@@ -22,7 +23,8 @@
   // لو الطلب فشل لأي سبب، نسيب كل الطرق ظاهرة (السيرفر هو اللي بيرفض اللي مش متاح).
   fetch("/api/v1/portal/recovery/methods")
     .then((r) => (r.ok ? r.json() : Promise.reject(new Error("methods"))))
-    .then((j) => {
+    .then((raw) => {
+      const j = unwrap(raw) || {};
       const m = Array.isArray(j.methods) ? j.methods : null;
       const map = { link: ["email", "telegram"], admin: ["admin"], recovery: ["recovery_code"], owner: ["owner"] };
       if (m && m.length) {
