@@ -7,6 +7,8 @@ import { cartPieces, cartStore, removeFromCart, setCartQty } from "./cart";
 import { createStore } from "./lib/store";
 import { Login } from "./screens/auth/Login";
 import { Team } from "./screens/Team";
+import { Orders } from "./screens/Orders";
+import { Notifications } from "./screens/Notifications";
 import type { CartItem, PortalMember } from "./types";
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
@@ -86,5 +88,33 @@ describe("شاشات", () => {
     expect(screen.getByText("1 من 10 موظف")).toBeInTheDocument();
     const res = await axe(container);
     expect(res.violations).toEqual([]);
+  });
+});
+
+describe("ردود الصفحات المقسّمة (data + pagination) — كانت بتوقّف الصفحة", () => {
+  afterEach(() => vi.restoreAllMocks());
+  const asOwner = () =>
+    authStore.set({ status: "authed", member: { id: 1, isOwner: true, roleKey: "owner", permissions: [], limits: {} }, customer: { id: 1, companyName: "ش", fullName: "م", phone: "010", email: null } as never });
+  const paged = (rows: unknown[]) => json({ data: rows, pagination: { page: 1, limit: 20, hasMore: false }, meta: { correlationId: "x" } });
+
+  it("الإشعارات: قايمة فاضية ومليانة", async () => {
+    asOwner();
+    const n = { id: 1, type: "x", title: "إشعار تجربة", body: "نص", isRead: false, createdAt: new Date().toISOString(), referenceType: null, referenceId: null };
+    const spy = vi.spyOn(globalThis, "fetch").mockImplementation(async () => paged([]));
+    const { unmount } = render(<ToastProvider><Notifications /></ToastProvider>);
+    await waitFor(() => expect(screen.queryByRole("alert")).toBeNull());
+    unmount();
+    spy.mockImplementation(async () => paged([n]));
+    render(<ToastProvider><Notifications /></ToastProvider>);
+    expect(await screen.findByText("إشعار تجربة")).toBeInTheDocument();
+  });
+
+  it("الطلبات: قايمة فاضية بتتعرض من غير ما الصفحة تقف", async () => {
+    asOwner();
+    vi.spyOn(globalThis, "fetch").mockImplementation(async () => paged([]));
+    history.replaceState(null, "", "/v2/portal/orders");
+    const { container } = render(<ToastProvider><Orders /></ToastProvider>);
+    await waitFor(() => expect(container.querySelector(".pt-skeleton, [aria-busy=true]")).toBeNull());
+    expect(screen.queryByText(/الصفحة وقفت/)).toBeNull();
   });
 });

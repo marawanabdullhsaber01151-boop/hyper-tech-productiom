@@ -123,6 +123,8 @@ export function createApiClient(opts: ClientOptions = {}): ApiClient {
     }
 
     if (res.status === 204 || json === null) return undefined as T;
+    // الردود المقسّمة صفحات ({ data: [...], pagination }) بنسيبها كاملة عشان الصفحة تعرف في تاني ولا لأ.
+    if (json && typeof json === "object" && "data" in json && "pagination" in json) return { data: json.data, pagination: json.pagination } as T;
     return (json && typeof json === "object" && "data" in json ? json.data : json) as T;
   }
 
