@@ -51,6 +51,7 @@
         <td><div class="action-stack">
           <button class="button" data-edit-minimum="${esc(r.id)}" data-current-minimum="${esc(r.minimumOrderQuantity)}">تعديل الحد الأدنى</button>
           ${r.activated === false && r.isActive ? `<button class="button success" data-activation-link="${esc(r.id)}" data-customer-name="${esc(r.fullName)}">رابط تفعيل</button>` : ""}
+          ${r.activated !== false ? `<button class="button" data-admin-code="${esc(r.id)}">كود إدارة</button>` : ""}
           <button class="button" data-reset="${esc(r.id)}" data-customer-name="${esc(r.fullName)}">تعيين كلمة مرور</button>
           <button class="button ${r.isActive ? "danger" : "success"}" data-status="${esc(r.id)}" data-active="${r.isActive ? "true" : "false"}">${r.isActive ? "إيقاف الحساب" : "تفعيل الحساب"}</button>
           <button class="button danger" data-delete-customer="${esc(r.id)}" data-customer-name="${esc(r.fullName)}">حذف نهائي</button>
@@ -137,6 +138,14 @@
     } catch (e) { status(e.message, true); }
   }
 
+  async function issueAdminCode(id) {
+    try {
+      const r = await api(`/portal-customers/${id}/admin-code`, { method: "POST", body: "{}" });
+      status(`كود الإدارة اتولّد (صالح ${r.minutes} دقايق، مرة واحدة).`);
+      window.alert(`كود الإدارة: ${r.code}\nاديه للعميل — صالح ${r.minutes} دقايق ويُستخدم مرة واحدة.`);
+    } catch (e) { status(e.message, true); }
+  }
+
   async function toggleStatus(id, isActive) {
     const action = isActive ? "إيقاف" : "تفعيل";
     if (!window.confirm(`هل أنت متأكد من ${action} حساب العميل؟`)) return;
@@ -196,6 +205,8 @@
     if (minimumButton) return void updateMinimum(minimumButton.dataset.editMinimum, minimumButton.dataset.currentMinimum);
     const resetButton = target.closest("[data-reset]");
     if (resetButton) return void reset(resetButton.dataset.reset, resetButton.dataset.customerName);
+    const codeButton = target.closest("[data-admin-code]");
+    if (codeButton) return void issueAdminCode(codeButton.dataset.adminCode);
     const linkButton = target.closest("[data-activation-link]");
     if (linkButton) return void issueActivationLink(linkButton.dataset.activationLink, linkButton.dataset.customerName);
     const statusButton = target.closest("[data-status]");

@@ -26,6 +26,7 @@ import { provisionCompanyIdentity } from "../lib/portalIdentityProvisioning";
 import { PERMISSIONS } from "../lib/permissions";
 import { writeAuditEvent } from "../lib/governance";
 import { sendPortalSms } from "../lib/portalMessaging";
+import { deliverActivation } from "../lib/activationDelivery";
 import { buildPortalPageUrl } from "../lib/portalConfig";
 import {
   buildActivationPayload,
@@ -700,6 +701,7 @@ router.post(
         const issued = await issueActivationLink(tx, req, {
           portalCustomerId: id,
           ttlMinutes: clampActivationTtlMinutes(ttlMinutes),
+          staffId: req.user!.userId,
         });
         await writeAuditEvent({
           executor: tx,
@@ -717,7 +719,10 @@ router.post(
       });
       res.json({
         message: "تم تجهيز رابط تفعيل جديد، والروابط القديمة اتبطلت",
-        activation: buildActivationPayload(result.customer, result.issued, false),
+        activation: await deliverActivation(result.customer, result.issued, {
+          companyId: id,
+          staffId: req.user!.userId,
+        }),
       });
     } catch (err) {
       next(err);
@@ -1101,12 +1106,11 @@ router.patch(
         };
       });
       const { issued, ...safeResult } = result;
-      const preview = buildActivationPayload(result.customer, issued, false);
-      const sms = await sendPortalSms({
-        phone: result.customer.phone,
-        message: preview.message,
+      const activation = await deliverActivation(result.customer, issued, {
+        companyId: result.customer.id,
+        staffId: req.user!.userId,
       });
-      const activation = { ...preview, delivered: sms.delivered };
+      const sms = { delivered: activation.delivered };
       res.json({
         message: "تم اعتماد الطلب وإنشاء الحساب وإرسال طريقة التفعيل",
         ...safeResult,
@@ -1392,12 +1396,11 @@ router.patch(
         };
       });
       const { issued, ...safeResult } = result;
-      const preview = buildActivationPayload(result.customer, issued, false);
-      const sms = await sendPortalSms({
-        phone: result.customer.phone,
-        message: preview.message,
+      const activation = await deliverActivation(result.customer, issued, {
+        companyId: result.customer.id,
+        staffId: req.user!.userId,
       });
-      const activation = { ...preview, delivered: sms.delivered };
+      const sms = { delivered: activation.delivered };
       res.json({
         message: "تم تأكيد الطلب وإنشاء الحساب وإرسال طريقة التفعيل",
         ...safeResult,

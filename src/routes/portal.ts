@@ -76,6 +76,8 @@ import {
   isCancellableStatus,
 } from "../lib/cancellation";
 import { writePortalAudit } from "../lib/portalAudit";
+import { activateWithAuthToken } from "../lib/activationFlow";
+import { sendSecurityAlert } from "../lib/channels/deliver";
 import { createSettingsResolver } from "../lib/portalSettings";
 import { z } from "zod";
 import { logger } from "../lib/logger";
@@ -1603,6 +1605,11 @@ router.post(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const data = portalActivationSchema.parse(req.body);
+      const fresh = await activateWithAuthToken(req, data.token, data.password);
+      if (fresh) {
+        res.json(fresh);
+        return;
+      }
       const tokenHash = createHash("sha256").update(data.token).digest("hex");
       const now = new Date();
       const customer = await db.transaction(async (tx) => {
@@ -1771,6 +1778,7 @@ router.post(
           userAgent: req.get("user-agent"),
         });
       });
+      void sendSecurityAlert(userId, "password_changed", customerId);
       res.json({ message: "اتغيّرت كلمة السر" });
     } catch (err) {
       next(err);

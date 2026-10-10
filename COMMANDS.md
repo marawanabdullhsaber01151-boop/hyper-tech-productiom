@@ -1,35 +1,41 @@
-# أوامر Plan 01 — الأساس (نظام التصميم)
+<!-- @format -->
 
-انسخ الملفات اللي في الـ zip فوق مشروعك **بنفس المسارات** (فيها مجلد `web/` جديد وتعديلات صغيرة في `package.json` و`src/main.ts` و`vercel.json`).
+# خطة 03 — القنوات والتفعيل واستعادة كلمة السر
 
-## 1) في التيرمنال داخل مشروعك
+## 1) انسخ الملفات
+
+فك `Plan03-changed-files.zip` فوق مجلد المشروع (نفس المسارات).
+
+## 2) أوامر التشغيل (على جهازك)
+
 ```bash
-npm install                 # بيثبّت Vite و Preact و Lucide و Tajawal (dev dependencies)
-npm run build               # بيبني السيرفر + الواجهة الجديدة في public/v2 (ويفحص التباين والنصوص والميزانية)
-npm test                    # اختبارات الباك إند
-npm run test:web            # اختبارات الواجهة الجديدة (59 اختبار)
-npm run dev:web             # اختياري: معاينة محلية للمعرض على http://localhost:5174/v2/gallery.html
+npm install            # بيركّب nodemailer
+npm run db:migrate     # بيطبّق migrations/0072_portal_channels.sql
+npm run typecheck:web  # اختياري
+npm test
 ```
-ملحوظة: مفيش migration جديد في الخطة دي، وما تحتاجش تلمس قاعدة البيانات.
 
-## 2) الرفع
+## 3) متغيرات البيئة على Vercel (Settings → Environment Variables)
+
+| المتغير                                                                  | ملاحظة                                      |
+| ------------------------------------------------------------------------ | ------------------------------------------- |
+| `AUTH_CODE_PEPPER`                                                       | نص عشوائي طويل (لو فاضي بيستخدم JWT_SECRET) |
+| `EMAIL_FROM` , `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`        | Gmail App Password أو Brevo SMTP            |
+| `TELEGRAM_BOT_TOKEN`, `TELEGRAM_BOT_USERNAME`, `TELEGRAM_WEBHOOK_SECRET` | اختياري — لتيليجرام                         |
+
+لو متظبطتش، الإرسال الآلي بيتخطّى بصراحة، ورابط الواتساب اليدوي بيفضل شغال.
+
+## 4) بعد النشر
+
 ```bash
-git add -A && git commit -m "plan01: design system + web foundation" && git push
-```
-Vercel هيعمل `npm run build` وهيبني `public/v2` لوحده. بعدها اعمل Hard Refresh (Ctrl+Shift+R).
-
-## 3) شوف الشغل
-افتح: `https://<موقعك>/v2/gallery.html` — ده معرض كل المكوّنات. جرّب من فوق: فاتح/غامق، مريحة/مضغوطة، دافئ/بارد، وألوان العلامة. صغّر الشاشة (أو افتحه من الموبايل) وشوف الجداول بتتحوّل لكروت.
-
-لتغيير لون شركة (من حساب الرئيس أو الإدارة) من الكونسول وإنت داخل البوابة:
-```js
-const s = JSON.parse(localStorage.getItem("hyper_erp_portal_session") || sessionStorage.getItem("hyper_erp_portal_session"));
-await fetch("/api/v1/portal/company/settings", { method: "PUT", headers: { "Content-Type": "application/json", Authorization: "Bearer " + s.token }, body: JSON.stringify({ key: "ui.theme.accent", value: "teal" }) }).then(r => r.json());
-await fetch("/api/v1/portal/theme", { headers: { Authorization: "Bearer " + s.token } }).then(r => r.json());
+# تيليجرام (مرة واحدة)
+TELEGRAM_BOT_TOKEN=... TELEGRAM_WEBHOOK_SECRET=... node scripts/telegram-set-webhook.mjs https://<دومينك>
 ```
 
-## 4) متغيرات Vercel
-مفيش إجباري. اختياري: `UI_V2_PAGES=*` (أو أسماء صفحات مفصولة بفاصلة) لتشغيل الصفحات الجديدة لما تتبني.
+ثم Hard refresh (Ctrl+Shift+R).
 
-## 5) لو حصلت مشكلة
-الخطة دي بتضيف بس: الصفحات القديمة ما اتغيّرتش. لو بناء `public/v2` فشل على Vercel ابعتلي سطر الخطأ من لوج البناء.
+## 5) جرّب
+
+- من صفحة «عملاء البوابة»: زرار **كود إدارة** لأي حساب مفعّل.
+- من صفحة الدخول: «نسيت كلمة المرور؟» ← صفحة الاستعادة الجديدة.
+- لما تعتمد طلب جديد: التفعيل بيتبعت على الإيميل لو متظبط، وبيرجعلك رابط واتساب احتياطي دايماً.

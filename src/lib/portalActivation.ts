@@ -9,7 +9,10 @@
 import { createHash, randomBytes } from "node:crypto";
 import { and, eq, isNull } from "drizzle-orm";
 import type { Request } from "express";
+import type { db } from "../db";
 import { portalActivationTokensTable } from "../db/schema";
+import { issueAuthToken } from "./authTokens";
+import { syncOwnerUserFromCompany } from "./portalCredentials";
 import { buildPortalActivationUrl } from "./portalConfig";
 import { normalizePhone } from "./identityNormalization";
 
@@ -42,21 +45,25 @@ export function makeActivationToken(ttlMinutes?: number): {
   };
 }
 
-type TokenExecutor = {
-  insert: (typeof import("../db"))["db"]["insert"];
-  update: (typeof import("../db"))["db"]["update"];
-};
+type TokenExecutor = Pick<typeof db, "select" | "insert" | "update" | "execute">;
 
 export type IssuedActivation = {
   url: string;
   expiresAt: Date;
   tokenId: number;
+  /** the person (owner user) the token belongs to */
+  userId: number;
 };
 
+/**
+ * Issues an activation link for the OWNER of a company. Tokens live in
+ * portal_auth_tokens (keyed on the person); older links of the same person are
+ * invalidated, and legacy links (portal_activation_tokens) are closed too.
+ */
 export async function issueActivationLink(
   tx: TokenExecutor,
   req: Request,
-  input: { portalCustomerId: number; ttlMinutes?: number },
+  input: { portalCustomerId: number; ttlMinutes?: number; staffId?: number | null },
 ): Promise<IssuedActivation> {
   const now = new Date();
   await tx
@@ -68,22 +75,20 @@ export async function issueActivationLink(
         isNull(portalActivationTokensTable.consumedAt),
       ),
     );
-
-  const token = makeActivationToken(input.ttlMinutes);
-  const [row] = await tx
-    .insert(portalActivationTokensTable)
-    .values({
-      portalCustomerId: input.portalCustomerId,
-      tokenHash: token.tokenHash,
-      expiresAt: token.expiresAt,
-    })
-    .returning({ id: portalActivationTokensTable.id });
-  if (!row) throw new Error("تعذر إنشاء رابط التفعيل");
-
+  const userId = await syncOwnerUserFromCompany(tx, input.portalCustomerId);
+  if (!userId) throw new Error("تعذر تجهيز هوية صاحب الحساب");
+  const token = await issueAuthToken(tx, {
+    userId,
+    purpose: "activation",
+    ttlMinutes: clampActivationTtlMinutes(input.ttlMinutes),
+    createdByStaffId: input.staffId ?? null,
+    meta: { companyId: input.portalCustomerId },
+  });
   return {
-    url: buildPortalActivationUrl(req, token.rawToken),
+    url: buildPortalActivationUrl(req, token.raw),
     expiresAt: token.expiresAt,
-    tokenId: row.id,
+    tokenId: token.id,
+    userId,
   };
 }
 

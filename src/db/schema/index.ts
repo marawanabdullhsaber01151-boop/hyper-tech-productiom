@@ -28,6 +28,7 @@ export * from "./portal-cart";
 export * from "./portal-wishlist";
 export * from "./portal-otp";
 export * from "./portal-identity";
+export * from "./portal-channels";
 // ✅ تم حذف السطر المكرر — export * from "./approvals" كانت مكررة في السطرين 15 و17
 export * from "./governance";
 export * from "./operations";

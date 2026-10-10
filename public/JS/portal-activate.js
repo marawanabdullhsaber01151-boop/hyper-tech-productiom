@@ -5,7 +5,29 @@
   const submit = document.getElementById("activate-submit");
   const errorBox = document.getElementById("activate-error");
   const successBox = document.getElementById("activate-success");
-  const token = new URLSearchParams(window.location.search).get("token") || "";
+  const params = new URLSearchParams(window.location.search);
+  const token = params.get("token") || "";
+  const isReset = params.get("mode") === "reset";
+  if (isReset) {
+    const sub = document.querySelector(".auth-sub");
+    if (sub) sub.textContent = "اختار كلمة سر جديدة لحسابك. الرابط يُستخدم مرة واحدة فقط.";
+    document.title = "كلمة سر جديدة — Hyper-Tech";
+  }
+  if (token) {
+    fetch("/api/v1/portal/activate/preview", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token }),
+    })
+      .then((r) => r.json().then((j) => ({ ok: r.ok, j })))
+      .then(({ ok, j }) => {
+        if (!ok) {
+          showError(j?.error?.message || "الرابط غلط أو منتهي");
+          submit.disabled = true;
+        }
+      })
+      .catch(() => {});
+  }
 
   function reportPortalError(context, error) {
     console.error("[portal]", {
@@ -52,11 +74,18 @@
     try {
       let response;
       try {
-        response = await fetch("/api/v1/portal/activate", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ token, password, confirmPassword: confirmation }),
-        });
+        response = await fetch(
+          isReset ? "/api/v1/portal/recovery/complete" : "/api/v1/portal/activate",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(
+              isReset
+                ? { token, newPassword: password }
+                : { token, password, confirmPassword: confirmation },
+            ),
+          },
+        );
       } catch (error) {
         reportPortalError("activate:network", error);
         throw new Error("تعذّر الاتصال بالخادم. تحقق من الإنترنت وحاول مرة أخرى.");
@@ -72,8 +101,32 @@
         throw new Error("لا يوجد اتصال بالإنترنت حاليًا.");
       }
       form.classList.add("hidden");
-      successBox.innerHTML =
-        '<strong><i class="fa-solid fa-circle-check"></i> تم تفعيل حسابك بنجاح.</strong><br>يمكنك الآن تسجيل الدخول باستخدام رقم هاتفك أو بريدك الإلكتروني.';
+      successBox.textContent = isReset
+        ? "اتغيّرت كلمة السر. ادخل بيها دلوقتي."
+        : "تم تفعيل حسابك بنجاح. تقدر تسجّل دخول برقم موبايلك أو إيميلك.";
+      if (Array.isArray(payload.recoveryCodes) && payload.recoveryCodes.length) {
+        const wrap = document.createElement("div");
+        wrap.style.marginTop = "12px";
+        const note = document.createElement("div");
+        note.textContent =
+          "أكواد الاسترجاع — احفظها في مكان آمن. كل كود يُستخدم مرة واحدة ولن تظهر تاني:";
+        const pre = document.createElement("pre");
+        pre.style.cssText =
+          "direction:ltr;text-align:center;font-size:15px;line-height:2;margin:8px 0;user-select:all";
+        pre.textContent = payload.recoveryCodes.join("\n");
+        const copy = document.createElement("button");
+        copy.type = "button";
+        copy.className = "auth-submit";
+        copy.textContent = "نسخ الأكواد";
+        copy.addEventListener("click", () => {
+          navigator.clipboard
+            ?.writeText(payload.recoveryCodes.join("\n"))
+            .then(() => (copy.textContent = "اتنسخت"))
+            .catch(() => {});
+        });
+        wrap.append(note, pre, copy);
+        successBox.append(wrap);
+      }
       successBox.classList.add("show");
     } catch (error) {
       reportPortalError("activate:submit", error);

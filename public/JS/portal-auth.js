@@ -225,7 +225,7 @@ document
   .getElementById("forgot-password-link")
   .addEventListener("click", (e) => {
     e.preventDefault();
-    showForgotPassword();
+    window.location.href = "portal-recover.html";
   });
 document.getElementById("back-to-login-link").addEventListener("click", (e) => {
   e.preventDefault();

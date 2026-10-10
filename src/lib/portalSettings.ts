@@ -28,6 +28,9 @@ export type SettingDef<T = unknown> = {
 const joinMode = z.enum(["approval", "auto", "disabled"]);
 const chatMode = z.enum(["shared", "per_member", "per_member_monitored"]);
 const cartScope = z.enum(["member", "company"]);
+const deliveryStrategy = z.enum(["first_success", "all_verified", "manual_only"]);
+export type DeliveryChannel = "email" | "telegram" | "sms" | "whatsapp_manual";
+const deliveryChannels = z.array(z.enum(["email", "telegram", "sms", "whatsapp_manual"])).max(4);
 const whatsappNumbers = z
   .array(
     z.object({
@@ -63,6 +66,16 @@ export const PORTAL_SETTING_DEFS: readonly SettingDef<any>[] = [
   def({ key: "ui.theme.radius", label: "استدارة الحواف", description: "حادة أو متوسطة أو مدوّرة.", group: "ui", schema: z.enum(["sharp", "soft", "round"]), default: "soft" as const, scopes: ["global", "company", "member"], editableBy: ["staff", "owner"] }),
   def({ key: "ui.theme.density", label: "كثافة العرض", description: "مريحة أو مضغوطة.", group: "ui", schema: z.enum(["cozy", "compact"]), default: "cozy" as const, scopes: ["global", "company", "member"], editableBy: ["staff", "owner"] }),
   def({ key: "ui.theme.font_scale", label: "حجم الخط", description: "من 0.9 لـ 1.25.", group: "ui", schema: z.number().min(0.9).max(1.25), default: 1, scopes: ["global", "company", "member"], editableBy: ["staff", "owner"] }),
+  def({ key: "delivery.strategy", label: "طريقة الإرسال", description: "أول قناة تنجح، أو كل القنوات المتأكدة، أو يدوي بس.", group: "delivery", schema: deliveryStrategy, default: "first_success" as const, scopes: ["global"], editableBy: ["staff"] }),
+  def({ key: "delivery.activation.channels", label: "قنوات رسالة التفعيل", description: "ترتيب القنوات اللي بنجرّبها لإرسال رابط التفعيل.", group: "delivery", schema: deliveryChannels, default: ["email", "telegram", "sms"] as DeliveryChannel[], scopes: ["global"], editableBy: ["staff"] }),
+  def({ key: "delivery.recovery.channels", label: "قنوات استعادة كلمة السر", description: "القنوات اللي بنبعت عليها رابط الاستعادة.", group: "delivery", schema: deliveryChannels, default: ["email", "telegram"] as DeliveryChannel[], scopes: ["global"], editableBy: ["staff"] }),
+  def({ key: "delivery.alert.channels", label: "قنوات التنبيهات الأمنية", description: "القنوات اللي بنبلّغ عليها لما كلمة السر تتغير.", group: "delivery", schema: deliveryChannels, default: ["email", "telegram"] as DeliveryChannel[], scopes: ["global"], editableBy: ["staff"] }),
+  def({ key: "auth.activation.ttl_minutes", label: "صلاحية رابط التفعيل (دقايق)", description: "المدة اللي رابط التفعيل بيفضل شغال فيها.", group: "security", schema: z.number().int().min(15).max(43200), default: 1440, scopes: ["global"], editableBy: ["staff"] }),
+  def({ key: "auth.reset.ttl_minutes", label: "صلاحية رابط الاستعادة (دقايق)", description: "المدة اللي رابط استعادة كلمة السر بيفضل شغال فيها.", group: "security", schema: z.number().int().min(5).max(1440), default: 30, scopes: ["global"], editableBy: ["staff"] }),
+  def({ key: "auth.admin_code.ttl_minutes", label: "صلاحية كود الإدارة (دقايق)", description: "كود من 8 أرقام بيدّيه الموظف للعميل.", group: "security", schema: z.number().int().min(2).max(120), default: 10, scopes: ["global"], editableBy: ["staff"] }),
+  def({ key: "auth.recovery.methods", label: "طرق الاستعادة المتاحة", description: "الطرق اللي العميل يقدر يستخدمها لو نسي كلمة السر.", group: "security", schema: z.array(z.enum(["email", "telegram", "recovery_code", "owner", "admin"])).min(1), default: ["email", "telegram", "recovery_code", "owner", "admin"], scopes: ["global"], editableBy: ["staff"] }),
+  def({ key: "auth.recovery.max_per_hour", label: "طلبات الاستعادة في الساعة", description: "أقصى عدد طلبات استعادة لنفس الحساب في الساعة.", group: "security", schema: z.number().int().min(1).max(50), default: 5, scopes: ["global"], editableBy: ["staff"] }),
+  def({ key: "channels.telegram.username", label: "يوزر بوت تيليجرام", description: "اسم البوت بدون @ (بيتقرأ من هنا لو مفيش متغير بيئة).", group: "delivery", schema: z.string().trim().max(64), default: "HyperTechPortalBot", scopes: ["global"], editableBy: ["staff"] }),
   def({ key: "copy.overrides", label: "تعديل النصوص", description: "نصوص بديلة للواجهة (مفتاح ← نص).", group: "ui", schema: z.record(z.string().max(120), z.string().max(500)), default: {}, scopes: ["global", "company"], editableBy: ["staff"] }),
 ];
 
