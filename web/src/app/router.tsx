@@ -53,9 +53,10 @@ export function Router({ routes, notFound }: { routes: RouteDef[]; notFound: () 
 }
 
 /** رابط بيشتغل بدون reload. */
-export function Link({ to, children, class: cls }: { to: string; children: ComponentChildren; class?: string }) {
+export function Link({ to, children, class: cls, ...rest }: { to: string; children: ComponentChildren; class?: string; "aria-current"?: "page" | undefined; "aria-label"?: string }) {
   return (
     <a
+      {...rest}
       class={cls}
       href={BASE + to}
       onClick={(e) => {
