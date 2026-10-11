@@ -1576,10 +1576,13 @@ router.post(
 );
 
 /** علم عام (من غير تسجيل دخول): هل الواجهة الجديدة للبوابة شغّالة؟ بيقراه سكربت التحويل في الصفحات القديمة. */
-router.get("/portal/ui-flags", async (_req: Request, res: Response) => {
+router.get("/portal/ui-flags", async (req: Request, res: Response) => {
   let v2 = false;
   try {
-    v2 = (await resolveSetting<boolean>("ui.v2.portal", {})) === true;
+    // ?page=portal-customers-admin يفحص علم صفحة تانية. الاسم محدّد بنمط ضيق.
+    const raw = typeof req.query.page === "string" ? req.query.page : "portal";
+    const page = /^[a-z0-9][a-z0-9-]{0,40}$/.test(raw) ? raw : "portal";
+    v2 = (await resolveSetting<boolean>(`ui.v2.${page}`, {})) === true;
   } catch {
     v2 = false;
   }

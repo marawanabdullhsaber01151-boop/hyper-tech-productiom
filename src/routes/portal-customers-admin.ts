@@ -2,6 +2,8 @@
 /**
  * Portal Customers Admin — إدارة حسابات بوابة العملاء من جانب الموظفين
  */
+import { customerHealth } from "../lib/customerHealth";
+import { csvCell } from "../lib/csv";
 import { Router, Request, Response, NextFunction } from "express";
 import { eq, desc, and, inArray, ilike, or, count, max } from "drizzle-orm";
 import bcrypt from "bcryptjs";
@@ -87,30 +89,6 @@ const customerListQuerySchema = z.object({
   pageSize: z.coerce.number().int().min(1).max(100).default(25),
 });
 
-function customerHealth(balance: string | null, creditLimit: string | null, lastOrderAt: Date | null) {
-  const daysSinceLastOrder = lastOrderAt
-    ? Math.max(0, Math.floor((Date.now() - lastOrderAt.getTime()) / 86_400_000))
-    : null;
-  const creditUtilization =
-    creditLimit === null || Number(creditLimit) <= 0
-      ? null
-      : Number(balance || 0) / Number(creditLimit);
-
-  if (creditUtilization !== null && creditUtilization >= 1) {
-    return { level: "critical", label: "تجاوز الحد الائتماني", daysSinceLastOrder, creditUtilization };
-  }
-  if (daysSinceLastOrder === null) {
-    return { level: "new", label: "لا توجد طلبات بعد", daysSinceLastOrder, creditUtilization };
-  }
-  if (creditUtilization !== null && creditUtilization >= 0.8) {
-    return { level: "warning", label: "قريب من الحد الائتماني", daysSinceLastOrder, creditUtilization };
-  }
-  if (daysSinceLastOrder > 90) {
-    return { level: "warning", label: "يحتاج متابعة", daysSinceLastOrder, creditUtilization };
-  }
-  return { level: "healthy", label: "مستقر", daysSinceLastOrder, creditUtilization };
-}
-
 function customerSearchCondition(query: string) {
   if (!query) return undefined;
   const pattern = `%${query}%`;
@@ -122,11 +100,6 @@ function customerSearchCondition(query: string) {
     ilike(contactsTable.phone, pattern),
     ilike(contactsTable.company, pattern),
   );
-}
-
-function csvCell(value: unknown): string {
-  const text = String(value ?? "");
-  return `"${text.replace(/"/g, '""')}"`;
 }
 
 const activationConfirmSchema = z.object({

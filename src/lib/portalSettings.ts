@@ -216,9 +216,37 @@ export async function clearSetting(
     );
 }
 
+export type SettingShape = {
+  kind: "boolean" | "number" | "text" | "choice" | "multi" | "whatsapp" | "json";
+  options?: string[];
+  nullable?: boolean;
+  min?: number;
+  max?: number;
+};
+
+/** Tells the settings screens which editor to draw, straight from the zod schema. */
+export function describeShape(key: string, schema: z.ZodTypeAny): SettingShape {
+  let s: z.ZodTypeAny = schema;
+  let nullable = false;
+  while (s instanceof z.ZodNullable || s instanceof z.ZodOptional || s instanceof z.ZodDefault) {
+    if (s instanceof z.ZodNullable) nullable = true;
+    s = (s as any)._def.innerType;
+  }
+  if (key === "contact.whatsapp_numbers") return { kind: "whatsapp" };
+  if (s instanceof z.ZodBoolean) return { kind: "boolean", nullable };
+  if (s instanceof z.ZodNumber) return { kind: "number", nullable, min: s.minValue ?? undefined, max: s.maxValue ?? undefined };
+  if (s instanceof z.ZodEnum) return { kind: "choice", options: [...(s.options as string[])], nullable };
+  if (s instanceof z.ZodArray && s.element instanceof z.ZodEnum) {
+    return { kind: "multi", options: [...(s.element.options as string[])] };
+  }
+  if (s instanceof z.ZodString) return { kind: "text", nullable };
+  return { kind: "json", nullable };
+}
+
 /** Catalogue for the settings screens (labels, defaults, who can edit). */
 export function describeSettings() {
   return PORTAL_SETTING_DEFS.map((d) => ({
+    shape: describeShape(d.key, d.schema),
     key: d.key,
     label: d.label,
     description: d.description,

@@ -38,6 +38,7 @@ import {
   generateTempPassword,
   sanitizeLimits,
 } from "../lib/portalTeam";
+import { createMemberAccount } from "../lib/portalMemberCreate";
 import { loadTeamForStaff } from "../lib/portalTeamView";
 import { writePortalAudit } from "../lib/portalAudit";
 import { formatCompanyCode, generateCompanyCode, getActiveCompanyCode } from "../lib/companyCode";
@@ -329,71 +330,21 @@ router.post(
           .from(portalCustomersTable)
           .where(eq(portalCustomersTable.id, a.companyId))
           .for("update");
-        const role = await findAssignableRole(tx, a.companyId, body.roleKey);
-        if (!role) throw domainError(400, "INVALID_ROLE", "الدور ده مش متاح");
-        if (!canGrantAll(a, role.permissions)) {
-          throw domainError(403, "CANNOT_GRANT", "مينفعش تدّي دور فيه صلاحيات مش عندك");
-        }
-        await assertSeatAvailable(tx, a.companyId);
-
-        const [phoneTaken] = await tx
-          .select({ id: portalUsersTable.id })
-          .from(portalUsersTable)
-          .where(eq(portalUsersTable.normalizedPhone, phone))
-          .limit(1);
-        if (phoneTaken) {
-          throw domainError(
-            409,
-            "PHONE_ALREADY_REGISTERED",
-            "الرقم ده عنده حساب بالفعل. خليه ينضم بكود الشركة",
-          );
-        }
-        if (email) {
-          const [emailTaken] = await tx
-            .select({ id: portalUsersTable.id })
-            .from(portalUsersTable)
-            .where(eq(portalUsersTable.normalizedEmail, email))
-            .limit(1);
-          if (emailTaken) {
-            throw domainError(409, "EMAIL_ALREADY_REGISTERED", "الإيميل ده مستخدم قبل كده");
-          }
-        }
-
-        const tempPassword = body.password ?? generateTempPassword();
-        const [user] = await tx
-          .insert(portalUsersTable)
-          .values({
-            phone: body.phone.trim(),
-            normalizedPhone: phone,
-            email: body.email ? body.email.trim() : null,
-            normalizedEmail: email || null,
-            passwordHash: await bcrypt.hash(tempPassword, 12),
-            fullName: body.fullName,
-            mustChangePassword: true,
-            activatedAt: new Date(),
-          })
-          .returning({ id: portalUsersTable.id });
-        const [member] = await tx
-          .insert(portalMembersTable)
-          .values({
-            companyId: a.companyId,
-            userId: user!.id,
-            roleId: role.id,
-            status: "active",
-            joinedVia: a.isOwner ? "owner_created" : "admin_created",
-            invitedByMemberId: a.memberId,
-            title: body.title ?? null,
-            limits: sanitizeLimits(body.limits),
-          })
-          .returning({ id: portalMembersTable.id });
+        const created = await createMemberAccount(tx, {
+          companyId: a.companyId,
+          body,
+          joinedVia: a.isOwner ? "owner_created" : "admin_created",
+          invitedByMemberId: a.memberId,
+          canGrant: (perms) => canGrantAll(a, perms),
+        });
         await writePortalAudit(tx, {
           ...actorOf(req),
           action: "member.created",
           targetType: "member",
-          targetId: member!.id,
-          after: { fullName: body.fullName, role: role.key },
+          targetId: created.memberId,
+          after: { fullName: body.fullName, role: created.roleKey },
         });
-        return { memberId: member!.id, tempPassword };
+        return { memberId: created.memberId, tempPassword: created.tempPassword };
       });
 
       const [company] = await db

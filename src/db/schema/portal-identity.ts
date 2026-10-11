@@ -14,6 +14,7 @@ import {
   pgTable,
   serial,
   bigserial,
+  bigint,
   text,
   integer,
   boolean,
@@ -188,6 +189,26 @@ export const portalSettingsTable = pgTable(
       sql`COALESCE(${t.scopeId}, 0)`,
       t.key,
     ),
+  }),
+);
+
+export const portalSettingsHistoryTable = pgTable(
+  "portal_settings_history",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    scope: text("scope").notNull(),
+    scopeId: integer("scope_id"),
+    key: text("key").notNull(),
+    beforeValue: jsonb("before_value"),
+    afterValue: jsonb("after_value"),
+    hadBefore: boolean("had_before").notNull().default(false),
+    hasAfter: boolean("has_after").notNull().default(true),
+    changedBy: text("changed_by").notNull(),
+    revertedOf: bigint("reverted_of", { mode: "number" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    scopeIdx: index("portal_settings_history_scope_idx").on(t.scope, t.scopeId, t.createdAt),
   }),
 );
 

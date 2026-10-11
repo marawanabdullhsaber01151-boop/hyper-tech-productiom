@@ -30,6 +30,7 @@ import {
   writeSetting,
 } from "../lib/portalSettings";
 import { domainError } from "../lib/portalTeam";
+import { changeSetting } from "../lib/portalSettingsHistory";
 import { loadTeamForStaff } from "../lib/portalTeamView";
 
 const router = Router();
@@ -132,18 +133,14 @@ router.put(
         .parse(req.body);
       if (!getSettingDef(body.key)) throw domainError(400, "INVALID_SETTING", "الإعداد ده مش موجود");
       await db.transaction(async (tx) => {
-        if (body.reset) {
-          await clearSetting(tx, { key: body.key, scope: "company", scopeId: companyId });
-        } else {
-          const value = validateSettingWrite(body.key, "company", body.value, "staff");
-          await writeSetting(tx, {
-            key: body.key,
-            scope: "company",
-            scopeId: companyId,
-            value,
-            updatedBy: `staff:${req.user!.userId}`,
-          });
-        }
+        await changeSetting(tx, {
+          scope: "company",
+          scopeId: companyId,
+          key: body.key,
+          value: body.value,
+          reset: body.reset,
+          by: `staff:${req.user!.userId}`,
+        });
         await writePortalAudit(tx, {
           companyId,
           ...staff(req),
@@ -220,18 +217,16 @@ router.put("/portal-settings", ...manage, async (req: Request, res: Response, ne
       .object({ key: z.string(), value: z.unknown().optional(), reset: z.boolean().optional() })
       .parse(req.body);
     if (!getSettingDef(body.key)) throw domainError(400, "INVALID_SETTING", "الإعداد ده مش موجود");
-    if (body.reset) {
-      await clearSetting(db, { key: body.key, scope: "global", scopeId: null });
-    } else {
-      const value = validateSettingWrite(body.key, "global", body.value, "staff");
-      await writeSetting(db, {
-        key: body.key,
+    await db.transaction((tx) =>
+      changeSetting(tx, {
         scope: "global",
         scopeId: null,
-        value,
-        updatedBy: `staff:${req.user!.userId}`,
-      });
-    }
+        key: body.key,
+        value: body.value,
+        reset: body.reset,
+        by: `staff:${req.user!.userId}`,
+      }),
+    );
     res.json({ message: "اتحفظ" });
   } catch (err) {
     next(err);

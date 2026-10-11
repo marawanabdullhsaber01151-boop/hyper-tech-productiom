@@ -4,6 +4,7 @@
  * القيمة: نص، أو كائن جموع { zero, one, two, few, many, other } بيستخدم {n}.
  */
 import { portalCopy } from "./portal";
+import { adminCopy } from "./admin";
 
 export type Plural = { zero?: string; one?: string; two?: string; few?: string; many?: string; other: string };
 export type Msg = string | Plural;
@@ -123,6 +124,7 @@ export const ar = {
   "a11y.skip": "روح للمحتوى",
   "a11y.required": "(مطلوب)",
   ...portalCopy,
+  ...adminCopy,
 } as const satisfies Record<string, Msg>;
 
 export type CopyKey = keyof typeof ar;

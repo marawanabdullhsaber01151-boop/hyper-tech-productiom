@@ -1,0 +1,56 @@
+import { describe, expect, it, vi, beforeEach } from "vitest";
+import { render, screen, fireEvent, waitFor } from "@testing-library/preact";
+import { ToastProvider } from "../design/components";
+import { TypeToConfirm } from "./parts";
+import { SettingField } from "./SettingField";
+import { sentence } from "./screens/CompanyTabs";
+import { axe } from "../test/axe";
+
+beforeEach(() => vi.clearAllMocks());
+
+describe("TypeToConfirm", () => {
+  it("زر التأكيد مقفول لحد ما الاسم يتكتب صح", async () => {
+    const onConfirm = vi.fn();
+    render(<ToastProvider><TypeToConfirm open onClose={() => {}} onConfirm={onConfirm} title="عنوان" description="وصف" phrase="شركة ألف" confirmLabel="أوقف" /></ToastProvider>);
+    const btn = screen.getByRole("button", { name: "أوقف" }) as HTMLButtonElement;
+    expect(btn.disabled).toBe(true);
+    fireEvent.input(screen.getByRole("textbox"), { target: { value: "شركة ألف" } });
+    await waitFor(() => expect(btn.disabled).toBe(false));
+    fireEvent.click(btn);
+    expect(onConfirm).toHaveBeenCalled();
+  });
+});
+
+describe("SettingField (بيتولّد من شكل الإعداد)", () => {
+  it("رقم: بيحفظ القيمة الجديدة بس لما تتغيّر", () => {
+    const onSave = vi.fn();
+    render(<SettingField label="أقصى عدد" description="" shape={{ kind: "number", min: 1 }} value={10} inherited onSave={onSave} />);
+    expect(screen.queryByRole("button", { name: "احفظ" })).toBeNull();
+    fireEvent.input(screen.getByRole("spinbutton"), { target: { value: "12" } });
+    fireEvent.click(screen.getByRole("button", { name: "احفظ" }));
+    expect(onSave).toHaveBeenCalledWith(12);
+  });
+  it("اختيار: بيعرض النصوص العربي مش القيم", () => {
+    render(<SettingField label="الانضمام" description="" shape={{ kind: "choice", options: ["approval", "auto", "disabled"] }} value="approval" onSave={() => {}} />);
+    expect(screen.getByRole("option", { name: "بموافقة الرئيس" })).toBeTruthy();
+  });
+  it("JSON غلط ما بيتبعتش", () => {
+    const onSave = vi.fn();
+    render(<SettingField label="نصوص" description="" shape={{ kind: "json" }} value={{ a: "b" }} onSave={onSave} />);
+    fireEvent.input(screen.getByRole("textbox"), { target: { value: "{bad" } });
+    fireEvent.click(screen.getByRole("button", { name: "احفظ" }));
+    expect(onSave).not.toHaveBeenCalled();
+    expect(screen.getByText("الصيغة مش مظبوطة.")).toBeTruthy();
+  });
+  it("إتاحة: من غير مخالفات", async () => {
+    const { container } = render(<SettingField label="أقصى عدد" description="وصف" shape={{ kind: "number" }} value={5} inherited={false} onSave={() => {}} onReset={() => {}} />);
+    expect((await axe(container)).violations).toEqual([]);
+  });
+});
+
+describe("سجل النشاط بجمل بسيطة", () => {
+  it("حدث معروف وحدث مش معروف", () => {
+    expect(sentence({ action: "member.suspended", actorName: "أحمد", targetName: "منى" })).toBe("أحمد أوقف منى");
+    expect(sentence({ action: "x.y", actorName: "أحمد", targetName: null })).toContain("x.y");
+  });
+});

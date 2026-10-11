@@ -3,9 +3,10 @@ import { EmptyState, ToastProvider } from "../design/components";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { Router, usePath, type RouteDef } from "./router";
 import { NotFound, portalRoutes } from "../portal/routes";
+import { adminRoutes } from "../admin/routes";
 
 /** الصفحات بتتسجّل هنا لما نبنيها (خطة 04 وما بعدها). */
-export const routes: RouteDef[] = [...portalRoutes];
+export const routes: RouteDef[] = [...portalRoutes, ...adminRoutes];
 
 export function App() {
   const path = usePath();
