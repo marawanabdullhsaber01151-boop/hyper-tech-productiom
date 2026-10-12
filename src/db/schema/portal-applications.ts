@@ -7,6 +7,8 @@ import {
   integer,
   timestamp,
   index,
+  bigserial,
+  jsonb,
 } from "drizzle-orm/pg-core";
 import { systemUsersTable } from "./settings";
 
@@ -42,6 +44,16 @@ export const portalApplicationsTable = pgTable(
       { onDelete: "set null" },
     ),
     reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+    // Plan 06
+    stage: text("stage").notNull().default("new"),
+    assignedReviewerId: integer("assigned_reviewer_id").references(() => systemUsersTable.id, { onDelete: "set null" }),
+    completeness: integer("completeness").notNull().default(0),
+    internalNotes: text("internal_notes"),
+    duplicateCompanyId: integer("duplicate_company_id"),
+    duplicateContactId: integer("duplicate_contact_id"),
+    decision: text("decision"),
+    approvedCompanyId: integer("approved_company_id"),
+    customerResponseAt: timestamp("customer_response_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -58,3 +70,23 @@ export const portalApplicationsTable = pgTable(
 );
 
 export type PortalApplication = typeof portalApplicationsTable.$inferSelect;
+
+export const portalApplicationStages = ["new", "needs_info", "ready", "approved", "rejected", "duplicate_auto_closed"] as const;
+export type PortalApplicationStage = (typeof portalApplicationStages)[number];
+
+export const portalApplicationEventsTable = pgTable(
+  "portal_application_events",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    applicationId: integer("application_id").notNull().references(() => portalApplicationsTable.id, { onDelete: "cascade" }),
+    kind: text("kind").notNull(),
+    stageFrom: text("stage_from"),
+    stageTo: text("stage_to"),
+    actorUserId: integer("actor_user_id"),
+    actorLabel: text("actor_label").notNull(),
+    note: text("note"),
+    data: jsonb("data"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({ appIdx: index("portal_application_events_app_idx").on(t.applicationId, t.id) }),
+);

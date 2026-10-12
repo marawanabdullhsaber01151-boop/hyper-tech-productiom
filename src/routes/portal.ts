@@ -81,6 +81,8 @@ import { activateWithAuthToken } from "../lib/activationFlow";
 import { sendSecurityAlert } from "../lib/channels/deliver";
 import { createSettingsResolver } from "../lib/portalSettings";
 import { z } from "zod";
+import { completenessScore } from "../lib/applicationMatching";
+import { addApplicationEvent, stagePatch } from "../lib/applicationEvents";
 import { logger } from "../lib/logger";
 import { writeAuditEvent } from "../lib/governance";
 import { parseIdParam } from "../lib/validate";
@@ -376,6 +378,9 @@ const portalApplicationSchema = z.object({
   notes: z.string().trim().max(1000).optional().nullable(),
 });
 
+const APPLICATION_ACK_MESSAGE =
+  "وصل طلبك. احتفظ برقم الطلب، وفريق المبيعات هيتواصل معاك قريبًا. تقدر تتابع الحالة من صفحة «متابعة الطلب».";
+
 router.post(
   "/portal/applications",
   loginRateLimiter,
@@ -383,71 +388,77 @@ router.post(
     try {
       const data = portalApplicationSchema.parse(req.body);
       const phone = data.phone.trim();
+      const normalizedPhone = normalizePhone(phone);
+      const email = normalizeOptionalText(data.email);
 
-       const [existingCustomer] = await db
+      // نفس الرد بالظبط في كل الحالات (من غير ما نكشف إن الرقم له حساب أو طلب).
+      const [existingCustomer] = await db
         .select({ id: portalCustomersTable.id })
         .from(portalCustomersTable)
-        .where(
-          or(
-            eq(portalCustomersTable.phone, phone),
-            eq(portalCustomersTable.normalizedPhone, normalizePhone(phone)),
-          ),
-        )
+        .where(or(eq(portalCustomersTable.phone, phone), eq(portalCustomersTable.normalizedPhone, normalizedPhone)))
         .limit(1);
-       if (existingCustomer) {
-         res.status(202).json({
-           message:
-             "لو البيانات مؤهلة، هيتواصل معاك فريق المبيعات لاستكمال الطلب",
-         });
-         return;
-       }
-
+      const [existingUser] = existingCustomer
+        ? [undefined]
+        : await db.select({ id: portalUsersTable.id }).from(portalUsersTable).where(eq(portalUsersTable.normalizedPhone, normalizedPhone)).limit(1);
       const [existingApplication] = await db
-        .select({
-          referenceCode: portalApplicationsTable.referenceCode,
-        })
+        .select({ id: portalApplicationsTable.id })
         .from(portalApplicationsTable)
         .where(
           and(
-            or(
-              eq(portalApplicationsTable.phone, phone),
-              eq(portalApplicationsTable.normalizedPhone, normalizePhone(phone)),
-            ),
-            inArray(portalApplicationsTable.status, ["pending", "needs_info"]),
+            or(eq(portalApplicationsTable.phone, phone), eq(portalApplicationsTable.normalizedPhone, normalizedPhone)),
+            inArray(portalApplicationsTable.stage, ["new", "needs_info", "ready"]),
           ),
         )
         .orderBy(desc(portalApplicationsTable.createdAt))
         .limit(1);
-      if (existingApplication) {
-        res.status(202).json({
-          message:
-            "لو البيانات مؤهلة، هيتواصل معاك فريق المبيعات لاستكمال الطلب",
-        });
-        return;
+
+      const duplicate = !!(existingCustomer || existingUser || existingApplication);
+      const stage = duplicate ? "duplicate_auto_closed" : "new";
+      const values = {
+        fullName: data.fullName,
+        companyName: data.companyName,
+        phone,
+        normalizedPhone,
+        email,
+        normalizedEmail: email ? normalizeEmail(email) : null,
+        normalizedCompanyName: normalizeCompanyName(data.companyName),
+        address: normalizeOptionalText(data.address) || "",
+        city: normalizeOptionalText(data.city),
+        commercialRegisterNo: normalizeOptionalText(data.commercialRegisterNo),
+        taxId: normalizeOptionalText(data.taxId),
+        expectedMonthlyVolume: normalizeOptionalText(data.expectedMonthlyVolume),
+        notes: normalizeOptionalText(data.notes),
+      };
+
+      let referenceCode = "";
+      for (let attempt = 0; attempt < 5 && !referenceCode; attempt++) {
+        try {
+          const [application] = await db
+            .insert(portalApplicationsTable)
+            .values({
+              ...values,
+              referenceCode: generateApplicationReferenceCode(),
+              ...stagePatch(stage),
+              completeness: completenessScore(values),
+              duplicateCompanyId: existingCustomer?.id ?? null,
+            })
+            .returning({ id: portalApplicationsTable.id, referenceCode: portalApplicationsTable.referenceCode });
+          if (application) {
+            referenceCode = application.referenceCode;
+            await addApplicationEvent(db, application.id, {
+              kind: duplicate ? "auto_closed" : "submitted",
+              stageTo: stage,
+              actorLabel: "customer",
+              note: duplicate ? "اتقفل تلقائيًا: الرقم له حساب أو طلب مفتوح" : null,
+            });
+          }
+        } catch (err) {
+          if (attempt === 4 || (err as { code?: string }).code !== "23505") throw err;
+        }
       }
+      if (!referenceCode) throw new Error("تعذر حفظ طلب الانضمام");
 
-      const [application] = await db
-        .insert(portalApplicationsTable)
-        .values({
-          referenceCode: generateApplicationReferenceCode(),
-          fullName: data.fullName,
-          companyName: data.companyName,
-          phone,
-          email: normalizeOptionalText(data.email),
-          address: normalizeOptionalText(data.address) || "",
-          city: normalizeOptionalText(data.city),
-          commercialRegisterNo: normalizeOptionalText(data.commercialRegisterNo),
-          taxId: normalizeOptionalText(data.taxId),
-          expectedMonthlyVolume: normalizeOptionalText(data.expectedMonthlyVolume),
-          notes: normalizeOptionalText(data.notes),
-        })
-        .returning({ referenceCode: portalApplicationsTable.referenceCode });
-
-      if (!application) {
-        throw new Error("تعذر حفظ طلب الانضمام");
-      }
-
-      res.status(201).json({ referenceCode: application.referenceCode });
+      res.status(202).json({ referenceCode, message: APPLICATION_ACK_MESSAGE });
     } catch (err) {
       next(err);
     }
@@ -537,56 +548,123 @@ router.post(
 /* ============================================================
    GET /portal/applications/track — تتبع طلب الانضمام
 ============================================================ */
+const EDITABLE_APPLICATION_FIELDS = [
+  "fullName", "companyName", "email", "address", "city", "commercialRegisterNo", "taxId", "expectedMonthlyVolume", "notes",
+] as const;
+
+async function findApplicationByRefAndPhone(referenceCode: string, phone: string) {
+  const [application] = await db
+    .select()
+    .from(portalApplicationsTable)
+    .where(
+      and(
+        eq(portalApplicationsTable.referenceCode, referenceCode),
+        or(eq(portalApplicationsTable.phone, phone), eq(portalApplicationsTable.normalizedPhone, normalizePhone(phone))),
+      ),
+    )
+    .limit(1);
+  return application ?? null;
+}
+
+const applicationNotFound = {
+  error: { code: "APPLICATION_NOT_FOUND", message: "رقم الطلب أو رقم الهاتف غير صحيح" },
+};
+
 router.get(
   "/portal/applications/track",
   loginRateLimiter,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const referenceCode =
-        typeof req.query.referenceCode === "string" ?
-          req.query.referenceCode.trim()
-        : "";
-      const phone =
-        typeof req.query.phone === "string" ? req.query.phone.trim() : "";
-
+      const referenceCode = typeof req.query.referenceCode === "string" ? req.query.referenceCode.trim() : "";
+      const phone = typeof req.query.phone === "string" ? req.query.phone.trim() : "";
       if (!referenceCode || !phone) {
         res.status(400).json({
-          error: {
-            code: "INVALID_TRACKING_REQUEST",
-            message: "رقم الطلب ورقم الهاتف مطلوبان لمتابعة الحالة",
-          },
+          error: { code: "INVALID_TRACKING_REQUEST", message: "رقم الطلب ورقم الهاتف مطلوبان لمتابعة الحالة" },
         });
         return;
       }
-
-      const [application] = await db
-        .select({
-          status: portalApplicationsTable.status,
-          reviewerNote: portalApplicationsTable.reviewerNote,
-        })
-        .from(portalApplicationsTable)
-        .where(
-          and(
-            eq(portalApplicationsTable.referenceCode, referenceCode),
-            eq(portalApplicationsTable.phone, phone),
-          ),
-        )
-        .limit(1);
-
+      const application = await findApplicationByRefAndPhone(referenceCode, phone);
       if (!application) {
-        res.status(404).json({
-          error: {
-            code: "APPLICATION_NOT_FOUND",
-            message: "رقم الطلب أو رقم الهاتف غير صحيح",
-          },
-        });
+        res.status(404).json(applicationNotFound);
         return;
       }
-
+      // الطلب المقفول تلقائيًا بيظهر للعميل «تحت المراجعة» (من غير ما نكشف السبب).
+      const autoClosed = application.stage === "duplicate_auto_closed";
+      const stage = autoClosed ? "new" : application.stage;
       res.json({
-        status: application.status,
-        reviewerNote: application.reviewerNote,
+        status: autoClosed ? "pending" : application.status,
+        stage,
+        reviewerNote: autoClosed ? null : application.reviewerNote,
+        canEdit: stage === "needs_info",
+        fields:
+          stage === "needs_info"
+            ? Object.fromEntries(EDITABLE_APPLICATION_FIELDS.map((k) => [k, application[k] ?? ""]))
+            : null,
       });
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+const applicationReplySchema = z.object({
+  phone: z.string().trim().min(8),
+  fullName: z.string().trim().min(2).max(120).optional(),
+  companyName: z.string().trim().min(2).max(160).optional(),
+  email: z.string().trim().email().max(160).optional().or(z.literal("")),
+  address: z.string().trim().max(500).optional(),
+  city: z.string().trim().max(80).optional(),
+  commercialRegisterNo: z.string().trim().max(120).optional(),
+  taxId: z.string().trim().max(120).optional(),
+  expectedMonthlyVolume: z.string().trim().max(120).optional(),
+  notes: z.string().trim().max(1000).optional(),
+  reply: z.string().trim().max(1000).optional(),
+});
+
+router.patch(
+  "/portal/applications/:referenceCode",
+  loginRateLimiter,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const body = applicationReplySchema.parse(req.body ?? {});
+      const referenceCode = String(req.params.referenceCode ?? "").trim();
+      const found = await findApplicationByRefAndPhone(referenceCode, body.phone);
+      if (!found) {
+        res.status(404).json(applicationNotFound);
+        return;
+      }
+      const result = await db.transaction(async (tx) => {
+        const [app] = await tx.select().from(portalApplicationsTable).where(eq(portalApplicationsTable.id, found.id)).for("update");
+        if (!app || app.stage !== "needs_info") return null;
+        const set: Record<string, unknown> = {};
+        for (const k of EDITABLE_APPLICATION_FIELDS) {
+          const v = body[k];
+          if (v === undefined) continue;
+          set[k] = k === "address" ? v : v === "" ? null : v;
+        }
+        if (set.email !== undefined) set.normalizedEmail = set.email ? normalizeEmail(String(set.email)) : null;
+        if (set.companyName) set.normalizedCompanyName = normalizeCompanyName(String(set.companyName));
+        const merged = { ...app, ...set } as typeof app;
+        const now = new Date();
+        await tx
+          .update(portalApplicationsTable)
+          .set({ ...set, ...stagePatch("ready"), completeness: completenessScore(merged), customerResponseAt: now })
+          .where(eq(portalApplicationsTable.id, app.id));
+        await addApplicationEvent(tx, app.id, {
+          kind: "customer_replied",
+          stageFrom: "needs_info",
+          stageTo: "ready",
+          actorLabel: "customer",
+          note: body.reply || null,
+          data: { fields: Object.keys(set) },
+        });
+        return true;
+      });
+      if (!result) {
+        res.status(409).json({ error: { code: "APPLICATION_NOT_EDITABLE", message: "الطلب ده مش محتاج معلومات دلوقتي" } });
+        return;
+      }
+      res.json({ message: "وصلتنا المعلومات. فريق المبيعات هيراجع طلبك." });
     } catch (err) {
       next(err);
     }

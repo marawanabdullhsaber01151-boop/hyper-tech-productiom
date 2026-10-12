@@ -49,16 +49,17 @@ suite("بوابة العميل — الصفحات العامة (طلب انضم�
     expect(r.body.methods.length).toBeGreaterThan(0);
   });
 
-  it("طلب انضمام جديد بيرجّع رقم متابعة، ولو الرقم اتقدّم قبل كده بيرجّع رسالة بدون رقم", async () => {
+  it("طلب انضمام بيرجّع 202 ورقم متابعة دايمًا، والمكرر بيتقفل تلقائيًا بنفس الشكل", async () => {
     const phone = newPhone();
     const body = { fullName: "عميل تجربة", companyName: `شركة ${stamp}`, phone, address: "القاهرة" };
     const first = await post("/portal/applications", body);
-    expect(first.status).toBe(201);
+    expect(first.status).toBe(202);
     expect(first.body.referenceCode).toMatch(/\w+/);
     const again = await post("/portal/applications", body);
     expect(again.status).toBe(202);
-    expect(again.body.referenceCode).toBeUndefined();
-    expect(again.body.message).toBeTruthy();
+    expect(again.body.referenceCode).toMatch(/\w+/);
+    expect(again.body.referenceCode).not.toBe(first.body.referenceCode);
+    expect(again.body.message).toBe(first.body.message);
   });
 
   it("عميل قديم (مش عنده حساب بوابة): الطلب بيظهر في صفحة طلبات التفعيل للإدارة", async () => {
@@ -74,7 +75,7 @@ suite("بوابة العميل — الصفحات العامة (طلب انضم�
   it("عميل عنده حساب بوابة بالفعل: مفيش طلب بيتعمل والرد مايكشفش وجود الحساب", async () => {
     const phone = newPhone();
     const app = await post("/portal/applications", { fullName: "عميل", companyName: `شركة حساب ${stamp}`, phone, address: "القاهرة" });
-    expect(app.status).toBe(201);
+    expect(app.status).toBe(202);
     const { rows } = await pool.query("select id from portal_applications where normalized_phone = $1 order by id desc limit 1", [`+20${phone.slice(1)}`]);
     const ok = await call(`/portal-applications/${rows[0].id}/approve`, { method: "PATCH", body: JSON.stringify({}) }, staffToken);
     expect(ok.status).toBe(200);

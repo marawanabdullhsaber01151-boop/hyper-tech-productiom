@@ -38,6 +38,7 @@ import {
   supportPhone as configuredSupportPhone,
 } from "../lib/portalActivation";
 import { normalizePhone } from "../lib/identityNormalization";
+import { addApplicationEvent, stagePatch } from "../lib/applicationEvents";
 import { z } from "zod";
 import { randomBytes, randomInt } from "node:crypto";
 
@@ -913,7 +914,7 @@ router.patch(
           .where(eq(portalApplicationsTable.id, applicationId))
           .for("update");
         if (!application) throw domainError(404, "APPLICATION_NOT_FOUND", "طلب الانضمام غير موجود");
-        if (!["pending", "needs_info"].includes(application.status)) {
+        if (!["pending", "needs_info"].includes(application.status) || !["new", "needs_info", "ready"].includes(application.stage)) {
           throw domainError(409, "APPLICATION_ALREADY_DECIDED", "لا يمكن تعديل محافظة طلب تمت مراجعته");
         }
         const [updated] = await tx
@@ -964,7 +965,7 @@ router.patch(
           .for("update");
 
         if (!application) throw domainError(404, "APPLICATION_NOT_FOUND", "طلب الانضمام غير موجود");
-        if (!["pending", "needs_info"].includes(application.status)) {
+        if (!["pending", "needs_info"].includes(application.status) || !["new", "needs_info", "ready"].includes(application.stage)) {
           throw domainError(409, "APPLICATION_ALREADY_DECIDED", "تم اتخاذ قرار في طلب الانضمام ده بالفعل");
         }
 
@@ -1039,15 +1040,17 @@ router.patch(
         const [updated] = await tx
           .update(portalApplicationsTable)
           .set({
-            status: "approved",
+            ...stagePatch("approved"),
+            decision: "new_company",
+            approvedCompanyId: customer.id,
             reviewedByUserId: req.user!.userId,
             reviewedAt,
-            updatedAt: reviewedAt,
           })
           .where(eq(portalApplicationsTable.id, applicationId))
           .returning();
         if (!updated) throw new Error("تعذر تحديث حالة طلب الانضمام");
 
+        await addApplicationEvent(tx, applicationId, { kind: "approved", stageFrom: application.stage, stageTo: "approved", actorUserId: req.user!.userId, actorLabel: `staff:${req.user!.username}`, data: { decision: "new_company", companyId: customer.id, via: "legacy" } });
         await writeAuditEvent({
           executor: tx,
           actorUserId: req.user!.userId,
@@ -1109,7 +1112,7 @@ async function reviewApplication(
       .where(eq(portalApplicationsTable.id, applicationId))
       .for("update");
     if (!application) throw domainError(404, "APPLICATION_NOT_FOUND", "طلب الانضمام غير موجود");
-    if (!["pending", "needs_info"].includes(application.status)) {
+    if (!["pending", "needs_info"].includes(application.status) || !["new", "needs_info", "ready"].includes(application.stage)) {
       throw domainError(409, "APPLICATION_ALREADY_DECIDED", "تم اتخاذ قرار في طلب الانضمام ده بالفعل");
     }
 
@@ -1117,16 +1120,16 @@ async function reviewApplication(
     const [updated] = await tx
       .update(portalApplicationsTable)
       .set({
-        status,
+        ...stagePatch(status),
         reviewerNote: reason,
         reviewedByUserId: req.user!.userId,
         reviewedAt,
-        updatedAt: reviewedAt,
       })
       .where(eq(portalApplicationsTable.id, applicationId))
       .returning();
     if (!updated) throw new Error("تعذر تحديث حالة طلب الانضمام");
 
+    await addApplicationEvent(tx, applicationId, { kind: status === "rejected" ? "rejected" : "info_requested", stageFrom: application.stage, stageTo: status, actorUserId: req.user!.userId, actorLabel: `staff:${req.user!.username}`, note: reason });
     await writeAuditEvent({
       executor: tx,
       actorUserId: req.user!.userId,

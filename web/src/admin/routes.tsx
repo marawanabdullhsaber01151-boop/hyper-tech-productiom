@@ -35,9 +35,13 @@ function Lazy<P extends object>({ load, props }: { load: () => Promise<Component
 const companies = () => import("./screens/Companies").then((m) => m.CompaniesPage as ComponentType<{ openId?: number; tab?: string }>);
 const settings = () => import("./screens/PortalSettings").then((m) => m.PortalSettingsPage as ComponentType<Record<string, never>>);
 
+const applications = () => import("./screens/Applications").then((m) => m.ApplicationsPage as ComponentType<{ openId?: number }>);
+
 export const adminRoutes: RouteDef[] = [
   { path: "/admin/portal-customers", render: () => <Guard><Lazy load={companies} props={{}} /></Guard> },
   { path: "/admin/portal-customers/settings", render: () => <Guard><Lazy load={settings} props={{} as Record<string, never>} /></Guard> },
   { path: "/admin/portal-customers/:id", render: (p) => <Guard><Lazy load={companies} props={{ openId: Number(p.id) }} /></Guard> },
   { path: "/admin/portal-customers/:id/:tab", render: (p) => <Guard><Lazy load={companies} props={{ openId: Number(p.id), tab: p.tab }} /></Guard> },
+  { path: "/admin/portal-applications", render: () => <Guard><Lazy load={applications} props={{}} /></Guard> },
+  { path: "/admin/portal-applications/:id", render: (p) => <Guard><Lazy load={applications} props={{ openId: Number(p.id) }} /></Guard> },
 ];

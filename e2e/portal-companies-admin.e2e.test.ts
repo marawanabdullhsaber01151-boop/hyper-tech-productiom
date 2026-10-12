@@ -37,7 +37,7 @@ suite("plan 05 — إدارة عملاء البوابة (قايمة، تفاصي
   async function createCompany(label: string, activate = true) {
     const phone = newPhone();
     const submitted = await post("/portal/applications", { fullName: `رئيس ${label}`, companyName: `شركة ${label} ${stamp}`, phone, address: "القاهرة" }, "");
-    expect(submitted.status).toBe(201);
+    expect(submitted.status).toBe(202);
     const { rows } = await pool.query("select id from portal_applications where normalized_phone = $1 order by id desc limit 1", [`+20${phone.slice(1)}`]);
     const approved = await patch(`/portal-applications/${rows[0].id}/approve`, {});
     expect(approved.status).toBe(200);

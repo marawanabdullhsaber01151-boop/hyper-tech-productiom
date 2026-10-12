@@ -35,7 +35,7 @@ suite("plan 03 — activation, recovery, channels (HTTP + PostgreSQL)", () => {
   async function newCompany(label: string, email: string) {
     const phone = newPhone();
     const s = await post("/portal/applications", { fullName: `رئيس ${label}`, companyName: `شركة ${label} ${stamp}`, phone, email, address: "القاهرة" });
-    expect(s.status).toBe(201);
+    expect(s.status).toBe(202);
     const { rows } = await pool.query("select id from portal_applications where normalized_phone = $1 order by id desc limit 1", [`+20${phone.slice(1)}`]);
     const approved = await call(`/portal-applications/${rows[0].id}/approve`, { method: "PATCH", body: JSON.stringify({}) }, staffToken);
     expect(approved.status).toBe(200);

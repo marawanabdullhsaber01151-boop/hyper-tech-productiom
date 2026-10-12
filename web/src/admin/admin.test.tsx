@@ -54,3 +54,30 @@ describe("سجل النشاط بجمل بسيطة", () => {
     expect(sentence({ action: "x.y", actorName: "أحمد", targetName: null })).toContain("x.y");
   });
 });
+
+describe("SettingField — قائمة نصوص (قوالب الرفض)", () => {
+  it("سطر لكل عنصر، وبيتحفظ كمصفوفة من غير الأسطر الفاضية", () => {
+    const onSave = vi.fn();
+    render(<SettingField label="أسباب الرفض" description="" shape={{ kind: "list" }} value={["أ", "ب"]} onSave={onSave} />);
+    const box = screen.getByRole("textbox") as HTMLTextAreaElement;
+    expect(box.value).toBe("أ\nب");
+    fireEvent.input(box, { target: { value: "أ\n\nج\n" } });
+    fireEvent.click(screen.getByRole("button", { name: "احفظ" }));
+    expect(onSave).toHaveBeenCalledWith(["أ", "ج"]);
+  });
+});
+
+describe("معالج الموافقة على طلب انضمام", () => {
+  const app = { id: 1, referenceCode: "ABC12345", fullName: "منى", companyName: "شركة النور", phone: "01012345678", email: null, address: "", city: null, commercialRegisterNo: null, taxId: null, expectedMonthlyVolume: null, notes: null, stage: "new", reviewerNote: null, internalNotes: null, completeness: 45, missing: [], assignedReviewerId: null, assignedReviewerName: null, decision: null, approvedCompanyId: null, sla: "ok", ageHours: 2, createdAt: new Date().toISOString() } as never;
+  const matches = { companies: [], contacts: [], applications: [], userPhoneTaken: false, userEmailTaken: false } as never;
+  it("«الخطوة الجاية» مقفول لو اخترت ضم موظف من غير ما تحدد الشركة", async () => {
+    const { ApprovalWizard } = await import("./screens/ApprovalWizard");
+    render(<ToastProvider><ApprovalWizard app={app} matches={matches} seed={null} onClose={() => {}} onDone={() => {}} /></ToastProvider>);
+    const next = screen.getByRole("button", { name: "الخطوة الجاية" }) as HTMLButtonElement;
+    expect(next.disabled).toBe(false);
+    fireEvent.click(screen.getByRole("radio", { name: /موظف في شركة موجودة/ }));
+    await waitFor(() => expect((screen.getByRole("button", { name: "الخطوة الجاية" }) as HTMLButtonElement).disabled).toBe(true));
+    fireEvent.input(screen.getByRole("textbox"), { target: { value: "7" } });
+    await waitFor(() => expect((screen.getByRole("button", { name: "الخطوة الجاية" }) as HTMLButtonElement).disabled).toBe(false));
+  });
+});

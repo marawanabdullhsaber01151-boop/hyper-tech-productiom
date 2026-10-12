@@ -9,6 +9,7 @@
     if (sessionStorage.getItem("admin_legacy") === "1") return;
     var map = {
       "portal-customers-admin.html": { flag: "portal-customers-admin", to: "/v2/admin/portal-customers" },
+      "portal-applications-admin.html": { flag: "portal-applications-admin", to: "/v2/admin/portal-applications" },
     };
     var hit = map[location.pathname.split("/").pop()];
     if (!hit) return;

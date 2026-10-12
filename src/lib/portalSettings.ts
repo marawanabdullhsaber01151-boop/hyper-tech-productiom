@@ -76,6 +76,10 @@ export const PORTAL_SETTING_DEFS: readonly SettingDef<any>[] = [
   def({ key: "auth.recovery.methods", label: "طرق الاستعادة المتاحة", description: "الطرق اللي العميل يقدر يستخدمها لو نسي كلمة السر.", group: "security", schema: z.array(z.enum(["email", "telegram", "recovery_code", "owner", "admin"])).min(1), default: ["email", "telegram", "recovery_code", "owner", "admin"], scopes: ["global"], editableBy: ["staff"] }),
   def({ key: "auth.recovery.max_per_hour", label: "طلبات الاستعادة في الساعة", description: "أقصى عدد طلبات استعادة لنفس الحساب في الساعة.", group: "security", schema: z.number().int().min(1).max(50), default: 5, scopes: ["global"], editableBy: ["staff"] }),
   def({ key: "channels.telegram.username", label: "يوزر بوت تيليجرام", description: "اسم البوت بدون @ (بيتقرأ من هنا لو مفيش متغير بيئة).", group: "delivery", schema: z.string().trim().max(64), default: "HyperTechPortalBot", scopes: ["global"], editableBy: ["staff"] }),
+  def({ key: "applications.sla.warn_hours", label: "تنبيه تأخر طلب الانضمام (ساعات)", description: "بعد الساعات دي الطلب يظهر بعلامة «قرّب يتأخر».", group: "applications", schema: z.number().int().min(1).max(720), default: 24, scopes: ["global"], editableBy: ["staff"] }),
+  def({ key: "applications.sla.late_hours", label: "تأخر طلب الانضمام (ساعات)", description: "بعد الساعات دي الطلب يظهر بعلامة «متأخر».", group: "applications", schema: z.number().int().min(1).max(1440), default: 48, scopes: ["global"], editableBy: ["staff"] }),
+  def({ key: "applications.reject_templates", label: "أسباب الرفض الجاهزة", description: "سبب في كل سطر. بتظهر للموظف وهو بيرفض طلب.", group: "applications", schema: z.array(z.string().trim().min(2).max(300)).max(30), default: ["البيانات مش كفاية للتأكد من الشركة", "إحنا مش بنخدم نشاط الشركة دي حاليًا", "الطلب متكرر ومعانا حساب بنفس البيانات"], scopes: ["global"], editableBy: ["staff"] }),
+  def({ key: "applications.info_templates", label: "رسائل طلب المعلومات الجاهزة", description: "رسالة في كل سطر. بتظهر للموظف وهو بيطلب معلومات.", group: "applications", schema: z.array(z.string().trim().min(2).max(300)).max(30), default: ["محتاجين صورة السجل التجاري ورقمه", "محتاجين الرقم الضريبي للشركة", "محتاجين عنوان الشركة بالتفصيل", "ممكن توضّح حجم التعامل الشهري المتوقع؟"], scopes: ["global"], editableBy: ["staff"] }),
   def({ key: "copy.overrides", label: "تعديل النصوص", description: "نصوص بديلة للواجهة (مفتاح ← نص).", group: "ui", schema: z.record(z.string().max(120), z.string().max(500)), default: {}, scopes: ["global", "company"], editableBy: ["staff"] }),
 ];
 
@@ -217,7 +221,7 @@ export async function clearSetting(
 }
 
 export type SettingShape = {
-  kind: "boolean" | "number" | "text" | "choice" | "multi" | "whatsapp" | "json";
+  kind: "boolean" | "number" | "text" | "choice" | "multi" | "whatsapp" | "list" | "json";
   options?: string[];
   nullable?: boolean;
   min?: number;
@@ -239,6 +243,7 @@ export function describeShape(key: string, schema: z.ZodTypeAny): SettingShape {
   if (s instanceof z.ZodArray && s.element instanceof z.ZodEnum) {
     return { kind: "multi", options: [...(s.element.options as string[])] };
   }
+  if (s instanceof z.ZodArray && s.element instanceof z.ZodString) return { kind: "list" };
   if (s instanceof z.ZodString) return { kind: "text", nullable };
   return { kind: "json", nullable };
 }

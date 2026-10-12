@@ -43,7 +43,7 @@ suite("plan 02 — orders, cancel, cart, notifications per employee (HTTP + Post
       phone,
       address: "القاهرة",
     });
-    expect(submitted.status).toBe(201);
+    expect(submitted.status).toBe(202);
     const { rows } = await pool.query(
       "select id from portal_applications where normalized_phone = $1 order by id desc limit 1",
       [`+20${phone.slice(1)}`],

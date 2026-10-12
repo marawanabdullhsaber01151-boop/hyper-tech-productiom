@@ -113,6 +113,15 @@ export function SettingField({ label, description, shape, value, inherited, onSa
       );
       break;
     }
+    case "list":
+      editor = (
+        <Textarea
+          rows={5}
+          value={((draft as string[]) ?? []).join("\n")}
+          onInput={(e) => setDraft((e.currentTarget as HTMLTextAreaElement).value.split("\n").map((x) => x.trim()).filter(Boolean))}
+        />
+      );
+      break;
     default:
       editor = <Textarea dir="ltr" rows={4} value={typeof draft === "string" ? draft : JSON.stringify(draft, null, 2)} onInput={(e) => setDraft((e.currentTarget as HTMLTextAreaElement).value)} />;
   }
