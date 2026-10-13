@@ -317,7 +317,7 @@ export function HistoryList({ items, onRevert }: { items: HistoryItem[]; onRever
         <li key={h.id} class="ad-list__item">
           <strong>{h.key}</strong>
           <span class="ad-muted">
-            {t("a.hist.line", { who: h.changedByName, when: formatRelative(h.createdAt), from: h.hadBefore ? show(h.beforeValue) : t("a.hist.default"), to: h.hasAfter ? show(h.afterValue) : t("a.hist.default") })}
+            {t("a.hist.line", { who: h.changedByName, when: formatDateTime(h.createdAt), from: h.hadBefore ? show(h.beforeValue) : t("a.hist.default"), to: h.hasAfter ? show(h.afterValue) : t("a.hist.default") })}
           </span>
           <Button size="sm" variant="ghost" onClick={() => void onRevert(h.id)}>{t("a.hist.revert")}</Button>
         </li>

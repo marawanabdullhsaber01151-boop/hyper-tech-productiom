@@ -1,17 +1,32 @@
-# أوامر خطة 06 (طلبات الانضمام)
+<!-- @format -->
 
-انسخ الملفات فوق المشروع، وبعدين:
+# الأوامر
+
+## بعد نسخ الملفات
 
 ```
-npm install
-npm run db:migrate
 npm run build:web
-git add -A && git commit -m "feat: join applications desk (plan 06)" && git push
+git add -A && git commit -m "feat: wipe script, arabic audit, lazy fix"
+git push
 ```
 
-بعد النشر على Vercel:
-1. اعمل Hard refresh.
-2. افتح بالرابط مباشرة: `/v2/admin/portal-applications` (داخل بحساب مبيعات أو مدير).
-3. جرّب: قدّم طلب تجريبي من صفحة التقديم، وافتحه، وجرّب «اطلب معلومات» ثم «وافق».
-4. لو عجبتك: من `/v2/admin/portal-customers/settings` شغّل مفتاح «طلبات الانضمام (إدارة)» تحت «الواجهة الجديدة»، وبعدها الصفحة القديمة هتحوّل للجديدة لوحدها (`?legacy=1` للرجوع).
-5. مهل التأخير وقوالب الرفض من نفس الشاشة تحت «طلبات الانضمام».
+بعد الـdeploy اعمل Hard refresh (Ctrl+Shift+R).
+
+## مسح كل العملاء (نهائي — مفيش رجوع)
+
+1. خُد backup أو اعمل Neon branch الأول.
+2. جرّب من غير مسح:
+
+```
+npm run wipe:customers -- --dry-run
+```
+
+3. للمسح الحقيقي:
+
+```
+npm run wipe:customers
+```
+
+واكتب: امسح العملاء
+
+ملاحظات: مفيش أي أثر في السجل بالتصميم. الكميات المحجوزة راجعها يدوي. phase0_number_sequences ماتلمسش.

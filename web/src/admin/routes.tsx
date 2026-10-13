@@ -22,13 +22,15 @@ function Guard({ children }: { children: preact.ComponentChildren }) {
 /** بنحمّل شاشات الإدارة عند الطلب عشان حجم تطبيق العميل ما يزيدش. */
 function Lazy<P extends object>({ load, props }: { load: () => Promise<ComponentType<P>>; props: P }) {
   const [C, setC] = useState<ComponentType<P> | null>(null);
+  // لما الشاشة تتبدّل (مثلًا من قايمة الشركات للإعدادات) لازم نحمّل الشاشة الجديدة، مش نفضل على القديمة.
   useEffect(() => {
     let alive = true;
+    setC(null);
     void load().then((c) => alive && setC(() => c));
     return () => {
       alive = false;
     };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [load]);
   return C ? <C {...props} /> : <Spinner />;
 }
 

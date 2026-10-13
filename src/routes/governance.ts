@@ -1,3 +1,4 @@
+import { enrichAuditRows } from "../lib/auditEnrich";
 import { Router } from "express";
 import { and, desc, eq, gt, isNull, or } from "drizzle-orm";
 import { db, delegationsTable, approvalPoliciesTable, approvalRequestsTable, auditEventsTable, systemUsersTable, salesOrdersTable, salesOrderItemsTable, productionCostEntriesTable, permissionOverridesTable } from "../db";
@@ -116,7 +117,7 @@ router.patch("/governance/delegations/:id/revoke", requireRole("chairman", "exec
 router.get("/governance/audit", requireRole("chairman", "executive_manager"), async (req, res, next) => {
   try {
     const limit = Math.min(Math.max(Number(req.query.limit) || 100, 1), 500);
-    res.json(await db.select().from(auditEventsTable).orderBy(desc(auditEventsTable.createdAt)).limit(limit));
+    res.json(await enrichAuditRows(await db.select().from(auditEventsTable).orderBy(desc(auditEventsTable.createdAt)).limit(limit)));
   } catch (err) { next(err); }
 });
 

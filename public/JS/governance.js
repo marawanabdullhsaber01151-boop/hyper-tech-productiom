@@ -129,7 +129,7 @@
       $("actionRows").innerHTML = rows(actions, "لا يوجد سجل إجراءات.", (a) =>
          `<tr><td>${esc(GROUP_LABELS[a.group] || a.group || "عام")}</td><td>${esc(a.label)}</td><td>${esc((a.defaultRoles || []).map(labelForRole).join("، "))}</td></tr>`, 3);
       $("auditRows").innerHTML = rows(audit.slice(0, 50), "لا توجد أحداث.", (a) =>
-         `<tr><td>${esc(labelForAction(a.actionKey, a.actionKey))}</td><td>${esc(a.actorName)}</td><td>${esc(DECISION_LABELS[a.decision] || a.decision || "—")}</td><td>${esc(a.createdAt)}</td></tr>`, 4);
+         `<tr><td>${esc(a.sentence || labelForAction(a.actionKey, a.actionKey))}</td><td>${esc(a.actorName || "النظام")}</td><td>${esc(DECISION_LABELS[a.decision] || a.decision || "—")}</td><td dir="ltr">${esc(a.whenText || a.createdAt)}</td></tr>`, 4);
       setStatus("تم تحديث بيانات الحوكمة", "success");
     } catch (error) { setStatus(error.message, "error"); }
   }

@@ -3,7 +3,7 @@ import { t, type CopyKey } from "../../copy";
 import { Button, Dialog, Drawer, Field, InlineAlert, Input, Select, Skeleton, StatusPill, Textarea, Timeline, type Tone } from "../../design/components";
 import { Pencil } from "../../design/icons";
 import { useQuery } from "../../api/hooks";
-import { formatNumber, formatRelative } from "../../lib/format";
+import { formatDateTime, formatNumber } from "../../lib/format";
 import { api } from "../api";
 import { useAct } from "../act";
 import { Row } from "../parts";
@@ -189,7 +189,7 @@ export function ApplicationDrawer({ id, meta, onClose, onChanged }: { id: number
           <section class="ad-stack" aria-labelledby="ap-hist">
             <h3 id="ap-hist" class="ad-sub">{t("a.ap.d.history")}</h3>
             {d.events.length ? (
-              <Timeline items={d.events.map((e) => ({ id: e.id, title: evLabel(e.kind), meta: `${e.actorLabel.replace(/^staff:/, "")} · ${formatRelative(e.createdAt)}`, body: e.note ?? undefined, tone: evTone(e.kind) }))} />
+              <Timeline items={d.events.map((e) => ({ id: e.id, title: evLabel(e.kind), meta: `${e.actorLabel.replace(/^staff:/, "")} · ${formatDateTime(e.createdAt)}`, body: e.note ?? undefined, tone: evTone(e.kind) }))} />
             ) : <p class="ad-muted">{t("a.ap.d.history.empty")}</p>}
           </section>
         </div>
