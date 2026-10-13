@@ -14,6 +14,7 @@
  * - Messages are immutable. Staff may only HIDE a violating message (manager),
  *   the original stays in the table for audit.
  */
+import { sql } from "drizzle-orm";
 import {
   jsonb,
   pgTable,
@@ -28,6 +29,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { portalCustomersTable } from "./portal-customers";
 import { systemUsersTable } from "./settings";
+import { portalMembersTable } from "./portal-identity";
 
 const bytea = customType<{ data: Buffer; driverData: Buffer }>({
   dataType() {
@@ -42,6 +44,10 @@ export const chatConversationsTable = pgTable(
     portalCustomerId: integer("portal_customer_id")
       .notNull()
       .references(() => portalCustomersTable.id, { onDelete: "cascade" }),
+    // Plan 08: null = شركة مشتركة، غير كده = محادثة موظف بعينه.
+    memberId: integer("member_id").references(() => portalMembersTable.id, {
+      onDelete: "set null",
+    }),
     // Denormalized so the staff inbox renders without joins (same pattern as
     // portal_price_inquiries).
     customerName: text("customer_name").notNull(),
@@ -97,9 +103,12 @@ export const chatConversationsTable = pgTable(
       .defaultNow(),
   },
   (table) => ({
-    customerUnique: uniqueIndex("chat_conversations_customer_unique").on(
-      table.portalCustomerId,
-    ),
+    companySharedUnique: uniqueIndex("chat_conversations_company_shared_unique")
+      .on(table.portalCustomerId)
+      .where(sql`${table.memberId} IS NULL`),
+    memberUnique: uniqueIndex("chat_conversations_member_unique")
+      .on(table.portalCustomerId, table.memberId)
+      .where(sql`${table.memberId} IS NOT NULL`),
     handlerIdx: index("chat_conversations_handler_idx").on(
       table.handlerUserId,
       table.lastMessageAt,

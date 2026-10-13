@@ -18,6 +18,7 @@ import { Activate } from "./screens/auth/Activate";
 import { Recover } from "./screens/auth/Recover";
 import "./portal.css";
 import { Team } from "./screens/Team";
+import { Chat } from "./screens/Chat";
 
 /** أول ما التطبيق يفتح: بنقرأ الجلسة، وبعدها بنحوّل لـ home أو login. */
 function Entry() {
@@ -65,5 +66,6 @@ export const portalRoutes: RouteDef[] = [
   { path: "/portal/orders/:ref", render: (p) => <Protected><Orders openRef={p.ref} /></Protected> },
   { path: "/portal/notifications", render: () => <Protected><Notifications /></Protected> },
   { path: "/portal/account", render: () => <Protected><Account /></Protected> },
+  { path: "/portal/chat", render: () => <Protected perm="chat.use"><Chat /></Protected> },
   { path: "/portal/team", render: () => <Protected perm="team.view"><Team /></Protected> },
 ];

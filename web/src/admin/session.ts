@@ -3,6 +3,9 @@ import { staffSession } from "../auth/staffSession";
 /** الأدوار اللي مسموحلها تفتح الصفحة (السيرفر بيتحقق برضه). */
 export const ADMIN_ROLES = ["chairman", "executive_manager", "sales_manager"] as const;
 
+/** اللي ممكن يفتح محادثات العملاء (السيرفر بيحدد الوضع الفعلي لكل واحد). */
+export const CHAT_ROLES = [...ADMIN_ROLES, "online_seller", "offline_seller", "hr", "hr_manager"] as const;
+
 export interface StaffUser {
   id: number;
   username: string;

@@ -153,6 +153,7 @@ function conversationView(
     customerName: conv.customerName,
     customerCompany: conv.customerCompany,
     portalCustomerId: conv.portalCustomerId,
+    memberId: conv.memberId,
     status: conv.status,
     topic: conv.topic,
     handler,

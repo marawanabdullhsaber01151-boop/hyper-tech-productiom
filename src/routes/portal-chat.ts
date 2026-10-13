@@ -11,8 +11,9 @@
  * GET  /portal/chat/summary         عدّاد غير المقروء للأيقونة العائمة
  */
 import { Router, Request, Response, NextFunction } from "express";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, isNull, isNotNull } from "drizzle-orm";
 import { getChatConfig } from "../lib/chatConfig";
+import { chatScopeFor } from "../lib/chatScope";
 import { pushPublicKey } from "../lib/chatPush";
 import { isWithinBusinessHours } from "../lib/chatPolicy";
 import rateLimit from "express-rate-limit";
@@ -25,6 +26,8 @@ import {
   chatPushSubscriptionsTable,
   chatConversationsTable,
   portalCustomersTable,
+  portalMembersTable,
+  portalUsersTable,
 } from "../db/schema";
 import {
   requirePortalAuth,
@@ -51,6 +54,15 @@ import {
 } from "../lib/chatService";
 
 const router = Router();
+
+/** لو الجلسة بتاعة موظف: لازم معاه chat.use. (الجلسات القديمة من غير هوية موظف بتعدّي.) */
+function chatUse(req: Request, res: Response, next: NextFunction): void {
+  if (req.portalAuth && !req.portalAuth.can("chat.use")) {
+    res.status(403).json({ error: { code: "PORTAL_PERMISSION_DENIED", message: "مفيش عندك صلاحية للحاجة دي" } });
+    return;
+  }
+  next();
+}
 
 const sendLimiter = rateLimit({
   windowMs: 60 * 1000,
@@ -88,6 +100,7 @@ const ratingSchema = z.object({
 
 async function conversationMeta(
   conv: Awaited<ReturnType<typeof getOrCreateConversation>>,
+  mode?: string,
 ) {
   const handler = await getEffectiveHandler(conv);
   const config = await getChatConfig();
@@ -100,6 +113,7 @@ async function conversationMeta(
       whatsappNumber: config.whatsappNumber,
     },
     id: conv.id,
+    mode: mode ?? "shared",
     status: conv.status,
     handlerName: handler?.name ?? null,
     unread: conv.customerUnread,
@@ -114,16 +128,18 @@ async function conversationMeta(
 router.get(
   "/portal/chat",
   requirePortalAuth,
+  chatUse,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const customerId = getAuthenticatedPortalCustomerId(req);
-      const conv = await getOrCreateConversation(customerId);
+      const scope = await chatScopeFor(req);
+      const conv = await getOrCreateConversation(customerId, scope.memberId);
       const beforeId = Number(req.query.before) || undefined;
       const rows = await fetchMessages(conv.id, "customer", { beforeId });
       const messages = await serializeMessages(rows, conv, "customer");
       await touchCustomerPresence(conv.id);
       res.json({
-        conversation: await conversationMeta(conv),
+        conversation: await conversationMeta(conv, scope.mode),
         messages,
         hasMore: rows.length >= 50,
       });
@@ -137,11 +153,13 @@ router.get(
 router.get(
   "/portal/chat/poll",
   requirePortalAuth,
+  chatUse,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const customerId = getAuthenticatedPortalCustomerId(req);
       const after = Math.max(0, Number(req.query.after) || 0);
-      const conv = await getOrCreateConversation(customerId);
+      const scope = await chatScopeFor(req);
+      const conv = await getOrCreateConversation(customerId, scope.memberId);
       // Skip all other work for an idle poll: nothing new and nothing changed.
       const rows =
         conv.lastMessageId > after ?
@@ -151,7 +169,7 @@ router.get(
       await touchCustomerPresence(conv.id);
       void sweepEscalations().catch(() => undefined);
       res.json({
-        conversation: await conversationMeta(conv),
+        conversation: await conversationMeta(conv, scope.mode),
         messages,
       });
     } catch (err) {
@@ -164,16 +182,25 @@ router.get(
 router.get(
   "/portal/chat/summary",
   requirePortalAuth,
+  chatUse,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const customerId = getAuthenticatedPortalCustomerId(req);
+      const scope = await chatScopeFor(req);
       const [row] = await db
         .select({
           unread: chatConversationsTable.customerUnread,
           status: chatConversationsTable.status,
         })
         .from(chatConversationsTable)
-        .where(eq(chatConversationsTable.portalCustomerId, customerId))
+        .where(
+          and(
+            eq(chatConversationsTable.portalCustomerId, customerId),
+            scope.memberId === null
+              ? isNull(chatConversationsTable.memberId)
+              : eq(chatConversationsTable.memberId, scope.memberId),
+          ),
+        )
         .limit(1);
       res.json({ unread: row?.unread ?? 0, status: row?.status ?? "open" });
     } catch (err) {
@@ -186,6 +213,7 @@ router.get(
 router.post(
   "/portal/chat/messages",
   requirePortalAuth,
+  chatUse,
   sendLimiter,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -211,7 +239,13 @@ router.post(
         return;
       }
 
-      const conv = await getOrCreateConversation(customerId);
+      const scope = await chatScopeFor(req);
+      const conv = await getOrCreateConversation(customerId, scope.memberId);
+      let senderName = customer.fullName;
+      if (req.portalAuth?.userId) {
+        const [u] = await db.select({ n: portalUsersTable.fullName }).from(portalUsersTable).where(eq(portalUsersTable.id, req.portalAuth.userId)).limit(1);
+        if (u?.n) senderName = u.n;
+      }
       const context =
         data.context ?
           await resolveContext(customerId, data.context.type, data.context.id)
@@ -219,7 +253,7 @@ router.post(
 
       const result = await postMessage({
         conversation: conv,
-        sender: { type: "customer", customerId, name: customer.fullName },
+        sender: { type: "customer", customerId, name: senderName, memberId: scope.memberId ?? req.portalAuth?.memberId ?? null },
         body,
         image,
         topic: data.topic ?? null,
@@ -236,7 +270,7 @@ router.post(
       res.status(result.duplicate ? 200 : 201).json({
         message: view,
         duplicate: result.duplicate,
-        conversation: await conversationMeta(result.conversation),
+        conversation: await conversationMeta(result.conversation, scope.mode),
       });
     } catch (err) {
       next(err);
@@ -248,10 +282,12 @@ router.post(
 router.post(
   "/portal/chat/read",
   requirePortalAuth,
+  chatUse,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const customerId = getAuthenticatedPortalCustomerId(req);
-      const conv = await getOrCreateConversation(customerId);
+      const scope = await chatScopeFor(req);
+      const conv = await getOrCreateConversation(customerId, scope.memberId);
       await markCustomerRead(conv.id);
       res.json({ ok: true });
     } catch (err) {
@@ -264,11 +300,13 @@ router.post(
 router.post(
   "/portal/chat/rating",
   requirePortalAuth,
+  chatUse,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const customerId = getAuthenticatedPortalCustomerId(req);
       const data = ratingSchema.parse(req.body);
-      const conv = await getOrCreateConversation(customerId);
+      const scope = await chatScopeFor(req);
+      const conv = await getOrCreateConversation(customerId, scope.memberId);
 
       const [closure] = await db
         .select({ id: chatMessagesTable.id })
@@ -313,6 +351,7 @@ router.post(
 router.get(
   "/portal/chat/attachments/:id",
   requirePortalAuth,
+  chatUse,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const customerId = getAuthenticatedPortalCustomerId(req);
@@ -328,6 +367,7 @@ router.get(
           isInternal: chatMessagesTable.isInternal,
           hiddenAt: chatMessagesTable.hiddenAt,
           ownerId: chatConversationsTable.portalCustomerId,
+          convMemberId: chatConversationsTable.memberId,
         })
         .from(chatAttachmentsTable)
         .innerJoin(
@@ -341,7 +381,9 @@ router.get(
         .where(eq(chatAttachmentsTable.id, id))
         .limit(1);
       // Same 404 for "not yours" and "doesn't exist" → no id probing.
-      if (!row || row.ownerId !== customerId || row.isInternal || row.hiddenAt) {
+      const scope = await chatScopeFor(req);
+      const mine = row ? row.convMemberId === scope.memberId || (scope.canMonitor && row.convMemberId !== null) : false;
+      if (!row || row.ownerId !== customerId || !mine || row.isInternal || row.hiddenAt) {
         res.status(404).json({ error: { message: "الصورة غير موجودة" } });
         return;
       }
@@ -350,6 +392,76 @@ router.get(
         return;
       }
       sendImage(res, row.mime, row.data);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+/* ───────── Plan 08: مراقبة محادثات الفريق (للرئيس، قراءة بس) ───────── */
+async function requireMonitor(req: Request, res: Response): Promise<boolean> {
+  const scope = await chatScopeFor(req);
+  if (!scope.canMonitor) {
+    res.status(403).json({ error: { code: "PORTAL_PERMISSION_DENIED", message: "مفيش عندك صلاحية للحاجة دي" } });
+    return false;
+  }
+  return true;
+}
+
+router.get(
+  "/portal/chat/team",
+  requirePortalAuth,
+  chatUse,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      if (!(await requireMonitor(req, res))) return;
+      const customerId = getAuthenticatedPortalCustomerId(req);
+      const rows = await db
+        .select({
+          id: chatConversationsTable.id,
+          memberId: chatConversationsTable.memberId,
+          name: chatConversationsTable.customerName,
+          status: chatConversationsTable.status,
+          preview: chatConversationsTable.lastMessagePreview,
+          lastMessageAt: chatConversationsTable.lastMessageAt,
+          lastSenderType: chatConversationsTable.lastSenderType,
+        })
+        .from(chatConversationsTable)
+        .where(and(eq(chatConversationsTable.portalCustomerId, customerId), isNotNull(chatConversationsTable.memberId)))
+        .orderBy(desc(chatConversationsTable.lastMessageAt));
+      res.json({ items: rows });
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+router.get(
+  "/portal/chat/team/:id",
+  requirePortalAuth,
+  chatUse,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      if (!(await requireMonitor(req, res))) return;
+      const customerId = getAuthenticatedPortalCustomerId(req);
+      const id = Number(req.params.id);
+      if (!Number.isInteger(id) || id <= 0) {
+        res.status(400).json({ error: { message: "رقم غير صحيح" } });
+        return;
+      }
+      const [conv] = await db
+        .select()
+        .from(chatConversationsTable)
+        .where(and(eq(chatConversationsTable.id, id), eq(chatConversationsTable.portalCustomerId, customerId), isNotNull(chatConversationsTable.memberId)))
+        .limit(1);
+      if (!conv) {
+        res.status(404).json({ error: { message: "المحادثة غير موجودة" } });
+        return;
+      }
+      const beforeId = Number(req.query.before) || undefined;
+      const rows = await fetchMessages(conv.id, "customer", { beforeId });
+      const messages = await serializeMessages(rows, conv, "customer");
+      res.json({ name: conv.customerName, status: conv.status, messages, hasMore: rows.length >= 50 });
     } catch (err) {
       next(err);
     }
@@ -369,6 +481,7 @@ router.get("/portal/chat/push-key", requirePortalAuth, (_req, res) => {
 router.post(
   "/portal/chat/push-subscribe",
   requirePortalAuth,
+  chatUse,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const customerId = getAuthenticatedPortalCustomerId(req);
@@ -391,6 +504,7 @@ router.post(
 router.post(
   "/portal/chat/push-unsubscribe",
   requirePortalAuth,
+  chatUse,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const customerId = getAuthenticatedPortalCustomerId(req);

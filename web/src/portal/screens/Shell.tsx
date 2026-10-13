@@ -2,11 +2,12 @@ import type { ComponentChildren } from "preact";
 import { useEffect, useState } from "preact/hooks";
 import { t } from "../../copy";
 import { Banner, Icon, IconButton, Spinner } from "../../design/components";
-import { Bell, ClipboardList, House, Package, ShoppingCart, UserRound, WifiOff, Users } from "../../design/icons";
+import { Bell, ClipboardList, House, MessageCircle, Package, ShoppingCart, UserRound, WifiOff, Users } from "../../design/icons";
 import { ErrorBoundary } from "../../app/ErrorBoundary";
 import { Link, navigate, usePath } from "../../app/router";
 import { cartStore, loadCart, useCart } from "../cart";
 import { useUnread, useUnreadPolling } from "../notifications";
+import { useChatUnread, useChatUnreadPolling } from "../chatUnread";
 import { can, useAuth } from "../session";
 
 function useOnline(): boolean {
@@ -51,6 +52,8 @@ function Shell({ children, perm }: { children: ComponentChildren; perm?: string 
   const unread = useUnread();
   const cart = useCart();
   useUnreadPolling(true);
+  const chatUnread = useChatUnread();
+  useChatUnreadPolling(can("chat.use"));
   useEffect(() => {
     if (!cartStore.get().loaded) void loadCart().catch(() => undefined);
   }, []);
@@ -61,6 +64,7 @@ function Shell({ children, perm }: { children: ComponentChildren; perm?: string 
     { to: "/portal/products", label: t("p.nav.products"), icon: Package, show: true },
     { to: "/portal/cart", label: t("p.nav.cart"), icon: ShoppingCart, badge: cart.items.length, show: showCart },
     { to: "/portal/orders", label: can("orders.view_company") ? t("p.nav.companyOrders") : t("p.nav.orders"), icon: ClipboardList, show: can("orders.view_own") || can("orders.view_company") },
+    { to: "/portal/chat", label: t("p.nav.chat"), icon: MessageCircle, badge: chatUnread || undefined, show: can("chat.use") },
     { to: "/portal/team", label: t("p.nav.team"), icon: Users, show: can("team.view") },
     { to: "/portal/account", label: t("p.nav.account"), icon: UserRound, show: true },
   ];

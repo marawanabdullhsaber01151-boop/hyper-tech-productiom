@@ -19,6 +19,8 @@ import {
   chatConversationsTable,
   chatMessagesTable,
   portalCustomersTable,
+  portalMembersTable,
+  portalUsersTable,
   portalPriceInquiriesTable,
   productionWorkflowOrdersTable,
   bomRecipesTable,
@@ -47,7 +49,7 @@ import { notifyPortalCustomer } from "./portalNotifications";
 import { sendCustomerAlert } from "./otpDelivery";
 
 export type Sender =
-  | { type: "customer"; customerId: number; name: string }
+  | { type: "customer"; customerId: number; name: string; memberId?: number | null }
   | { type: "staff"; userId: number; name: string };
 
 /* ============================================================
@@ -56,12 +58,24 @@ export type Sender =
 
 export async function getOrCreateConversation(
   customerId: number,
+  memberId: number | null = null,
 ): Promise<ChatConversation> {
-  const [existing] = await db
-    .select()
-    .from(chatConversationsTable)
-    .where(eq(chatConversationsTable.portalCustomerId, customerId))
-    .limit(1);
+  const find = async () => {
+    const [row] = await db
+      .select()
+      .from(chatConversationsTable)
+      .where(
+        and(
+          eq(chatConversationsTable.portalCustomerId, customerId),
+          memberId === null
+            ? isNull(chatConversationsTable.memberId)
+            : eq(chatConversationsTable.memberId, memberId),
+        ),
+      )
+      .limit(1);
+    return row;
+  };
+  const existing = await find();
   if (existing) return existing;
 
   const [customer] = await db
@@ -75,23 +89,29 @@ export async function getOrCreateConversation(
   if (!customer) {
     throw Object.assign(new Error("الحساب غير موجود"), { status: 404 });
   }
+  let displayName = customer.fullName;
+  if (memberId !== null) {
+    const [m] = await db
+      .select({ name: portalUsersTable.fullName })
+      .from(portalMembersTable)
+      .innerJoin(portalUsersTable, eq(portalUsersTable.id, portalMembersTable.userId))
+      .where(eq(portalMembersTable.id, memberId))
+      .limit(1);
+    if (m?.name) displayName = m.name;
+  }
 
   // ON CONFLICT: two tabs opening the chat for the first time simultaneously.
   await db
     .insert(chatConversationsTable)
     .values({
       portalCustomerId: customerId,
-      customerName: customer.fullName,
+      memberId,
+      customerName: displayName,
       customerCompany: customer.companyName,
     })
-    .onConflictDoNothing({ target: chatConversationsTable.portalCustomerId });
+    .onConflictDoNothing();
 
-  const [created] = await db
-    .select()
-    .from(chatConversationsTable)
-    .where(eq(chatConversationsTable.portalCustomerId, customerId))
-    .limit(1);
-  return created;
+  return (await find())!;
 }
 
 /** المسؤول الفعلي = التعيين الصريح على المحادثة، وإلا مسؤول حساب العميل. */
@@ -328,6 +348,7 @@ export async function postMessage(
         conversationId: conv.id,
         senderType: sender.type,
         senderUserId: sender.type === "staff" ? sender.userId : null,
+        senderMemberId: sender.type === "customer" ? (sender.memberId ?? null) : null,
         senderName: sender.name,
         kind,
         body: input.body,

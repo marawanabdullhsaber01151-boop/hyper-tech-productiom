@@ -3,17 +3,17 @@ import type { ComponentType } from "preact";
 import { t } from "../copy";
 import { EmptyState, Spinner } from "../design/components";
 import type { RouteDef } from "../app/router";
-import { ADMIN_ROLES, goStaffLogin, staffUser } from "./session";
+import { ADMIN_ROLES, CHAT_ROLES, goStaffLogin, staffUser } from "./session";
 import "./admin.css";
 
 /** حارس الصفحة: لازم جلسة موظف ودور مسموح. */
-function Guard({ children }: { children: preact.ComponentChildren }) {
+function Guard({ children, roles = ADMIN_ROLES }: { children: preact.ComponentChildren; roles?: readonly string[] }) {
   const u = staffUser();
   useEffect(() => {
     if (!u) goStaffLogin();
   }, [u]);
   if (!u) return <Spinner />;
-  if (!(ADMIN_ROLES as readonly string[]).includes(u.role)) {
+  if (!roles.includes(u.role)) {
     return <div class="ad-page"><EmptyState title={t("a.forbidden.title")} description={t("a.forbidden.body")} /></div>;
   }
   return <>{children}</>;
@@ -39,6 +39,7 @@ const settings = () => import("./screens/PortalSettings").then((m) => m.PortalSe
 
 const applications = () => import("./screens/Applications").then((m) => m.ApplicationsPage as ComponentType<{ openId?: number }>);
 
+const chatConsole = () => import("./screens/ChatConsole").then((m) => m.ChatConsolePage as ComponentType<{ openId?: number }>);
 const activation = () => import("./screens/ActivationRequests").then((m) => m.ActivationRequestsPage as ComponentType<{ openId?: number }>);
 
 export const adminRoutes: RouteDef[] = [
@@ -50,4 +51,6 @@ export const adminRoutes: RouteDef[] = [
   { path: "/admin/portal-applications/:id", render: (p) => <Guard><Lazy load={applications} props={{ openId: Number(p.id) }} /></Guard> },
   { path: "/admin/portal-activation-requests", render: () => <Guard><Lazy load={activation} props={{}} /></Guard> },
   { path: "/admin/portal-activation-requests/:id", render: (p) => <Guard><Lazy load={activation} props={{ openId: Number(p.id) }} /></Guard> },
+  { path: "/admin/portal-chat", render: () => <Guard roles={CHAT_ROLES}><Lazy load={chatConsole} props={{}} /></Guard> },
+  { path: "/admin/portal-chat/:id", render: (p) => <Guard roles={CHAT_ROLES}><Lazy load={chatConsole} props={{ openId: Number(p.id) }} /></Guard> },
 ];
