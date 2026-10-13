@@ -10,6 +10,7 @@
     var map = {
       "portal-customers-admin.html": { flag: "portal-customers-admin", to: "/v2/admin/portal-customers" },
       "portal-applications-admin.html": { flag: "portal-applications-admin", to: "/v2/admin/portal-applications" },
+      "portal-activation-requests-admin.html": { flag: "portal-activation-requests-admin", to: "/v2/admin/portal-activation-requests" },
     };
     var hit = map[location.pathname.split("/").pop()];
     if (!hit) return;

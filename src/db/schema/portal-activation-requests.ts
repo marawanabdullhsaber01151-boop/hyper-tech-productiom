@@ -7,6 +7,8 @@ import {
   integer,
   timestamp,
   index,
+  bigserial,
+  jsonb,
 } from "drizzle-orm/pg-core";
 import { contactsTable } from "./contacts";
 import { portalCustomersTable } from "./portal-customers";
@@ -16,6 +18,7 @@ export const portalActivationRequestStatuses = [
   "pending",
   "confirmed",
   "rejected",
+  "closed",
 ] as const;
 
 export const portalActivationRequestsTable = pgTable(
@@ -41,6 +44,16 @@ export const portalActivationRequestsTable = pgTable(
     ),
     decidedAt: timestamp("decided_at", { withTimezone: true }),
     rejectionReason: text("rejection_reason"),
+    assignedReviewerId: integer("assigned_reviewer_id").references(
+      () => systemUsersTable.id,
+      { onDelete: "set null" },
+    ),
+    internalNotes: text("internal_notes"),
+    requestCount: integer("request_count").notNull().default(1),
+    lastRequestedAt: timestamp("last_requested_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    closeReason: text("close_reason"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -55,3 +68,24 @@ export const portalActivationRequestsTable = pgTable(
 
 export type PortalActivationRequest =
   typeof portalActivationRequestsTable.$inferSelect;
+
+export const portalActivationRequestEventsTable = pgTable(
+  "portal_activation_request_events",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    requestId: integer("request_id")
+      .notNull()
+      .references(() => portalActivationRequestsTable.id, { onDelete: "cascade" }),
+    kind: text("kind").notNull(),
+    actorUserId: integer("actor_user_id"),
+    actorLabel: text("actor_label").notNull(),
+    note: text("note"),
+    data: jsonb("data"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => ({
+    reqIdx: index("portal_activation_request_events_req_idx").on(t.requestId, t.id),
+  }),
+);

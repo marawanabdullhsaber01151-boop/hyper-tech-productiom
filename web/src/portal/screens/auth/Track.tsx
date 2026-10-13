@@ -1,6 +1,7 @@
 import { useState } from "preact/hooks";
 import { t, type CopyKey } from "../../../copy";
-import { Button, Field, Input, InlineAlert, PhoneInput, StatusPill, Textarea, type Tone } from "../../../design/components";
+import { GOVERNORATES } from "../../../copy/governorates";
+import { Button, Field, Input, InlineAlert, PhoneInput, Select, StatusPill, Textarea, type Tone } from "../../../design/components";
 import { Link } from "../../../app/router";
 import { useMutation } from "../../../api/hooks";
 import { api } from "../../api";
@@ -87,6 +88,13 @@ export function Track() {
                 <Field key={k} label={t(`p.track.f.${k}` as CopyKey)}>
                   {k === "notes" ? (
                     <Textarea rows={3} value={form[k] ?? ""} onInput={(e) => setForm({ ...form, [k]: (e.currentTarget as HTMLTextAreaElement).value })} />
+                  ) : k === "city" ? (
+                    <Select
+                      value={form[k] ?? ""}
+                      placeholder={t("p.apply.city.pick")}
+                      options={[...(form[k] && !GOVERNORATES.includes(form[k]!) ? [form[k]!] : []), ...GOVERNORATES].map((g) => ({ value: g, label: g }))}
+                      onChange={(e) => setForm({ ...form, city: (e.currentTarget as HTMLSelectElement).value })}
+                    />
                   ) : (
                     <Input value={form[k] ?? ""} dir={k === "email" ? "ltr" : undefined} onInput={(e) => setForm({ ...form, [k]: (e.currentTarget as HTMLInputElement).value })} />
                   )}

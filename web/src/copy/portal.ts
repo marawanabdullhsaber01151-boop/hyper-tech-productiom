@@ -45,6 +45,7 @@ export const portalCopy = {
   "p.apply.step.contact": "التواصل",
   "p.apply.step.review": "راجع وابعت",
   "p.apply.companyName": "اسم الشركة",
+  "p.apply.city.pick": "اختار المحافظة",
   "p.apply.city": "المحافظة",
   "p.apply.address": "العنوان",
   "p.apply.volume": "الحجم الشهري المتوقع",

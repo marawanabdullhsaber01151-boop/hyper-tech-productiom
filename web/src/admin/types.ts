@@ -239,3 +239,68 @@ export interface ApproveResult {
   whatsappUrl?: string | null;
   message?: string;
 }
+
+/* ---- Plan 07: طلبات التفعيل ---- */
+export type ActStatus = "pending" | "confirmed" | "rejected" | "closed";
+export interface ActRow {
+  id: number;
+  companyNameEntered: string;
+  phoneEntered: string;
+  status: ActStatus;
+  matchedContactId: number | null;
+  matchedPortalCustomerId: number | null;
+  matchedContact?: { id: number; name: string; company: string | null; phone: string | null } | null;
+  rejectionReason: string | null;
+  closeReason: string | null;
+  internalNotes: string | null;
+  assignedReviewerId: number | null;
+  assignedReviewerName: string | null;
+  requestCount: number;
+  lastRequestedAt: string;
+  decidedAt: string | null;
+  createdAt: string;
+  sla: "ok" | "warn" | "late" | "done";
+  ageHours: number;
+}
+export interface ActList {
+  items: ActRow[];
+  total: number;
+  page: number;
+  pageSize: number;
+  counts: Record<ActStatus, number>;
+}
+export interface ActMeta {
+  reviewers: Array<{ id: number; fullName: string; role: string }>;
+  sla: { warnHours: number; lateHours: number };
+}
+export interface ActCandidate {
+  id: number;
+  name: string;
+  company: string | null;
+  phone: string | null;
+  email: string | null;
+  alreadyLinked: boolean;
+  reasons?: Array<"phone" | "email" | "name">;
+  confidence?: "high" | "medium" | "low";
+  score?: number;
+}
+export interface ActEvent {
+  id: number;
+  kind: string;
+  actorLabel: string;
+  note: string | null;
+  createdAt: string;
+}
+export interface ActDetail {
+  request: ActRow;
+  candidates: ActCandidate[];
+  existingAccount: { id: number; companyName: string; isActive: boolean } | null;
+  matchedAccountId: number | null;
+  events: ActEvent[];
+}
+export interface ActActivation {
+  url: string;
+  whatsappUrl: string | null;
+  message: string;
+  delivered: boolean;
+}

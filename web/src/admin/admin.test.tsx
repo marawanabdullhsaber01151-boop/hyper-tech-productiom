@@ -81,3 +81,24 @@ describe("معالج الموافقة على طلب انضمام", () => {
     await waitFor(() => expect((screen.getByRole("button", { name: "الخطوة الجاية" }) as HTMLButtonElement).disabled).toBe(false));
   });
 });
+
+describe("طلبات التفعيل", () => {
+  it("بيعرض المرشّح وبيفتح تأكيد العميل", async () => {
+    const detail = {
+      request: { id: 5, companyNameEntered: "شركة النور", phoneEntered: "01012345678", status: "pending", matchedContactId: null, matchedPortalCustomerId: null, rejectionReason: null, closeReason: null, internalNotes: null, assignedReviewerId: null, assignedReviewerName: null, requestCount: 3, lastRequestedAt: new Date().toISOString(), decidedAt: null, createdAt: new Date().toISOString(), sla: "ok", ageHours: 1 },
+      candidates: [{ id: 9, name: "منى", company: "النور للتجارة", phone: "01012345678", email: null, alreadyLinked: false, reasons: ["phone"], confidence: "high", score: 80 }],
+      existingAccount: null,
+      matchedAccountId: null,
+      events: [{ id: 1, kind: "submitted", actorLabel: "customer", note: null, createdAt: new Date().toISOString() }],
+    };
+    vi.doMock("./api", () => ({ api: { get: vi.fn(async () => detail), post: vi.fn(), patch: vi.fn() } }));
+    const { ActivationDrawer } = await import("./screens/ActivationDrawer");
+    render(<ToastProvider><ActivationDrawer id={5} onClose={() => {}} onChanged={() => {}} /></ToastProvider>);
+    expect(await screen.findByText("النور للتجارة")).toBeTruthy();
+    expect(screen.getByText("العميل بعت الطلب ده 3 مرات")).toBeTruthy();
+    expect(screen.getByText("العميل قدّم الطلب")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "أكّد العميل ده" }));
+    expect(await screen.findByRole("button", { name: "أكّد وابعت الرابط" })).toBeTruthy();
+    vi.doUnmock("./api");
+  });
+});

@@ -2,6 +2,7 @@
 /**
  * Portal Customers Admin — إدارة حسابات بوابة العملاء من جانب الموظفين
  */
+import { addActivationEvent } from "../lib/activationEvents";
 import { customerHealth } from "../lib/customerHealth";
 import { csvCell } from "../lib/csv";
 import { Router, Request, Response, NextFunction } from "express";
@@ -1342,6 +1343,12 @@ router.patch(
           .returning();
         if (!updated) throw new Error("تعذر تحديث حالة طلب التفعيل");
 
+        await addActivationEvent(tx, requestId, {
+          kind: "confirmed",
+          actorUserId: req.user!.userId,
+          actorLabel: `staff:${req.user!.username}`,
+          data: { contactId, portalCustomerId: customer.id },
+        });
         await writeAuditEvent({
           executor: tx,
           actorUserId: req.user!.userId,
@@ -1421,6 +1428,12 @@ router.patch(
           .returning();
         if (!updated) throw new Error("تعذر تحديث حالة طلب التفعيل");
 
+        await addActivationEvent(tx, requestId, {
+          kind: "rejected",
+          actorUserId: req.user!.userId,
+          actorLabel: `staff:${req.user!.username}`,
+          note: reason,
+        });
         await writeAuditEvent({
           executor: tx,
           actorUserId: req.user!.userId,

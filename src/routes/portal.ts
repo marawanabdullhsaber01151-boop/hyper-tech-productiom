@@ -10,6 +10,7 @@
  */
 import { resolveSetting } from "../lib/portalSettings";
 import { Router, Request, Response, NextFunction } from "express";
+import { addActivationEvent } from "../lib/activationEvents";
 import { and, eq, desc, sql, inArray, gt, gte, isNull, ne, count, or } from "drizzle-orm";
 import rateLimit from "express-rate-limit";
 import bcrypt from "bcryptjs";
@@ -531,12 +532,43 @@ router.post(
         companyName,
         phone,
       );
-      await db.insert(portalActivationRequestsTable).values({
-        companyNameEntered: companyName,
-        phoneEntered: phone,
-        matchedContactId,
-        status: "pending",
-      });
+      const normalizedPhone = normalizePhone(phone);
+      // نفس الرقم وفيه طلب مفتوح: ما نعملش صف جديد، نزوّد العدّاد بس.
+      const [openSame] = normalizedPhone
+        ? await db
+            .select({ id: portalActivationRequestsTable.id })
+            .from(portalActivationRequestsTable)
+            .where(
+              and(
+                eq(portalActivationRequestsTable.status, "pending"),
+                eq(portalActivationRequestsTable.normalizedPhone, normalizedPhone),
+              ),
+            )
+            .limit(1)
+        : [];
+      if (openSame) {
+        await db
+          .update(portalActivationRequestsTable)
+          .set({
+            requestCount: sql`${portalActivationRequestsTable.requestCount} + 1`,
+            lastRequestedAt: new Date(),
+          })
+          .where(eq(portalActivationRequestsTable.id, openSame.id));
+        await addActivationEvent(db, openSame.id, { kind: "repeated", actorLabel: "customer" });
+      } else {
+        const [created] = await db
+          .insert(portalActivationRequestsTable)
+          .values({
+            companyNameEntered: companyName,
+            normalizedCompanyName: normalizeCompanyName(companyName),
+            phoneEntered: phone,
+            normalizedPhone: normalizedPhone || null,
+            matchedContactId,
+            status: "pending",
+          })
+          .returning({ id: portalActivationRequestsTable.id });
+        if (created) await addActivationEvent(db, created.id, { kind: "submitted", actorLabel: "customer" });
+      }
 
       res.json({ message: ACTIVATION_REQUEST_MESSAGE });
     } catch (err) {

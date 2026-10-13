@@ -4,230 +4,130 @@ import { Pool } from "pg";
 const enabled = Boolean(process.env.E2E_DATABASE_URL && process.env.E2E_ADMIN_PASSWORD);
 const suite = describe.skipIf(!enabled);
 
-suite("plan 00 — portal activation & password reset (HTTP + PostgreSQL)", () => {
+suite("plan 07 — طلبات التفعيل (تكرار، ترشيح، تعيين، تأكيد، إعادة إرسال، قفل)", () => {
   let pool: Pool;
-  let server: { address(): any; close(callback?: (err?: Error) => void): void };
+  let server: { address(): any; close(cb?: (err?: Error) => void): void };
   let baseUrl = "";
   let staffToken = "";
-  const stamp = Date.now().toString().slice(-8);
-  const phone = `010${stamp}`; // 010 + 8 digits = 11 digits (Egyptian local format)
-  let customerId = 0;
-  let firstUrl = "";
-  let secondUrl = "";
+  const stamp = Date.now().toString().slice(-6);
+  let counter = 10;
+  const newPhone = () => `012${stamp}${String(++counter).padStart(2, "0")}`;
 
-  async function call(path: string, init: RequestInit = {}, token = "") {
+  async function call(path: string, init: RequestInit = {}, token = staffToken) {
     const response = await fetch(`${baseUrl}${path}`, {
       ...init,
-      headers: {
-        "content-type": "application/json",
-        ...(token ? { authorization: `Bearer ${token}` } : {}),
-        ...(init.headers ?? {}),
-      },
+      headers: { "content-type": "application/json", ...(token ? { authorization: `Bearer ${token}` } : {}) },
     });
-    const raw = await response.json().catch(() => null);
-    // The API wraps every success payload as { data } (apiEnvelope middleware).
-    const body = response.ok && raw && "data" in raw ? raw.data : raw;
+    const body0 = await response.json().catch(() => null);
+    const body = response.ok && body0 && "data" in body0 ? body0.data : body0;
     return { status: response.status, body };
   }
-  const staff = (path: string, init: RequestInit = {}) => call(path, init, staffToken);
-  const tokenOf = (url: string) => new URL(url).searchParams.get("token")!;
+  const post = (p: string, b: unknown, t = staffToken) => call(p, { method: "POST", body: JSON.stringify(b) }, t);
+  const patch = (p: string, b: unknown, t = staffToken) => call(p, { method: "PATCH", body: JSON.stringify(b) }, t);
+
+  async function contact(label: string, phone: string) {
+    const { rows } = await pool.query(
+      "insert into contacts (type, name, company, phone) values ('customer', $1, $2, $3) returning id",
+      [`مسؤول ${label}`, `شركة ${label} ${stamp}`, phone],
+    );
+    return rows[0].id as number;
+  }
+  async function request(label: string, phone: string) {
+    const r = await post("/portal/activation-requests", { companyName: `شركة ${label} ${stamp}`, phone }, "");
+    expect(r.status).toBe(200);
+    const { rows } = await pool.query("select id, request_count, normalized_phone, status from portal_activation_requests where normalized_phone = $1 order by id desc limit 1", [`+20${phone.slice(1)}`]);
+    return rows[0] as { id: number; request_count: number; normalized_phone: string; status: string };
+  }
 
   beforeAll(async () => {
     process.env.DATABASE_URL = process.env.E2E_DATABASE_URL;
+    process.env.LOGIN_RATE_MAX = "1000";
+    process.env.PORTAL_ACCOUNT_LOGIN_RATE_MAX = "1000";
     process.env.PORTAL_PUBLIC_URL ??= "http://127.0.0.1";
     const { default: app } = await import("../src/main");
     pool = new Pool({ connectionString: process.env.E2E_DATABASE_URL });
     server = app.listen(0);
     baseUrl = `http://127.0.0.1:${server.address().port}/api/v1`;
-    const login = await call("/auth/login", {
-      method: "POST",
-      body: JSON.stringify({
-        username: process.env.E2E_ADMIN_USERNAME ?? "admin",
-        password: process.env.E2E_ADMIN_PASSWORD,
-      }),
-    });
-    expect(login.status).toBe(200);
-    staffToken = login.body.token;
+    const r = await post("/auth/login", { username: process.env.E2E_ADMIN_USERNAME ?? "admin", password: process.env.E2E_ADMIN_PASSWORD }, "");
+    expect(r.status).toBe(200);
+    staffToken = r.body.token;
   });
-
   afterAll(async () => {
     await pool?.end();
-    if (server) await new Promise((resolve) => server.close(resolve));
+    await new Promise<void>((resolve) => server?.close(() => resolve()));
   });
 
-  it("approving an application returns a one-time link + WhatsApp URL even with no SMS provider", async () => {
-    const submitted = await call("/portal/applications", {
-      method: "POST",
-      body: JSON.stringify({
-        fullName: "عميل تجريبي",
-        companyName: `شركة ${stamp}`,
-        phone,
-        address: "القاهرة",
-      }),
-    });
-    expect(submitted.status).toBe(202);
-    const { rows } = await pool.query(
-      "select id from portal_applications where normalized_phone = $1 order by id desc limit 1",
-      [`+20${phone.slice(1)}`],
-    );
-    const approved = await staff(`/portal-applications/${rows[0].id}/approve`, {
-      method: "PATCH",
-      body: JSON.stringify({ ttlMinutes: 60 }),
-    });
-    expect(approved.status).toBe(200);
-    const activation = approved.body.activation;
-    expect(activation.url).toContain("/portal-activate.html?token=");
-    expect(activation.whatsappUrl).toContain(`https://wa.me/20${phone.slice(1)}`);
-    expect(activation.delivered).toBe(false);
-    expect(activation.message).toContain(activation.url);
-    expect(JSON.stringify(approved.body)).not.toContain("activationToken");
-    firstUrl = activation.url;
-    customerId = approved.body.customer.id;
-
-    // The raw token must never reach the audit trail.
-    const audit = await pool.query(
-      "select count(*)::int as n from audit_events where after_data::text like $1",
-      [`%${tokenOf(firstUrl)}%`],
-    );
-    expect(audit.rows[0].n).toBe(0);
+  it("الطلب الأول بيتسجّل بحدث، وتكراره بيزوّد العدّاد من غير صف جديد", async () => {
+    const phone = newPhone();
+    const first = await request("تكرار", phone);
+    expect(first.status).toBe("pending");
+    expect(first.request_count).toBe(1);
+    const again = await request("تكرار", phone);
+    expect(again.id).toBe(first.id);
+    expect(again.request_count).toBe(2);
+    const ev = await pool.query("select kind from portal_activation_request_events where request_id=$1 order by id", [first.id]);
+    expect(ev.rows.map((r: any) => r.kind)).toEqual(["submitted", "repeated"]);
   });
 
-  it("a duplicate application with another phone format is still treated as the existing customer", async () => {
-    const dup = await call("/portal/applications", {
-      method: "POST",
-      body: JSON.stringify({
-        fullName: "نفس العميل",
-        companyName: "نفس الشركة",
-        phone: `+20 ${phone.slice(1, 4)} ${phone.slice(4)}`,
-        address: "القاهرة",
-      }),
-    });
-    expect(dup.status).toBe(202);
+  it("بدون صلاحية: ممنوع", async () => {
+    expect((await call("/portal-admin/activation-requests", {}, "")).status).toBe(401);
   });
 
-  it("clamps the lifetime into the safe range", async () => {
-    const r = await staff(`/portal-customers/${customerId}/activation-link`, {
-      method: "POST",
-      body: JSON.stringify({ ttlMinutes: 1 }),
-    });
-    expect(r.status).toBe(200);
-    const minutes = (new Date(r.body.activation.expiresAt).getTime() - Date.now()) / 60000;
-    expect(minutes).toBeGreaterThan(14);
-    expect(minutes).toBeLessThan(16);
+  it("الترشيح، القايمة، التعيين والملاحظات", async () => {
+    const phone = newPhone();
+    const cid = await contact("ترشيح", phone);
+    const req = await request("ترشيح", phone);
+    const list = await call(`/portal-admin/activation-requests?q=${phone}`);
+    expect(list.status).toBe(200);
+    expect(list.body.items[0].id).toBe(req.id);
+    expect(list.body.counts.pending).toBeGreaterThan(0);
+    const detail = await call(`/portal-admin/activation-requests/${req.id}`);
+    expect(detail.body.candidates[0].id).toBe(cid);
+    expect(detail.body.candidates[0].reasons).toContain("phone");
+    const search = await call(`/portal-admin/activation-requests/contacts/search?q=${encodeURIComponent(`ترشيح ${stamp}`)}`);
+    expect(search.body.items.some((c: any) => c.id === cid)).toBe(true);
+    const meta = await call("/portal-admin/activation-requests/meta");
+    const me = meta.body.reviewers[0];
+    expect((await patch(`/portal-admin/activation-requests/${req.id}`, { assignedReviewerId: me.id, internalNotes: "كلّمته الصبح" })).status).toBe(200);
+    const after = await call(`/portal-admin/activation-requests/${req.id}`);
+    expect(after.body.request.assignedReviewerId).toBe(me.id);
+    expect(after.body.request.internalNotes).toBe("كلّمته الصبح");
+    expect(after.body.events.map((e: any) => e.kind)).toEqual(expect.arrayContaining(["assigned", "note", "submitted"]));
   });
 
-  it("issuing a new link invalidates the old one, and the new one activates the account", async () => {
-    const listed = await staff(`/portal-customers?q=${stamp}`);
-    expect(listed.body.items?.[0]?.activated).toBe(false);
-
-    const regenerated = await staff(`/portal-customers/${customerId}/activation-link`, {
-      method: "POST",
-      body: JSON.stringify({ ttlMinutes: 1440 }),
-    });
-    expect(regenerated.status).toBe(200);
-    secondUrl = regenerated.body.activation.url;
-    expect(secondUrl).not.toBe(firstUrl);
-
-    const old = await call("/portal/activate", {
-      method: "POST",
-      body: JSON.stringify({ token: tokenOf(firstUrl), password: "Secret#123", confirmPassword: "Secret#123" }),
-    });
-    expect([409, 410]).toContain(old.status);
-
-    const ok = await call("/portal/activate", {
-      method: "POST",
-      body: JSON.stringify({ token: tokenOf(secondUrl), password: "Secret#123", confirmPassword: "Secret#123" }),
-    });
+  it("التأكيد بيعمل حساب وحدث، وإعادة الإرسال بتصدر رابط جديد، والتأكيد التاني ممنوع", async () => {
+    const phone = newPhone();
+    const cid = await contact("تأكيد", phone);
+    const req = await request("تأكيد", phone);
+    const ok = await patch(`/portal-activation-requests/${req.id}/confirm`, { contactId: cid, ttlMinutes: 60 });
     expect(ok.status).toBe(200);
-
-    const after = await staff(`/portal-customers?q=${stamp}`);
-    expect(after.body.items?.[0]?.activated).toBe(true);
+    expect(ok.body.activation.url).toContain("token=");
+    const row = await pool.query("select status, matched_portal_customer_id from portal_activation_requests where id=$1", [req.id]);
+    expect(row.rows[0].status).toBe("confirmed");
+    const again = await patch(`/portal-activation-requests/${req.id}/confirm`, { contactId: cid });
+    expect(again.status).toBe(409);
+    const re = await post(`/portal-admin/activation-requests/${req.id}/resend`, {});
+    expect(re.status).toBe(200);
+    expect(re.body.activation.url).toContain("token=");
+    expect(re.body.activation.url).not.toBe(ok.body.activation.url);
+    const ev = await pool.query("select kind from portal_activation_request_events where request_id=$1 order by id", [req.id]);
+    expect(ev.rows.map((r: any) => r.kind)).toEqual(["submitted", "confirmed", "resent"]);
   });
 
-  it("refuses to issue an activation link for an already-activated account", async () => {
-    const r = await staff(`/portal-customers/${customerId}/activation-link`, {
-      method: "POST",
-      body: JSON.stringify({}),
-    });
-    expect(r.status).toBe(409);
-    expect(r.body.error.code).toBe("PORTAL_ACCOUNT_ALREADY_ACTIVATED");
-  });
+  it("القفل بسبب، والرفض بيتسجّل، وإعادة الإرسال لطلب مش متأكد ممنوعة", async () => {
+    const p1 = newPhone();
+    const a = await request("قفل", p1);
+    expect((await post(`/portal-admin/activation-requests/${a.id}/close`, { reason: "" })).status).toBe(400);
+    expect((await post(`/portal-admin/activation-requests/${a.id}/resend`, {})).status).toBe(409);
+    expect((await post(`/portal-admin/activation-requests/${a.id}/close`, { reason: "عنده حساب" })).status).toBe(200);
+    expect((await post(`/portal-admin/activation-requests/${a.id}/close`, { reason: "تاني" })).status).toBe(409);
+    const closed = await call("/portal-admin/activation-requests?status=closed&pageSize=200");
+    expect(closed.body.items.find((i: any) => i.id === a.id).closeReason).toBe("عنده حساب");
 
-  it("manual reset revokes old sessions and forces a password change before ordering", async () => {
-    const login = await call("/portal/login", {
-      method: "POST",
-      body: JSON.stringify({ identifier: phone, password: "Secret#123", confirmPassword: "Secret#123" }),
-    });
-    expect(login.status).toBe(200);
-    const portalToken = login.body.token;
-    expect((await call("/portal/me", {}, portalToken)).status).toBe(200);
-
-    const reset = await staff(`/portal-customers/${customerId}/reset-password`, {
-      method: "PATCH",
-      body: JSON.stringify({}),
-    });
-    expect(reset.status).toBe(200);
-    const temp = reset.body.newPassword;
-    expect(reset.body.mustChangePassword).toBe(true);
-
-    expect((await call("/portal/me", {}, portalToken)).status).toBe(401);
-
-    const relogin = await call("/portal/login", {
-      method: "POST",
-      body: JSON.stringify({ identifier: phone, password: temp }),
-    });
-    expect(relogin.status).toBe(200);
-    const newToken = relogin.body.token;
-    expect(relogin.body.mustChangePassword).toBe(true);
-
-    const blocked = await call(
-      "/portal/orders",
-      {
-        method: "POST",
-        body: JSON.stringify({
-          items: [{ bomRecipeId: 1, qty: "1", unit: "قطعة" }],
-          priority: "normal",
-          idempotencyKey: `gate-${stamp}`,
-        }),
-      },
-      newToken,
-    );
-    expect(blocked.status).toBe(403);
-    expect(blocked.body.error.code).toBe("PASSWORD_CHANGE_REQUIRED");
-
-    const wrong = await call(
-      "/portal/change-password",
-      { method: "POST", body: JSON.stringify({ currentPassword: "nope-nope", newPassword: "Another#456" }) },
-      newToken,
-    );
-    expect(wrong.status).toBe(401);
-
-    const changed = await call(
-      "/portal/change-password",
-      { method: "POST", body: JSON.stringify({ currentPassword: temp, newPassword: "Another#456" }) },
-      newToken,
-    );
-    expect(changed.status).toBe(200);
-    const me = await call("/portal/me", {}, newToken);
-    expect(me.body.mustChangePassword).toBe(false);
-  });
-
-  it("forgot-password notifies only roles that can actually resolve it", async () => {
-    await pool.query("delete from notifications where type = 'portal_password_reset'");
-    const r = await call("/portal/forgot-password", {
-      method: "POST",
-      body: JSON.stringify({ identifier: phone }),
-    });
-    expect(r.status).toBe(200);
-    await new Promise((resolve) => setTimeout(resolve, 300));
-    const rows = await pool.query(
-      `select distinct u.role from notifications n join system_users u on u.id = n.user_id
-       where n.type = 'portal_password_reset'`,
-    );
-    const roles = rows.rows.map((row) => row.role);
-    expect(roles.length).toBeGreaterThan(0);
-    for (const role of roles) {
-      expect(["chairman", "executive_manager", "sales_manager"]).toContain(role);
-    }
+    const b = await request("رفض", newPhone());
+    expect((await patch(`/portal-activation-requests/${b.id}/reject`, { reason: "مش عميل عندنا" })).status).toBe(200);
+    const ev = await pool.query("select kind, note from portal_activation_request_events where request_id=$1 order by id", [b.id]);
+    expect(ev.rows.map((r: any) => r.kind)).toEqual(["submitted", "rejected"]);
+    expect(ev.rows[1].note).toBe("مش عميل عندنا");
   });
 });

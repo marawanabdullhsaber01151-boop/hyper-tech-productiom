@@ -1,6 +1,7 @@
 import { useEffect, useState } from "preact/hooks";
 import { t } from "../../../copy";
-import { Button, Field, Input, InlineAlert, PhoneInput, StepWizard, Textarea } from "../../../design/components";
+import { GOVERNORATES } from "../../../copy/governorates";
+import { Button, Field, Input, InlineAlert, PhoneInput, Select, StepWizard, Textarea } from "../../../design/components";
 import { Link, navigate } from "../../../app/router";
 import { useMutation } from "../../../api/hooks";
 import { api } from "../../api";
@@ -89,7 +90,7 @@ export function Apply() {
                   <Input value={d.companyName} onInput={set("companyName")} autocomplete="organization" />
                 </Field>
                 <Field label={t("p.apply.city")} optional>
-                  <Input value={d.city} onInput={set("city")} />
+                  <Select value={d.city} placeholder={t("p.apply.city.pick")} options={GOVERNORATES.map((g) => ({ value: g, label: g }))} onChange={(e) => setD({ ...d, city: (e.currentTarget as HTMLSelectElement).value })} />
                 </Field>
                 <Field label={t("p.apply.address")} optional>
                   <Input value={d.address} onInput={set("address")} autocomplete="street-address" />

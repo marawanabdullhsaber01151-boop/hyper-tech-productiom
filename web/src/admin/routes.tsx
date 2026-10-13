@@ -39,6 +39,8 @@ const settings = () => import("./screens/PortalSettings").then((m) => m.PortalSe
 
 const applications = () => import("./screens/Applications").then((m) => m.ApplicationsPage as ComponentType<{ openId?: number }>);
 
+const activation = () => import("./screens/ActivationRequests").then((m) => m.ActivationRequestsPage as ComponentType<{ openId?: number }>);
+
 export const adminRoutes: RouteDef[] = [
   { path: "/admin/portal-customers", render: () => <Guard><Lazy load={companies} props={{}} /></Guard> },
   { path: "/admin/portal-customers/settings", render: () => <Guard><Lazy load={settings} props={{} as Record<string, never>} /></Guard> },
@@ -46,4 +48,6 @@ export const adminRoutes: RouteDef[] = [
   { path: "/admin/portal-customers/:id/:tab", render: (p) => <Guard><Lazy load={companies} props={{ openId: Number(p.id), tab: p.tab }} /></Guard> },
   { path: "/admin/portal-applications", render: () => <Guard><Lazy load={applications} props={{}} /></Guard> },
   { path: "/admin/portal-applications/:id", render: (p) => <Guard><Lazy load={applications} props={{ openId: Number(p.id) }} /></Guard> },
+  { path: "/admin/portal-activation-requests", render: () => <Guard><Lazy load={activation} props={{}} /></Guard> },
+  { path: "/admin/portal-activation-requests/:id", render: (p) => <Guard><Lazy load={activation} props={{ openId: Number(p.id) }} /></Guard> },
 ];
