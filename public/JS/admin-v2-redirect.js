@@ -12,6 +12,7 @@
       "portal-applications-admin.html": { flag: "portal-applications-admin", to: "/v2/admin/portal-applications" },
       "chat-staff.html": { flag: "chat-staff", to: "/v2/admin/portal-chat" },
       "portal-activation-requests-admin.html": { flag: "portal-activation-requests-admin", to: "/v2/admin/portal-activation-requests" },
+      "portal-orders.html": { flag: "portal-orders", to: "/v2/admin/portal-orders" },
     };
     var hit = map[location.pathname.split("/").pop()];
     if (!hit) return;

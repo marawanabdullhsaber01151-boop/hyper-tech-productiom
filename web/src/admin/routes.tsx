@@ -3,7 +3,7 @@ import type { ComponentType } from "preact";
 import { t } from "../copy";
 import { EmptyState, Spinner } from "../design/components";
 import type { RouteDef } from "../app/router";
-import { ADMIN_ROLES, CHAT_ROLES, goStaffLogin, staffUser } from "./session";
+import { ADMIN_ROLES, CHAT_ROLES, SALES_ROLES, goStaffLogin, staffUser } from "./session";
 import "./admin.css";
 
 /** حارس الصفحة: لازم جلسة موظف ودور مسموح. */
@@ -41,6 +41,7 @@ const applications = () => import("./screens/Applications").then((m) => m.Applic
 
 const chatConsole = () => import("./screens/ChatConsole").then((m) => m.ChatConsolePage as ComponentType<{ openId?: number }>);
 const activation = () => import("./screens/ActivationRequests").then((m) => m.ActivationRequestsPage as ComponentType<{ openId?: number }>);
+const orders = () => import("./screens/PortalOrders").then((m) => m.PortalOrdersPage as ComponentType<{ openRef?: string }>);
 
 export const adminRoutes: RouteDef[] = [
   { path: "/admin/portal-customers", render: () => <Guard><Lazy load={companies} props={{}} /></Guard> },
@@ -53,4 +54,6 @@ export const adminRoutes: RouteDef[] = [
   { path: "/admin/portal-activation-requests/:id", render: (p) => <Guard><Lazy load={activation} props={{ openId: Number(p.id) }} /></Guard> },
   { path: "/admin/portal-chat", render: () => <Guard roles={CHAT_ROLES}><Lazy load={chatConsole} props={{}} /></Guard> },
   { path: "/admin/portal-chat/:id", render: (p) => <Guard roles={CHAT_ROLES}><Lazy load={chatConsole} props={{ openId: Number(p.id) }} /></Guard> },
+  { path: "/admin/portal-orders", render: () => <Guard roles={SALES_ROLES}><Lazy load={orders} props={{}} /></Guard> },
+  { path: "/admin/portal-orders/:ref", render: (p) => <Guard roles={SALES_ROLES}><Lazy load={orders} props={{ openRef: decodeURIComponent(p.ref ?? "") }} /></Guard> },
 ];

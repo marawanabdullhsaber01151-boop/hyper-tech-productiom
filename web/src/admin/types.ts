@@ -304,3 +304,75 @@ export interface ActActivation {
   message: string;
   delivered: boolean;
 }
+
+/* ---- Plan 09: طلبات البوابة ---- */
+export type OrdStatus = "pending" | "confirmed" | "rejected" | "cancelled";
+export interface OrdRow {
+  batchRef: string;
+  customerName: string | null;
+  customerPhone: string | null;
+  companyId: number;
+  status: OrdStatus;
+  progress: string | null;
+  lines: number;
+  cancelledLines: number;
+  totalQty: string;
+  referenceTotal: string;
+  lateCancel: boolean;
+  submittedAt: string;
+  reviewedAt: string | null;
+  reviewedByName: string | null;
+  invoiceNumber: string | null;
+  ageHours: number;
+  sla: "ok" | "warn" | "late" | "done";
+}
+export interface OrdList {
+  items: OrdRow[];
+  total: number;
+  page: number;
+  pageSize: number;
+  counts: Record<OrdStatus, number>;
+}
+export interface OrdLine {
+  id: number;
+  orderNumber: string | null;
+  productName: string;
+  qty: string;
+  unit: string | null;
+  neededBy: string | null;
+  notes: string | null;
+  workflowStatus: string;
+  stage: string;
+  referenceUnitPrice: string | null;
+  referenceLineTotal: string | null;
+  suggestedDueDate: string | null;
+  suggestedDeliveryMethod: string | null;
+  submittedBy: string | null;
+  cancelReason: string | null;
+  cancelledAt: string | null;
+  cancelledByName: string | null;
+  cancelStage: string | null;
+  claimedAt: string | null;
+  claimedByName: string | null;
+  canCancel: boolean;
+  canClaim: boolean;
+}
+export interface OrdEvent {
+  kind: string;
+  at: string;
+  actor: string | null;
+  note: string | null;
+  line?: string;
+}
+export interface OrdDetail {
+  batch: OrdRow;
+  priority: string | null;
+  notes: string | null;
+  neededBy: string | null;
+  company: { id: number; companyName: string; phone: string | null; isActive: boolean } | null;
+  assignedSales: unknown;
+  review: { status: string; replyMessage: string | null; rejectReason: string | null; expectedDelivery: string | null; reviewedByName: string | null; createdAt: string } | null;
+  invoice: { id: number; orderNumber: string; status: string; total: string } | null;
+  items: OrdLine[];
+  events: OrdEvent[];
+}
