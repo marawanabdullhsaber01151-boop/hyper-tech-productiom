@@ -19,8 +19,6 @@
     "db:migrate": "npm run db:preflight && node scripts/run-migrations.mjs",
     "db:migrate:identity": "tsx scripts/migrate-portal-identity.ts",
     "db:preflight": "node scripts/migration-preflight.mjs",
-    "db:migrate:drizzle-kit-unused": "drizzle-kit migrate",
-    "db:migrate:foundation": "node manual-migrate-foundation.js",
     "db:studio": "drizzle-kit studio",
     "db:seed": "tsx src/seed.ts",
     "test": "vitest run",
@@ -29,7 +27,17 @@
     "audit:baseline": "node scripts/phase0-baseline-audit.mjs",
     "audit:phase1": "node scripts/phase1-data-audit.mjs",
     "audit:foundation": "node scripts/foundation-reconciliation-audit.mjs",
-    "check:repository": "node scripts/repository-self-check.mjs"
+    "check:repository": "node scripts/repository-self-check.mjs",
+    "smoke:site": "node scripts/smoke-check.mjs",
+    "smoke:local": "node scripts/smoke-test.js",
+    "smoke:chat": "node scripts/chat-smoke-test.mjs",
+    "test:race": "node scripts/portal-orders-race-test.mjs",
+    "check:sales": "node scripts/sales-integrity-check.mjs",
+    "audit:lifecycle": "node scripts/phase2-lifecycle-audit.mjs",
+    "db:reset-test": "node scripts/reset-test-data.mjs",
+    "db:restore-config": "node scripts/restore-seeded-config.mjs",
+    "telegram:webhook": "node scripts/telegram-set-webhook.mjs",
+    "flag:v2": "node scripts/set-v2-flag.mjs"
   },
   "dependencies": {
     "@types/nodemailer": "^8.0.2",

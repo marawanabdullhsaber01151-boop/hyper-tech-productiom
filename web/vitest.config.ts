@@ -20,7 +20,6 @@ export default defineConfig({
     // ("Timeout waiting for worker to respond"). threads + عدد محدود + مهل أطول بيحلّها.
     pool: "threads",
     maxWorkers: 2,
-    minWorkers: 1,
     testTimeout: 30_000,
     hookTimeout: 60_000,
     teardownTimeout: 20_000,

@@ -16,6 +16,7 @@ suite("دورة الإنتاج — اختبار HTTP وقاعدة البيانا
   let supervisorId = 0;
   let qualityControllerId = 0;
   const orderIds: number[] = [];
+  const tempUserIds: number[] = [];
 
   async function request(path: string, init: RequestInit = {}) {
     const response = await fetch(`${baseUrl}${path}`, {
@@ -49,14 +50,20 @@ suite("دورة الإنتاج — اختبار HTTP وقاعدة البيانا
         notes: "اختبار تكامل آلي",
       }),
     });
-    expect(result.response.status).toBe(201);
+    expect(result.response.status, JSON.stringify(result.body)).toBe(201);
     const order = dataOf(result.body);
     orderIds.push(order.id);
-    expect(order.workflowStatus).toBe("new");
+    expect(order.workflowStatus).toBe("awaiting_operations_claim");
     return order;
   }
 
+  async function claim(orderId: number) {
+    const result = await request(`/operations-manager/production-orders/${orderId}/claim`, { method: "POST" });
+    expect(result.response.status, JSON.stringify(result.body)).toBe(200);
+  }
+
   async function receive(orderId: number) {
+    await claim(orderId);
     const result = await request(`/production-workflow/${orderId}/receive`, {
       method: "PATCH",
       body: JSON.stringify({
@@ -67,7 +74,7 @@ suite("دورة الإنتاج — اختبار HTTP وقاعدة البيانا
         operationalStatus: "running",
       }),
     });
-    expect(result.response.status).toBe(200);
+    expect(result.response.status, JSON.stringify(result.body)).toBe(200);
     expect(dataOf(result.body).workflowStatus).toBe("materials_requested");
   }
 
@@ -128,7 +135,7 @@ suite("دورة الإنتاج — اختبار HTTP وقاعدة البيانا
 
   beforeAll(async () => {
     process.env.DATABASE_URL = process.env.E2E_DATABASE_URL;
-    const { app } = await import("../src/main");
+    const { default: app } = await import("../src/main");
     pool = new Pool({ connectionString: process.env.E2E_DATABASE_URL });
     server = app.listen(0);
     const address = server.address();
@@ -137,12 +144,12 @@ suite("دورة الإنتاج — اختبار HTTP وقاعدة البيانا
     const login = await request("/auth/login", {
       method: "POST",
       body: JSON.stringify({
-        username: process.env.E2E_PRODUCTION_USERNAME ?? "chairman",
+        username: process.env.E2E_PRODUCTION_USERNAME ?? process.env.E2E_ADMIN_USERNAME ?? "admin",
         password: process.env.E2E_ADMIN_PASSWORD,
       }),
     });
     expect(login.response.status).toBe(200);
-    token = login.body.token;
+    token = login.body?.data?.token ?? login.body?.token;
 
     const users = await pool.query(
       `SELECT id, role FROM system_users
@@ -153,8 +160,19 @@ suite("دورة الإنتاج — اختبار HTTP وقاعدة البيانا
     qualityControllerId =
       users.rows.find((row) => row.role === "production_quality_controller")?.id ??
       0;
-    expect(supervisorId).toBeGreaterThan(0);
-    expect(qualityControllerId).toBeGreaterThan(0);
+    // الاختبار مكتفي بنفسه: لو مفيش مستخدمين بالأدوار دي في القاعدة بنعمل مؤقتين ونمسحهم في الآخر
+    const ensureUser = async (role: string, existing: number) => {
+      if (existing > 0) return existing;
+      const created = await pool.query(
+        `INSERT INTO system_users (username, password_hash, full_name, role)
+         VALUES ($1, 'e2e-not-loginable', $2, $3) RETURNING id`,
+        [`e2e-${role}-${Date.now()}`, `مستخدم اختبار ${role}`, role],
+      );
+      tempUserIds.push(created.rows[0].id);
+      return created.rows[0].id as number;
+    };
+    supervisorId = await ensureUser("supervisor", supervisorId);
+    qualityControllerId = await ensureUser("production_quality_controller", qualityControllerId);
 
     const inventory = await pool.query(
       `INSERT INTO inventory_items
@@ -214,6 +232,10 @@ suite("دورة الإنتاج — اختبار HTTP وقاعدة البيانا
       await pool.query("DELETE FROM inventory_items WHERE id = $1", [
         inventoryId,
       ]);
+      if (tempUserIds.length) {
+        await pool.query("DELETE FROM audit_events WHERE actor_user_id = ANY($1::int[])", [tempUserIds]).catch(() => undefined);
+        await pool.query("DELETE FROM system_users WHERE id = ANY($1::int[])", [tempUserIds]).catch(() => undefined);
+      }
       await pool.end();
     }
     if (server) await new Promise<void>((resolve) => server.close(() => resolve()));
@@ -258,12 +280,12 @@ suite("دورة الإنتاج — اختبار HTTP وقاعدة البيانا
         method: "PATCH",
         body: JSON.stringify({
           deliveryType: "warehouse",
-          inventoryItemId,
+          inventoryItemId: inventoryId,
           addToInventory: true,
         }),
       },
     );
-    expect(deliver.response.status).toBe(200);
+    expect(deliver.response.status, JSON.stringify(deliver.body)).toBe(200);
     const confirm = await request(
       `/production-workflow/${warehouseOrder.id}/confirm-delivery`,
       { method: "PATCH" },
@@ -274,7 +296,7 @@ suite("دورة الإنتاج — اختبار HTTP وقاعدة البيانا
     const beforeCancelOrder = await createOrder("إلغاء مبكر");
     const earlyCancel = await request(
       `/production-workflow/${beforeCancelOrder.id}/cancel`,
-      { method: "PATCH" },
+      { method: "PATCH", body: JSON.stringify({ reason: "إلغاء من اختبار التكامل" }) },
     );
     expect(earlyCancel.response.status).toBe(200);
     expect(dataOf(earlyCancel.body).workflowStatus).toBe("cancelled");
@@ -294,7 +316,7 @@ suite("دورة الإنتاج — اختبار HTTP وقاعدة البيانا
 
     const cancelled = await request(
       `/production-workflow/${afterApprovalOrder.id}/cancel`,
-      { method: "PATCH" },
+      { method: "PATCH", body: JSON.stringify({ reason: "إلغاء من اختبار التكامل" }) },
     );
     expect(cancelled.response.status).toBe(200);
     const afterCancelStock = Number(

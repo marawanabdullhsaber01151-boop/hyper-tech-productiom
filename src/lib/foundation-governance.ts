@@ -11,16 +11,7 @@ import {
   foundationItemAliasesTable,
 } from "../db/schema/foundation";
 
-// Matches the loose structural transaction type already used in
-// ../lib/production-lifecycle-transition.ts, rather than `typeof db`: a
-// drizzle transaction callback's `tx` parameter is not exactly `typeof db`,
-// and this repo already works around that mismatch the same way.
-type Executor = {
-  select: (...args: any[]) => any;
-  update: (...args: any[]) => any;
-  insert: (...args: any[]) => any;
-  execute: <T = any>(...args: any[]) => Promise<{ rows: T[] }>;
-};
+import type { Executor } from "./db-executor";
 
 /**
  * Records the *before* snapshot of an item as its current version, ahead of
@@ -88,12 +79,7 @@ export async function findDuplicateFoundationItemGroups(
   executor: Executor,
   limit = 50,
 ) {
-  const result = await executor.execute<{
-    name_normalized: string;
-    item_ids: number[];
-    codes: string[];
-    names: string[];
-  }>(sql`
+  const result = (await executor.execute(sql`
     select
       name_normalized,
       array_agg(id order by id) as item_ids,
@@ -105,7 +91,12 @@ export async function findDuplicateFoundationItemGroups(
     having count(*) > 1
     order by name_normalized
     limit ${Math.min(Math.max(limit, 1), 200)}
-  `);
+  `)) as { rows: {
+    name_normalized: string;
+    item_ids: number[];
+    codes: string[];
+    names: string[];
+  }[] };
   return result.rows;
 }
 
@@ -113,16 +104,16 @@ export async function findDuplicateFoundationItemCodeGroups(
   executor: Executor,
   limit = 50,
 ) {
-  const result = await executor.execute<{
-    normalized_code: string;
-    item_ids: number[];
-  }>(sql`
+  const result = (await executor.execute(sql`
     select lower(code) as normalized_code, array_agg(id order by id) as item_ids
     from foundation_items
     where status <> 'retired'
     group by lower(code)
     having count(*) > 1
     limit ${Math.min(Math.max(limit, 1), 200)}
-  `);
+  `)) as { rows: {
+    normalized_code: string;
+    item_ids: number[];
+  }[] };
   return result.rows;
 }

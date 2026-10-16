@@ -21,15 +21,7 @@ import {
   type ManufacturabilityIssue,
 } from "../domain/engineering-governance";
 
-// Loose structural transaction type, matching the same workaround already
-// used in ../lib/production-lifecycle-transition.ts and
-// ../lib/foundation-governance.ts, rather than `typeof db`.
-type Executor = {
-  select: (...args: any[]) => any;
-  update: (...args: any[]) => any;
-  insert: (...args: any[]) => any;
-  execute: <T = any>(...args: any[]) => Promise<{ rows: T[] }>;
-};
+import type { Executor } from "./db-executor";
 
 export async function fetchBomComponentsWithItems(
   executor: Executor,
@@ -80,12 +72,12 @@ export async function fetchRoutingSteps(
  * engineering catalog grows into the tens of thousands of components.
  */
 async function fetchSubAssemblyEdges(executor: Executor) {
-  const result = await executor.execute<{ from_product: number; to_product: number }>(sql`
+  const result = (await executor.execute(sql`
     select distinct v.product_id as from_product, c.sub_assembly_product_id as to_product
     from engineering_bom_components c
     join engineering_product_versions v on v.id = c.product_version_id
     where c.sub_assembly_product_id is not null
-  `);
+  `)) as { rows: { from_product: number; to_product: number }[] };
   return result.rows.map((r: { from_product: number; to_product: number }) => ({
     from: r.from_product,
     to: r.to_product,
@@ -226,18 +218,18 @@ export async function findEngineeringChangeImpact(
   executor: Executor,
   productId: number,
 ) {
-  const result = await executor.execute<{
-    product_version_id: number;
-    product_id: number;
-    version: string;
-    status: string;
-  }>(sql`
+  const result = (await executor.execute(sql`
     select distinct v.id as product_version_id, v.product_id, v.version, v.status
     from engineering_bom_components c
     join engineering_product_versions v on v.id = c.product_version_id
     where c.sub_assembly_product_id = ${productId}
     order by v.product_id, v.version
-  `);
+  `)) as { rows: {
+    product_version_id: number;
+    product_id: number;
+    version: string;
+    status: string;
+  }[] };
   return result.rows;
 }
 

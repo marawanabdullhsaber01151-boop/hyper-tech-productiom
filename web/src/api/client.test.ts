@@ -26,14 +26,14 @@ describe("api client", () => {
 
   it("رسالة السيرفر العربي بتتعرض في 4xx", async () => {
     const f = vi.fn().mockResolvedValue(json(409, { error: { code: "CONFLICT", message: "الشركة وصلت لأقصى عدد" } }));
-    const err = await createApiClient({ fetchImpl: f as never }).post("/x", {}).catch((e) => e);
+    const err = (await createApiClient({ fetchImpl: f as never }).post("/x", {}).catch((e: unknown) => e)) as ApiError;
     expect(err).toBeInstanceOf(ApiError);
     expect(err).toMatchObject({ kind: "conflict", status: 409, message: "الشركة وصلت لأقصى عدد", code: "CONFLICT" });
   });
 
   it("5xx بيستبدل الرسالة برسالة آمنة", async () => {
     const f = vi.fn().mockResolvedValue(json(500, { error: { message: "SELECT * FROM secret" } }));
-    const err = await createApiClient({ fetchImpl: f as never }).post("/x", {}).catch((e) => e);
+    const err = (await createApiClient({ fetchImpl: f as never }).post("/x", {}).catch((e: unknown) => e)) as ApiError;
     expect(err.kind).toBe("server");
     expect(err.message).not.toContain("SELECT");
   });
@@ -43,7 +43,7 @@ describe("api client", () => {
     expect(await createApiClient({ fetchImpl: f as never }).get("/x")).toBe("ok");
     expect(f).toHaveBeenCalledTimes(2);
     const g = vi.fn().mockRejectedValue(new TypeError("x"));
-    const err = await createApiClient({ fetchImpl: g as never }).post("/x", {}).catch((e) => e);
+    const err = (await createApiClient({ fetchImpl: g as never }).post("/x", {}).catch((e: unknown) => e)) as ApiError;
     expect(err.kind).toBe("network");
     expect(g).toHaveBeenCalledTimes(1);
   });

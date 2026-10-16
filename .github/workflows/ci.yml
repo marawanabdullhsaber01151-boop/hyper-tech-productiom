@@ -1,0 +1,44 @@
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: hyper_ci
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgres://postgres:ci@localhost:5432/hyper_ci
+      E2E_DATABASE_URL: postgres://postgres:ci@localhost:5432/hyper_ci
+      E2E_ADMIN_USERNAME: admin
+      E2E_ADMIN_PASSWORD: CiAdminPass#2026
+      JWT_SECRET: ci-only-secret-not-for-production-0123456789
+      PORTAL_JWT_SECRET: ci-only-portal-secret-different-9876543210
+      SEED_ADMIN_PASSWORD: CiAdminPass#2026
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --include=dev
+      - name: typecheck (server + web)
+        run: npx tsc --noEmit -p . && npx tsc --noEmit -p web
+      - name: unit tests
+        run: npm test && npm run test:web
+      - name: build (server + web, with lint/budgets)
+        run: npm run build
+      - name: migrate + seed + e2e
+        run: |
+          npm run db:migrate
+          npm run db:seed
+          npm run test:e2e
