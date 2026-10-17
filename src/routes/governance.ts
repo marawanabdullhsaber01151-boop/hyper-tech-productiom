@@ -1,6 +1,6 @@
 import { enrichAuditRows } from "../lib/auditEnrich";
 import { Router } from "express";
-import { and, desc, eq, gt, isNull, or } from "drizzle-orm";
+import { and, asc, desc, eq, gt, isNull, or } from "drizzle-orm";
 import { db, delegationsTable, approvalPoliciesTable, approvalRequestsTable, auditEventsTable, systemUsersTable, salesOrdersTable, salesOrderItemsTable, productionCostEntriesTable, permissionOverridesTable } from "../db";
 import { releaseStockReservation, applyStockMovement } from "../lib/stock";
 import { requireAuth, requireRole, requirePermission } from "../middleware/auth";
@@ -10,7 +10,7 @@ import { z } from "zod";
 import { writeAuditEvent } from "../lib/governance";
 import { checkSoDViolation } from "../lib/approvals";
 import { getEffectiveRoles } from "../lib/delegation";
-import { createHash } from "node:crypto";
+import { emptyChainState, verifyAuditBatch } from "../lib/auditChain";
 import { USER_ROLES } from "../lib/roles";
 
 const router = Router();
@@ -343,18 +343,39 @@ router.get("/governance/simulate", requireRole("chairman"), async (req, res, nex
 
 router.get("/governance/audit-events/verify", requireRole("chairman"), async (_req, res, next) => {
   try {
-    const rows = await db.select().from(auditEventsTable).orderBy(auditEventsTable.id);
-    let prevHash: string | null = null;
-    for (const row of rows) {
-      const expected: string = createHash("sha256").update([
-        prevHash ?? "", row.actorUserId ?? "", row.actionKey, row.resourceId ?? "", row.createdAt.toISOString(),
-      ].join("")).digest("hex");
-      if (row.prevHash !== prevHash || row.recordHash !== expected) {
-        res.json({ valid: false, firstInvalidId: row.id }); return;
+    // فحص على دفعات (keyset على id) بدل سحب الجدول كله في الذاكرة — الجدول بيكبر مع كل عملية كتابة.
+    const BATCH = 2000;
+    let state = emptyChainState();
+    let lastId = 0;
+    let total = 0;
+    for (;;) {
+      const rows = await db
+        .select({
+          id: auditEventsTable.id,
+          actorUserId: auditEventsTable.actorUserId,
+          actionKey: auditEventsTable.actionKey,
+          resourceId: auditEventsTable.resourceId,
+          createdAt: auditEventsTable.createdAt,
+          prevHash: auditEventsTable.prevHash,
+          recordHash: auditEventsTable.recordHash,
+        })
+        .from(auditEventsTable)
+        .where(gt(auditEventsTable.id, lastId))
+        .orderBy(asc(auditEventsTable.id))
+        .limit(BATCH);
+      if (rows.length === 0) break;
+      const step = verifyAuditBatch(state, rows);
+      state = step.state;
+      total += rows.length;
+      if (!step.verdict.valid) {
+        res.json({ valid: false, firstInvalidId: step.verdict.firstInvalidId, reason: step.verdict.reason, checked: state.checked });
+        return;
       }
-      prevHash = row.recordHash;
+      lastId = rows[rows.length - 1].id;
+      if (rows.length < BATCH) break;
     }
-    res.json({ valid: true, count: rows.length });
+    // count = كل الصفوف، checked = الموقّعة فقط، legacyUnsealed = قديمة قبل هجرة 0016 (بتتخطى)
+    res.json({ valid: true, count: total, checked: state.checked, legacyUnsealed: state.legacyUnsealed });
   } catch (err) { next(err); }
 });
 

@@ -37,7 +37,12 @@
     "db:reset-test": "node scripts/reset-test-data.mjs",
     "db:restore-config": "node scripts/restore-seeded-config.mjs",
     "telegram:webhook": "node scripts/telegram-set-webhook.mjs",
-    "flag:v2": "node scripts/set-v2-flag.mjs"
+    "flag:v2": "node scripts/set-v2-flag.mjs",
+    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p web",
+    "check:all": "npm run typecheck && npm test && npm run test:web && npm run build",
+    "check:e2e": "npm run test:e2e",
+    "delivery:pack": "node scripts/delivery-pack.mjs pack",
+    "delivery:verify": "node scripts/delivery-pack.mjs verify"
   },
   "dependencies": {
     "@types/nodemailer": "^8.0.2",

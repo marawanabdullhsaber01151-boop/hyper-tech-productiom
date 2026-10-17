@@ -119,6 +119,8 @@ async function main() {
     const client = await pool.connect();
     try {
       await client.query("BEGIN");
+      // صيانة معلنة على سجل التدقيق (هجرة 0077) — بتنتهي مع الـtransaction
+      await client.query("SET LOCAL hypertech.audit_maintenance = 'on'");
       const quoted = toClear.map((t) => `"${t}"`).join(", ");
       await client.query(`TRUNCATE TABLE ${quoted} RESTART IDENTITY CASCADE`);
       await client.query("COMMIT");

@@ -51,7 +51,7 @@ export function ProductImage({ src, name }: { src: string | null | undefined; na
 }
 
 export function Products() {
-  const list = useQuery((signal) => api.get<Product[]>("/portal/products", { signal, anonymous: true }), []);
+  const list = useQuery((signal) => api.get<Product[]>("/portal/products", { signal }), []);
   const [q, setQ] = useState("");
   const [onlyFav, setOnlyFav] = useState(false);
   const [openId, setOpenId] = useState<number | null>(null);
@@ -92,7 +92,7 @@ export function Products() {
 }
 
 function ProductDrawer({ id, onClose, fav, onFav }: { id: number | null; onClose: () => void; fav: boolean; onFav: () => void }) {
-  const detail = useQuery((signal) => (id === null ? Promise.resolve(null) : api.get<ProductDetail>(`/portal/products/${id}`, { signal, anonymous: true })), [id]);
+  const detail = useQuery((signal) => (id === null ? Promise.resolve(null) : api.get<ProductDetail>(`/portal/products/${id}`, { signal })), [id]);
   const cfg = useConfig();
   const cart = useCart();
   const toast = useToast();

@@ -22,7 +22,6 @@ jobs:
       E2E_ADMIN_USERNAME: admin
       E2E_ADMIN_PASSWORD: CiAdminPass#2026
       JWT_SECRET: ci-only-secret-not-for-production-0123456789
-      PORTAL_JWT_SECRET: ci-only-portal-secret-different-9876543210
       SEED_ADMIN_PASSWORD: CiAdminPass#2026
     steps:
       - uses: actions/checkout@v4

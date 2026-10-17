@@ -77,11 +77,9 @@ async function collectHealth(req: Parameters<typeof requireAuth>[0]) {
     });
   }
 
-  const requiredConfiguration = [
-    "DATABASE_URL",
-    "JWT_SECRET",
-    "PORTAL_JWT_SECRET",
-  ];
+  // ملاحظة: توكنات البوابة مرجعية (opaque) ومخزّنة في portal_sessions، مش JWT،
+  // فمفيش PORTAL_JWT_SECRET في الكود أصلًا — اشتراطه هنا كان بيطلّع «blocked» غلط.
+  const requiredConfiguration = ["DATABASE_URL", "JWT_SECRET"];
   const missingConfiguration = requiredConfiguration.filter(
     (key) => !process.env[key],
   );

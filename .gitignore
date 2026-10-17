@@ -8,3 +8,9 @@ dist/
 drizzle/meta/
 public/v2
 web/dist
+# نسخ احتياطية وتفريغات بيانات حقيقية — ممنوع تدخل المستودع أبدًا
+*backup*.json
+*_backup_*.sql
+*.dump
+*.zip
+delivery/

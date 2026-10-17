@@ -34,6 +34,8 @@ import { writeAuditEvent } from "../lib/governance";
 import { claimOperationsLine } from "../lib/operations-claim";
 import { createApprovalRequest } from "../lib/approvals";
 import { z } from "zod";
+import { MoneyError, priceLines } from "../lib/money";
+import { runAfterCommit } from "../lib/afterCommit";
 
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -90,30 +92,50 @@ router.get(
           ? Math.min(requestedLimit, 50)
           : 20;
       const offset = (page - 1) * limit;
-      const orders = await db
-        .select()
+
+      // الإرسالية = salesOrderRef (أو SINGLE-<id> للقديم). الترقيم هنا على مستوى الإرسالية، والمراجَع
+      // منها بيتستبعد في SQL (NOT EXISTS) — قبل كده كان بيجيب limit×10 صف بـoffset=limit (ترقيم غلط
+      // وصفحات متداخلة)، وبيحمّل جدول المراجعات كله في الذاكرة مع كل طلب.
+      const batchRefExpr = sql<string>`COALESCE(NULLIF(${productionWorkflowOrdersTable.salesOrderRef}, ''), 'SINGLE-' || ${productionWorkflowOrdersTable.id}::text)`;
+      const latestSubmitted = sql`max(${productionWorkflowOrdersTable.createdAt})`;
+      const pendingRefs = await db
+        .select({ ref: batchRefExpr })
         .from(productionWorkflowOrdersTable)
-        .where(isNotNull(productionWorkflowOrdersTable.portalCustomerId))
-        .orderBy(desc(productionWorkflowOrdersTable.createdAt))
-        .limit(limit * 10)
+        .where(
+          and(
+            isNotNull(productionWorkflowOrdersTable.portalCustomerId),
+            sql`NOT EXISTS (SELECT 1 FROM ${portalOrderReviewsTable} WHERE ${portalOrderReviewsTable.batchRef} = ${batchRefExpr})`,
+          ),
+        )
+        .groupBy(batchRefExpr)
+        .orderBy(desc(latestSubmitted))
+        .limit(limit)
         .offset(offset);
 
-      const reviewedBatchRefs = new Set(
-        (
-          await db
-            .select({ batchRef: portalOrderReviewsTable.batchRef })
-            .from(portalOrderReviewsTable)
-        ).map((r) => r.batchRef),
-      );
+      const refs = pendingRefs.map((r) => r.ref);
+      const orders = refs.length
+        ? await db
+            .select()
+            .from(productionWorkflowOrdersTable)
+            .where(
+              and(
+                isNotNull(productionWorkflowOrdersTable.portalCustomerId),
+                sql`${batchRefExpr} IN (${sql.join(refs.map((ref) => sql`${ref}`), sql`, `)})`,
+              ),
+            )
+            .orderBy(desc(productionWorkflowOrdersTable.createdAt))
+        : [];
 
-      // تجميع بصري حسب الإرسالية (batchRef) — كل إرسالية ممكن فيها أكتر من صنف
-      const batches = new Map<string, typeof orders>();
+      // تجميع بصري حسب الإرسالية — كل إرسالية ممكن فيها أكتر من صنف (بترتيب الأحدث أولًا)
+      const grouped = new Map<string, typeof orders>();
       for (const order of orders) {
         const ref = order.salesOrderRef || `SINGLE-${order.id}`;
-        if (reviewedBatchRefs.has(ref)) continue; // اتراجعت بالفعل
-        if (!batches.has(ref)) batches.set(ref, []);
-        batches.get(ref)!.push(order);
+        if (!grouped.has(ref)) grouped.set(ref, []);
+        grouped.get(ref)!.push(order);
       }
+      const batches = new Map<string, typeof orders>(
+        refs.filter((ref) => grouped.has(ref)).map((ref) => [ref, grouped.get(ref)!] as const),
+      );
 
       const data = Array.from(batches.entries()).map(([batchRef, items]) => ({
           batchRef,
@@ -228,10 +250,24 @@ router.post(
           .limit(1);
 
         const orderNumber = await generateSalesOrderNumber(tx);
-        const subtotal = orders.reduce(
-          (sum, o) => sum + Number(o.qty) * Number(priceMap.get(o.id)),
-          0,
-        );
+        // الفلوس بأرقام صحيحة: إجمالي كل سطر يتقرّب مرة واحدة، والإجمالي = مجموع السطور
+        // (قبل كده Number + toFixed على الإجمالي بس، فالفاتورة ممكن تختلف عن مجموع سطورها بـ٠٫٠١).
+        let priced: {
+          lines: Array<{ id: number; qty: string; unitPrice: string; total: string }>;
+          subtotal: string;
+        };
+        try {
+          priced = priceLines(
+            orders.map((o) => ({ id: o.id, qty: o.qty, unitPrice: priceMap.get(o.id)! })),
+          );
+        } catch (error) {
+          if (error instanceof MoneyError) {
+            throw Object.assign(new Error(`سعر أو كمية غير صالحة: ${error.message}`), { status: 400 });
+          }
+          throw error;
+        }
+        const subtotal = priced.subtotal;
+        const lineTotals = new Map(priced.lines.map((l) => [l.id, l.total]));
 
         // ✅ الفاتورة التلقائية — أمر بيع حقيقي بحالة "draft"، عشان الموظف يراجعها
         // ويحوّلها لـ"مؤكد" وقت التسليم الفعلي من صفحة المبيعات العادية (مش بيتأثر
@@ -245,8 +281,8 @@ router.post(
             dueDate: data.expectedDelivery ?? null,
             status: "draft",
             notes: `تم إنشاؤها تلقائيًا من طلب بوابة العملاء (${batchRef})`,
-            subtotal: subtotal.toFixed(2),
-            total: subtotal.toFixed(2),
+            subtotal,
+            total: subtotal,
           })
           .returning();
 
@@ -260,7 +296,7 @@ router.post(
             actionKey: "sales.approve",
             resourceType: "sales_order",
             resourceId: salesOrder.id,
-            amount: subtotal,
+            amount: Number(subtotal),
             requestedBy: req.user!.userId,
             metadata: { orderNumber: salesOrder.orderNumber, batchRef, originalStatus: salesOrder.status },
           },
@@ -294,7 +330,7 @@ router.post(
             description: order.productName,
             qty: order.qty,
             unitPrice,
-            total: (Number(order.qty) * Number(unitPrice)).toFixed(2),
+            total: lineTotals.get(order.id)!,
           });
 
           // ✅ الربط الفعلي بين أمر الإنتاج والفاتورة
@@ -388,58 +424,88 @@ router.post(
 
       const { orders, portalSalesClaimedOrderIds, ...reviewResult } = result;
       const customerName = orders[0].customerName || "عميل البوابة";
-      if (portalSalesClaimedOrderIds.length > 0) {
-        await notifyRole("operations_manager", {
-          type: "operations_line_awaiting_claim",
-          title: "طلب بوابة تم دفعه إلى التشغيل",
-          body: `تم تأكيد الإرسالية "${batchRef}" من المبيعات. سطورها تم استلامها ذريًا بواسطة المبيعات وجاهزة للمتابعة.`,
-          referenceType: "production_workflow",
-          referenceId: portalSalesClaimedOrderIds[0],
-        });
-        await notifyRole("production_manager", {
-          type: "workflow_new_order",
-          title: "سطر إنتاج جاهز للاستلام",
-          body: `تم دفع سطر من الإرسالية "${batchRef}" إلى التشغيل بواسطة المبيعات.`,
-          referenceType: "production_workflow",
-          referenceId: portalSalesClaimedOrderIds[0],
-        });
-      }
-      await notifyRole("production_manager", {
-        type: "portal_order_confirmed",
-        title: "طلب بوابة مؤكد — جاهز للإنتاج",
-        body: `تم تأكيد إرسالية "${batchRef}" وربطها بأمر بيع ${result.salesOrder.orderNumber}. جاهزة للاستلام.`,
-        referenceType: "production_workflow",
-        referenceId: orders[0].id,
-      });
-      await notifyRoles(["hr_manager", "chairman"], {
-        type: "portal_order_confirmed",
-        title: "تأكيد طلب بوابة العملاء",
-        body: `تم تأكيد طلب العميل "${customerName}" وإنشاء أمر البيع ${result.salesOrder.orderNumber}.`,
-        referenceType: "production_workflow",
-        referenceId: orders[0].id,
-      });
-      if (orders[0].portalCustomerId) {
-        await notifyPortalCustomer(orders[0].portalCustomerId, {
-          memberId: orders[0].submittedByMemberId,
-          type: "portal_order_priced",
-          title: "تم تحديد سعر طلبك",
-          body: `تمت مراجعة إرسالية "${batchRef}" وتحديد السعر. ${data.replyMessage || "يمكنك متابعة التفاصيل من صفحة طلباتي."}`,
-          referenceType: "production_workflow",
-          referenceId: orders[0].id,
-        });
-        if (orders[0].customerPhone) {
-          void sendCustomerAlert({
-            channel: "phone",
-            destination: orders[0].customerPhone,
-            message: `تم تحديد سعر طلبك في Hyper-Tech للإرسالية ${batchRef}. ${data.replyMessage || "تابع التفاصيل من بوابة العملاء."}`,
-            event: "portal_order_priced",
-          }).catch((error) => {
-            logger.error("Failed to send portal price alert", {
-              error: error instanceof Error ? error.message : String(error),
-              workflowOrderId: orders[0].id,
-            });
-          });
-        }
+      // العملية اتسجّلت فعلًا (الـtransaction خلص). أي فشل في إشعار بعد كده يتسجّل في اللوج بس،
+      // ومايرجّعش 500 للموظف (كان بيحصل: العميل يعيد المحاولة فيلاقي «اتراجعت بالفعل»).
+      await runAfterCommit([
+        ...(portalSalesClaimedOrderIds.length > 0
+          ? [
+              {
+                label: "notify operations_manager: line awaiting claim",
+                run: () =>
+                  notifyRole("operations_manager", {
+                    type: "operations_line_awaiting_claim",
+                    title: "طلب بوابة تم دفعه إلى التشغيل",
+                    body: `تم تأكيد الإرسالية "${batchRef}" من المبيعات. سطورها تم استلامها ذريًا بواسطة المبيعات وجاهزة للمتابعة.`,
+                    referenceType: "production_workflow",
+                    referenceId: portalSalesClaimedOrderIds[0],
+                  }),
+              },
+              {
+                label: "notify production_manager: line ready",
+                run: () =>
+                  notifyRole("production_manager", {
+                    type: "workflow_new_order",
+                    title: "سطر إنتاج جاهز للاستلام",
+                    body: `تم دفع سطر من الإرسالية "${batchRef}" إلى التشغيل بواسطة المبيعات.`,
+                    referenceType: "production_workflow",
+                    referenceId: portalSalesClaimedOrderIds[0],
+                  }),
+              },
+            ]
+          : []),
+        {
+          label: "notify production_manager: portal order confirmed",
+          run: () =>
+            notifyRole("production_manager", {
+              type: "portal_order_confirmed",
+              title: "طلب بوابة مؤكد — جاهز للإنتاج",
+              body: `تم تأكيد إرسالية "${batchRef}" وربطها بأمر بيع ${result.salesOrder.orderNumber}. جاهزة للاستلام.`,
+              referenceType: "production_workflow",
+              referenceId: orders[0].id,
+            }),
+        },
+        {
+          label: "notify hr_manager+chairman: portal order confirmed",
+          run: () =>
+            notifyRoles(["hr_manager", "chairman"], {
+              type: "portal_order_confirmed",
+              title: "تأكيد طلب بوابة العملاء",
+              body: `تم تأكيد طلب العميل "${customerName}" وإنشاء أمر البيع ${result.salesOrder.orderNumber}.`,
+              referenceType: "production_workflow",
+              referenceId: orders[0].id,
+            }),
+        },
+        ...(orders[0].portalCustomerId
+          ? [
+              {
+                label: "notify portal customer: order priced",
+                run: () =>
+                  notifyPortalCustomer(orders[0].portalCustomerId!, {
+                    memberId: orders[0].submittedByMemberId,
+                    type: "portal_order_priced",
+                    title: "تم تحديد سعر طلبك",
+                    body: `تمت مراجعة إرسالية "${batchRef}" وتحديد السعر. ${data.replyMessage || "يمكنك متابعة التفاصيل من صفحة طلباتي."}`,
+                    referenceType: "production_workflow",
+                    referenceId: orders[0].id,
+                  }),
+              },
+            ]
+          : []),
+      ]);
+      // الرسالة النصية بتفضل «أطلق وانسى» زي الأصل: الرد على الموظف مايستناش مزوّد الـSMS.
+      if (orders[0].portalCustomerId && orders[0].customerPhone) {
+        void runAfterCommit([
+          {
+            label: "sms/alert to customer phone: order priced",
+            run: () =>
+              sendCustomerAlert({
+                channel: "phone",
+                destination: orders[0].customerPhone!,
+                message: `تم تحديد سعر طلبك في Hyper-Tech للإرسالية ${batchRef}. ${data.replyMessage || "تابع التفاصيل من بوابة العملاء."}`,
+                event: "portal_order_priced",
+              }),
+          },
+        ]);
       }
 
       res.json({ message: "تم تأكيد الطلب وإنشاء الفاتورة", ...reviewResult });
@@ -529,23 +595,35 @@ router.post(
 
       const orders = result.orders;
       const customerName = orders[0]?.customerName || "عميل البوابة";
-      await notifyRoles(["hr_manager", "chairman"], {
-        type: "portal_order_rejected",
-        title: "رفض طلب بوابة العملاء",
-        body: `تم رفض طلب العميل "${customerName}" للإرسالية "${batchRef}". السبب: ${data.reason}`,
-        referenceType: "production_workflow",
-        referenceId: orders[0]?.id,
-      });
-      if (orders[0]?.portalCustomerId) {
-        await notifyPortalCustomer(orders[0].portalCustomerId, {
-          memberId: orders[0].submittedByMemberId,
-          type: "portal_order_rejected",
-          title: "تعذّر قبول طلبك",
-          body: `تعذّر قبول إرسالية "${batchRef}". ${data.replyMessage || data.reason}`,
-          referenceType: "production_workflow",
-          referenceId: orders[0].id,
-        });
-      }
+      await runAfterCommit([
+        {
+          label: "notify hr_manager+chairman: portal order rejected",
+          run: () =>
+            notifyRoles(["hr_manager", "chairman"], {
+              type: "portal_order_rejected",
+              title: "رفض طلب بوابة العملاء",
+              body: `تم رفض طلب العميل "${customerName}" للإرسالية "${batchRef}". السبب: ${data.reason}`,
+              referenceType: "production_workflow",
+              referenceId: orders[0]?.id,
+            }),
+        },
+        ...(orders[0]?.portalCustomerId
+          ? [
+              {
+                label: "notify portal customer: order rejected",
+                run: () =>
+                  notifyPortalCustomer(orders[0].portalCustomerId!, {
+                    memberId: orders[0].submittedByMemberId,
+                    type: "portal_order_rejected",
+                    title: "تعذّر قبول طلبك",
+                    body: `تعذّر قبول إرسالية "${batchRef}". ${data.replyMessage || data.reason}`,
+                    referenceType: "production_workflow",
+                    referenceId: orders[0].id,
+                  }),
+              },
+            ]
+          : []),
+      ]);
 
       res.json({ message: "تم رفض الطلب" });
     } catch (err) {

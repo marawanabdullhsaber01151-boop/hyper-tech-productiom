@@ -2568,6 +2568,9 @@ router.get(
 ============================================================ */
 router.get(
   "/portal/products",
+  // BR-1: لا تصفّح قبل تسجيل الدخول. كان الكتالوج (بصور المنتجات كلها base64 وعدد الطلبات
+  // لكل منتج) متاح لأي زائر بدون تسجيل.
+  requirePortalAuth,
   async (_req: Request, res: Response, next: NextFunction) => {
     try {
       // Phase 1 (Governance & Portal project): the catalog is now sourced
@@ -2669,6 +2672,7 @@ router.get(
 ============================================================ */
 router.get(
   "/portal/products/:id",
+  requirePortalAuth,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const id = Number(req.params.id);

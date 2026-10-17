@@ -2,51 +2,38 @@
 
 # Hyper-Tech Production Portal
 
-_(placeholder name — no final product name/domain has been chosen yet)_
+نظام B2B للجملة والمصنع: بوابة عملاء (تصفّح، طلب، متابعة) من ناحية، ومسار تشغيل داخلي
+(استلام ← إنتاج ← جودة ← تسليم) من الناحية التانية.
 
-A B2B order-to-production workflow system: customer portal (browse, order,
-track) on one side, and an internal staff workflow (intake → production →
-quality → dispatch) on the other. Built with Express + TypeScript +
-PostgreSQL (Drizzle ORM).
+**الاسم مؤقت** (placeholder) لحد ما الاسم/الدومين النهائي يتحدد.
 
-This system intentionally carries **no accounting, payments, HR, or general
-purchasing logic**. It tracks the physical and procedural flow of an order
-through production — not money. See `production-portal-build-prompts.md`
-(if present in your working copy) for the full phased build specification
-this codebase is being developed against.
+## المصدر المرجعي
+- **الخطة والمواصفات:** `Handoff-package` (docs/handoff) — هي المرجع. أي تعارض بين الكود والخطة يتسجّل في `docs/reports/` ويتحسم مع صاحب المشروع.
+- **حالة المشروع الفعلية:** `docs/PROJECT_STATUS.md`، والمشاكل المعروفة في `docs/KNOWN_ISSUES.md`.
+- **تقارير التسليمات:** `docs/reports/` (كل تسليم له تقرير)، والأرشيف القديم في `docs/archive/`.
 
-## Status
+## الستاك
+- **Backend:** Express 5 + TypeScript + PostgreSQL (Drizzle ORM)، هجرات SQL عادية في `migrations/` بتتنفذ بالترتيب عبر `npm run db:migrate`.
+- **Frontend الجديد:** Preact + Vite في `web/` (يُخدم على `/v2`). **الواجهات القديمة:** HTML/JS ثابت في `public/` (بتتنقل تدريجيًا).
+- **الاستضافة:** Vercel (API + static) + Neon (PostgreSQL).
 
-This codebase is under active, phased reconstruction from a larger source
-ERP system. Each phase's exact scope and the changes made are recorded in
-its own `CHANGE-MANIFEST-PHASE-N.md` file at the repo root — read those
-before assuming what does or doesn't exist yet.
-
-## Stack
-
-- **Backend:** Express + TypeScript, PostgreSQL via Drizzle ORM
-- **Frontend:** static HTML/CSS/vanilla JS served from `public/`
-- **Hosting:** Vercel (API + static assets) + Neon (PostgreSQL)
-- **Migrations:** plain SQL files in `migrations/`, applied in filename
-  order via `npm run db:migrate` (see that script for why this project does
-  not use `drizzle-kit migrate` directly)
-
-## Local setup
-
+## تشغيل محلي
 ```bash
 npm ci --include=dev
-cp .env.example .env   # fill in DATABASE_URL and the secrets described there
-npm run build
+cp .env.example .env      # املأ DATABASE_URL والأسرار (التفاصيل جوه الملف)
 npm run db:migrate
-npm run db:seed        # creates the first admin user
+npm run db:seed           # بيعمل أول مستخدم admin
 npm run dev
 ```
 
-Then visit `http://localhost:3000/login.html` (staff) or
-`http://localhost:3000/portal.html` (customer portal).
-
-## Tests
-
+## الجودة (قبل أي تسليم)
 ```bash
-npm test
+npm run check:all         # tsc سيرفر+ويب، اختبارات الوحدة والويب، build كامل (لينت/ميزانيات/تباين)
+npm run check:e2e         # اختبارات HTTP + Postgres (لازم قاعدة مرّت بكل الهجرات)
+npm run delivery:pack -- --phase <اسم> --base <git-ref>   # حزمة التسليم
+npm run delivery:verify -- --dir delivery/<اسم>           # التحقق بعد النسخ
 ```
+
+## أمان البيانات
+- ممنوع إضافة نسخ احتياطية أو تفريغات بيانات حقيقية للمستودع (`.gitignore` بيمنع `*backup*.json` و`*.dump` و`*.zip`).
+- `audit_events` سجل غير قابل للتعديل (هجرة 0077)؛ الصيانة المعتمدة بس عبر `SET LOCAL hypertech.audit_maintenance = 'on'`.

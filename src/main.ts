@@ -55,9 +55,14 @@ import { mutationAudit } from "./middleware/mutationAudit";
 import { logger } from "./lib/logger";
 import { apiEnvelope } from "./middleware/apiEnvelope";
 import { validatePortalPublicUrl } from "./lib/portalConfig";
+import { resolveTrustProxy } from "./lib/trustProxy";
 
 const app = express();
 const PORT = parseInt(process.env.PORT || "3000", 10);
+
+// خلف بروكسي Vercel: من غير الإعداد ده req.ip بيبقى عنوان البروكسي فكل المستخدمين بيتشاركوا
+// نفس عدّاد الـrate-limit وسجل التدقيق بيسجّل IP غلط. التفاصيل في lib/trustProxy.ts.
+app.set("trust proxy", resolveTrustProxy(process.env));
 
 app.use(
   helmet({

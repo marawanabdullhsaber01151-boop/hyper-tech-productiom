@@ -8,6 +8,7 @@ import { USER_ROLES } from "../lib/roles";
 import { getDefaultRolesForPermission } from "../lib/permissions";
 import { findActiveDelegation, writeAuditEvent } from "../lib/governance";
 import { getEffectiveRoles } from "../lib/delegation";
+import { shouldTouchSession } from "../lib/sessionTouch";
 import { failure } from "../contracts/api-response";
 
 // ✅ إصلاح جوهري: التوكن دلوقتي بيحمل رقم الجلسة بس، مش الدور أو الحالة.
@@ -113,6 +114,7 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
       .select({
         sessionId: loginSessionsTable.id,
         revokedAt: loginSessionsTable.revokedAt,
+        lastActiveAt: loginSessionsTable.lastActiveAt,
         userId: systemUsersTable.id,
         username: systemUsersTable.username,
         role: systemUsersTable.role,
@@ -143,11 +145,15 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
 
     req.user = { userId: row.userId, username: row.username, role: row.role, sessionId: row.sessionId, scopeId: row.scopeId };
 
-    // تحديث آخر نشاط — مش لازم ننتظره، مايأثرش على سرعة الطلب
-    db.update(loginSessionsTable)
-      .set({ lastActiveAt: new Date() })
-      .where(eq(loginSessionsTable.id, row.sessionId))
-      .catch(() => {});
+    // تحديث آخر نشاط — مش لازم ننتظره، مايأثرش على سرعة الطلب.
+    // مرة في الدقيقة كفاية (القيمة بتتعرض في قايمة الجلسات بس): قبل كده كان كل طلب API
+    // بيعمل UPDATE، والشات بيعمل polling كل ثواني.
+    if (shouldTouchSession(row.lastActiveAt)) {
+      db.update(loginSessionsTable)
+        .set({ lastActiveAt: new Date() })
+        .where(eq(loginSessionsTable.id, row.sessionId))
+        .catch(() => {});
+    }
 
     next();
   } catch (err) {

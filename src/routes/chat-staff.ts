@@ -64,6 +64,9 @@ import { notifyPortalCustomer } from "../lib/portalNotifications";
 import { notifyUser } from "../lib/notifications";
 import { sendImage } from "./portal-chat";
 
+import { purgeExpiredCommands } from "../lib/commandRetention";
+import { logger } from "../lib/logger";
+
 const router = Router();
 
 /**
@@ -721,7 +724,16 @@ router.get("/chat/cron/maintenance", async (req: Request, res: Response, next: N
     if (req.get("authorization") !== `Bearer ${secret}`) throw httpError(401, "غير مصرح");
     const purged = await purgeExpiredAttachments();
     const escalated = await sweepEscalations(true);
-    res.json({ purgedAttachments: purged, escalated });
+    // تنظيف سجل الـidempotency (أقدم من 48 ساعة) — فشله ما يوقفش باقي الصيانة
+    let purgedCommands = 0;
+    try {
+      purgedCommands = await purgeExpiredCommands();
+    } catch (error) {
+      logger.error("command_idempotency purge failed", {
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+    res.json({ purgedAttachments: purged, escalated, purgedCommands });
   } catch (err) {
     next(err);
   }

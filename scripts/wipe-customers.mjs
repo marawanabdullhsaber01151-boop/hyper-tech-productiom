@@ -50,6 +50,8 @@ async function main() {
 
   try {
     await client.query("BEGIN");
+    // صيانة معلنة على سجل التدقيق (هجرة 0077) — بتنتهي مع الـtransaction
+    await client.query("SET LOCAL hypertech.audit_maintenance = 'on'");
 
     /* ---------- خريطة العلاقات ---------- */
     const { rows: fkRows } = await client.query(`

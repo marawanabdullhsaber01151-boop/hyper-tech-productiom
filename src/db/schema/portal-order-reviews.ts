@@ -9,6 +9,7 @@
  */
 import { pgTable, serial, text, integer, timestamp, date } from "drizzle-orm/pg-core";
 import { z } from "zod";
+import { MONEY_INPUT_PATTERN } from "../../lib/money";
 
 export const portalOrderReviewsTable = pgTable("portal_order_reviews", {
   id: serial("id").primaryKey(),
@@ -30,7 +31,12 @@ export const confirmPortalBatchSchema = z.object({
     .array(
       z.object({
         workflowOrderId: z.number(),
-        unitPrice: z.string().min(1, "السعر مطلوب لكل صنف"),
+        // رقم موجب بحد أقصى ٤ خانات عشرية (كان بيقبل أي نص زي "abc" فيطلع NaN ويوقع 500)
+        unitPrice: z
+          .string()
+          .trim()
+          .min(1, "السعر مطلوب لكل صنف")
+          .regex(MONEY_INPUT_PATTERN, "السعر لازم يكون رقم صحيح أو عشري موجب (حد أقصى ٤ خانات عشرية)"),
         // Phase 3: مبيعات البوابة تقدر تعدّل تاريخ التسليم و/أو طريقة
         // التسليم المقترحين تلقائيًا لكل صنف وقت المراجعة. الاتنين
         // اختياريين — لو اتسيبوا فاضيين، الاقتراح الأصلي (suggestedDueDate/
