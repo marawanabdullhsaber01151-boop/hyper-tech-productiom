@@ -43,6 +43,14 @@ export const portalCustomersTable = pgTable(
     activatedAt: timestamp("activated_at", { withTimezone: true }),
     // Plan 00: بعد إعادة تعيين الباسورد يدويًا من الإدارة، العميل لازم يغيّره.
     mustChangePassword: boolean("must_change_password").notNull().default(false),
+    // أرشفة الشركة (هجرة 0078): NULL = مش مؤرشفة. المؤرشفة = موقوفة + مخفية من القوايم العادية،
+    // وكل بياناتها تفضل كاملة وتترجع بالاسترجاع. شوف lib/companyArchive.ts.
+    archivedAt: timestamp("archived_at", { withTimezone: true }),
+    archivedByUserId: integer("archived_by_user_id").references(
+      () => systemUsersTable.id,
+      { onDelete: "set null" },
+    ),
+    archiveReason: text("archive_reason"),
     // ربط حقيقي بجدول العملاء — يتعمل تلقائيًا عند التسجيل
     contactId: integer("contact_id")
       .notNull()

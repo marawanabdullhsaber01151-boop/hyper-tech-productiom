@@ -1,8 +1,9 @@
 import { useState } from "preact/hooks";
 import { ar, t, type CopyKey } from "../../copy";
-import { Button, Card, ConfirmDialog, CopyField, Dialog, EmptyState, InlineAlert, Section, Select, ShareLinkCard, Stat, Timeline, Field, Input, useToast, StatusPill, type TimelineItem } from "../../design/components";
-import { Ban, Download, KeyRound, Link2, Lock, Play, RefreshCw, Send } from "../../design/icons";
+import { Button, Card, Checkbox, ConfirmDialog, CopyField, Dialog, EmptyState, InlineAlert, Section, Select, ShareLinkCard, Stat, Timeline, Field, Input, useToast, StatusPill, type TimelineItem } from "../../design/components";
+import { Ban, Download, Inbox, KeyRound, Link2, Lock, Play, RefreshCw, Send, Undo2 } from "../../design/icons";
 import { useQuery } from "../../api/hooks";
+import { ApiError } from "../../api/client";
 import { formatDate, formatDateTime, formatNumber, formatRelative } from "../../lib/format";
 import { api, downloadCsv } from "../api";
 import { useAct } from "../act";
@@ -21,7 +22,12 @@ export function OverviewTab({ d, reload, onListChanged }: Props) {
   const c = d.company;
   const { run, busy } = useAct();
   const meta = useQuery((signal) => api.get<Meta>("/portal-companies/meta", { signal }), []);
+  const toast = useToast();
   const [suspend, setSuspend] = useState(false);
+  const [archive, setArchive] = useState(false);
+  const [reason, setReason] = useState("");
+  const [ack, setAck] = useState(false);
+  const [openOrdersMsg, setOpenOrdersMsg] = useState<string | null>(null);
   const [activation, setActivation] = useState<{ url: string; whatsappUrl?: string | null } | null>(null);
   const [adminCode, setAdminCode] = useState<{ code: string; minutes: number } | null>(null);
 
@@ -32,6 +38,38 @@ export function OverviewTab({ d, reload, onListChanged }: Props) {
       onListChanged();
     }
     return ok;
+  };
+  const closeArchive = () => {
+    setArchive(false);
+    setReason("");
+    setAck(false);
+    setOpenOrdersMsg(null);
+  };
+  const doArchive = async () => {
+    const r = await run(async () => {
+      try {
+        return await api.post(`/portal-companies/${c.id}/archive`, { reason, acknowledgeOpenOrders: ack });
+      } catch (e) {
+        if (e instanceof ApiError && e.code === "COMPANY_HAS_OPEN_ORDERS") {
+          setOpenOrdersMsg(e.message);
+          return null;
+        }
+        throw e;
+      }
+    });
+    if (r) {
+      toast({ tone: "success", message: t("a.ov.archive.done") });
+      closeArchive();
+      await reload();
+      onListChanged();
+    }
+  };
+  const doRestore = async () => {
+    const r = await run(() => api.post(`/portal-companies/${c.id}/restore`, {}), t("a.ov.restore.done"));
+    if (r !== undefined) {
+      await reload();
+      onListChanged();
+    }
   };
   const issueLink = async () => {
     const r = await run(() => api.post<{ activation: { url: string; whatsappUrl?: string | null } }>(`/portal-customers/${c.id}/activation-link`, {}));
@@ -83,13 +121,51 @@ export function OverviewTab({ d, reload, onListChanged }: Props) {
         <div class="ad-row">
           {c.status === "not_activated" ? <Button icon={Link2} onClick={() => void issueLink()} loading={busy}>{t("a.ov.activationLink")}</Button> : null}
           <Button variant="secondary" icon={KeyRound} onClick={() => void issueCode()} loading={busy}>{t("a.ov.adminCode")}</Button>
-          {c.status === "suspended" ? (
-            <Button variant="secondary" icon={Play} onClick={() => void bulk({ action: "status", status: "reactivate" })} loading={busy}>{t("a.ov.reactivate")}</Button>
+          {c.status === "archived" ? (
+            <Button icon={Undo2} onClick={() => void doRestore()} loading={busy}>{t("a.ov.restore")}</Button>
           ) : (
-            <Button variant="danger" icon={Ban} onClick={() => setSuspend(true)}>{t("a.ov.suspend")}</Button>
+            <>
+              {c.status === "suspended" ? (
+                <Button variant="secondary" icon={Play} onClick={() => void bulk({ action: "status", status: "reactivate" })} loading={busy}>{t("a.ov.reactivate")}</Button>
+              ) : (
+                <Button variant="danger" icon={Ban} onClick={() => setSuspend(true)}>{t("a.ov.suspend")}</Button>
+              )}
+              <Button variant="ghost" icon={Inbox} onClick={() => setArchive(true)}>{t("a.ov.archive")}</Button>
+            </>
           )}
         </div>
+        {c.status === "archived" ? (
+          <InlineAlert tone="info">
+            {t("a.ov.archived.info")}
+            {c.archiveReason ? <> {t("a.ov.archived.reason", { reason: c.archiveReason })}</> : null}
+          </InlineAlert>
+        ) : null}
       </Section>
+      <Dialog
+        open={archive}
+        onClose={closeArchive}
+        title={t("a.ov.archive.title")}
+        description={t("a.ov.archive.body")}
+        size="sm"
+        footer={
+          <>
+            <Button variant="ghost" onClick={closeArchive}>{t("common.cancel")}</Button>
+            <Button variant="danger" disabled={reason.trim().length < 3 || (openOrdersMsg !== null && !ack)} loading={busy} onClick={() => void doArchive()}>{t("a.ov.archive.ok")}</Button>
+          </>
+        }
+      >
+        <div class="ad-stack">
+          <Field label={t("a.ov.archive.reason")}>
+            <Input value={reason} maxLength={500} onInput={(e) => setReason((e.currentTarget as HTMLInputElement).value)} autoComplete="off" />
+          </Field>
+          {openOrdersMsg ? (
+            <>
+              <InlineAlert tone="warn">{openOrdersMsg}</InlineAlert>
+              <Checkbox label={t("a.ov.archive.ack")} checked={ack} onChange={(e) => setAck((e.currentTarget as HTMLInputElement).checked)} />
+            </>
+          ) : null}
+        </div>
+      </Dialog>
       <TypeToConfirm
         open={suspend}
         onClose={() => setSuspend(false)}
@@ -327,7 +403,7 @@ export function HistoryList({ items, onRevert }: { items: HistoryItem[]; onRever
 }
 
 /* ---------------- السجل ---------------- */
-const LOG_ACTIONS = ["member.created", "member.updated", "member.suspended", "member.reactivated", "member.removed", "member.sessions_revoked", "member.reset_link_issued", "company.code_rotated", "company.sales_assigned", "company.segment_changed", "company.suspended", "company.reactivated", "setting.changed", "setting.reverted", "join.requested", "join.approved", "join.rejected", "order.cancelled"];
+const LOG_ACTIONS = ["member.created", "member.updated", "member.suspended", "member.reactivated", "member.removed", "member.sessions_revoked", "member.reset_link_issued", "company.code_rotated", "company.sales_assigned", "company.segment_changed", "company.suspended", "company.reactivated", "company.archived", "company.restored", "setting.changed", "setting.reverted", "join.requested", "join.approved", "join.rejected", "order.cancelled"];
 
 export function sentence(a: { action: string; actorName: string; targetName: string | null }): string {
   const k = `a.log.${a.action}`;

@@ -3,7 +3,7 @@
 import { Router } from "express";
 import { eq, and, isNull, desc, sql } from "drizzle-orm";
 import bcrypt from "bcryptjs";
-import { db, systemSettingsTable, systemUsersTable } from "../db";
+import { auditEventsTable, db, systemSettingsTable, systemUsersTable } from "../db";
 import {
   loginSessionsTable,
   permissionOverridesTable,
@@ -321,6 +321,22 @@ router.delete(
         .limit(1);
       if (!existing) {
         res.status(404).json({ error: { message: "المستخدم غير موجود" } });
+        return;
+      }
+      // موظف عنده نشاط مسجّل ما يتحذفش: الحذف بيصفّر actor_user_id في سجل التدقيق فبيبوّظ
+      // التحقق من السلسلة وبنفقد مين عمل إيه. الإيقاف (status=inactive) بيقفل الدخول ويسيب السجل سليم.
+      const [activity] = await db
+        .select({ id: auditEventsTable.id })
+        .from(auditEventsTable)
+        .where(eq(auditEventsTable.actorUserId, id))
+        .limit(1);
+      if (activity) {
+        res.status(409).json({
+          error: {
+            message:
+              "الموظف ده عنده نشاط مسجّل في النظام فمينفعش يتحذف (ده بيبوّظ سجل التدقيق). أوقف الحساب بدل الحذف.",
+          },
+        });
         return;
       }
       await moveToTrash(

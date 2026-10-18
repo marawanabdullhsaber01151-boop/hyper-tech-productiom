@@ -4,7 +4,7 @@ import { t, type CopyKey } from "../copy";
 import { Button, Dialog, Field, Input, StatusPill, type Tone } from "../design/components";
 import type { CompanyStatus, HealthLevel } from "./types";
 
-const STATUS_TONE: Record<CompanyStatus, Tone> = { active: "success", not_activated: "info", suspended: "danger" };
+const STATUS_TONE: Record<CompanyStatus, Tone> = { active: "success", not_activated: "info", suspended: "danger", archived: "neutral" };
 const HEALTH_TONE: Record<HealthLevel, Tone> = { healthy: "success", new: "info", warning: "warn", critical: "danger" };
 
 export const statusLabel = (s: CompanyStatus) => t(`a.status.${s}` as CopyKey);

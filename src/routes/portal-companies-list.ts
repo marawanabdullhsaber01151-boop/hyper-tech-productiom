@@ -6,7 +6,7 @@
  */
 import { Router, Request, Response, NextFunction } from "express";
 import { z } from "zod";
-import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, notInArray, sql } from "drizzle-orm";
 import { db } from "../db";
 import {
   portalAuditEventsTable,
@@ -15,6 +15,7 @@ import {
   portalMembersTable,
   portalSessionsTable,
   portalSettingsTable,
+  productionWorkflowOrdersTable,
   portalUsersTable,
   portalRolesTable,
   salesOrdersTable,
@@ -31,6 +32,13 @@ import {
 import { invalidateMemberAccess } from "../lib/portalAccess";
 import { writePortalAudit } from "../lib/portalAudit";
 import { writeAuditEvent } from "../lib/governance";
+import {
+  FINISHED_ORDER_STATUSES,
+  archiveNeedsOpenOrdersConfirmation,
+  canPlainReactivate,
+  parseArchiveReason,
+  restoredCompanyFields,
+} from "../lib/companyArchive";
 import { domainError, sanitizeLimits } from "../lib/portalTeam";
 import { loadTeamForStaff } from "../lib/portalTeamView";
 import { createMemberAccount } from "../lib/portalMemberCreate";
@@ -69,6 +77,7 @@ const STATUS_LABEL: Record<string, string> = {
   not_activated: "لسه ما اتفعّلش",
   active: "شغال",
   suspended: "موقوف",
+  archived: "مؤرشف",
 };
 
 function id(value: unknown): number {
@@ -214,6 +223,7 @@ router.post("/portal-companies/bulk", ...manage, async (req: Request, res: Respo
           id: portalCustomersTable.id,
           contactId: portalCustomersTable.contactId,
           isActive: portalCustomersTable.isActive,
+          archivedAt: portalCustomersTable.archivedAt,
           assignedSalesUserId: portalCustomersTable.assignedSalesUserId,
         })
         .from(portalCustomersTable)
@@ -238,6 +248,9 @@ router.post("/portal-companies/bulk", ...manage, async (req: Request, res: Respo
           });
         } else {
           const isActive = body.status === "reactivate";
+          if (isActive && !canPlainReactivate(row.archivedAt)) {
+            throw domainError(409, "COMPANY_ARCHIVED", "فيه شركات مؤرشفة في الاختيار — استرجعها من الأرشيف الأول");
+          }
           if (row.isActive === isActive) continue;
           await tx.update(portalCustomersTable).set({ isActive }).where(eq(portalCustomersTable.id, row.id));
           if (!isActive) await revokeAllPortalSessions(row.id, tx);
@@ -262,6 +275,142 @@ router.post("/portal-companies/bulk", ...manage, async (req: Request, res: Respo
       return rows.length;
     });
     res.json({ updated: result, message: "اتحفظ" });
+  } catch (e) {
+    next(e);
+  }
+});
+
+/* ------------------------------------------------------------------ */
+/* Archive / restore (هجرة 0078)                                       */
+/* الإيقاف مؤقت. الأرشفة = الشركة قررت ما تتعاملش معانا: موقوفة + مخفية  */
+/* من القوايم، وكل بياناتها محفوظة وبترجع بالاسترجاع بضغطة واحدة.       */
+/* ------------------------------------------------------------------ */
+const archiveSchema = z.object({
+  reason: z.string().max(2000),
+  acknowledgeOpenOrders: z.boolean().optional().default(false),
+});
+
+router.post("/portal-companies/:id/archive", ...manage, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const companyId = id(req.params.id);
+    const body = archiveSchema.parse(req.body);
+    const parsed = parseArchiveReason(body.reason);
+    if (!parsed.ok) throw domainError(400, "INVALID_ARCHIVE_REASON", parsed.message);
+
+    const openOrders = await db.transaction(async (tx) => {
+      const [row] = await tx
+        .select({
+          id: portalCustomersTable.id,
+          isActive: portalCustomersTable.isActive,
+          archivedAt: portalCustomersTable.archivedAt,
+        })
+        .from(portalCustomersTable)
+        .where(eq(portalCustomersTable.id, companyId))
+        .for("update");
+      if (!row) throw domainError(404, "PORTAL_CUSTOMER_NOT_FOUND", "الشركة مش موجودة");
+      if (row.archivedAt) throw domainError(409, "COMPANY_ALREADY_ARCHIVED", "الشركة دي مؤرشفة بالفعل");
+
+      const [{ open }] = await tx
+        .select({ open: sql<number>`count(*)::int` })
+        .from(productionWorkflowOrdersTable)
+        .where(
+          and(
+            eq(productionWorkflowOrdersTable.portalCustomerId, companyId),
+            notInArray(productionWorkflowOrdersTable.workflowStatus, [...FINISHED_ORDER_STATUSES]),
+          ),
+        );
+      if (archiveNeedsOpenOrdersConfirmation(open, body.acknowledgeOpenOrders)) {
+        throw domainError(
+          409,
+          "COMPANY_HAS_OPEN_ORDERS",
+          `الشركة عندها ${open} طلب شغّال. الأرشفة هتقفل دخولها بس والطلبات هتكمل عادي — أكّد لو عايز تكمّل.`,
+        );
+      }
+
+      await tx
+        .update(portalCustomersTable)
+        .set({
+          isActive: false,
+          archivedAt: new Date(),
+          archivedByUserId: req.user!.userId,
+          archiveReason: parsed.reason,
+        })
+        .where(eq(portalCustomersTable.id, companyId));
+      await revokeAllPortalSessions(companyId, tx);
+      await writePortalAudit(tx, {
+        companyId,
+        ...staffActor(req),
+        action: "company.archived",
+        targetType: "company",
+        targetId: companyId,
+        before: { isActive: row.isActive },
+        after: { archived: true, reason: parsed.reason, openOrders: open },
+      });
+      await writeAuditEvent({
+        executor: tx,
+        actorUserId: req.user!.userId,
+        actorName: req.user!.username,
+        actionKey: "portal.company.archive",
+        resourceType: "portal_customer",
+        resourceId: companyId,
+        beforeData: { isActive: row.isActive },
+        afterData: { archived: true, openOrders: open },
+        reason: parsed.reason,
+        ipAddress: req.ip,
+        userAgent: req.get("user-agent"),
+      });
+      return open;
+    });
+    res.json({ message: "اتأرشفت الشركة. بياناتها كلها محفوظة وتقدر ترجّعها في أي وقت.", openOrders });
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.post("/portal-companies/:id/restore", ...manage, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const companyId = id(req.params.id);
+    await db.transaction(async (tx) => {
+      const [row] = await tx
+        .select({
+          id: portalCustomersTable.id,
+          archivedAt: portalCustomersTable.archivedAt,
+          archiveReason: portalCustomersTable.archiveReason,
+        })
+        .from(portalCustomersTable)
+        .where(eq(portalCustomersTable.id, companyId))
+        .for("update");
+      if (!row) throw domainError(404, "PORTAL_CUSTOMER_NOT_FOUND", "الشركة مش موجودة");
+      if (!row.archivedAt) throw domainError(409, "COMPANY_NOT_ARCHIVED", "الشركة دي مش مؤرشفة");
+
+      await tx
+        .update(portalCustomersTable)
+        .set({ ...restoredCompanyFields(), archivedAt: null, archivedByUserId: null, archiveReason: null })
+        .where(eq(portalCustomersTable.id, companyId));
+      await writePortalAudit(tx, {
+        companyId,
+        ...staffActor(req),
+        action: "company.restored",
+        targetType: "company",
+        targetId: companyId,
+        before: { archivedAt: row.archivedAt, reason: row.archiveReason },
+        after: { archived: false },
+      });
+      await writeAuditEvent({
+        executor: tx,
+        actorUserId: req.user!.userId,
+        actorName: req.user!.username,
+        actionKey: "portal.company.restore",
+        resourceType: "portal_customer",
+        resourceId: companyId,
+        beforeData: { archivedAt: row.archivedAt, archiveReason: row.archiveReason },
+        afterData: { archived: false },
+        reason: "استرجاع شركة من الأرشيف",
+        ipAddress: req.ip,
+        userAgent: req.get("user-agent"),
+      });
+    });
+    res.json({ message: "اترجّعت الشركة من الأرشيف. هتغيّر كلمة السر عند أول دخول." });
   } catch (e) {
     next(e);
   }

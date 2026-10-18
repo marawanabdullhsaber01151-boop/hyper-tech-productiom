@@ -1,4 +1,4 @@
-export type CompanyStatus = "not_activated" | "active" | "suspended";
+export type CompanyStatus = "not_activated" | "active" | "suspended" | "archived";
 export type HealthLevel = "critical" | "new" | "warning" | "healthy";
 
 export interface CompanyRow {
@@ -20,6 +20,8 @@ export interface CompanyRow {
   lastOrderAt: string | null;
   lastActivityAt: string | null;
   createdAt: string;
+  archivedAt: string | null;
+  archiveReason: string | null;
   health: { level: HealthLevel; label: string; daysSinceLastOrder: number | null };
 }
 export interface ListResponse {

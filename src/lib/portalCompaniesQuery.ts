@@ -9,8 +9,9 @@ import { z } from "zod";
 import { db } from "../db";
 import { customerHealth } from "./customerHealth";
 import { normalizeCompanyCode } from "./companyCode";
+import { derivePortalCompanyStatus } from "./companyArchive";
 
-export const COMPANY_STATUSES = ["not_activated", "active", "suspended"] as const;
+export const COMPANY_STATUSES = ["not_activated", "active", "suspended", "archived"] as const;
 
 export const companyListQuery = z.object({
   q: z.string().trim().max(100).default(""),
@@ -44,6 +45,8 @@ function likeEscape(value: string): string {
 
 export function companyFilters(f: CompanyListQuery): SQL[] {
   const w: SQL[] = [];
+  // المؤرشفة مخفية من كل القوايم العادية (الكل/نشط/موقوف/…) وبتظهر بس في فلتر «مؤرشف».
+  w.push(f.status === "archived" ? sql`t.archived_at IS NOT NULL` : sql`t.archived_at IS NULL`);
   if (f.q) {
     const like = `%${likeEscape(f.q)}%`;
     const code = normalizeCompanyCode(f.q);
@@ -78,6 +81,7 @@ const BASE = sql`
   SELECT
     c.id, c.company_name, c.full_name AS owner_name, c.phone, c.email, c.city,
     c.is_active, c.activated_at, c.created_at, c.contact_id,
+    c.archived_at, c.archive_reason,
     c.minimum_order_quantity, c.assigned_sales_user_id,
     su.full_name AS sales_name,
     ct.segment, ct.balance, ct.credit_limit,
@@ -102,6 +106,8 @@ export type CompanyRow = {
   city: string | null;
   is_active: boolean;
   activated_at: Date | null;
+  archived_at: Date | null;
+  archive_reason: string | null;
   created_at: Date;
   contact_id: number;
   minimum_order_quantity: number;
@@ -118,7 +124,11 @@ export type CompanyRow = {
 };
 
 export function mapCompany(r: CompanyRow) {
-  const status = !r.is_active ? "suspended" : r.activated_at ? "active" : "not_activated";
+  const status = derivePortalCompanyStatus({
+    isActive: r.is_active,
+    activatedAt: r.activated_at,
+    archivedAt: r.archived_at,
+  });
   return {
     id: r.id,
     companyName: r.company_name,
@@ -138,6 +148,8 @@ export function mapCompany(r: CompanyRow) {
     lastOrderAt: r.last_order_at,
     lastActivityAt: r.last_activity_at,
     createdAt: r.created_at,
+    archivedAt: r.archived_at,
+    archiveReason: r.archive_reason,
     health: customerHealth(r.balance, r.credit_limit, r.last_order_at ? new Date(r.last_order_at) : null),
   };
 }

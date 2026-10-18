@@ -13,7 +13,7 @@ import { optLabel } from "../SettingField";
 import type { CompanyRow, ListResponse, Meta } from "../types";
 import { CompanyDrawer } from "./CompanyDrawer";
 
-const VIEWS = ["all", "not_activated", "active", "suspended", "followup", "nosales", "pendingjoin"] as const;
+const VIEWS = ["all", "not_activated", "active", "suspended", "followup", "nosales", "pendingjoin", "archived"] as const;
 type View = (typeof VIEWS)[number];
 const OPTIONAL_COLS = ["phone", "segment", "orders", "created"] as const;
 const COLS_KEY = "ht_admin_cols";
@@ -21,7 +21,7 @@ const VIEWS_KEY = "ht_admin_saved_views";
 const SORTS: Record<string, string> = { name: "name", members: "members", lastActivity: "lastActivity", lastOrder: "lastOrder", created: "created" };
 
 function viewQuery(v: View): Record<string, string> {
-  if (v === "not_activated" || v === "active" || v === "suspended") return { status: v };
+  if (v === "not_activated" || v === "active" || v === "suspended" || v === "archived") return { status: v };
   if (v === "followup") return { needsFollowUp: "1" };
   if (v === "nosales") return { noSales: "1" };
   if (v === "pendingjoin") return { hasPendingJoin: "1" };

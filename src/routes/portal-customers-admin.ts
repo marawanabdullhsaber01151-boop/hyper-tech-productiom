@@ -323,6 +323,9 @@ router.patch(
           .where(eq(portalCustomersTable.id, id))
           .limit(1);
         if (!before) throw domainError(404, "PORTAL_CUSTOMER_NOT_FOUND", "الحساب غير موجود");
+        if (isActive && before.archivedAt) {
+          throw domainError(409, "PORTAL_CUSTOMER_ARCHIVED", "الحساب مؤرشف. استرجعه من شاشة الشركات بدل التفعيل العادي.");
+        }
 
         const [updated] = await tx
           .update(portalCustomersTable)
