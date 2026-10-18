@@ -10,7 +10,7 @@
     var sidebar = document.querySelector(".sidebar");
     var topbar = document.querySelector(".topbar");
 
-    // الصفحة ليس فيها sidebar أو topbar (مثل login.html) → لا شيء
+    // الصفحة ليس فيها sidebar أو topbar (مثل صفحات الدخول والأخطاء) → لا شيء
     if (!sidebar || !topbar) return;
 
     /* ── إنشاء زر الهامبرغر ── */

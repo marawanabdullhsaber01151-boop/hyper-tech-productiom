@@ -17,7 +17,8 @@ function escHtml(str) {
 (function () {
   "use strict";
   const SESSION_KEY = "hyper_erp_session";
-  const loginPage = "/login.html";
+  const loginPage = "/v2/login";
+  const loginUrlWithNext = () => `${loginPage}?next=${encodeURIComponent(location.pathname + location.search)}`;
   const session = () => {
     try {
       return JSON.parse(sessionStorage.getItem(SESSION_KEY) || "null");
@@ -115,79 +116,8 @@ function escHtml(str) {
       }
     },
   };
-  async function login(event) {
-    event.preventDefault();
-    const button = document.getElementById("submit");
-    const message = document.getElementById("message");
-    button.disabled = true;
-    message.textContent = "";
-    try {
-      const result = await request("/auth/login", {
-        method: "POST",
-        body: JSON.stringify({
-          username: document.getElementById("username").value.trim(),
-          password: document.getElementById("password").value,
-        }),
-      });
-      // الحساب مفعّل عليه مصادقة ثنائية — لسه مفيش جلسة حقيقية اتعملت،
-      // نستنى كود التحقق قبل ما نكمل.
-      if (result.requiresTotp) {
-        pendingPreAuthToken = result.preAuthToken;
-        document.getElementById("login-form").style.display = "none";
-        document.getElementById("totp-form").style.display = "";
-        document.getElementById("totp-code").focus();
-        return;
-      }
-      sessionStorage.setItem(SESSION_KEY, JSON.stringify(result));
-      location.href = "/index.html";
-    } catch (error) {
-      message.textContent = error.message;
-    } finally {
-      button.disabled = false;
-    }
-  }
-
-  let pendingPreAuthToken = null;
-  async function verifyTotp(event) {
-    event.preventDefault();
-    const button = document.getElementById("totp-submit");
-    const message = document.getElementById("totp-message");
-    button.disabled = true;
-    message.textContent = "";
-    try {
-      const result = await request("/auth/login/verify-totp", {
-        method: "POST",
-        body: JSON.stringify({
-          preAuthToken: pendingPreAuthToken,
-          code: document.getElementById("totp-code").value.trim(),
-        }),
-      });
-      sessionStorage.setItem(SESSION_KEY, JSON.stringify(result));
-      location.href = "/index.html";
-    } catch (error) {
-      message.textContent = error.message;
-    } finally {
-      button.disabled = false;
-    }
-  }
-  function backToLogin() {
-    pendingPreAuthToken = null;
-    document.getElementById("totp-form").style.display = "none";
-    document.getElementById("totp-code").value = "";
-    document.getElementById("login-form").style.display = "";
-    document.getElementById("password").focus();
-  }
-
-  if (location.pathname.endsWith("/login.html")) {
-    if (session()?.token) location.href = "/index.html";
-    document.getElementById("login-form")?.addEventListener("submit", login);
-    document.getElementById("totp-form")?.addEventListener("submit", verifyTotp);
-    document.getElementById("totp-back")?.addEventListener("click", backToLogin);
-    return;
-  }
-
   if (!session()?.token) {
-    location.replace(loginPage);
+    location.replace(loginUrlWithNext());
     return;
   }
   request("/auth/me")

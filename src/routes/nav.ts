@@ -3,7 +3,8 @@
 import { Router } from "express";
 import { requireAuth } from "../middleware/auth";
 import { getNavForRole } from "../lib/departments";
-import { db, operationsCasesTable } from "../db";
+import { db, operationsCasesTable, systemUsersTable } from "../db";
+import { roleLabel } from "../lib/roleLabels";
 import { count, eq } from "drizzle-orm";
 import type { UserRole } from "../lib/roles";
 
@@ -76,8 +77,20 @@ router.get("/nav", requireAuth, async (req, res, next) => {
       homeHref = firstSub?.pages[0]?.href ?? null;
     }
 
+    // الاسم الكامل للهيدر (الجلسة فيها username بس)
+    const [profile] = await db
+      .select({ fullName: systemUsersTable.fullName })
+      .from(systemUsersTable)
+      .where(eq(systemUsersTable.id, req.user!.userId))
+      .limit(1);
+
     res.json({
       role,
+      user: {
+        name: profile?.fullName ?? req.user!.username,
+        role,
+        roleLabel: roleLabel(role),
+      },
       departments,
       singleDepartment,
       homeHref,

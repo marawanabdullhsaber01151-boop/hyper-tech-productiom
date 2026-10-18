@@ -1,12 +1,21 @@
 import { t } from "../copy";
-import { EmptyState, ToastProvider } from "../design/components";
+import { ToastProvider } from "../design/components";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { Router, usePath, type RouteDef } from "./router";
 import { NotFound, portalRoutes } from "../portal/routes";
 import { adminRoutes } from "../admin/routes";
+import { Login } from "../staff/Login";
+import { Home } from "../staff/Home";
+import { StaffShell } from "../staff/StaffShell";
+import { StaffNotFound } from "../staff/SystemPages";
 
-/** الصفحات بتتسجّل هنا لما نبنيها (خطة 04 وما بعدها). */
-export const routes: RouteDef[] = [...portalRoutes, ...adminRoutes];
+/** صفحات الموظفين: كلها بتتعرض جوّه غلاف واحد (سايدبار + هيدر). أي صفحة جديدة بتتحط هنا. */
+export const staffRoutes: RouteDef[] = [{ path: "/staff", render: () => <Home /> }, ...adminRoutes];
+
+/** الدخول والبوابة بره الغلاف. */
+export const routes: RouteDef[] = [{ path: "/login", render: () => <Login /> }, ...portalRoutes, ...staffRoutes];
+
+const isStaffPath = (p: string) => p === "/staff" || p.startsWith("/staff/") || p === "/admin" || p.startsWith("/admin/");
 
 export function App() {
   const path = usePath();
@@ -16,9 +25,15 @@ export function App() {
         <a class="sr-only" href="#main">
           {t("a11y.skip")}
         </a>
-        <main id="main">
-          <Router routes={routes} notFound={() => <NotFound />} />
-        </main>
+        {isStaffPath(path) ? (
+          <StaffShell path={path}>
+            <Router routes={staffRoutes} notFound={() => <StaffNotFound />} />
+          </StaffShell>
+        ) : (
+          <main id="main">
+            <Router routes={routes} notFound={() => <NotFound />} />
+          </main>
+        )}
       </ToastProvider>
     </ErrorBoundary>
   );

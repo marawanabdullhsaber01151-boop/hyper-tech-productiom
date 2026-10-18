@@ -6,6 +6,7 @@
 import { portalCopy } from "./portal";
 import { adminCopy } from "./admin";
 import { chatCopy } from "./chat";
+import { staffCopy } from "./staff";
 
 export type Plural = { zero?: string; one?: string; two?: string; few?: string; many?: string; other: string };
 export type Msg = string | Plural;
@@ -126,6 +127,7 @@ export const ar = {
   "a11y.required": "(مطلوب)",
   ...portalCopy,
   ...adminCopy,
+  ...staffCopy,
   ...chatCopy,
 } as const satisfies Record<string, Msg>;
 

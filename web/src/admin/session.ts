@@ -21,8 +21,10 @@ export function staffUser(): StaffUser | null {
   return s?.user ?? null;
 }
 
-/** صفحة الدخول بتاعت الموظفين (القديمة). */
-export const STAFF_LOGIN_URL = "/index.html";
+/** صفحة الدخول الموحّدة للموظفين. */
+export const STAFF_LOGIN_URL = "/v2/login";
 export function goStaffLogin() {
-  location.replace(STAFF_LOGIN_URL);
+  const here = location.pathname + location.search;
+  // لو إحنا أصلًا في صفحة الدخول ما نضيفش next (بيمنع لفّة تحويل).
+  location.replace(here.startsWith(STAFF_LOGIN_URL) ? STAFF_LOGIN_URL : `${STAFF_LOGIN_URL}?next=${encodeURIComponent(here)}`);
 }

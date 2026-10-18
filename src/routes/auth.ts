@@ -139,6 +139,7 @@ router.post("/auth/login", loginRateLimiter, async (req, res, next) => {
       res.status(423).json(failure(
         "ACCOUNT_LOCKED",
         `الحساب مقفول مؤقتًا بسبب محاولات دخول فاشلة متكررة — حاول تاني بعد ${Math.ceil(remaining / 60)} دقيقة`,
+        { details: { retryAfterSeconds: remaining } },
       ));
       return;
     }
@@ -162,6 +163,7 @@ router.post("/auth/login", loginRateLimiter, async (req, res, next) => {
         res.status(423).json(failure(
           "ACCOUNT_LOCKED",
           `تم قفل الحساب مؤقتًا بعد ${lockoutState.failedLoginAttempts} محاولات فاشلة — حاول تاني بعد ${LOCKOUT_MINUTES} دقيقة`,
+          { details: { retryAfterSeconds: LOCKOUT_MINUTES * 60 } },
         ));
         return;
       }

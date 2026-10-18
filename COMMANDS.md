@@ -1,6 +1,6 @@
-# COMMANDS — hardening-2
+# COMMANDS — phase-1-staff-shell
 
-> ⚠️ الحزمة فيها هجرة قاعدة بيانات: **خد نسخة احتياطية (pg_dump أو فرع Neon) قبل ما تبدأ.**
+> الحزمة مفيهاش هجرات قاعدة بيانات.
 
 ## ١) نسخ الملفات فوق المشروع
 ```bash
@@ -11,13 +11,14 @@ cp -R <PKG>/files/. .
 Copy-Item -Recurse -Force "<PKG>\files\*" .
 ```
 
-## ٢) مسح الملفات المحذوفة (0)
+## ٢) مسح الملفات المحذوفة (1)
 ```bash
-# لا يوجد ملفات للمسح
+rm -f "public/login.html"
 ```
 ```powershell
-# لا يوجد ملفات للمسح
+Remove-Item -LiteralPath "public\login.html" -Force -ErrorAction SilentlyContinue
 ```
+> مجلدات ممكن تفضل فاضية بعد المسح: `public` — امسحها لو فاضية.
 
 ## ٣) الحزم والبيئة
 - مفيش تغيير في الحزم.
@@ -25,17 +26,11 @@ Copy-Item -Recurse -Force "<PKG>\files\*" .
 
 ## ٤) الهجرات والتحقق
 ```bash
-npm run db:migrate
 npm run check:all
-npm run check:e2e
 node scripts/delivery-pack.mjs verify --dir <مسار-مجلد-الحزمة-المفكوكة> --root .
 ```
 
 ## ٥) الرجوع (Rollback)
 - الكود: ارجع للنسخة السابقة من ملفات الحزمة (git checkout أو النسخة الاحتياطية للمجلد)، وأعد النشر.
-- هجرة `migrations/0078_portal_customer_archive.sql`:
-```sql
-  DROP INDEX IF EXISTS portal_customers_archived_at_idx;
-  ALTER TABLE portal_customers DROP COLUMN IF EXISTS archived_at, DROP COLUMN IF EXISTS archived_by_user_id, DROP COLUMN IF EXISTS archive_reason;
-```
+- مفيش هجرات تحتاج رجوع.
 - لو الهجرة اتنفذت وفيها بيانات: استرجع من النسخة الاحتياطية اللي أخدتها قبل التنفيذ.
