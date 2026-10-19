@@ -11,6 +11,7 @@ import {
 import { parseIdParam } from "../lib/validate";
 import { moveToTrash } from "../lib/trash";
 import { PERMISSIONS } from "../lib/permissions";
+import { maskFields } from "../lib/fieldMasking";
 
 const router = Router();
 
@@ -47,13 +48,18 @@ router.get(
 
       // ✅ ORDER BY name — لا يوجد reverse() في الذاكرة
       const items = await query.orderBy(inventoryItemsTable.name);
-       res.json(items.map((item) => ({
-         ...(salesOnly ? {
-           id: item.id, name: item.name, unit: item.unit, category: item.category,
-           qty: item.qty, reservedQty: item.reservedQty,
-         } : item),
-        availableQty: String(Math.max(0, Number(item.qty) - Number(item.reservedQty))),
-      })));
+       // سياسة إخفاء الحقول (سعر الوحدة/المورّد) كانت معرّفة ومش متطبّقة هنا: أي دور يشوف المخزون
+      // كان بياخد الصنف كامل. دلوقتي بتتطبّق على الرد قبل ما يخرج من السيرفر.
+      res.json(items.map((item) => {
+        const base = salesOnly ? {
+          id: item.id, name: item.name, unit: item.unit, category: item.category,
+          qty: item.qty, reservedQty: item.reservedQty,
+        } : item;
+        return {
+          ...(maskFields("inventory_items", base, req.user!.role) as typeof base),
+          availableQty: String(Math.max(0, Number(item.qty) - Number(item.reservedQty))),
+        };
+      }));
     } catch (err) {
       next(err);
     }
@@ -103,11 +109,13 @@ router.get(
          res.status(404).json({ error: { message: "العنصر غير موجود" } });
          return;
        }
+       const isSales = ["sales_manager", "online_seller", "offline_seller"].includes(req.user!.role);
+       const base = isSales ? {
+         id: item.id, name: item.name, unit: item.unit, category: item.category,
+         qty: item.qty, reservedQty: item.reservedQty,
+       } : item;
        res.json({
-         ...(["sales_manager", "online_seller", "offline_seller"].includes(req.user!.role) ? {
-           id: item.id, name: item.name, unit: item.unit, category: item.category,
-           qty: item.qty, reservedQty: item.reservedQty,
-         } : item),
+         ...(maskFields("inventory_items", base, req.user!.role) as typeof base),
         availableQty: String(Math.max(0, Number(item.qty) - Number(item.reservedQty))),
       });
     } catch (err) {

@@ -201,6 +201,23 @@ export const DEPARTMENTS: readonly NavDepartment[] = [
     ],
   },
   {
+    id: "purchasing",
+    label: "المشتريات",
+    icon: "truck-ramp-box",
+    roles: ["chairman", "purchasing_manager", "buyer"],
+    subFunctions: [
+      {
+        id: "purchasing-stock",
+        label: "المخزون",
+        roles: ["chairman", "purchasing_manager", "buyer"],
+        pages: [
+          // صفحة عرض فقط في الواجهة الجديدة (/v2). صفحات المخزن القديمة فيها أزرار تعديل من غير تحكم بالدور.
+          { id: "stock-view", label: "المخزون والمواد الخام", href: "/v2/staff/stock", roles: ["chairman", "purchasing_manager", "buyer"] },
+        ],
+      },
+    ],
+  },
+  {
     id: "quality",
     label: "الجودة",
     icon: "shield-halved",

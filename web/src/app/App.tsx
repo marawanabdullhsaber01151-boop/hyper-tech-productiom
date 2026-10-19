@@ -8,9 +8,15 @@ import { Login } from "../staff/Login";
 import { Home } from "../staff/Home";
 import { StaffShell } from "../staff/StaffShell";
 import { StaffNotFound } from "../staff/SystemPages";
+import { RoleGuard } from "../staff/RoleGuard";
+import { STOCK_ROLES, Stock } from "../staff/Stock";
 
 /** صفحات الموظفين: كلها بتتعرض جوّه غلاف واحد (سايدبار + هيدر). أي صفحة جديدة بتتحط هنا. */
-export const staffRoutes: RouteDef[] = [{ path: "/staff", render: () => <Home /> }, ...adminRoutes];
+export const staffRoutes: RouteDef[] = [
+  { path: "/staff", render: () => <Home /> },
+  { path: "/staff/stock", render: () => <RoleGuard roles={STOCK_ROLES}><Stock /></RoleGuard> },
+  ...adminRoutes,
+];
 
 /** الدخول والبوابة بره الغلاف. */
 export const routes: RouteDef[] = [{ path: "/login", render: () => <Login /> }, ...portalRoutes, ...staffRoutes];

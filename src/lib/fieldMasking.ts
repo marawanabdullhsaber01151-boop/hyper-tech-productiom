@@ -1,7 +1,7 @@
 export const FIELD_VISIBILITY: Record<string, Record<string, readonly string[]>> = {
   inventory_items: {
     unitPrice: ["chairman", "executive_manager", "hr", "hr_manager", "warehouse_manager", "storekeeper"],
-    supplierId: ["chairman", "executive_manager", "hr", "hr_manager", "purchasing_manager", "buyer", "warehouse_manager"],
+    supplierId: ["chairman", "executive_manager", "hr", "hr_manager", "purchasing_manager", "buyer", "warehouse_manager", "storekeeper"],
   },
   sales_order_items: {
     unitPrice: ["chairman", "executive_manager", "sales_manager", "hr", "hr_manager"],

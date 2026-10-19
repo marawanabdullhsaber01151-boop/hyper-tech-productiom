@@ -1,4 +1,4 @@
-# COMMANDS — phase-1-staff-shell
+# COMMANDS — phase-1b-purchasing-stock
 
 > الحزمة مفيهاش هجرات قاعدة بيانات.
 
@@ -11,14 +11,13 @@ cp -R <PKG>/files/. .
 Copy-Item -Recurse -Force "<PKG>\files\*" .
 ```
 
-## ٢) مسح الملفات المحذوفة (1)
+## ٢) مسح الملفات المحذوفة (0)
 ```bash
-rm -f "public/login.html"
+# لا يوجد ملفات للمسح
 ```
 ```powershell
-Remove-Item -LiteralPath "public\login.html" -Force -ErrorAction SilentlyContinue
+# لا يوجد ملفات للمسح
 ```
-> مجلدات ممكن تفضل فاضية بعد المسح: `public` — امسحها لو فاضية.
 
 ## ٣) الحزم والبيئة
 - مفيش تغيير في الحزم.

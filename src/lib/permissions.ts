@@ -81,6 +81,9 @@ export const PERMISSIONS = {
       "production_controller",
       "operations_manager",
       "raw_material_quality_controller",
+      // المشتريات: عرض فقط (الكتابة لأمين ومدير المخزن). سعر الوحدة مخفي عنهم بـFIELD_VISIBILITY.
+      "purchasing_manager",
+      "buyer",
     ],
     write: ["chairman", "warehouse_manager", "storekeeper"],
   },

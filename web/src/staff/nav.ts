@@ -1,4 +1,4 @@
-import { Circle, Database, Factory, Globe, Landmark, ShieldCheck, ShoppingCart, Warehouse, Workflow } from "../design/icons";
+import { Circle, Database, Factory, Globe, Landmark, ShieldCheck, ShoppingCart, Truck, Warehouse, Workflow } from "../design/icons";
 
 /** شكل رد GET /api/v1/nav (قسم ← محور ← صفحة). */
 export interface NavPageDto {
@@ -36,6 +36,7 @@ const ICONS: Record<string, NavIcon> = {
   globe: Globe,
   industry: Factory,
   landmark: Landmark,
+  "truck-ramp-box": Truck,
   "shield-halved": ShieldCheck,
   warehouse: Warehouse,
 };

@@ -4,10 +4,10 @@ import { getNavForRole } from "./departments";
 import { USER_ROLES } from "./roles";
 
 /**
- * أدوار مالهاش أي قسم في القايمة دلوقتي (وحدة المشتريات اتحذفت في هجرة 0049).
- * الغلاف الجديد بيعرض لهم رسالة «مفيش أقسام متاحة لدورك». لو اتضاف لهم قسم، حدّث القايمة دي.
+ * أدوار مالهاش أي قسم في القايمة. كانت purchasing_manager وbuyer (وحدة المشتريات اتحذفت في هجرة 0049)
+ * واتحلّت بصفحة المخزون للقراءة فقط. أي دور جديد من غير صفحات لازم يتسجّل هنا عن قصد.
  */
-const KNOWN_EMPTY_NAV_ROLES = ["purchasing_manager", "buyer"];
+const KNOWN_EMPTY_NAV_ROLES: string[] = [];
 
 const pageIds = (role: (typeof USER_ROLES)[number]) =>
   getNavForRole(role).flatMap((d) => d.subFunctions.flatMap((s) => s.pages.map((p) => p.id)));
@@ -40,6 +40,15 @@ describe("/nav لكل دور من الـ18 (قبول المرحلة ١)", () => 
     const chairman = new Set(pageIds("chairman"));
     for (const role of USER_ROLES) {
       for (const id of pageIds(role)) expect(chairman.has(id)).toBe(true);
+    }
+  });
+
+  it("المشتريات: الدورين يشوفوا صفحة المخزون للقراءة بس (في الواجهة الجديدة)", () => {
+    for (const role of ["purchasing_manager", "buyer"] as const) {
+      const depts = getNavForRole(role);
+      expect(depts.map((d) => d.id)).toEqual(["purchasing"]);
+      expect(pageIds(role)).toEqual(["stock-view"]);
+      expect(depts[0]!.subFunctions[0]!.pages[0]!.href).toBe("/v2/staff/stock");
     }
   });
 });
