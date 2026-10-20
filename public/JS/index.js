@@ -50,27 +50,41 @@ let financeQualityData = null;
    Promise.allSettled بيخلي كل مصدر يفشل أو ينجح لوحده، والداشبورد تعرض
    أقصى قدر ممكن من البيانات الحقيقية حتى لو مصدر واحد واقع. */
 async function loadDashboard() {
+  // الأول نعرف الدور ده يقدر يقرا إيه (سجل الوصول في السيرفر)، ونحمّل المسموح بس. قبل كده كان كل دور
+  // بينادي المصادر التلاتة، فأي دور خارج قايمة مصدر بيشوف «تعذّر تحميل» و«غير متصل» رغم إن مفيش عطل.
+  let can = null;
+  try {
+    can = (await apiCall("/me/access")).can;
+  } catch {
+    can = null; // لو الفحص نفسه وقع نجرّب الكل زي الأول
+  }
+  const may = (key) => !can || can[key];
+  const skipped = { status: "skipped" };
   const [poResult, invResult, dashResult] = await Promise.allSettled([
-    apiCall("/production-workflow"),
-    apiCall("/inventory"),
-    apiCall("/dashboard"),
+    may("productionWorkflowRead") ? apiCall("/production-workflow") : Promise.resolve(skipped),
+    may("inventoryRead") ? apiCall("/inventory") : Promise.resolve(skipped),
+    may("dashboardRead") ? apiCall("/dashboard") : Promise.resolve(skipped),
   ]);
 
-  const poOk = poResult.status === "fulfilled";
-  const invOk = invResult.status === "fulfilled";
-  const dashOk = dashResult.status === "fulfilled";
+  const isSkipped = (r) => r.status === "fulfilled" && r.value === skipped;
+  const poOk = poResult.status === "fulfilled" && !isSkipped(poResult);
+  const invOk = invResult.status === "fulfilled" && !isSkipped(invResult);
+  const dashOk = dashResult.status === "fulfilled" && !isSkipped(dashResult);
 
   productionOrders = poOk ? poResult.value.data || [] : [];
   inventoryItems = invOk ? invResult.value || [] : [];
   financeQualityData = dashOk ? dashResult.value : null;
 
-  if (!poOk || !invOk) {
-    const failedParts = [!poOk && "أوامر الإنتاج", !invOk && "المخزون"]
+  // فشل حقيقي = مصدر مسموح للدور وفشل. المصدر اللي مش من حق الدور مش «عطل».
+  const poFailed = !isSkipped(poResult) && !poOk;
+  const invFailed = !isSkipped(invResult) && !invOk;
+  if (poFailed || invFailed) {
+    const failedParts = [poFailed && "أوامر الإنتاج", invFailed && "المخزون"]
       .filter(Boolean)
       .join(" و");
     showToast(`تعذّر تحميل بيانات: ${failedParts}`, "warn");
   }
-  setLiveStatus(poOk && invOk);
+  setLiveStatus(!poFailed && !invFailed);
 
   renderOrders();
   renderAlerts();

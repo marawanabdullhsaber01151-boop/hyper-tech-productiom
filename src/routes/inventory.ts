@@ -12,6 +12,7 @@ import { parseIdParam } from "../lib/validate";
 import { moveToTrash } from "../lib/trash";
 import { PERMISSIONS } from "../lib/permissions";
 import { maskFields } from "../lib/fieldMasking";
+import { ACCESS } from "../lib/accessRegistry";
 
 const router = Router();
 
@@ -19,7 +20,7 @@ const router = Router();
 router.get(
   "/inventory",
   requireAuth,
-  requireRole(...PERMISSIONS.inventory.view),
+  requireRole(...ACCESS.inventoryRead),
   async (req, res, next) => {
     try {
       const { category, low_stock } = req.query as Record<
@@ -89,7 +90,7 @@ router.post(
 router.get(
   "/inventory/:id",
   requireAuth,
-  requireRole(...PERMISSIONS.inventory.view),
+  requireRole(...ACCESS.inventoryRead),
   async (req, res, next) => {
     try {
       const id = parseIdParam(req.params.id, res);

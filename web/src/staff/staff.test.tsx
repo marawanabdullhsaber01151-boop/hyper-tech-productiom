@@ -82,10 +82,20 @@ describe("Sidebar", () => {
     expect(screen.getByRole("link", { name: /المبيعات/ }).getAttribute("href")).toBe("/sales.html");
     expect(screen.getByText("3")).toBeTruthy();
   });
-  it("المطوي: أيقونات بس (بأسماء للقارئ)، من غير روابط", () => {
+  it("المطوي: أيقونات بس (بأسماء للقارئ)، ومفيش روابط صفحات، غير زر الرئيسية", () => {
     render(<Sidebar nav={NAV} path="/admin/portal-customers" collapsed openDept={null} onToggleDept={() => {}} />);
-    expect(screen.queryAllByRole("link")).toHaveLength(0);
+    expect(screen.queryAllByRole("link").map((a) => a.getAttribute("aria-label"))).toEqual(["الرئيسية"]);
     expect(screen.getByRole("button", { name: "الإدارة العليا" })).toBeTruthy();
+  });
+  it("زر «الرئيسية» أول عنصر، ونشط في /staff، وبيظهر حتى لو الدور ملوش أقسام", () => {
+    const { unmount } = render(<Sidebar nav={NAV} path="/staff" collapsed={false} openDept={null} onToggleDept={() => {}} />);
+    const home = screen.getByRole("link", { name: "الرئيسية" });
+    expect(home.getAttribute("href")).toBe("/v2/staff");
+    expect(home.getAttribute("aria-current")).toBe("page");
+    unmount();
+    render(<Sidebar nav={{ ...NAV, departments: [] }} path="/staff" collapsed={false} openDept={null} onToggleDept={() => {}} />);
+    expect(screen.getByRole("link", { name: "الرئيسية" })).toBeTruthy();
+    expect(screen.getByText("مفيش أقسام متاحة لدورك لسه.")).toBeTruthy();
   });
   it("أيقونة غير معروفة ما بتكسرش الرسم، والضغط على القسم بينادي الـhandler", () => {
     const onToggle = vi.fn();

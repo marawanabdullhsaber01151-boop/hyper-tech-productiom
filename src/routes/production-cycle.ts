@@ -1,5 +1,6 @@
 /** @format */
 
+import { ACCESS } from "../lib/accessRegistry";
 import { Router, Request, Response, NextFunction } from "express";
 import { desc } from "drizzle-orm";
 import { db } from "../db";
@@ -31,7 +32,7 @@ router.get(
 router.get(
   "/production-cycle/dashboard",
   requireAuth,
-  requireRole(...productionRoles),
+  requireRole(...ACCESS.productionCycleRead),
   async (_req: Request, res: Response, next: NextFunction) => {
     try {
       const orders = await db

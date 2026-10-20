@@ -47,7 +47,7 @@ async function loadInitialData() {
   try {
     const [contactsRes, invRes] = await Promise.all([
       apiCall("/contacts"),
-      apiCall("/inventory"),
+      apiCall("/inventory").catch(() => []),
     ]);
     contacts = (contactsRes || []).filter(
       (c) => c.type === "customer" || c.type === "both",

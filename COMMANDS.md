@@ -1,4 +1,4 @@
-# COMMANDS — phase-1b-purchasing-stock
+# COMMANDS — step-1-access-registry
 
 > الحزمة مفيهاش هجرات قاعدة بيانات.
 

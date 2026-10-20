@@ -1,5 +1,6 @@
 import { t } from "../copy";
 import { Icon } from "../design/components";
+import { House } from "../design/icons";
 import { Link } from "../app/router";
 import { isActiveHref, iconFor, resolveHref, type NavResponse } from "./nav";
 
@@ -14,10 +15,31 @@ interface Props {
 
 /** سايدبار واحد بيتبني من /nav: قسم ← محور ← صفحة. */
 export function Sidebar({ nav, path, collapsed, openDept, onToggleDept, onNavigate }: Props) {
-  if (nav.departments.length === 0) return <p class="st-side__empty">{t("staff.nav.empty")}</p>;
+  const home = (
+    <li class="st-dept">
+      <Link
+        to="/staff"
+        class="st-dept__btn st-home-link"
+        aria-current={path === "/staff" ? "page" : undefined}
+        aria-label={collapsed ? t("staff.nav.home") : undefined}
+      >
+        <Icon icon={House} size={20} />
+        {collapsed ? null : <span class="st-dept__label">{t("staff.nav.home")}</span>}
+      </Link>
+    </li>
+  );
+  if (nav.departments.length === 0) {
+    return (
+      <nav class="st-nav" aria-label={t("staff.nav.label")}>
+        <ul class="st-nav__list">{home}</ul>
+        <p class="st-side__empty">{t("staff.nav.empty")}</p>
+      </nav>
+    );
+  }
   return (
     <nav class="st-nav" aria-label={t("staff.nav.label")}>
       <ul class="st-nav__list">
+        {home}
         {nav.departments.map((d) => {
           const hasActive = d.subFunctions.some((s) => s.pages.some((p) => isActiveHref(path, p.href)));
           // المطوي: الأيقونات بس. المفتوح: القسم اللي عليه الدور أو اللي المستخدم فتحه.

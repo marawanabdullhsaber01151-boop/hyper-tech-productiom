@@ -13,6 +13,8 @@ export const FACTORY_FLOOR_ROLES = new Set([
   "supervisor",
   "production_controller",
   "production_quality_controller",
+  "quality_engineer",
+  "raw_material_quality_controller",
 ]);
 
 export const PRODUCTION_CUSTOMER_PII_FIELDS = [

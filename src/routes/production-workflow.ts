@@ -9,6 +9,7 @@
  *  ✅ deliver: تحديث الحالة داخل نفس transaction إضافة المخزون
  */
 
+import { ACCESS } from "../lib/accessRegistry";
 import { Router, Request, Response, NextFunction } from "express";
 import { eq, desc, sql, and } from "drizzle-orm";
 import { db } from "../db";
@@ -308,18 +309,7 @@ router.get(
 router.get(
   "/production-workflow",
   requireAuth,
-  requireRole(
-    "chairman",
-    "executive_manager",
-    "operations_manager",
-    "hr",
-    "hr_manager",
-    "production_manager",
-    "production_controller",
-    "warehouse_manager",
-    "supervisor",
-    "production_quality_controller",
-  ),
+  requireRole(...ACCESS.productionWorkflowRead),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const user = req.user!;

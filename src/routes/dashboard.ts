@@ -1,5 +1,6 @@
 /** @format */
 
+import { ACCESS } from "../lib/accessRegistry";
 import { Router } from "express";
 import { sql, gte } from "drizzle-orm";
 import { db } from "../db";
@@ -28,13 +29,7 @@ function weekAgo(): Date {
 // تستخدمها فعليًا (index.html للإدارة العليا، وproduction.html عبر
 // factory-control-tower.js الذي يستخدم فقط أجزاء production/quality/
 // inventory منها، لا الجزء المالي أو HR).
-router.get("/dashboard", requireAuth, requireRole(
-  "chairman",
-  "executive_manager",
-  "operations_manager",
-  "production_manager",
-  "production_controller",
-), async (_req, res, next) => {
+router.get("/dashboard", requireAuth, requireRole(...ACCESS.dashboardRead), async (_req, res, next) => {
   try {
     const since = weekAgo();
 
