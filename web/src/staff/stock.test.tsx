@@ -61,14 +61,23 @@ describe("Stock — المخزون للمشتريات (عرض فقط)", () => {
     expect(screen.queryByRole("button", { name: /تعديل|إضافة|حذف/ })).toBeNull();
   });
 
-  it("البحث بالاسم والكود", async () => {
+  // كل بحث في اختبار لوحده (شاشة جديدة): مكوّن البحث بيرجّع قيمة الحقل لقيمة الأب بعد ما يطبّق البحث،
+  // فكتابة بحث تاني فورًا بعد الأول في نفس الاختبار كانت بتتمسح (سباق توقيت في الاختبار مش في الشاشة).
+  it("البحث بالاسم", async () => {
     mount();
     await screen.findByText("حبيبات بلاستيك");
     fireEvent.input(screen.getByLabelText("ابحث بالاسم أو الكود"), { target: { value: "ملون" } });
     await waitFor(() => expect(screen.queryByText("حبيبات بلاستيك")).toBeNull());
     expect(screen.getByText("ملون أزرق")).toBeTruthy();
+    expect(screen.queryByText("عبوات فاضية")).toBeNull();
+  });
+
+  it("البحث بالكود", async () => {
+    mount();
+    await screen.findByText("حبيبات بلاستيك");
     fireEvent.input(screen.getByLabelText("ابحث بالاسم أو الكود"), { target: { value: "C-3" } });
-    await waitFor(() => expect(screen.getByText("عبوات فاضية")).toBeTruthy());
+    await waitFor(() => expect(screen.queryByText("حبيبات بلاستيك")).toBeNull());
+    expect(screen.getByText("عبوات فاضية")).toBeTruthy();
     expect(screen.queryByText("ملون أزرق")).toBeNull();
   });
 
