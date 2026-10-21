@@ -47,8 +47,8 @@
     <main class="main">
       <header class="topbar">
         <div class="topbar-title">
-          <h2>المبيعات</h2>
-          <p>إدارة فواتير البيع وأوامر العملاء</p>
+          <h2 id="page-title">المبيعات</h2>
+          <p id="page-sub">إدارة فواتير البيع وأوامر العملاء</p>
         </div>
         <div class="topbar-actions">
           <div class="live-badge">
@@ -68,7 +68,7 @@
             <div class="notif-dot"></div>
           </div>
           <button class="btn-primary" id="btn-new-invoice">
-            <i class="fa-solid fa-plus"></i> فاتورة جديدة
+            <i class="fa-solid fa-plus"></i> <span id="btn-new-label">فاتورة جديدة</span>
           </button>
         </div>
       </header>
@@ -148,6 +148,9 @@
               <button class="ftab" data-status="draft">
                 مسودة <span class="tc" id="tab-draft">0</span>
               </button>
+              <button class="ftab" data-status="pending_approval">
+                بانتظار الاعتماد <span class="tc" id="tab-pending_approval">0</span>
+              </button>
               <button class="ftab" data-status="confirmed">
                 مؤكد <span class="tc" id="tab-confirmed">0</span>
               </button>
@@ -165,6 +168,8 @@
               <option value="all">كل العملاء</option>
             </select>
           </div>
+
+          <div id="channel-note" class="channel-note" hidden role="note"></div>
 
           <div class="sales-table-wrap" style="max-height: 58vh; overflow: auto">
             <table class="sales-table">

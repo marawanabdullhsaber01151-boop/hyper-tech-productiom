@@ -696,3 +696,19 @@
   resize: vertical;
   font-family: inherit;
 }
+
+/* ملاحظة القناة (أونلاين/أوفلاين) فوق جدول المبيعات */
+.channel-note {
+  margin: 0 0 12px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border, rgba(148, 163, 184, 0.35));
+  border-inline-start: 4px solid var(--blue, #3b82f6);
+  background: rgba(59, 130, 246, 0.08);
+  color: var(--text-main, inherit);
+  font-size: 13px;
+  line-height: 1.7;
+}
+.channel-note[hidden] {
+  display: none;
+}

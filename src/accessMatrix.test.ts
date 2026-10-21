@@ -15,7 +15,7 @@ const root = process.cwd();
 const read = (rel: string) => readFileSync(resolve(root, rel), "utf8");
 
 const legacyPages = (role: string) =>
-  [...new Set(getNavForRole(role as (typeof USER_ROLES)[number]).flatMap((d) => d.subFunctions.flatMap((s) => s.pages.map((p) => p.href))))].filter((h) =>
+  [...new Set(getNavForRole(role as (typeof USER_ROLES)[number]).flatMap((d) => d.subFunctions.flatMap((s) => s.pages.map((p) => p.href.split("?")[0] as string))))].filter((h) =>
     h.endsWith(".html"),
   );
 

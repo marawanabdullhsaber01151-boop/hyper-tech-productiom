@@ -90,10 +90,10 @@ export const DEPARTMENTS: readonly NavDepartment[] = [
     subFunctions: [
       {
         id: "sales-online",
-        label: "المبيعات أونلاين",
+        label: "المبيعات أونلاين (من البوابة)",
         roles: ["chairman", "executive_manager", "sales_manager", "online_seller", "hr", "hr_manager"],
         pages: [
-          { id: "sales", label: "المبيعات", href: "sales.html", roles: ["chairman", "executive_manager", "sales_manager", "online_seller", "hr", "hr_manager"] },
+          { id: "sales-online", label: "فواتير الأونلاين", href: "sales.html?channel=website", roles: ["chairman", "executive_manager", "sales_manager", "online_seller", "hr", "hr_manager"] },
         ],
       },
       {
@@ -101,7 +101,7 @@ export const DEPARTMENTS: readonly NavDepartment[] = [
         label: "المبيعات أوفلاين",
         roles: ["chairman", "executive_manager", "sales_manager", "offline_seller", "hr", "hr_manager"],
         pages: [
-          { id: "sales", label: "المبيعات", href: "sales.html", roles: ["chairman", "executive_manager", "sales_manager", "offline_seller", "hr", "hr_manager"] },
+          { id: "sales-offline", label: "فواتير الأوفلاين", href: "sales.html?channel=direct", roles: ["chairman", "executive_manager", "sales_manager", "offline_seller", "hr", "hr_manager"] },
         ],
       },
       {

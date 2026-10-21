@@ -277,6 +277,7 @@ router.post(
           .values({
             orderNumber,
             contactId: portalCustomer?.contactId ?? null,
+            channel: "website",
             date: new Date().toISOString().slice(0, 10),
             dueDate: data.expectedDelivery ?? null,
             status: "draft",

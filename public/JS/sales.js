@@ -27,8 +27,51 @@ let statusCounts = {};
 let salesSummary = { total: 0, revenue: "0", pending: 0, customers: 0 };
 let salesRequestVersion = 0;
 
+// ---- القناة: website = أونلاين (تلقائي من البوابة)، direct = أوفلاين (يدوي) ----
+// بائع الأونلاين/الأوفلاين قناته ثابتة من دوره (والسيرفر بيفرضها)، وباقي الأدوار بتختار من رابط القايمة.
+let channel = null;
+function resolveChannel() {
+  const role = window.HyperTechAuth?.user?.role;
+  if (role === "online_seller") return "website";
+  if (role === "offline_seller") return "direct";
+  const p = new URLSearchParams(location.search).get("channel");
+  return p === "website" || p === "direct" ? p : null;
+}
+const CHANNEL_UI = {
+  website: {
+    title: "فواتير الأونلاين",
+    sub: "فواتير طلبات بوابة العملاء — بتتسجّل تلقائيًا وبتتراجع وتتأكد من هنا",
+    note: "فواتير الأونلاين بتتعمل تلقائيًا لما العميل يطلب من البوابة، ومينفعش تتعمل يدويًا. لو عايز تسجّل فاتورة يدوية افتح «فواتير الأوفلاين».",
+    empty: "مفيش فواتير أونلاين. بتظهر هنا أول ما عميل يطلب من البوابة.",
+  },
+  direct: {
+    title: "فواتير الأوفلاين",
+    sub: "الفواتير اليدوية: بيع مباشر وطلبات بالتليفون أو في المعرض",
+    note: "",
+    empty: "لا توجد فواتير أوفلاين. أضف فاتورة جديدة للبدء.",
+  },
+};
+function applyChannelUi() {
+  const ui = channel ? CHANNEL_UI[channel] : null;
+  if (ui) {
+    setText("page-title", ui.title);
+    setText("page-sub", ui.sub);
+    document.title = `هايبر تك — ${ui.title}`;
+  }
+  const note = document.getElementById("channel-note");
+  if (note) {
+    note.textContent = ui?.note || "";
+    note.hidden = !ui?.note;
+  }
+  // الأونلاين: مفيش إنشاء يدوي خالص (الزر مخفي، والسيرفر بيرفض كمان)
+  const newBtn = document.getElementById("btn-new-invoice");
+  if (newBtn) newBtn.hidden = channel === "website";
+  if (channel === null) setText("btn-new-label", "فاتورة أوفلاين جديدة");
+}
+
 const statusMap = {
   draft: { label: "مسودة", cls: "amber", icon: "fa-file-pen" },
+  pending_approval: { label: "بانتظار الاعتماد", cls: "amber", icon: "fa-hourglass-half" },
   confirmed: { label: "مؤكد", cls: "blue", icon: "fa-circle-check" },
   shipped: { label: "تم الشحن", cls: "blue", icon: "fa-truck" },
   paid: { label: "مدفوع", cls: "green", icon: "fa-circle-check" },
@@ -40,6 +83,10 @@ const statusMap = {
   updateTime();
   setInterval(updateTime, 1000);
   bindEvents();
+  // الدور بيوصل بعد /auth/me؛ القناة بتتحدد منه.
+  if (window.HyperTechAuth?.ready) await window.HyperTechAuth.ready;
+  channel = resolveChannel();
+  applyChannelUi();
   await loadInitialData();
 })();
 
@@ -69,6 +116,7 @@ async function loadSalesPage() {
   if (activeStatus !== "all") params.set("status", activeStatus);
   if (customerFilter !== "all") params.set("contact_id", customerFilter);
   if (searchQ) params.set("search", searchQ);
+  if (channel) params.set("channel", channel);
   const bounds = dateFilterBounds();
   if (bounds.from) params.set("date_from", bounds.from);
   if (bounds.to) params.set("date_to", bounds.to);
@@ -115,6 +163,7 @@ function updateKPIs() {
 function updateTabCounts() {
   setText("tab-all", salesSummary.total);
   setText("tab-draft", statusCounts.draft || 0);
+  setText("tab-pending_approval", statusCounts.pending_approval || 0);
   setText("tab-confirmed", statusCounts.confirmed || 0);
   setText("tab-shipped", statusCounts.shipped || 0);
   setText("tab-paid", statusCounts.paid || 0);
@@ -133,14 +182,15 @@ function renderTable() {
 
   if (!list.length) {
     tbody.innerHTML = `<tr><td colspan="7" class="empty-cell">
-      <div class="empty-state"><i class="fa-solid fa-file-invoice"></i><h4>لا توجد فواتير</h4><p>أضف فاتورة جديدة للبدء</p></div>
+      <div class="empty-state"><i class="fa-solid fa-file-invoice"></i><h4>لا توجد فواتير</h4><p>${escHtml(channel ? CHANNEL_UI[channel].empty : "أضف فاتورة جديدة للبدء")}</p></div>
     </td></tr>`;
     return;
   }
 
   tbody.innerHTML = list
     .map((inv) => {
-      const s = statusMap[inv.status] || statusMap.draft;
+      // حالة مش معروفة تظهر باسمها الخام بدل ما تتقلب «مسودة» (كان بيخبّي فواتير البوابة المنتظرة للاعتماد).
+      const s = statusMap[inv.status] || { label: inv.status, cls: "amber", icon: "fa-circle-question" };
       return `<tr>
       <td class="td-inv-code">${escHtml(inv.orderNumber)}</td>
       <td><strong style="font-size:13px">${escHtml(customerNameOf(inv.contactId))}</strong></td>
@@ -207,6 +257,10 @@ function buildCustomerSelect(selectedId = null) {
 
 // ---- Modal ----
 function openNew() {
+  if (channel === "website") {
+    showToast("فواتير الأونلاين بتتعمل تلقائيًا من البوابة", "warn");
+    return;
+  }
   editingId = null;
   itemRows = [
     { id: Date.now(), inventoryItemId: "", description: "", qty: 1, price: 0 },

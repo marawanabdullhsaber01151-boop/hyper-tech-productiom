@@ -1,5 +1,6 @@
 /** @format */
 
+import { listScope, manualCreateChannel } from "../lib/salesChannel";
 import { Router } from "express";
 import {
   SQL,
@@ -549,8 +550,10 @@ router.get(
       }
       if (dateFrom) baseFilters.push(gte(salesOrdersTable.date, dateFrom));
       if (dateTo) baseFilters.push(lte(salesOrdersTable.date, dateTo));
-      if (["online_seller", "offline_seller"].includes(req.user!.role)) {
-        baseFilters.push(eq(salesOrdersTable.createdById, req.user!.userId));
+      const scope = listScope(req.user!.role, req.user!.userId, queryParams.channel);
+      if (scope.channel) baseFilters.push(eq(salesOrdersTable.channel, scope.channel));
+      if (scope.createdById !== undefined) {
+        baseFilters.push(eq(salesOrdersTable.createdById, scope.createdById));
       }
 
       const filteredFilters = status
@@ -653,9 +656,10 @@ router.post(
         total: postedTotal,
         ...orderData
       } = createSalesOrderSchema.parse(req.body);
-      if (["online_seller", "offline_seller"].includes(req.user!.role)) {
+      // الفاتورة اليدوية = أوفلاين دايمًا. الأونلاين بيتعمل من البوابة بس (salesChannel.ts).
+      orderData.channel = manualCreateChannel(req.user!.role, orderData.channel);
+      if (req.user!.role === "offline_seller") {
         orderData.createdById = req.user!.userId;
-        orderData.channel = req.user!.role === "online_seller" ? "website" : "direct";
       }
 
       const result = await db.transaction(async (tx) => {

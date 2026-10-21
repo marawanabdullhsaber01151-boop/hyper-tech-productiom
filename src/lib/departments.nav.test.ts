@@ -19,9 +19,9 @@ describe("/nav لكل دور من الـ18 (قبول المرحلة ١)", () => 
       for (const d of depts) {
         expect(d.label.length).toBeGreaterThan(0);
         expect(d.icon.length).toBeGreaterThan(0);
-        for (const s of d.subFunctions) for (const p of s.pages) expect(p.href).toMatch(/^(\/v2\/.+|[a-z0-9-]+\.html)$/);
+        for (const s of d.subFunctions) for (const p of s.pages) expect(p.href).toMatch(/^(\/v2\/.+|[a-z0-9-]+\.html(\?channel=(website|direct))?)$/);
       }
-      // صفحة «المبيعات» متسجّلة عمدًا تحت محورين (أونلاين/أوفلاين) بنفس الـid، فالتكرار الممنوع جوّه نفس المحور بس.
+      // صفحة المبيعات ليها مدخلين مختلفين (أونلاين/أوفلاين) بمعرّفين ورابطين مختلفين؛ التكرار الممنوع جوّه نفس المحور.
       for (const d of depts) {
         for (const s of d.subFunctions) {
           const ids = s.pages.map((p) => p.id);

@@ -42,7 +42,12 @@
       html += `<p class="sidebar-section-title"><i class="fa-solid ${icon}"></i> ${dept.label}</p>`;
       for (const sf of dept.subFunctions) {
         for (const page of sf.pages) {
-          const active = page.href === currentHref ? " active" : "";
+          // الروابط اللي فيها ?channel= (أونلاين/أوفلاين) بتتطابق بالمسار والقناة، والباقي بالمسار بس.
+          const here = currentHref.split("?")[0];
+          const active =
+            page.href === currentHref || (!page.href.includes("?") && page.href === here)
+              ? " active"
+              : "";
           const badge =
             Number(page.badgeCount) > 0
               ? `<span class="nav-badge" aria-label="${page.badgeCount} حالات تحتاج مراجعة">${page.badgeCount}</span>`
@@ -117,7 +122,7 @@
 
     const sidebarContainer = document.getElementById("dynamic-sidebar");
     if (sidebarContainer) {
-      sidebarContainer.innerHTML = buildSidebarHTML(nav, currentPage);
+      sidebarContainer.innerHTML = buildSidebarHTML(nav, currentPage + location.search);
     }
 
     const cardsContainer = document.getElementById("department-cards");
