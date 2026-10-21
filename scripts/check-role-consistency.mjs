@@ -25,26 +25,6 @@ const pageRules = [
     backend: null,
     permission: "public portal authentication",
   },
-  {
-    page: "portal-orders.html",
-    backend: ["sales", "write"],
-    permission: "PERMISSIONS.sales.write",
-  },
-  {
-    page: "portal-customers-admin.html",
-    backend: ["portalCustomers", "write"],
-    permission: "PERMISSIONS.portalCustomers.write",
-  },
-  {
-    page: "portal-applications-admin.html",
-    backend: ["portalCustomers", "write"],
-    permission: "PERMISSIONS.portalCustomers.write",
-  },
-  {
-    page: "portal-activation-requests-admin.html",
-    backend: ["portalCustomers", "write"],
-    permission: "PERMISSIONS.portalCustomers.write",
-  },
 ];
 
 function extractPermissionRoles(group, key) {

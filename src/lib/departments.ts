@@ -110,7 +110,7 @@ export const DEPARTMENTS: readonly NavDepartment[] = [
         roles: ["chairman", "executive_manager", "sales_manager", "online_seller", "offline_seller", "hr", "hr_manager"],
         pages: [
           { id: "contacts", label: "الموردون والعملاء", href: "contacts.html", roles: ["chairman", "executive_manager", "sales_manager", "online_seller", "offline_seller", "hr", "hr_manager"] },
-          { id: "portal-orders", label: "طلبات بوابة العملاء", href: "portal-orders.html", roles: ["chairman", "executive_manager", "sales_manager", "online_seller", "offline_seller", "hr", "hr_manager"] },
+          { id: "portal-orders", label: "طلبات بوابة العملاء", href: "/v2/admin/portal-orders", roles: ["chairman", "executive_manager", "sales_manager", "online_seller", "offline_seller", "hr", "hr_manager"] },
         ],
       },
     ],
@@ -270,9 +270,9 @@ export const DEPARTMENTS: readonly NavDepartment[] = [
         label: "إدارة عملاء البوابة",
         roles: ["chairman", "executive_manager", "sales_manager"],
         pages: [
-          { id: "portal-customers-admin", label: "إدارة عملاء البوابة", href: "portal-customers-admin.html", roles: ["chairman", "executive_manager", "sales_manager"] },
-          { id: "portal-applications-admin", label: "طلبات الانضمام", href: "portal-applications-admin.html", roles: ["chairman", "executive_manager", "sales_manager"] },
-          { id: "portal-activation-requests-admin", label: "طلبات التفعيل", href: "portal-activation-requests-admin.html", roles: ["chairman", "executive_manager", "sales_manager"] },
+          { id: "portal-customers-admin", label: "إدارة عملاء البوابة", href: "/v2/admin/portal-customers", roles: ["chairman", "executive_manager", "sales_manager"] },
+          { id: "portal-applications-admin", label: "طلبات الانضمام", href: "/v2/admin/portal-applications", roles: ["chairman", "executive_manager", "sales_manager"] },
+          { id: "portal-activation-requests-admin", label: "طلبات التفعيل", href: "/v2/admin/portal-activation-requests", roles: ["chairman", "executive_manager", "sales_manager"] },
         ],
       },
     ],

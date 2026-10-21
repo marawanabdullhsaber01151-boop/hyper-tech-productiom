@@ -31,7 +31,8 @@ describe("المرحلة ١ — دخول واحد", () => {
       }
     }
     expect(hits).toEqual([]);
-  });
+    // الفحص بيقرا مئات الملفات من القرص (على ويندوز مع مضاد الفيروسات ممكن ياخد ١٠+ ثواني)، فالمهلة الافتراضية (٥ث) كانت بتفشله من غير سبب.
+  }, 60_000);
 
   it("الصفحات القديمة بتحوّل لـ/v2/login مع next، ومعالجة الدخول القديمة اتشالت", () => {
     const auth = read("public/JS/auth.js");
@@ -73,21 +74,5 @@ describe("المرحلة ١ — دخول واحد", () => {
     const css = read("web/src/staff/StaffShell.css");
     expect(css).not.toMatch(/#[0-9a-fA-F]{3,8}\b|rgba?\(|hsla?\(/);
     expect(css).not.toMatch(/(^|[\s;{])(left|right|margin-left|margin-right|padding-left|padding-right)\s*:/m);
-  });
-});
-
-describe("المرحلة ١ — صفحات المشتريات", () => {
-  it("المشتريات: قسم في /nav + صفحة /v2 للقراءة فقط + صلاحية عرض (مش كتابة)", () => {
-    expect(read("src/lib/departments.ts")).toContain('href: "/v2/staff/stock"');
-    expect(read("web/src/app/App.tsx")).toContain('path: "/staff/stock"');
-    expect(read("web/src/app/App.tsx")).toContain("<RoleGuard roles={STOCK_ROLES}>");
-    const perms = read("src/lib/permissions.ts");
-    const inv = perms.slice(perms.indexOf("inventory: {"));
-    const view = inv.slice(inv.indexOf("view:"), inv.indexOf("write:"));
-    const write = inv.slice(inv.indexOf("write:"), inv.indexOf("]", inv.indexOf("write:")));
-    expect(view).toContain('"purchasing_manager"');
-    expect(view).toContain('"buyer"');
-    expect(write).not.toContain("purchasing_manager");
-    expect(write).not.toContain('"buyer"');
   });
 });

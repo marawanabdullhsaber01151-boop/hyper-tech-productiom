@@ -4,6 +4,7 @@ import { Button, Card, Checkbox, ConfirmDialog, CopyField, Dialog, EmptyState, I
 import { Ban, Download, Inbox, KeyRound, Link2, Lock, Play, RefreshCw, Send, Undo2 } from "../../design/icons";
 import { useQuery } from "../../api/hooks";
 import { ApiError } from "../../api/client";
+import { Link } from "../../app/router";
 import { formatDate, formatDateTime, formatNumber, formatRelative } from "../../lib/format";
 import { api, downloadCsv } from "../api";
 import { useAct } from "../act";
@@ -16,6 +17,9 @@ interface Props {
   reload: () => Promise<void>;
   onListChanged: () => void;
 }
+
+/** الحد الأدنى للطلب: عدد صحيح من 1 لحد 7 خانات (السيرفر بيتحقق كمان). */
+export const MIN_ORDER_PATTERN = /^[1-9][0-9]{0,6}$/;
 
 /* ---------------- نظرة عامة ---------------- */
 export function OverviewTab({ d, reload, onListChanged }: Props) {
@@ -30,6 +34,23 @@ export function OverviewTab({ d, reload, onListChanged }: Props) {
   const [openOrdersMsg, setOpenOrdersMsg] = useState<string | null>(null);
   const [activation, setActivation] = useState<{ url: string; whatsappUrl?: string | null } | null>(null);
   const [adminCode, setAdminCode] = useState<{ code: string; minutes: number } | null>(null);
+  const [minOrder, setMinOrder] = useState(String(c.minimumOrderQuantity));
+  const minValid = MIN_ORDER_PATTERN.test(minOrder.trim());
+
+  const saveMinOrder = async () => {
+    const r = await run(() => api.patch(`/portal-customers/${c.id}/minimum-order`, { minimumOrderQuantity: Number(minOrder) }), t("a.ov.minOrder.done"));
+    if (r !== undefined) {
+      await reload();
+      onListChanged();
+    }
+  };
+  const saveCity = async (city: string) => {
+    const r = await run(() => api.patch(`/portal-customers/${c.id}/city`, { city: city || null }), t("a.ov.city.done"));
+    if (r !== undefined) {
+      await reload();
+      onListChanged();
+    }
+  };
 
   const bulk = async (body: Record<string, unknown>) => {
     const ok = await run(() => api.post("/portal-companies/bulk", { ids: [c.id], ...body }), t("common.saved"));
@@ -115,6 +136,21 @@ export function OverviewTab({ d, reload, onListChanged }: Props) {
             options={(meta.data?.segments ?? []).map((s) => ({ value: s, label: optLabel(s) }))}
             onChange={(e) => void bulk({ action: "segment", segment: (e.currentTarget as HTMLSelectElement).value })}
           />
+        </Field>
+        <Field label={t("a.ov.governorate")}>
+          <Select
+            value={c.governorate ?? ""}
+            disabled={busy || !meta.data}
+            placeholder={t("a.none")}
+            options={(meta.data?.governorates ?? []).map((g) => ({ value: g, label: g }))}
+            onChange={(e) => void saveCity((e.currentTarget as HTMLSelectElement).value)}
+          />
+        </Field>
+        <Field label={t("a.ov.minOrder")} error={minOrder.trim() !== "" && !minValid ? t("a.ov.minOrder.invalid") : undefined}>
+          <div class="ad-row">
+            <Input inputMode="numeric" dir="ltr" value={minOrder} onInput={(e) => setMinOrder((e.currentTarget as HTMLInputElement).value)} />
+            <Button variant="secondary" loading={busy} disabled={!minValid || Number(minOrder) === c.minimumOrderQuantity} onClick={() => void saveMinOrder()}>{t("a.ov.minOrder.save")}</Button>
+          </div>
         </Field>
       </Card>
       <Section title={t("a.ov.actions")}>
@@ -207,7 +243,7 @@ export function OrdersTab({ d }: Props) {
         <EmptyState compact title={t("a.orders.empty")} />
       )}
       <div>
-        <a class="ht-btn ht-btn--secondary" href="/portal-orders.html"><span class="ht-btn__label">{t("a.orders.open")}</span></a>
+        <Link class="ht-btn ht-btn--secondary" to={`/admin/portal-orders?status=all&q=${encodeURIComponent(d.company.companyName)}`}><span class="ht-btn__label">{t("a.orders.open")}</span></Link>
       </div>
     </div>
   );

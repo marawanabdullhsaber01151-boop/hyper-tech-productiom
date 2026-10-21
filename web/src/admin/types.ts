@@ -378,3 +378,16 @@ export interface OrdDetail {
   items: OrdLine[];
   events: OrdEvent[];
 }
+
+export interface PriceInquiryRow {
+  id: number;
+  customerName: string;
+  customerCompany: string | null;
+  customerPhone: string;
+  productName: string;
+  requestedQty: string;
+  requestedUnit: string;
+  suggestedPrice: string | null;
+  createdAt: string;
+  assignedSales: { userId: number; name: string } | null;
+}

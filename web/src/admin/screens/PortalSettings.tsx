@@ -11,7 +11,8 @@ import type { GlobalSettings, HistoryItem } from "../types";
 import { HistoryList } from "./CompanyTabs";
 
 /** الصفحات اللي ليها واجهة جديدة (كل صفحة بتتحول لوحدها). */
-export const V2_PAGES = ["portal", "portal-customers-admin", "portal-applications-admin", "portal-activation-requests-admin", "portal-orders", "chat-staff"];
+// صفحات الإدارة (العملاء/الانضمام/التفعيل/الطلبات) بقت واجهة واحدة جديدة بس ومفيش لها علم تشغيل. فاضل: بوابة العميل والشات.
+export const V2_PAGES = ["portal", "chat-staff"];
 
 export function PortalSettingsPage() {
   const { run, busy } = useAct();
