@@ -268,7 +268,7 @@ export function ChatTab({ d, reload }: Props) {
         />
       ) : null}
       <div>
-        <a class="ht-btn ht-btn--secondary" href="/chat-staff.html"><span class="ht-btn__label">{t("a.chat.open")}</span></a>
+        <Link class="ht-btn ht-btn--secondary" to={`/admin/portal-chat?q=${encodeURIComponent(d.company.companyName)}`}><span class="ht-btn__label">{t("a.chat.open")}</span></Link>
       </div>
     </div>
   );

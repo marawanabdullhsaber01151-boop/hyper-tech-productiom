@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import { t, type CopyKey } from "../../copy";
-import { Button, Dialog, EmptyState, Field, FilterBar, InlineAlert, Select, Skeleton, StatusPill, Textarea } from "../../design/components";
+import { Button, ConfirmDialog, Dialog, EmptyState, Field, FilterBar, InlineAlert, Select, Skeleton, StatusPill, Tabs, Textarea } from "../../design/components";
 import { Link, navigate } from "../../app/router";
 import { useQuery } from "../../api/hooks";
 import { staffSession } from "../../auth/staffSession";
@@ -12,6 +12,11 @@ import { api } from "../api";
 import { useAct } from "../act";
 import { useUrlParams } from "../lib";
 import { staffUser } from "../session";
+import { ChatAccess, modeLabel } from "./chat/ChatAccess";
+import { ChatPushButton } from "./chat/ChatPush";
+import { ChatQuick } from "./chat/ChatQuick";
+import { ChatReports } from "./chat/ChatReports";
+import { ChatSettings } from "./chat/ChatSettings";
 import "../../chat/chat.css";
 
 const FILTERS = ["all", "mine", "unassigned", "escalated", "unread", "closed"] as const;
@@ -30,10 +35,11 @@ interface Conv {
   lastMessagePreview: string;
   lastMessageAt: string;
   escalated: boolean;
+  customerLastSeenAt?: string | null;
   access: { canReply: boolean; canManage: boolean; readOnly: boolean };
 }
 interface Inbox { items: Conv[]; hasMore: boolean; page: number }
-interface Opened { conversation: Conv; messages: ChatMsg[]; hasMore: boolean; lastRating: { stars: number } | null }
+interface Opened { conversation: Conv; messages: ChatMsg[]; hasMore: boolean; lastRating: { stars: number; comment?: string | null } | null }
 interface QuickReply { id: number; title: string; body: string }
 
 function Row({ c, active, onOpen }: { c: Conv; active: boolean; onOpen: () => void }) {
@@ -61,12 +67,12 @@ function Row({ c, active, onOpen }: { c: Conv; active: boolean; onOpen: () => vo
 
 function Conversation({ id, onChanged, onBack, manager }: { id: number; onChanged: () => void; onBack: () => void; manager: boolean }) {
   const { run, busy } = useAct();
-  const rating = useRef<number | null>(null);
+  const rating = useRef<{ stars: number; comment?: string | null } | null>(null);
   const backend = useMemo<ChatBackend<Conv>>(
     () => ({
       open: async (signal) => {
         const r = await api.get<Opened>(`/chat/conversations/${id}`, { signal });
-        rating.current = r.lastRating?.stars ?? null;
+        rating.current = r.lastRating ?? null;
         return { messages: r.messages, hasMore: r.hasMore, meta: r.conversation };
       },
       older: async (before) => {
@@ -92,7 +98,7 @@ function Conversation({ id, onChanged, onBack, manager }: { id: number; onChange
   const people = useQuery((signal) => (manager ? api.get<Array<{ id: number; name: string }>>("/chat/assignable-users", { signal }) : Promise.resolve([])), [manager]);
 
   const [insert, setInsert] = useState<{ text: string; nonce: number } | null>(null);
-  const [dlg, setDlg] = useState<null | "transfer" | "hide">(null);
+  const [dlg, setDlg] = useState<null | "transfer" | "hide" | "close">(null);
   const [target, setTarget] = useState("");
   const [hideId, setHideId] = useState<number | null>(null);
   const [reason, setReason] = useState("");
@@ -127,7 +133,8 @@ function Conversation({ id, onChanged, onBack, manager }: { id: number; onChange
           <p class="ad-muted">
             {c.memberId ? `${t("c.a.member")}: ${c.customerName} · ` : ""}
             {c.handler ? t("c.a.handler", { name: c.handler.name }) : t("c.a.noHandler")}
-            {rating.current ? ` · ${t("c.a.rating", { n: rating.current })}` : ""}
+            {c.customerLastSeenAt ? ` · ${t("c.a.seen", { when: formatRelative(c.customerLastSeenAt) })}` : ""}
+            {rating.current ? ` · ${rating.current.comment ? t("c.a.rating.comment", { n: rating.current.stars, text: rating.current.comment }) : t("c.a.rating", { n: rating.current.stars })}` : ""}
           </p>
         </div>
         <div class="ad-row">
@@ -137,10 +144,14 @@ function Conversation({ id, onChanged, onBack, manager }: { id: number; onChange
           {c.access.canReply && c.handler?.userId !== staffUser()?.id ? <Button variant="secondary" loading={busy} onClick={() => void act("claim", t("c.a.claimed"))}>{t("c.a.claim")}</Button> : null}
           {c.access.canManage ? <Button variant="secondary" onClick={() => { setTarget(""); setDlg("transfer"); }}>{t("c.a.transfer")}</Button> : null}
           {c.access.canReply ? (c.status === "open"
-            ? <Button variant="secondary" loading={busy} onClick={() => void act("close", t("c.a.closedDone"))}>{t("c.a.close")}</Button>
+            ? <Button variant="secondary" loading={busy} onClick={() => setDlg("close")}>{t("c.a.close")}</Button>
             : <Button variant="secondary" loading={busy} onClick={() => void act("reopen", t("c.a.reopened"))}>{t("c.a.reopen")}</Button>) : null}
         </div>
       </header>
+
+      {c.access.readOnly ? <InlineAlert tone="info">{t("c.a.banner.readonly")}</InlineAlert>
+        : c.status === "closed" ? <InlineAlert tone="info">{t("c.a.banner.closed")}</InlineAlert>
+        : c.escalated ? <InlineAlert tone="warn">{t("c.a.banner.escalated")}</InlineAlert> : null}
 
       <div class="cc-thread__body">
         <ChatThread
@@ -171,6 +182,9 @@ function Conversation({ id, onChanged, onBack, manager }: { id: number; onChange
         />
       </div>
 
+      <ConfirmDialog open={dlg === "close"} onClose={() => setDlg(null)} title={t("c.a.close.title")} description={t("c.a.close.body")} confirmLabel={t("c.a.close")} loading={busy}
+        onConfirm={async () => { if (await act("close", t("c.a.closedDone"))) setDlg(null); }} />
+
       <Dialog open={dlg === "transfer"} onClose={() => setDlg(null)} title={t("c.a.transfer.title")}
         footer={<><Button variant="ghost" onClick={() => setDlg(null)}>{t("c.a.cancel")}</Button>
           <Button loading={busy} disabled={!target} onClick={async () => { if (await act("transfer", t("c.a.transferred"), { toUserId: Number(target) })) setDlg(null); }}>{t("c.a.transfer.go")}</Button></>}>
@@ -193,7 +207,10 @@ function Conversation({ id, onChanged, onBack, manager }: { id: number; onChange
   );
 }
 
-export function ChatConsolePage({ openId }: { openId?: number }) {
+type View = "inbox" | "reports" | "access" | "quick" | "settings";
+const VIEWS: readonly View[] = ["inbox", "reports", "access", "quick", "settings"];
+
+function Inbox({ openId, manager }: { openId?: number; manager: boolean }) {
   const url = useUrlParams();
   const fp = url.get("filter", "all");
   const filter = (FILTERS as readonly string[]).includes(fp) ? fp : "all";
@@ -217,21 +234,11 @@ export function ChatConsolePage({ openId }: { openId?: number }) {
     return () => clearInterval(id);
   }, [key]);
 
-  const summary = useQuery((signal) => api.get<{ mode: string }>("/chat/summary", { signal }), []);
-  const manager = summary.data?.mode === "manager";
   const items = list.data?.items ?? [];
   const open = (c: Conv) => navigate(`${BASE}/${c.id}${url.search}`);
 
   return (
-    <div class="ad-page">
-      <header class="ad-head">
-        <div>
-          <h1 class="ad-title">{t("c.a.title")}</h1>
-          <p class="ad-muted">{t("c.a.sub")}</p>
-        </div>
-        <a class="ht-btn ht-btn--secondary" href="/chat-staff.html?legacy=1"><span class="ht-btn__label">{t("c.a.legacy")}</span></a>
-      </header>
-
+    <>
       <div class="ad-chips" role="group" aria-label={t("c.a.filters")}>
         {FILTERS.map((f) => (
           <button key={f} type="button" class="ad-chip" aria-pressed={filter === f} onClick={() => url.set({ filter: f === "all" ? "" : f })}>{t(`c.a.filter.${f}` as CopyKey)}</button>
@@ -253,6 +260,62 @@ export function ChatConsolePage({ openId }: { openId?: number }) {
           {openId ? <Conversation id={openId} manager={manager} onChanged={() => void list.refetch()} onBack={() => navigate(`${BASE}${url.search}`)} /> : <EmptyState title={t("c.a.pick")} />}
         </section>
       </div>
+    </>
+  );
+}
+
+export function ChatConsolePage({ openId }: { openId?: number }) {
+  const url = useUrlParams();
+  const summary = useQuery((signal) => api.get<{ mode: string; unreadConversations: number }>("/chat/summary", { signal }), []);
+  useEffect(() => {
+    const id = setInterval(() => !document.hidden && void summary.refetch(), 15_000);
+    return () => clearInterval(id);
+  }, []);
+
+  // عدد غير المقروء في عنوان التبويب (زي الصفحة القديمة)
+  const unread = summary.data?.unreadConversations ?? 0;
+  useEffect(() => {
+    const base = document.title.replace(/^\(\d+\)\s*/, "");
+    document.title = unread ? `(${unread}) ${base}` : base;
+    return () => {
+      document.title = base;
+    };
+  }, [unread]);
+
+  const mode = summary.data?.mode ?? "none";
+  // الصلاحية الفعلية من السيرفر: المدير كل الأقسام، المراقب المحادثات والتقارير، اللي بيرد المحادثات بس.
+  const allowed: readonly View[] = mode === "manager" ? VIEWS : mode === "observer" ? ["inbox", "reports"] : ["inbox"];
+  const vp = url.get("view", "inbox");
+  const view: View = openId ? "inbox" : (allowed as readonly string[]).includes(vp) ? (vp as View) : "inbox";
+
+  if (summary.error && !summary.data) {
+    return <div class="ad-page"><EmptyState title={t("c.a.noaccess.title")} description={t("c.a.noaccess.body")} /></div>;
+  }
+
+  const panels: Record<View, preact.ComponentChildren> = {
+    inbox: <Inbox openId={openId} manager={mode === "manager"} />,
+    reports: <ChatReports />,
+    access: <ChatAccess />,
+    quick: <ChatQuick />,
+    settings: <ChatSettings />,
+  };
+  const tabs = allowed.map((v) => ({ id: v, label: t(`c.a.tab.${v}` as CopyKey), badge: v === "inbox" ? unread : undefined, panel: panels[v] }));
+
+  return (
+    <div class="ad-page">
+      <header class="ad-head">
+        <div>
+          <h1 class="ad-title">{t("c.a.title")}</h1>
+          <p class="ad-muted">{t("c.a.sub")}{summary.data ? ` · ${t("c.m.mode", { mode: modeLabel(mode) })}` : ""}</p>
+        </div>
+        <ChatPushButton />
+      </header>
+      <Tabs
+        tabs={tabs}
+        value={view}
+        label={t("c.a.nav")}
+        onChange={(v) => (openId ? navigate(`${BASE}${v === "inbox" ? "" : `?view=${v}`}`) : url.set({ view: v === "inbox" ? "" : v }))}
+      />
     </div>
   );
 }

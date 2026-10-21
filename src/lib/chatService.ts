@@ -566,7 +566,7 @@ async function afterCustomerMessage(
     void staffPushRecipients(handler?.userId ?? null).then((userIds) =>
       pushTo(
         { userIds },
-        { title: payload.title, body: payload.body, url: `chat-staff.html?c=${conv.id}`, tag: `chat-${conv.id}` },
+        { title: payload.title, body: payload.body, url: `/v2/admin/portal-chat/${conv.id}`, tag: `chat-${conv.id}` },
       ),
     );
     if (handler) {
@@ -748,7 +748,7 @@ export async function sweepEscalations(force = false): Promise<number> {
       { internal: true },
     );
     void staffPushRecipients(0).then((userIds) =>
-      pushTo({ userIds }, { title: "محادثة متأخرة الرد", body: `${c.customerName} ينتظر الرد`, url: `chat-staff.html?c=${c.id}`, tag: `chat-${c.id}` }),
+      pushTo({ userIds }, { title: "محادثة متأخرة الرد", body: `${c.customerName} ينتظر الرد`, url: `/v2/admin/portal-chat/${c.id}`, tag: `chat-${c.id}` }),
     );
     await notifyRole("sales_manager", {
       type: "chat_escalated",

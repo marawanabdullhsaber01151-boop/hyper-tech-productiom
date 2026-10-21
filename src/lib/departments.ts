@@ -262,7 +262,7 @@ export const DEPARTMENTS: readonly NavDepartment[] = [
         label: "محادثات العملاء",
         roles: ["chairman", "executive_manager", "sales_manager", "online_seller", "offline_seller", "hr", "hr_manager"],
         pages: [
-          { id: "chat-staff", label: "محادثات العملاء", href: "chat-staff.html", roles: ["chairman", "executive_manager", "sales_manager", "online_seller", "offline_seller", "hr", "hr_manager"] },
+          { id: "chat-staff", label: "محادثات العملاء", href: "/v2/admin/portal-chat", roles: ["chairman", "executive_manager", "sales_manager", "online_seller", "offline_seller", "hr", "hr_manager"] },
         ],
       },
       {

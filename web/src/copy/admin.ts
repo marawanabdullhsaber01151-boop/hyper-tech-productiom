@@ -272,7 +272,6 @@ export const adminCopy = {
   "a.gs.v2.portal-applications-admin": "طلبات الانضمام",
   "a.gs.v2.portal-activation-requests-admin": "طلبات التفعيل",
   "a.gs.v2.portal-orders": "طلبات البوابة",
-  "a.gs.v2.chat-staff": "محادثات العملاء",
 
   "a.group.team": "الفريق",
   "a.group.join": "الانضمام",

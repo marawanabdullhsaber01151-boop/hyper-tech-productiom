@@ -131,6 +131,7 @@ export function ChatThread(p: ChatThreadProps) {
                 {m.body ? <p class="ch-body">{m.hidden ? <em>{t("c.hidden")}</em> : m.body}</p> : null}
                 <div class="ch-meta">
                   <time dateTime={m.createdAt}>{formatDateTime(m.createdAt)}</time>
+                  {m.topic ? <StatusPill tone="neutral">{t(`c.topic.${m.topic}` as CopyKey)}</StatusPill> : null}
                   {mine && m.status ? <span class={`ch-tick ch-tick--${m.status}`}><Icon icon={Check} size={14} /> {t(TICK[m.status]!)}</span> : null}
                   {p.renderMessageActions?.(m)}
                 </div>
