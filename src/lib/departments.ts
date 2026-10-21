@@ -60,7 +60,8 @@ export const DEPARTMENTS: readonly NavDepartment[] = [
         pages: [
           { id: "governance", label: "الحوكمة والاعتمادات", href: "governance.html", roles: TOP_MGMT },
           { id: "settings", label: "الإعدادات", href: "settings.html", roles: ["chairman"] },
-          { id: "admin-health", label: "صحة النظام والتدقيق", href: "admin-health.html", roles: TOP_MGMT },
+          // واجهة /v2 بدل صفحة الصحة القديمة (اتمسحت): نفس الفحوصات + فحوصات حقيقية بشرح بسيط.
+          { id: "system-health", label: "صحة النظام", href: "/v2/staff/system-health", roles: TOP_MGMT },
         ],
       },
     ],

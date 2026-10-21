@@ -1,6 +1,9 @@
 import { describe, it, expect, vi } from "vitest";
 import { errorHandler } from "./errorHandler";
 
+// تسجيل الأخطاء بيروح لقاعدة البيانات — في الاختبار بنعزله.
+vi.mock("../lib/errorEvents", () => ({ recordErrorEvent: vi.fn() }));
+
 /**
  * ✅ حراسة مباشرة ضد أول وأخطر بغّ لقيناه في المراجعة الأولى: أخطاء
  * النطاق المقصودة (throw Object.assign(new Error(...), { status: 404 }))

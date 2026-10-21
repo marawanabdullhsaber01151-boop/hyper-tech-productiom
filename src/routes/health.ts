@@ -4,6 +4,8 @@ import { sql } from "drizzle-orm";
 import { db, dataAuditFindingsTable, migrationLedgerTable, systemHealthChecksTable } from "../db";
 import { requireAuth, requireRole } from "../middleware/auth";
 import { API_CONTRACT_VERSION, failure } from "../contracts/api-response";
+import { ACCESS } from "../lib/accessRegistry";
+import { runSystemHealth } from "../lib/systemHealth";
 
 const router = Router();
 const HEALTH_ROLES = ["executive_manager", "operations_manager", "production_manager"];
@@ -223,6 +225,24 @@ router.get(
             "شغّل migration preflight ثم راجع findings المفتوحة"
           : null,
         },
+        meta: { apiVersion: API_CONTRACT_VERSION, correlationId: req.correlationId },
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+/** صفحة «صحة النظام» (واجهة /v2): فحوصات حقيقية بشرح بسيط وإيه المطلوب لكل مشكلة. */
+router.get(
+  "/admin/system-health",
+  requireAuth,
+  requireRole(...ACCESS.systemHealthRead),
+  async (req, res, next) => {
+    try {
+      const report = await runSystemHealth();
+      res.json({
+        data: report,
         meta: { apiVersion: API_CONTRACT_VERSION, correlationId: req.correlationId },
       });
     } catch (error) {

@@ -62,6 +62,9 @@ export const ACCESS = {
 
   /** صفحة «التحكم في العمليات» وواجهاتها. */
   operationsControl: uniq(["chairman", "executive_manager", "operations_manager"]),
+
+  /** صفحة «صحة النظام»: تفاصيل أمنية وتشغيلية، فهي للإدارة العليا بس. */
+  systemHealthRead: uniq(["chairman", "executive_manager"]),
 } as const;
 
 export type AccessKey = keyof typeof ACCESS;

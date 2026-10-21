@@ -6,6 +6,7 @@ import { ZodError } from "zod";
 import { logger } from "../lib/logger";
 import { failure } from "../contracts/api-response";
 import { isHttpError } from "../contracts/errors";
+import { recordErrorEvent } from "../lib/errorEvents";
 
 /**
  * أي error بيتترمي في الكود بالشكل ده:
@@ -101,6 +102,14 @@ export function errorHandler(
     method: req.method,
     correlationId: req.correlationId,
     stack: err instanceof Error ? err.stack : undefined,
+  });
+  recordErrorEvent({
+    reference: errorRef,
+    method: req.method,
+    path: req.originalUrl,
+    message,
+    userId: (req as { user?: { userId?: number } }).user?.userId ?? null,
+    correlationId: req.correlationId ?? null,
   });
   res.status(500).json(
     failure(
