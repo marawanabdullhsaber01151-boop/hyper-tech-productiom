@@ -11,6 +11,9 @@ export interface WorkflowOrder {
   neededBy?: string | null;
   updatedAt?: string | null;
   createdAt?: string | null;
+  unit?: string | null;
+  supervisorId?: number | null;
+  qualityControllerUserId?: number | null;
 }
 export interface InvItem {
   id: number;

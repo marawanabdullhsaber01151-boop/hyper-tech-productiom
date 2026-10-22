@@ -6,6 +6,7 @@ import { Button, Card, DataTable, EmptyState, InlineAlert, ProgressBar, Stat, St
 import { RefreshCw } from "../design/icons";
 import { formatDate, formatNumber } from "../lib/format";
 import { resolveHref, type NavResponse } from "./nav";
+import { getShared, invalidateShared } from "./sharedData";
 import { Link } from "../app/router";
 import { categoryShares, computeKpis, deriveAlerts, isActive, isKnownStatus, statusCounts, statusTone, type DashAlert, type DashSummary, type InvItem, type WorkflowOrder } from "./dashboardCore";
 
@@ -58,12 +59,15 @@ export function Dashboard({ nav }: { nav?: NavResponse }) {
   const mayStock = may("inventoryRead");
   const maySummary = may("dashboardRead");
 
-  const orders = useQuery((signal) => (mayOrders ? api.get<WorkflowOrder[]>("/production-workflow", { signal }) : Promise.resolve(null)), [mayOrders]);
-  const stock = useQuery((signal) => (mayStock ? api.get<InvItem[]>("/inventory", { signal }) : Promise.resolve(null)), [mayStock]);
+  const orders = useQuery(() => (mayOrders ? getShared<WorkflowOrder[]>("/production-workflow") : Promise.resolve(null)), [mayOrders]);
+  const stock = useQuery(() => (mayStock ? getShared<InvItem[]>("/inventory") : Promise.resolve(null)), [mayStock]);
   const summary = useQuery((signal) => (maySummary ? api.get<DashSummary>("/dashboard", { signal }) : Promise.resolve(null)), [maySummary]);
   const [updated, setUpdated] = useState<Date | null>(null);
 
   const refreshAll = async () => {
+    // التحديث اليدوي والدوري دايمًا بيجيب بيانات جديدة (الكاش المشترك للجرس والبحث بس)
+    invalidateShared("/production-workflow");
+    invalidateShared("/inventory");
     await Promise.all([mayOrders ? orders.refetch() : null, mayStock ? stock.refetch() : null, maySummary ? summary.refetch() : null]);
     setUpdated(new Date());
   };

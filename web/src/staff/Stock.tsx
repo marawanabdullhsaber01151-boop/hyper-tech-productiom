@@ -36,7 +36,8 @@ const num = (v: string) => formatNumber(Number(v) || 0);
 /** المخزون والمواد الخام — عرض فقط (للمشتريات). سعر الوحدة مش بيوصل لهنا أصلًا: السيرفر بيخفيه. */
 export function Stock() {
   const list = useQuery((signal) => api.get<StockRow[]>("/inventory", { signal }), []);
-  const [search, setSearch] = useState("");
+  // لوحة الأوامر (Ctrl+K) بتفتح الصفحة على البحث باسم الصنف: ?q=
+  const [search, setSearch] = useState(() => new URLSearchParams(location.search).get("q") ?? "");
   const [cat, setCat] = useState("");
   const [status, setStatus] = useState("");
 

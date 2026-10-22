@@ -89,6 +89,7 @@ export function StaffShell({ path, children }: { path: string; children: Compone
         <div class="st-main">
           <Header
             title={currentTitle(nav.data, path)}
+            nav={nav.data}
             name={name}
             roleLabel={roleLabel}
             collapsed={collapsed}

@@ -118,3 +118,29 @@
 .st-dash__chip { padding-block: var(--sp-2); padding-inline: var(--sp-4); border: 1px solid var(--c-border-1); border-radius: var(--r-pill, 999px); background: var(--c-surface-1); color: var(--c-text-1); font-weight: 700; text-decoration: none; }
 .st-dash__chip:hover { border-color: var(--c-brand); color: var(--c-brand); }
 .st-dash__chip:focus-visible { outline: 2px solid var(--c-focus, var(--c-brand)); outline-offset: 2px; }
+
+/* ---- الجرس ومركز الإشعارات ---- */
+.st-bell { position: relative; display: inline-flex; }
+.st-bell__badge { position: absolute; inset-block-start: 2px; inset-inline-end: 2px; min-inline-size: 18px; block-size: 18px; padding-inline: 4px; display: inline-flex; align-items: center; justify-content: center; border-radius: var(--r-pill, 999px); background: var(--c-danger); color: var(--c-on-danger); font-size: 11px; font-weight: 800; line-height: 1; pointer-events: none; }
+.st-bell__list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--sp-2); }
+.st-bell__bar { display: flex; justify-content: flex-end; margin-block-end: var(--sp-2); }
+.st-bell__item { inline-size: 100%; display: flex; flex-direction: column; gap: var(--sp-1); padding: var(--sp-3); text-align: start; font: inherit; color: var(--c-text-1); background: var(--c-surface-1); border: 1px solid var(--c-border-1); border-radius: var(--r-md); cursor: pointer; }
+.st-bell__item:hover:not(:disabled) { border-color: var(--c-brand); }
+.st-bell__item:focus-visible { outline: 2px solid var(--c-brand); outline-offset: 2px; }
+.st-bell__item:disabled { cursor: default; opacity: 0.7; }
+.st-bell__item--unread { background: var(--c-brand-soft); border-inline-start: 4px solid var(--c-brand); }
+.st-bell__title { font-weight: 800; }
+.st-bell__body { color: var(--c-text-1); font-size: var(--fs-sm); }
+.st-bell__time { color: var(--c-text-2); font-size: var(--fs-sm); }
+
+/* ---- لوحة الأوامر (Ctrl+K) ---- */
+.st-cmd { display: flex; flex-direction: column; gap: var(--sp-3); }
+.st-cmd__list { list-style: none; margin: 0; padding: 0; max-block-size: 50vh; overflow-y: auto; display: flex; flex-direction: column; gap: var(--sp-1); }
+.st-cmd__opt { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); padding-block: var(--sp-2); padding-inline: var(--sp-3); border-radius: var(--r-sm); cursor: pointer; }
+.st-cmd__opt--on { background: var(--c-brand-soft); outline: 1px solid var(--c-brand); }
+.st-cmd__main { display: flex; flex-direction: column; min-inline-size: 0; }
+.st-cmd__title { font-weight: 700; overflow-wrap: anywhere; }
+.st-cmd__hint { color: var(--c-text-2); font-size: var(--fs-sm); }
+.st-cmd__kind { flex-shrink: 0; color: var(--c-text-2); font-size: var(--fs-sm); padding-block: 2px; padding-inline: var(--sp-2); border: 1px solid var(--c-border-1); border-radius: var(--r-pill, 999px); }
+.st-cmd__note { margin: 0; display: flex; flex-direction: column; gap: var(--sp-1); color: var(--c-text-2); }
+.st-cmd__keys { margin: 0; color: var(--c-text-2); font-size: var(--fs-sm); text-align: center; }

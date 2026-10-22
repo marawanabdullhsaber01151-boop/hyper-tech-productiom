@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { Dashboard } from "./Dashboard";
 import { categoryShares, computeKpis, deriveAlerts, isKnownStatus, statusCounts, statusTone, type InvItem, type WorkflowOrder } from "./dashboardCore";
 import type { NavResponse } from "./nav";
+import { invalidateShared } from "./sharedData";
 
 const NOW = new Date("2026-10-22T10:00:00Z");
 const po = (o: Partial<WorkflowOrder> & { id: number }): WorkflowOrder => ({ orderNumber: `PO-${o.id}`, productName: "كوب", qty: "100", workflowStatus: "in_production", ...o });
@@ -72,6 +73,7 @@ const calls = (f: ReturnType<typeof serve>) => f.mock.calls.map((c) => String(c[
 
 afterEach(() => {
   cleanup();
+  invalidateShared();
   vi.unstubAllGlobals();
 });
 
