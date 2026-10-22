@@ -590,7 +590,7 @@ async function afterStaffMessage(
   // Web Push مجاني — نص عام (لا نكشف محتوى الرسالة على شاشة القفل)
   void pushTo(
     { customerId: conv.portalCustomerId },
-    { title: "هايبر تك", body: "لديك رد جديد من فريق المبيعات", url: "portal-chat.html", tag: `chat-${conv.id}` },
+    { title: "هايبر تك", body: "لديك رد جديد من فريق المبيعات", url: "/v2/portal/chat", tag: `chat-${conv.id}` },
   );
   await notifyPortalCustomer(conv.portalCustomerId, {
     type: "portal_chat_message",

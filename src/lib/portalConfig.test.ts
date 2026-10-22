@@ -26,7 +26,7 @@ describe("portal public URL configuration", () => {
         "test-token-123",
       ),
     ).toBe(
-      "https://example.com/portal-activate.html?token=test-token-123",
+      "https://example.com/v2/portal/activate?token=test-token-123",
     );
   });
 

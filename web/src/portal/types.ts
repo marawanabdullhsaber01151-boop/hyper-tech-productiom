@@ -12,6 +12,19 @@ export interface PortalCustomer {
   phone: string;
   email: string | null;
   companyName: string;
+  city?: string | null;
+  address?: string | null;
+}
+export interface PriceInquiry {
+  id: number;
+  bomRecipeId: number;
+  productName: string;
+  requestedQty: string;
+  suggestedPrice: string | null;
+  finalPrice: string | null;
+  status: "pending" | "answered" | string;
+  createdAt: string;
+  answeredAt: string | null;
 }
 export interface CompanyChoice {
   companyId: number;

@@ -16,6 +16,7 @@ import { Apply } from "./screens/auth/Apply";
 import { Track } from "./screens/auth/Track";
 import { Activate } from "./screens/auth/Activate";
 import { Recover } from "./screens/auth/Recover";
+import { ActivationRequest } from "./screens/auth/ActivationRequest";
 import "./portal.css";
 import { Team } from "./screens/Team";
 import { Chat } from "./screens/Chat";
@@ -59,6 +60,7 @@ export const portalRoutes: RouteDef[] = [
   { path: "/portal/track", render: () => <Track /> },
   { path: "/portal/activate", render: () => <Activate /> },
   { path: "/portal/recover", render: () => <Recover /> },
+  { path: "/portal/activation-request", render: () => <ActivationRequest /> },
   { path: "/portal/home", render: () => <Protected><Home /></Protected> },
   { path: "/portal/products", render: () => <Protected><Products /></Protected> },
   { path: "/portal/cart", render: () => <Protected perm="cart.use"><Cart /></Protected> },

@@ -8,7 +8,6 @@
  * بالحالة الأولى "awaiting_operations_claim" عشان كل سطر يعدّي من بوابة
  * مدير التشغيل الذرية قبل ما يبدأ مسار الإنتاج.
  */
-import { resolveSetting } from "../lib/portalSettings";
 import { Router, Request, Response, NextFunction } from "express";
 import { addActivationEvent } from "../lib/activationEvents";
 import { and, eq, desc, sql, inArray, gt, gte, isNull, ne, count, or } from "drizzle-orm";
@@ -1684,21 +1683,6 @@ router.post(
     }
   },
 );
-
-/** علم عام (من غير تسجيل دخول): هل الواجهة الجديدة للبوابة شغّالة؟ بيقراه سكربت التحويل في الصفحات القديمة. */
-router.get("/portal/ui-flags", async (req: Request, res: Response) => {
-  let v2 = false;
-  try {
-    // ?page=portal-customers-admin يفحص علم صفحة تانية. الاسم محدّد بنمط ضيق.
-    const raw = typeof req.query.page === "string" ? req.query.page : "portal";
-    const page = /^[a-z0-9][a-z0-9-]{0,40}$/.test(raw) ? raw : "portal";
-    v2 = (await resolveSetting<boolean>(`ui.v2.${page}`, {})) === true;
-  } catch {
-    v2 = false;
-  }
-  res.set("Cache-Control", "public, max-age=30");
-  res.json({ v2 });
-});
 
 router.get("/portal/config", (_req: Request, res: Response) => {
   res.json({

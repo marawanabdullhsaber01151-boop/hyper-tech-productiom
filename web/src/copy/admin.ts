@@ -265,13 +265,6 @@ export const adminCopy = {
   "a.gs.sub": "الإعدادات العامة لكل الشركات. أي شركة تقدر ياخد قيمة خاصة بيها من صفحة الشركة.",
   "a.gs.back": "رجوع للشركات",
   "a.gs.groups": "مجموعات الإعدادات",
-  "a.gs.v2.title": "الواجهة الجديدة",
-  "a.gs.v2.sub": "شغّل الواجهة الجديدة لكل صفحة. لو حصلت مشكلة اقفلها وترجع للقديمة فورًا.",
-  "a.gs.v2.portal": "بوابة العميل",
-  "a.gs.v2.portal-customers-admin": "إدارة عملاء البوابة",
-  "a.gs.v2.portal-applications-admin": "طلبات الانضمام",
-  "a.gs.v2.portal-activation-requests-admin": "طلبات التفعيل",
-  "a.gs.v2.portal-orders": "طلبات البوابة",
 
   "a.group.team": "الفريق",
   "a.group.join": "الانضمام",

@@ -46,7 +46,7 @@ import planningRouter from "./routes/planning";
 import navRouter from "./routes/nav";
 import portalChatRouter from "./routes/portal-chat";
 import chatStaffRouter from "./routes/chat-staff";
-import { chatStaffRedirectTarget } from "./lib/legacyRedirects";
+import { LEGACY_PORTAL_PATHS, chatStaffRedirectTarget, portalRedirectTarget } from "./lib/legacyRedirects";
 import healthRouter from "./routes/health";
 
 import { errorHandler, notFound } from "./middleware/errorHandler";
@@ -198,6 +198,11 @@ const v2StaticOptions = {
   },
 };
 app.get("/chat-staff.html", (req, res) => res.redirect(302, chatStaffRedirectTarget(req.query.c)));
+app.get(LEGACY_PORTAL_PATHS, (req, res) => {
+  const target = portalRedirectTarget(req.path, req.originalUrl.split("?")[1] ?? "");
+  if (target) res.redirect(302, target);
+  else res.status(404).end();
+});
 app.use("/v2", express.static(path.join(frontendPath, "v2"), v2StaticOptions));
 app.use("/api", express.static(frontendPath));
 app.use(express.static(frontendPath));

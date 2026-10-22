@@ -51,12 +51,12 @@ describe("buildActivationMessage", () => {
   it("is short, contains the link, the validity and the support phone", () => {
     const msg = buildActivationMessage(
       "أحمد",
-      "https://x.test/portal-activate.html?token=abc",
+      "https://x.test/v2/portal/activate?token=abc",
       new Date(Date.now() + 24 * 60 * 60_000 + 5_000),
       "01055651409",
     );
     expect(msg).toContain("أحمد");
-    expect(msg).toContain("https://x.test/portal-activate.html?token=abc");
+    expect(msg).toContain("https://x.test/v2/portal/activate?token=abc");
     expect(msg).toContain("24 ساعة");
     expect(msg).toContain("01055651409");
   });

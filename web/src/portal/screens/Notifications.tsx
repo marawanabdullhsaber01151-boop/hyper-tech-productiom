@@ -12,6 +12,7 @@ import { ListSkeleton, LoadError } from "./shared";
 function target(n: PortalNotification): string | null {
   if (n.referenceType === "production_workflow") return "/portal/orders";
   if (n.referenceType === "portal_member") return "/portal/team";
+  if (n.referenceType === "portal_price_inquiry") return "/portal/orders?tab=inquiries";
   return null;
 }
 

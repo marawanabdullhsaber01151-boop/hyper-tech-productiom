@@ -1,4 +1,4 @@
-import { useState } from "preact/hooks";
+import { useEffect, useState } from "preact/hooks";
 import { t } from "../../../copy";
 import { Button, Checkbox, Field, Input, InlineAlert, PasswordInput } from "../../../design/components";
 import { Link, navigate } from "../../../app/router";
@@ -7,7 +7,17 @@ import { chooseCompany, login } from "../../session";
 import type { CompanyChoice } from "../../types";
 import { AuthLayout } from "./AuthLayout";
 
+/** روابط قديمة بتنتهي بـ #new-customer / #old-customer (الصفحة القديمة كانت تبويبات). */
+export const LEGACY_HASH_TARGET: Record<string, string> = {
+  "#new-customer": "/portal/apply",
+  "#old-customer": "/portal/activation-request",
+};
+
 export function Login() {
+  useEffect(() => {
+    const to = LEGACY_HASH_TARGET[location.hash];
+    if (to) navigate(to, { replace: true });
+  }, []);
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [remember, setRemember] = useState(true);
@@ -62,6 +72,7 @@ export function Login() {
           <Link to="/portal/recover">{t("p.login.forgot")}</Link>
           <Link to="/portal/join">{t("p.login.join")}</Link>
           <Link to="/portal/apply">{t("p.login.apply")}</Link>
+          <Link to="/portal/activation-request">{t("p.login.old")}</Link>
           <Link to="/portal/track">{t("p.login.track")}</Link>
         </>
       }

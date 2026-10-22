@@ -75,7 +75,7 @@ export function buildPortalActivationUrl(
   rawToken: string,
 ): string {
   const activationUrl = new URL(
-    "/portal-activate.html",
+    "/v2/portal/activate",
     portalPublicBaseUrl(req),
   );
   activationUrl.searchParams.set("token", rawToken);

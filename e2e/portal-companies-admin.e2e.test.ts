@@ -284,13 +284,11 @@ suite("plan 05 — إدارة عملاء البوابة (قايمة، تفاصي
     expect(vals.body.values.some((v: any) => v.key === "security.lockout.minutes")).toBe(false);
   });
 
-  it("ui.v2 علم مفتوح لأي صفحة وبيتسجل في السجل", async () => {
-    expect((await put("/portal-admin/settings/ui.v2.portal-customers-admin", { value: true })).status).toBe(200);
-    expect((await put("/portal-admin/settings/ui.v2.portal-customers-admin", { reset: true })).status).toBe(200);
-    expect((await put("/portal-admin/settings/ui.v2.Bad_Name", { value: true })).status).toBe(400);
+  it("أعلام ui.v2 اتشالت (مفيش إعداد بالاسم ده)", async () => {
+    expect((await put("/portal-admin/settings/ui.v2.portal-customers-admin", { value: true })).status).toBe(400);
   });
 
-  it("الكتالوج بيقول نوع كل إعداد، وكتالوج الصلاحيات، وعلم الصفحة العامة", async () => {
+  it("الكتالوج بيقول نوع كل إعداد، وكتالوج الصلاحيات", async () => {
     const cat = await call("/portal-admin/settings");
     const kinds = Object.fromEntries(cat.body.catalog.map((c: any) => [c.key, c.shape.kind]));
     expect(kinds["team.max_members"]).toBe("number");
@@ -301,10 +299,5 @@ suite("plan 05 — إدارة عملاء البوابة (قايمة، تفاصي
     const perms = await call("/portal-companies/permissions");
     expect(perms.body.groups.length).toBeGreaterThan(3);
     expect(perms.body.permissions.some((p: any) => p.key === "cart.use")).toBe(true);
-    await put("/portal-admin/settings/ui.v2.portal-customers-admin", { value: true });
-    const flag = await call("/portal/ui-flags?page=portal-customers-admin", {}, "");
-    expect(flag.body.v2).toBe(true);
-    expect((await call("/portal/ui-flags?page=../x", {}, "")).body.v2).toBe(false === true);
-    await put("/portal-admin/settings/ui.v2.portal-customers-admin", { reset: true });
   });
 });

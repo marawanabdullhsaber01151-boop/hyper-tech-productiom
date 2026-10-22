@@ -37,10 +37,9 @@ describe("portal settings", () => {
     expect(layerSetting("team.max_members", [], {})).toBe(10);
     expect(layerSetting("join.mode", [], { companyId: 1 })).toBe("approval");
   });
-  it("supports open-ended ui.v2.<page> flags", () => {
-    expect(getSettingDef("ui.v2.portal-orders")).toBeTruthy();
-    expect(getSettingDef("ui.v2.Bad Key")).toBeUndefined();
-    expect(layerSetting("ui.v2.portal-orders", [], {})).toBe(false);
+  it("أعلام ui.v2.* اتشالت (الواجهة الجديدة هي الوحيدة)", () => {
+    expect(getSettingDef("ui.v2.portal-orders")).toBeUndefined();
+    expect(getSettingDef("ui.v2.portal")).toBeUndefined();
   });
   it("validates writes (scope, editor, value)", () => {
     expect(validateSettingWrite("join.mode", "company", "auto", "owner")).toBe("auto");

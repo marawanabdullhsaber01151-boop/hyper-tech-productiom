@@ -85,21 +85,7 @@ export const PORTAL_SETTING_DEFS: readonly SettingDef<any>[] = [
 
 const DEF_BY_KEY = new Map(PORTAL_SETTING_DEFS.map((d) => [d.key, d]));
 
-/** `ui.v2.<page>` flags are open-ended (one per migrated page). */
-const UI_V2_PATTERN = /^ui\.v2\.[a-z0-9][a-z0-9-]{0,40}$/;
-const UI_V2_DEF: SettingDef<boolean> = {
-  key: "ui.v2.*",
-  label: "الواجهة الجديدة للصفحة",
-  description: "يشغّل الواجهة الجديدة للصفحة بدل القديمة.",
-  group: "ui",
-  schema: z.boolean(),
-  default: false,
-  scopes: ["global"],
-  editableBy: ["staff"],
-};
-
 export function getSettingDef(key: string): SettingDef<any> | undefined {
-  if (UI_V2_PATTERN.test(key)) return { ...UI_V2_DEF, key };
   return DEF_BY_KEY.get(key);
 }
 

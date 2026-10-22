@@ -31,10 +31,8 @@ await check("طرق استعادة كلمة السر (لازم migration الخ�
   const m = data(j)?.methods;
   return Array.isArray(m) && m.length > 0 || "القايمة فاضية";
 });
-await check("علم الواجهة الجديدة (ui-flags)", "/api/v1/portal/ui-flags", (r, j) => (r.ok && typeof data(j)?.v2 === "boolean") || `الرد ${r.status} — ارفع آخر نسخة`);
 await check("إعدادات البوابة", "/api/v1/portal/config", (r) => r.ok || `الرد ${r.status}`);
 await check("الواجهة الجديدة /v2/portal/login", "/v2/portal/login", (r, _j, t) => (r.ok && t.includes("<div id=")) || `الرد ${r.status} — اتأكد إن npm run build اشتغل على Vercel`);
-await check("صفحة الاستعادة القديمة", "/portal-recover.html", (r) => r.ok || `الرد ${r.status}`);
-await check("سكربت التحويل", "/JS/portal-v2-redirect.js", (r) => r.ok || `الرد ${r.status}`);
+await check("رابط الصفحة القديمة بيتحوّل للجديدة", "/portal-recover.html", (r) => ((r.status === 301 || r.status === 302) && (r.headers.get("location") ?? "").includes("/v2/portal/recover")) || `الرد ${r.status} — المفروض تحويل لـ /v2/portal/recover`);
 console.log(bad ? `\nفي ${bad} مشكلة. ابعتلي السطور اللي فيها ✗.` : "\nكله تمام ✓");
 process.exit(bad ? 1 : 0);

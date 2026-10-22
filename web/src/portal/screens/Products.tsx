@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "preact/hooks";
 import { t } from "../../copy";
-import { Button, Drawer, EmptyState, FilterBar, Icon, IconButton, Input, Field, InlineAlert, useToast } from "../../design/components";
-import { Heart, ImageOff, Plus } from "../../design/icons";
+import { Button, Dialog, Drawer, EmptyState, FilterBar, Icon, IconButton, Input, Field, InlineAlert, useToast } from "../../design/components";
+import { ChevronLeft, ChevronRight, Heart, ImageOff, Plus } from "../../design/icons";
 import { useMutation, useQuery } from "../../api/hooks";
 import { formatNumber } from "../../lib/format";
 import { api } from "../api";
@@ -54,7 +54,11 @@ export function Products() {
   const list = useQuery((signal) => api.get<Product[]>("/portal/products", { signal }), []);
   const [q, setQ] = useState("");
   const [onlyFav, setOnlyFav] = useState(false);
-  const [openId, setOpenId] = useState<number | null>(null);
+  // ?open=<id> بيفتح المنتج مباشرة (من «طلبات الأسعار»)
+  const [openId, setOpenId] = useState<number | null>(() => {
+    const v = Number(new URLSearchParams(location.search).get("open"));
+    return Number.isInteger(v) && v > 0 ? v : null;
+  });
   const wish = useWishlist();
   const rows = useMemo(() => {
     const s = q.trim().toLowerCase();
@@ -91,6 +95,47 @@ export function Products() {
   );
 }
 
+/** عرض مكبّر لصور المنتج: تنقّل بالأسهم (RTL)، وضغطة على الصورة بتكبّرها. */
+export function Lightbox({ images, index, name, onIndex, onClose }: { images: string[]; index: number | null; name: string; onIndex: (i: number) => void; onClose: () => void }) {
+  const [zoom, setZoom] = useState(false);
+  const open = index !== null;
+  const n = images.length;
+  const go = (d: number) => {
+    if (index === null || n < 2) return;
+    setZoom(false);
+    onIndex((index + d + n) % n);
+  };
+  useEffect(() => {
+    if (!open) return;
+    const h = (e: KeyboardEvent) => {
+      // الواجهة RTL: السهم الشمال = الصورة اللي بعدها
+      if (e.key === "ArrowLeft") go(1);
+      else if (e.key === "ArrowRight") go(-1);
+    };
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+  }, [open, index, n]);
+  useEffect(() => setZoom(false), [open]);
+  const src = index === null ? undefined : images[index];
+  return (
+    <Dialog open={open} onClose={onClose} title={t("p.lb.title")} description={index === null ? undefined : t("p.lb.of", { i: index + 1, n })} size="lg">
+      {src ? (
+        <div class="pt-lb">
+          <button type="button" class={`pt-lb__stage${zoom ? " pt-lb__stage--zoom" : ""}`} aria-label={zoom ? t("p.lb.fit") : t("p.lb.zoom")} onClick={() => setZoom((z) => !z)}>
+            <img src={src} alt={t("p.products.image", { name })} />
+          </button>
+          {n > 1 ? (
+            <div class="pt-row pt-row--between">
+              <IconButton icon={ChevronRight} label={t("p.lb.prev")} variant="secondary" onClick={() => go(-1)} />
+              <IconButton icon={ChevronLeft} label={t("p.lb.next")} variant="secondary" onClick={() => go(1)} />
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+    </Dialog>
+  );
+}
+
 function ProductDrawer({ id, onClose, fav, onFav }: { id: number | null; onClose: () => void; fav: boolean; onFav: () => void }) {
   const detail = useQuery((signal) => (id === null ? Promise.resolve(null) : api.get<ProductDetail>(`/portal/products/${id}`, { signal })), [id]);
   const cfg = useConfig();
@@ -98,6 +143,7 @@ function ProductDrawer({ id, onClose, fav, onFav }: { id: number | null; onClose
   const toast = useToast();
   const [unit, setUnit] = useState<"piece" | "carton">("piece");
   const [qty, setQty] = useState("");
+  const [lb, setLb] = useState<number | null>(null);
   const d = detail.data;
   const min = cfg.data?.minimumOrderQuantity ?? 1;
   const per = d?.cartonConversion?.piecesPerCarton ?? 0;
@@ -107,6 +153,7 @@ function ProductDrawer({ id, onClose, fav, onFav }: { id: number | null; onClose
   useEffect(() => {
     setQty("");
     setUnit("piece");
+    setLb(null);
   }, [id]);
 
   const add = useMutation(async () => {
@@ -130,7 +177,9 @@ function ProductDrawer({ id, onClose, fav, onFav }: { id: number | null; onClose
           {imgs.length ? (
             <div class={`pt-gallery${imgs.length === 1 ? " pt-gallery--single" : ""}`} role="group" aria-label={t("p.products.gallery")}>
               {imgs.map((src, i) => (
-                <img key={i} src={src} alt={t("p.products.image", { name: d.productName })} loading="lazy" />
+                <button key={i} type="button" class="pt-gallery__btn" aria-label={t("p.lb.open")} onClick={() => setLb(i)}>
+                  <img src={src} alt={t("p.products.image", { name: d.productName })} loading="lazy" />
+                </button>
               ))}
             </div>
           ) : null}
@@ -143,11 +192,15 @@ function ProductDrawer({ id, onClose, fav, onFav }: { id: number | null; onClose
             <div class="pt-stack">
               <strong>{t("p.products.featured")}</strong>
               <div class="pt-chips">
-                {d.featuredIngredients.map((f, i) => (
-                  <span key={i} class="ht-pill">
-                    {f.name ?? f.materialName}
-                  </span>
-                ))}
+                {d.featuredIngredients.map((f, i) => {
+                  const pic = f.imageData ?? f.image;
+                  return (
+                    <span key={i} class="ht-pill pt-feat">
+                      {pic ? <img class="pt-feat__img" src={pic} alt="" loading="lazy" /> : null}
+                      {f.name ?? f.materialName}
+                    </span>
+                  );
+                })}
               </div>
             </div>
           ) : null}
@@ -185,6 +238,7 @@ function ProductDrawer({ id, onClose, fav, onFav }: { id: number | null; onClose
           ) : null}
         </div>
       ) : null}
+      <Lightbox images={imgs} index={lb} name={d?.productName ?? ""} onIndex={setLb} onClose={() => setLb(null)} />
     </Drawer>
   );
 }

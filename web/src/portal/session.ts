@@ -25,6 +25,16 @@ function applyPayload(p: LoginPayload) {
   authStore.set({ status: "authed", customer: p.customer, member: p.member, mustChangePassword: p.mustChangePassword });
 }
 
+/** بعد تعديل البيانات: نحدّث الجلسة المحلية والشاشة من غير تسجيل دخول تاني. */
+export function updateCustomer(patch: Partial<PortalCustomer>) {
+  const s = authStore.get();
+  if (!s.customer) return;
+  const customer = { ...s.customer, ...patch };
+  const saved = portalSession.get();
+  if (saved) portalSession.save({ ...saved, customer });
+  authStore.set({ ...s, customer });
+}
+
 export function signOutLocal() {
   portalSession.clear();
   authStore.set({ status: "anon", customer: null, member: null, mustChangePassword: false });
@@ -45,8 +55,8 @@ export async function bootstrap(): Promise<void> {
     mustChangePassword: s.mustChangePassword === true,
   });
   try {
-    const me = await api.get<{ id: number; fullName: string; phone: string; email: string | null; companyName: string; mustChangePassword: boolean; member: PortalMember | null }>("/portal/me");
-    const customer: PortalCustomer = { id: me.id, fullName: me.fullName, phone: me.phone, email: me.email, companyName: me.companyName };
+    const me = await api.get<{ id: number; fullName: string; phone: string; email: string | null; companyName: string; city?: string | null; address?: string | null; mustChangePassword: boolean; member: PortalMember | null }>("/portal/me");
+    const customer: PortalCustomer = { id: me.id, fullName: me.fullName, phone: me.phone, email: me.email, companyName: me.companyName, city: me.city ?? null, address: me.address ?? null };
     const member = me.member ? { ...(s.member as PortalMember | undefined), ...me.member } : ((s.member as PortalMember) ?? null);
     portalSession.save({ ...s, customer, member, mustChangePassword: me.mustChangePassword });
     authStore.set({ status: "authed", customer, member, mustChangePassword: me.mustChangePassword });

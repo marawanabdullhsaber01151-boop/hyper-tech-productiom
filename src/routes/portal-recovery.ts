@@ -120,7 +120,7 @@ async function auditUser(userId: number, action: string, req: Request, after?: u
 }
 
 function resetUrl(req: Request, raw: string): string {
-  const u = new URL(buildPortalPageUrl(req, "/portal-activate.html"));
+  const u = new URL(buildPortalPageUrl(req, "/v2/portal/activate"));
   u.searchParams.set("mode", "reset");
   u.searchParams.set("token", raw);
   return u.toString();

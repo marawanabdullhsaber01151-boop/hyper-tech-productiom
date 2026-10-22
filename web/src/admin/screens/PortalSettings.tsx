@@ -1,6 +1,6 @@
 import { useState } from "preact/hooks";
 import { ar, t, type CopyKey } from "../../copy";
-import { Button, EmptyState, InlineAlert, Section, Skeleton, Switch, Tabs } from "../../design/components";
+import { Button, EmptyState, InlineAlert, Section, Skeleton, Tabs } from "../../design/components";
 import { ArrowRight } from "../../design/icons";
 import { Link } from "../../app/router";
 import { useQuery } from "../../api/hooks";
@@ -9,10 +9,6 @@ import { useAct } from "../act";
 import { SettingField } from "../SettingField";
 import type { GlobalSettings, HistoryItem } from "../types";
 import { HistoryList } from "./CompanyTabs";
-
-/** الصفحات اللي ليها واجهة جديدة (كل صفحة بتتحول لوحدها). */
-// صفحات الإدارة (العملاء/الانضمام/التفعيل/الطلبات/الشات) بقت واجهة واحدة جديدة بس ومفيش لها علم تشغيل. فاضل: بوابة العميل.
-export const V2_PAGES = ["portal"];
 
 export function PortalSettingsPage() {
   const { run, busy } = useAct();
@@ -35,7 +31,6 @@ export function PortalSettingsPage() {
   const stored = new Map((d?.values ?? []).map((v) => [v.key, v.value]));
   const groups = d ? [...new Set(d.catalog.map((c) => c.group))] : [];
   const current = groups.includes(group) ? group : groups[0] ?? "";
-  const flagOn = (page: string) => stored.get(`ui.v2.${page}`) === true;
 
   const panel = (g: string) => (
     <div class="ad-stack">
@@ -75,14 +70,6 @@ export function PortalSettingsPage() {
             onChange={setGroup}
             tabs={groups.map((g) => ({ id: g, label: `a.group.${g}` in ar ? t(`a.group.${g}` as CopyKey) : g, panel: panel(g) }))}
           />
-          <Section title={t("a.gs.v2.title")} description={t("a.gs.v2.sub")}>
-            <div class="ad-stack">
-              {V2_PAGES.map((p) => (
-                <Switch key={p} label={t(`a.gs.v2.${p}` as CopyKey)} checked={flagOn(p)} disabled={busy} onChange={(v) => void run(() => put(`ui.v2.${p}`, { value: v }), t("common.saved"))} />
-              ))}
-              {err?.key.startsWith("ui.v2.") ? <InlineAlert tone="danger">{err.msg}</InlineAlert> : null}
-            </div>
-          </Section>
           <Section title={t("a.hist.title")} description={t("a.hist.sub")}>
             {hist.data ? (
               <HistoryList items={hist.data.items} onRevert={(id) => run(async () => { await api.post(`/portal-admin/settings-history/${id}/revert`, {}); await Promise.all([data.refetch(), hist.refetch()]); }, t("a.hist.reverted"))} />

@@ -1,7 +1,8 @@
+import type { ComponentChildren } from "preact";
 import { useEffect, useState } from "preact/hooks";
 import { t } from "../../copy";
 import { Button, Card, Dialog, Drawer, EmptyState, Field, InlineAlert, Select, StatusPill, Textarea, Timeline, useToast } from "../../design/components";
-import { navigate } from "../../app/router";
+import { navigate, usePath } from "../../app/router";
 import { ApiError } from "../../api/client";
 import { useMutation } from "../../api/hooks";
 import { formatDate, formatDateTime, formatNumber } from "../../lib/format";
@@ -9,6 +10,7 @@ import { api } from "../api";
 import { can } from "../session";
 import { loadCart, setCartQty } from "../cart";
 import type { OrderBatch, OrderItem, Paged } from "../types";
+import { PriceInquiries } from "./PriceInquiries";
 import { ListSkeleton, LoadError, ROLLUP_TONE, currentStepLabel, readQty, rollupLabel } from "./shared";
 
 export async function reorderBatch(batch: OrderBatch): Promise<number> {
@@ -148,7 +150,7 @@ function BatchDrawer({ batch, onClose, onChanged }: { batch: OrderBatch | null; 
   );
 }
 
-export function Orders({ openRef }: { openRef?: string }) {
+function OrdersList({ openRef, tabs }: { openRef?: string; tabs?: ComponentChildren }) {
   const company = can("orders.view_company");
   const [scope, setScope] = useState<"mine" | "all">(company ? "all" : "mine");
   const [pages, setPages] = useState<OrderBatch[]>([]);
@@ -196,6 +198,7 @@ export function Orders({ openRef }: { openRef?: string }) {
           />
         ) : null}
       </div>
+      {tabs}
       {error ? <LoadError error={error} onRetry={() => setTick((n) => n + 1)} /> : null}
       {loading && pages.length === 0 ? <ListSkeleton /> : null}
       {!loading && !error && pages.length === 0 ? <EmptyState title={t("p.orders.empty")} description={t("p.orders.emptyBody")} /> : null}
@@ -223,5 +226,38 @@ export function Orders({ openRef }: { openRef?: string }) {
         }}
       />
     </>
+  );
+}
+
+/** تبديل بين «الطلبات» و«طلبات الأسعار» (نفس الصفحة، بتتحفظ في الرابط). */
+function OrdersTabs({ inquiries }: { inquiries: boolean }) {
+  return (
+    <div class="pt-seg" role="group" aria-label={t("p.inq.tabs")}>
+      <button type="button" aria-pressed={!inquiries} onClick={() => navigate("/portal/orders")}>
+        {t("p.inq.tab.orders")}
+      </button>
+      <button type="button" aria-pressed={inquiries} onClick={() => navigate("/portal/orders?tab=inquiries")}>
+        {t("p.inq.tab.inquiries")}
+      </button>
+    </div>
+  );
+}
+
+export function Orders({ openRef }: { openRef?: string }) {
+  usePath();
+  const inquiries = !openRef && new URLSearchParams(location.search).get("tab") === "inquiries";
+  if (inquiries) {
+    return (
+      <>
+        <div class="pt-page-head">
+          <h1 class="pt-page-title">{t("p.inq.tab.inquiries")}</h1>
+        </div>
+        <OrdersTabs inquiries />
+        <PriceInquiries />
+      </>
+    );
+  }
+  return (
+    <OrdersList openRef={openRef} tabs={openRef ? undefined : <OrdersTabs inquiries={false} />} />
   );
 }

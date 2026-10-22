@@ -14,18 +14,9 @@ const departmentsSource = readFileSync(
   "utf8",
 );
 
-const pageRules = [
-  {
-    page: "portal.html",
-    backend: null,
-    permission: "public portal/customer session",
-  },
-  {
-    page: "portal-login.html",
-    backend: null,
-    permission: "public portal authentication",
-  },
-];
+// صفحات بوابة العميل القديمة اتشالت (الواجهة الجديدة /v2/portal)، ومصفوفة الأدوار الفعلية في src/accessMatrix.test.ts.
+// أي صفحة HTML قديمة جديدة للموظفين تتضاف هنا بشكل { page, backend: ["group","key"], permission }.
+const pageRules = [];
 
 function extractPermissionRoles(group, key) {
   if (!group) return [];

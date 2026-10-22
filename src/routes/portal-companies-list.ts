@@ -725,7 +725,7 @@ router.post("/portal-companies/:id/members/:memberId/reset-link", ...manage, asy
       userId: m.userId, purpose: "password_reset", ttlMinutes: ttl, createdByStaffId: req.user!.userId,
       meta: { kind: "staff_link", companyId },
     });
-    const u = new URL(buildPortalPageUrl(req, "/portal-activate.html"));
+    const u = new URL(buildPortalPageUrl(req, "/v2/portal/activate"));
     u.searchParams.set("mode", "reset");
     u.searchParams.set("token", issued.raw);
     const url = u.toString();

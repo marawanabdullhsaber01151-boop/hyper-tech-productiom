@@ -12,4 +12,3 @@
 | `npm run check:roles` / `check:sales` / `check:repository` | فحوص اتساق |
 | `npm run audit:baseline` / `audit:phase1` / `audit:foundation` / `audit:lifecycle` | تقارير تدقيق بيانات |
 | `npm run telegram:webhook` | ضبط webhook بوت تيليجرام |
-| `npm run flag:v2` | **مؤقت** — يتحذف في المرحلة ٢ مع علامات `ui.v2.*` |

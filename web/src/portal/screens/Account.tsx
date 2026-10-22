@@ -1,19 +1,22 @@
 import { useState } from "preact/hooks";
 import { t } from "../../copy";
 import { Button, Card, Dialog, Field, Icon, Input, InlineAlert, PasswordInput, Section, Tabs, useToast } from "../../design/components";
-import { LogOut, Mail, Send, ShieldCheck, Smartphone } from "../../design/icons";
+import { LogOut, Mail, Pencil, Send, ShieldCheck, Smartphone } from "../../design/icons";
 import { navigate, usePath } from "../../app/router";
 import { useMutation, useQuery } from "../../api/hooks";
 import { copyText } from "../../lib/clipboard";
 import { formatNumber, formatRelative } from "../../lib/format";
 import { BRAND_PRESETS, accentLabel, applyTheme, readCachedTheme, type ThemeSettings } from "../../design/theme-runtime";
 import { api } from "../api";
-import { logout, useAuth } from "../session";
+import { can, logout, useAuth } from "../session";
 import type { ChannelsInfo, PortalSessionInfo } from "../types";
 import { ListSkeleton, LoadError } from "./shared";
+import { ProfileEdit } from "./ProfileEdit";
 
 function Profile() {
   const { customer, member } = useAuth();
+  const [editing, setEditing] = useState(false);
+  const canEdit = can("company.edit_profile") && !!customer;
   return (
     <Card class="pt-stack" pad>
       <dl class="pt-dl">
@@ -25,13 +28,29 @@ function Profile() {
         <dd>{customer?.email ?? t("p.account.none")}</dd>
         <dt>{t("p.account.company")}</dt>
         <dd>{customer?.companyName}</dd>
+        {customer?.city ? (
+          <>
+            <dt>{t("p.account.city")}</dt>
+            <dd>{customer.city}</dd>
+          </>
+        ) : null}
+        {customer?.address ? (
+          <>
+            <dt>{t("p.account.address")}</dt>
+            <dd>{customer.address}</dd>
+          </>
+        ) : null}
         <dt>{t("p.account.role")}</dt>
         <dd>{member?.isOwner ? t("p.account.owner") : (member?.roleName ?? member?.roleKey)}</dd>
       </dl>
-      <p class="pt-muted">{t("p.account.profileNote")}</p>
-      <Button variant="secondary" icon={LogOut} onClick={() => void logout().then(() => navigate("/portal/login", { replace: true }))}>
-        {t("p.account.logout")}
-      </Button>
+      {canEdit ? null : <p class="pt-muted">{t("p.account.profileNote")}</p>}
+      <div class="pt-row">
+        {canEdit ? <Button icon={Pencil} onClick={() => setEditing(true)}>{t("p.prof.edit")}</Button> : null}
+        <Button variant="secondary" icon={LogOut} onClick={() => void logout().then(() => navigate("/portal/login", { replace: true }))}>
+          {t("p.account.logout")}
+        </Button>
+      </div>
+      {canEdit && customer ? <ProfileEdit customer={customer} open={editing} onClose={() => setEditing(false)} /> : null}
     </Card>
   );
 }

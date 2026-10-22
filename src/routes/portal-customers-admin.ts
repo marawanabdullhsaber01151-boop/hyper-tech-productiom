@@ -1456,7 +1456,7 @@ router.patch(
         message: [
           "Hyper-Tech: لم نتمكن من اعتماد طلب تفعيل دخولك حاليًا.",
           `للمساعدة لديك خياران: 1) تواصل مباشرة مع خدمة العملاء على ${supportPhone()}.`,
-          `2) قدّم كعميل جديد من خلال هذا الرابط: ${buildPortalPageUrl(req, "/portal-login.html#new-customer")}`,
+          `2) قدّم كعميل جديد من خلال هذا الرابط: ${buildPortalPageUrl(req, "/v2/portal/apply")}`,
         ].join(" "),
       });
       res.json({
