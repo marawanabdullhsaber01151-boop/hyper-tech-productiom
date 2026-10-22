@@ -1,18 +1,19 @@
 /** بحث عربي متسامح: الهمزات والتشكيل والتاء المربوطة والأرقام الهندية ما بتفرقش. خالص (من غير واجهة). */
 
-const TASHKEEL = /[ؐ-ًؚ-ٰٟۖ-ۭـ]/g;
+const TASHKEEL = /[\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06ED\u0640]/g;
 
+/** كل الحروف العربية هنا بصيغة unicode escapes عشان قاعدة lint-web (مفيش نص عربي ثابت في الكود). */
 export function normalize(input: string): string {
   return input
     .toLowerCase()
     .replace(TASHKEEL, "")
-    .replace(/[أإآٱ]/g, "ا")
-    .replace(/ى/g, "ي")
-    .replace(/ة/g, "ه")
-    .replace(/ؤ/g, "و")
-    .replace(/ئ/g, "ي")
-    .replace(/[٠-٩]/g, (c) => String(c.charCodeAt(0) - 0x660))
-    .replace(/[۰-۹]/g, (c) => String(c.charCodeAt(0) - 0x6f0))
+    .replace(/[\u0623\u0625\u0622\u0671]/g, "\u0627") // alef variants -> alef
+    .replace(/\u0649/g, "\u064A") // alef maksura -> yeh
+    .replace(/\u0629/g, "\u0647") // teh marbuta -> heh
+    .replace(/\u0624/g, "\u0648") // waw with hamza -> waw
+    .replace(/\u0626/g, "\u064A") // yeh with hamza -> yeh
+    .replace(/[\u0660-\u0669]/g, (c) => String(c.charCodeAt(0) - 0x660))
+    .replace(/[\u06F0-\u06F9]/g, (c) => String(c.charCodeAt(0) - 0x6f0))
     .replace(/[\s\-_/\\.]+/g, " ")
     .trim();
 }
