@@ -17,27 +17,6 @@ export const loginRateLimiter = rateLimit({
   },
 });
 
-/** حد منفصل لطلبات OTP على مستوى IP + المعرّف، لمنع الإرسال المتكرر المكلف */
-export const otpRequestRateLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000,
-  max: 3,
-  keyGenerator: (req) => {
-    const identifier =
-      typeof req.body?.identifier === "string" ?
-        req.body.identifier.trim().replace(/\s+/g, "").toLowerCase()
-      : "missing";
-    return `${req.ip || "unknown"}:${identifier}`;
-  },
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: {
-    error: {
-      code: "OTP_REQUEST_RATE_LIMIT_EXCEEDED",
-      message: "تم تجاوز الحد المسموح لطلبات الأكواد — حاول مرة أخرى بعد ساعة",
-    },
-  },
-});
-
 /** حماية عامة على جميع مسارات الـ API */
 export const apiRateLimiter = rateLimit({
   windowMs: 60 * 1000, // دقيقة واحدة

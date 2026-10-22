@@ -15,7 +15,6 @@ import {
   portalActivationRequestsTable,
   portalActivationTokensTable,
   portalCustomersTable,
-  portalPasswordResetRequestsTable,
   productionWorkflowOrdersTable,
   salesOrdersTable,
   egyptGovernorateSchema,
@@ -23,7 +22,7 @@ import {
   systemUsersTable,
 } from "../db/schema";
 import { requireAuth, requireRole } from "../middleware/auth";
-import { revokeAllPortalSessions, revokeUserSessions } from "../middleware/portal-auth";
+import { revokeAllPortalSessions } from "../middleware/portal-auth";
 import { syncOwnerUserFromCompany } from "../lib/portalCredentials";
 import { provisionCompanyIdentity } from "../lib/portalIdentityProvisioning";
 import { PERMISSIONS } from "../lib/permissions";
@@ -33,7 +32,6 @@ import { deliverActivation } from "../lib/activationDelivery";
 import { buildPortalPageUrl } from "../lib/portalConfig";
 import {
   buildActivationPayload,
-  buildWhatsAppLink,
   clampActivationTtlMinutes,
   issueActivationLink,
   supportPhone as configuredSupportPhone,
@@ -41,7 +39,7 @@ import {
 import { normalizePhone } from "../lib/identityNormalization";
 import { addApplicationEvent, stagePatch } from "../lib/applicationEvents";
 import { z } from "zod";
-import { randomBytes, randomInt } from "node:crypto";
+import { randomBytes } from "node:crypto";
 
 const router = Router();
 const reviewerRoles = PERMISSIONS.portalCustomers.write;
@@ -709,155 +707,6 @@ router.post(
 );
 
 /* ============================================================
-   GET /portal-customers/password-reset-requests — طلبات استرجاع الباسورد المعلّقة
-============================================================ */
-router.get(
-  "/portal-customers/password-reset-requests",
-  requireAuth,
-  requireRole(...PERMISSIONS.portalCustomers.write),
-  async (_req: Request, res: Response, next: NextFunction) => {
-    try {
-      const requests = await db
-        .select({
-          id: portalPasswordResetRequestsTable.id,
-          status: portalPasswordResetRequestsTable.status,
-          createdAt: portalPasswordResetRequestsTable.createdAt,
-          customerName: portalCustomersTable.fullName,
-          customerPhone: portalCustomersTable.phone,
-          portalCustomerId: portalCustomersTable.id,
-        })
-        .from(portalPasswordResetRequestsTable)
-        .innerJoin(
-          portalCustomersTable,
-          eq(
-            portalPasswordResetRequestsTable.portalCustomerId,
-            portalCustomersTable.id,
-          ),
-        )
-        .where(eq(portalPasswordResetRequestsTable.status, "pending"))
-        .orderBy(desc(portalPasswordResetRequestsTable.createdAt));
-      res.json(requests);
-    } catch (err) {
-      next(err);
-    }
-  },
-);
-
-/* ============================================================
-   PATCH /portal-customers/:id/reset-password — ✅ الحل البديل السريع لغاية
-   ما يتفعّل إيميل حقيقي: الموظف بيحدد باسورد جديد للعميل (أو يسيب النظام
-   يولّد واحد عشوائي قوي)، ويقفل أي طلب استرجاع معلّق ليه تلقائيًا
-============================================================ */
-const resetPasswordSchema = z.object({
-  newPassword: z
-    .string()
-    .min(6, "كلمة المرور لازم تكون 6 أحرف على الأقل")
-    .optional(),
-});
-
-function generateTempPassword(): string {
-  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
-  let result = "";
-  for (let i = 0; i < 10; i++)
-    result += chars[randomInt(chars.length)];
-  return result;
-}
-
-router.patch(
-  "/portal-customers/:id/reset-password",
-  requireAuth,
-  requireRole(...PERMISSIONS.portalCustomers.write),
-  async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const id = Number(req.params.id);
-      if (!id) {
-        res.status(400).json({ error: { message: "معرّف غير صحيح" } });
-        return;
-      }
-
-      const { newPassword } = resetPasswordSchema.parse(req.body);
-      // ✨ لو الموظف مكتبش باسورد جديد، النظام يولّد واحد عشوائي قوي بنفسه
-      const finalPassword = newPassword || generateTempPassword();
-
-      const customer = await db.transaction(async (tx) => {
-        const [before] = await tx
-          .select()
-          .from(portalCustomersTable)
-          .where(eq(portalCustomersTable.id, id))
-          .limit(1);
-        if (!before) {
-          throw domainError(404, "PORTAL_CUSTOMER_NOT_FOUND", "الحساب غير موجود");
-        }
-
-        const [updated] = await tx
-          .update(portalCustomersTable)
-          .set({
-            passwordHash: await bcrypt.hash(finalPassword, 12),
-            mustChangePassword: true,
-          })
-          .where(eq(portalCustomersTable.id, id))
-          .returning({
-            id: portalCustomersTable.id,
-            fullName: portalCustomersTable.fullName,
-            phone: portalCustomersTable.phone,
-          });
-        if (!updated) throw domainError(404, "PORTAL_CUSTOMER_NOT_FOUND", "الحساب غير موجود");
-        // الباسورد القديم مات، فأي جلسة مفتوحة بيه لازم تتقفل في نفس اللحظة.
-        const ownerUserId = await syncOwnerUserFromCompany(tx, id);
-        const revokedSessions =
-          (await revokeAllPortalSessions(id, tx)) +
-          (ownerUserId ? await revokeUserSessions(ownerUserId, tx) : 0);
-        await tx
-          .update(portalPasswordResetRequestsTable)
-          .set({
-            status: "resolved",
-            resolvedById: req.user!.userId,
-            resolvedByName: req.user!.username,
-            resolvedAt: new Date(),
-          })
-          .where(
-            and(
-              eq(portalPasswordResetRequestsTable.portalCustomerId, id),
-              eq(portalPasswordResetRequestsTable.status, "pending"),
-            ),
-          );
-        await writeAuditEvent({
-          executor: tx,
-          actorUserId: req.user!.userId,
-          actorName: req.user!.username,
-          actionKey: "portal.customer.password.reset",
-          resourceType: "portal_customer",
-          resourceId: id,
-          beforeData: { id: before.id, fullName: before.fullName, phone: before.phone },
-          afterData: { ...updated, sessionsRevoked: revokedSessions, mustChangePassword: true },
-          reason: "إعادة تعيين كلمة مرور حساب عميل البوابة",
-          ipAddress: req.ip,
-          userAgent: req.get("user-agent"),
-        });
-        return updated;
-      });
-
-      // ✅ الباسورد الجديد بيترجع في الرد عشان الموظف يوصّله للعميل تليفونيًا/واتساب
-      res.json({
-        message: "تم تعيين كلمة مرور جديدة",
-        customer,
-        newPassword: finalPassword,
-        mustChangePassword: true,
-        whatsappUrl: buildWhatsAppLink(
-          customer.phone,
-          [
-            `أهلاً ${customer.fullName}، دي كلمة السر المؤقتة لحسابك في Hyper-Tech: ${finalPassword}`,
-            "هتطلب منك تغييرها أول ما تدخل.",
-          ].join("\n"),
-        ),
-      });
-    } catch (err) {
-      next(err);
-    }
-  },
-);
-
-/* ============================================================
    GET /portal-applications — طلبات الانضمام الجديدة
 ============================================================ */
 router.get(
@@ -1149,33 +998,6 @@ async function reviewApplication(
      return { application: updated, phone: application.phone };
   });
 }
-
-router.patch(
-  "/portal-applications/:id/needs-info",
-  requireAuth,
-  requireRole(...reviewerRoles),
-  async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const { reason } = reviewerNoteSchema("طلب المعلومات").parse(req.body);
-      const result = await reviewApplication(req, parsePositiveId(req.params.id), "needs_info", reason);
-      const sms = await sendPortalSms({
-        phone: result.phone,
-        message: [
-          "Hyper-Tech: فريق المبيعات يحتاج معلومات إضافية لاستكمال مراجعة طلب انضمامك.",
-          `الرسالة: ${reason}`,
-          `للمساعدة تواصل مع خدمة العملاء: ${supportPhone()}`,
-        ].join(" "),
-      });
-      res.json({
-        message: "تم تسجيل طلب المعلومات الإضافية وإرسال إشعار للعميل",
-        application: result.application,
-        messaging: { delivered: sms.delivered },
-      });
-    } catch (err) {
-      next(err);
-    }
-  },
-);
 
 router.patch(
   "/portal-applications/:id/reject",

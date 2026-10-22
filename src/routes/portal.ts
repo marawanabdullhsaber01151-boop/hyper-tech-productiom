@@ -19,14 +19,12 @@ import {
   portalCustomersTable,
   portalUsersTable,
   portalMembersTable,
-  portalPasswordResetRequestsTable,
   portalApplicationsTable,
   portalActivationRequestsTable,
   portalActivationTokensTable,
   portalSessionsTable,
   portalOrderReviewsTable,
   loginPortalCustomerSchema,
-  forgotPortalPasswordSchema,
   contactsTable,
   bomRecipesTable,
   bomRecipeItemsTable,
@@ -34,7 +32,6 @@ import {
   productionWorkflowOrdersTable,
   portalCartItemsTable,
   portalWishlistItemsTable,
-  portalOtpCodesTable,
   portalNotificationsTable,
   foundationItemsTable,
   foundationUnitConversionsTable,
@@ -59,11 +56,9 @@ import {
   registerFailedLogin,
   registerSuccessfulLogin,
 } from "../lib/portalLogin";
-import { loginRateLimiter, otpRequestRateLimiter } from "../middleware/rateLimiter";
-import { notifyRole, notifyRoles } from "../lib/notifications";
-import { PERMISSIONS } from "../lib/permissions";
+import { loginRateLimiter } from "../middleware/rateLimiter";
+import { notifyRole } from "../lib/notifications";
 import { notifyPortalCustomer } from "../lib/portalNotifications";
-import { sendCustomerAlert, sendOtpCode } from "../lib/otpDelivery";
 import { generateWorkflowOrderNumber } from "./production-workflow";
 import { toPortalOrderItem, computeBatchRollupStatus } from "../domain/portal-orders";
 import { suggestDueDate } from "../lib/dueDateSuggestion";
@@ -83,7 +78,6 @@ import { createSettingsResolver } from "../lib/portalSettings";
 import { z } from "zod";
 import { completenessScore } from "../lib/applicationMatching";
 import { addApplicationEvent, stagePatch } from "../lib/applicationEvents";
-import { logger } from "../lib/logger";
 import { writeAuditEvent } from "../lib/governance";
 import { parseIdParam } from "../lib/validate";
 import {
@@ -118,26 +112,6 @@ const portalAccountLoginRateLimiter = rateLimit({
     error: {
       code: "PORTAL_LOGIN_RATE_LIMIT_EXCEEDED",
       message: "محاولات تسجيل دخول كثيرة — حاول مرة أخرى بعد 15 دقيقة",
-    },
-  },
-});
-const portalOtpNormalizedRateLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000,
-  max: 3,
-  keyGenerator: (req) => {
-    const rawIdentifier =
-      typeof req.body?.identifier === "string" ?
-        req.body.identifier
-      : "missing";
-    const identifier = normalizePortalIdentifier(rawIdentifier).value || "missing";
-    return `${req.ip || "unknown"}:${identifier}`;
-  },
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: {
-    error: {
-      code: "PORTAL_OTP_REQUEST_RATE_LIMIT_EXCEEDED",
-      message: "تم تجاوز الحد المسموح لطلبات الأكواد — حاول مرة أخرى بعد ساعة",
     },
   },
 });
@@ -210,25 +184,6 @@ const reviewCompletedStatuses = new Set([
   "materials_rejected",
   ...productionTimelineStatuses,
 ]);
-
-const configuredOtpTtlMinutesRaw = Number(
-  process.env.PORTAL_OTP_TTL_MINUTES || "10",
-);
-const configuredOtpTtlMinutes =
-  Number.isFinite(configuredOtpTtlMinutesRaw) &&
-  configuredOtpTtlMinutesRaw >= 5 &&
-  configuredOtpTtlMinutesRaw <= 10
-    ? configuredOtpTtlMinutesRaw
-    : 10;
-const configuredOtpMaxAttemptsRaw = Number(
-  process.env.PORTAL_OTP_MAX_ATTEMPTS || "5",
-);
-const configuredOtpMaxAttempts =
-  Number.isInteger(configuredOtpMaxAttemptsRaw) &&
-  configuredOtpMaxAttemptsRaw >= 1 &&
-  configuredOtpMaxAttemptsRaw <= 10
-    ? configuredOtpMaxAttemptsRaw
-    : 5;
 
 /**
  * The production table has no dedicated timestamps for `in_production` and
@@ -338,24 +293,6 @@ router.post(
     });
   },
 );
-
-/*
-  LEGACY /portal/register implementation — intentionally retained as
-  documentation only. It used to create a contact, create a portal customer,
-  and start a session directly from a password supplied by the visitor.
-  It must not be re-enabled; approved access now goes through the review,
-  activation-token, and one-time activation flows.
-
-  Former flow (kept disabled):
-  // const data = registerPortalCustomerSchema.parse(req.body);
-  // const passwordHash = await bcrypt.hash(data.password, 12);
-  // const contact = await tx.insert(contactsTable).values({...data}).returning();
-  // const customer = await tx.insert(portalCustomersTable).values({
-  //   ...data, passwordHash, contactId: contact.id,
-  // }).returning();
-  // const token = await createPortalSession(customer.id);
-  // res.status(201).json({ token, customer });
-*/
 
 /* ============================================================
    POST /portal/applications — طلب انضمام بدون إنشاء حساب
@@ -982,361 +919,6 @@ router.post(
       const sessionToken = authorization.slice(7).trim();
       await revokePortalSession(sessionToken);
       res.json({ message: "تم تسجيل الخروج وإلغاء الجلسة الحالية" });
-    } catch (err) {
-      next(err);
-    }
-  },
-);
-
-/* ============================================================
-   POST /portal/forgot-password — ✅ جديد: العميل نسي الباسورد
-   من غير خدمة إيميل حقيقية دلوقتي، الطلب بيوصل لفريق المبيعات/الاتش آر
-   يقدروا يعملوا ريست يدوي ويوصّلوا الباسورد الجديد للعميل بأنفسهم
-============================================================ */
-router.post(
-  "/portal/forgot-password",
-  loginRateLimiter,
-  async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const data = forgotPortalPasswordSchema.parse(req.body);
-      const identifier = normalizePortalIdentifier(data.identifier);
-      const [customer] = await db
-        .select()
-        .from(portalCustomersTable)
-        .where(
-          portalIdentifierCondition(identifier.value, identifier.channel),
-        )
-        .limit(1);
-
-      // ✅ رسالة موحّدة سواء الحساب موجود أو لأ — عشان محدش يقدر "يجرب" أرقام
-      // عشوائية يعرف بيها مين عميل عندنا ومين لأ
-      const genericMessage =
-        "لو الحساب موجود، طلب استرجاع كلمة المرور وصل لفريقنا وهيتواصلوا معاك قريب";
-
-      if (customer) {
-        await db
-          .insert(portalPasswordResetRequestsTable)
-          .values({ portalCustomerId: customer.id });
-        void notifyRoles([...PERMISSIONS.portalCustomers.write], {
-          type: "portal_password_reset",
-          title: "طلب استرجاع كلمة مرور — بوابة العملاء",
-          body: `العميل "${customer.fullName}" (${customer.phone}) طلب استرجاع كلمة المرور`,
-        }).catch((error) => {
-          logger.error("Failed to notify portal password reset reviewers", {
-            error: error instanceof Error ? error.message : String(error),
-          });
-        });
-      }
-
-      res.json({ message: genericMessage });
-    } catch (err) {
-      next(err);
-    }
-  },
-);
-
-/* ============================================================
-   POST /portal/otp/request — طلب كود استرجاع تلقائي
-   الرد موحّد عمدًا حتى لا يكشف وجود الحساب من عدمه.
-============================================================ */
-router.post(
-  "/portal/otp/request",
-  otpRequestRateLimiter,
-  portalOtpNormalizedRateLimiter,
-  async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const { identifier: rawIdentifier } = forgotPortalPasswordSchema.parse(
-        req.body,
-      );
-      const normalizedIdentifier = normalizePortalIdentifier(rawIdentifier);
-      const identifier = normalizedIdentifier.value;
-      const channel = normalizedIdentifier.channel;
-      const genericMessage =
-        "لو الحساب موجود، هيوصلك كود استرجاع من 6 أرقام خلال دقائق";
-
-      await db.transaction(async (tx: Transaction) => {
-        // Lock the customer row so concurrent requests for the same account
-        // cannot leave multiple active password-reset codes.
-        const [customer] = await tx
-          .select({
-            id: portalCustomersTable.id,
-            phone: portalCustomersTable.phone,
-            email: portalCustomersTable.email,
-          })
-          .from(portalCustomersTable)
-          .where(portalIdentifierCondition(identifier, channel))
-          .for("update")
-          .limit(1);
-
-        if (!customer) return;
-
-        const code = String(randomInt(0, 1_000_000)).padStart(6, "0");
-        const now = new Date();
-        const expiresAt = new Date(
-          now.getTime() + configuredOtpTtlMinutes * 60 * 1000,
-        );
-        const destination = channel === "email" ? customer.email : customer.phone;
-
-          // A newly requested code supersedes older unused codes for this
-          // customer and purpose, so only one active code can be accepted.
-        await tx
-          .update(portalOtpCodesTable)
-          .set({ consumedAt: now })
-          .where(
-            and(
-              eq(portalOtpCodesTable.portalCustomerId, customer.id),
-              eq(portalOtpCodesTable.purpose, "password_reset"),
-              isNull(portalOtpCodesTable.consumedAt),
-              gt(portalOtpCodesTable.expiresAt, now),
-            ),
-          );
-
-        const codeHash = await bcrypt.hash(code, 12);
-        const [created] = await tx
-          .insert(portalOtpCodesTable)
-          .values({
-            portalCustomerId: customer.id,
-            channel,
-            codeHash,
-            purpose: "password_reset",
-            expiresAt,
-            attemptCount: 0,
-          })
-          .returning({ id: portalOtpCodesTable.id });
-
-        if (!created) throw new Error("تعذر إنشاء كود الاسترجاع");
-
-        await writeAuditEvent({
-          executor: tx,
-          actorName: "portal_customer_otp",
-          actionKey: "portal.customer.password_reset_otp_requested",
-          resourceType: "portal_customer",
-          resourceId: customer.id,
-          beforeData: null,
-          afterData: {
-            otpId: created.id,
-            channel,
-            expiresAt,
-          },
-          decision: "requested",
-          reason: "طلب استرجاع كلمة المرور عبر OTP",
-          ipAddress: req.ip,
-          userAgent: req.get("user-agent"),
-        });
-
-        // Never leave a usable OTP behind when delivery is unavailable. The
-        // generic response remains unchanged to avoid account enumeration.
-        const delivery = destination ?
-            await sendOtpCode({ channel, destination, code })
-          : { delivered: false };
-        if (!delivery.delivered) {
-          await tx
-            .update(portalOtpCodesTable)
-            .set({ consumedAt: now })
-            .where(
-              and(
-                eq(portalOtpCodesTable.id, created.id),
-                isNull(portalOtpCodesTable.consumedAt),
-              ),
-            );
-        }
-      });
-
-      res.json({ message: genericMessage });
-    } catch (err) {
-      next(err);
-    }
-  },
-);
-
-/* ============================================================
-   POST /portal/otp/verify — التحقق من الكود وتغيير كلمة المرور ذريًا
-============================================================ */
-const verifyPortalOtpSchema = z.object({
-  identifier: forgotPortalPasswordSchema.shape.identifier,
-  code: z.string().regex(/^\d{6}$/, "الكود يجب أن يتكون من 6 أرقام"),
-  newPassword: z.string().min(6, "كلمة المرور لازم تكون 6 أحرف على الأقل"),
-});
-
-router.post(
-  "/portal/otp/verify",
-  loginRateLimiter,
-  async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const data = verifyPortalOtpSchema.parse(req.body);
-       const normalizedIdentifier = normalizePortalIdentifier(data.identifier);
-       const identifier = normalizedIdentifier.value;
-       const channel = normalizedIdentifier.channel;
-      const now = new Date();
-
-      const verification = await db.transaction(async (tx: Transaction) => {
-        const [customer] = await tx
-          .select({ id: portalCustomersTable.id })
-          .from(portalCustomersTable)
-          .where(portalIdentifierCondition(identifier, channel))
-          .limit(1);
-
-        if (!customer) {
-          return {
-            success: false as const,
-            status: 400,
-            code: "INVALID_OR_EXPIRED_OTP",
-            message: "الكود غير صحيح أو انتهت صلاحيته",
-          };
-        }
-
-        const [otp] = await tx
-          .select()
-          .from(portalOtpCodesTable)
-          .where(
-            and(
-              eq(portalOtpCodesTable.portalCustomerId, customer.id),
-              eq(portalOtpCodesTable.channel, channel),
-              eq(portalOtpCodesTable.purpose, "password_reset"),
-              isNull(portalOtpCodesTable.consumedAt),
-            ),
-          )
-          .orderBy(desc(portalOtpCodesTable.createdAt))
-          .for("update")
-          .limit(1);
-
-        if (!otp || otp.expiresAt <= now) {
-          if (otp) {
-            await tx
-              .update(portalOtpCodesTable)
-              .set({ consumedAt: now })
-              .where(eq(portalOtpCodesTable.id, otp.id));
-          }
-          return {
-            success: false as const,
-            status: 400,
-            code: "INVALID_OR_EXPIRED_OTP",
-            message: "الكود غير صحيح أو انتهت صلاحيته",
-          };
-        }
-
-        if (otp.attemptCount >= configuredOtpMaxAttempts) {
-          await tx
-            .update(portalOtpCodesTable)
-            .set({ consumedAt: now })
-            .where(eq(portalOtpCodesTable.id, otp.id));
-          return {
-            success: false as const,
-            status: 429,
-            code: "OTP_ATTEMPTS_EXCEEDED",
-            message: "تم إبطال الكود بعد محاولات خاطئة كثيرة — اطلب كودًا جديدًا",
-          };
-        }
-
-        const codeMatches = await bcrypt.compare(data.code, otp.codeHash);
-        if (!codeMatches) {
-          const attemptCount = otp.attemptCount + 1;
-          if (attemptCount >= configuredOtpMaxAttempts) {
-            await tx
-              .update(portalOtpCodesTable)
-              .set({ attemptCount, consumedAt: now })
-              .where(eq(portalOtpCodesTable.id, otp.id));
-            return {
-              success: false as const,
-              status: 429,
-              code: "OTP_ATTEMPTS_EXCEEDED",
-              message: `تم إبطال الكود بعد ${configuredOtpMaxAttempts} محاولات خاطئة — اطلب كودًا جديدًا`,
-            };
-          }
-          await tx
-            .update(portalOtpCodesTable)
-            .set({ attemptCount })
-            .where(eq(portalOtpCodesTable.id, otp.id));
-          return {
-            success: false as const,
-            status: 400,
-            code: "INVALID_OTP",
-            message: `الكود غير صحيح — متبقي ${
-              configuredOtpMaxAttempts - attemptCount
-            } محاولات`,
-          };
-        }
-
-        const passwordHash = await bcrypt.hash(data.newPassword, 12);
-        const [updatedCustomer] = await tx
-          .update(portalCustomersTable)
-          .set({
-            passwordHash,
-            mustChangePassword: false,
-            activatedAt: sql`coalesce(${portalCustomersTable.activatedAt}, ${now})`,
-          })
-          .where(eq(portalCustomersTable.id, customer.id))
-          .returning({ id: portalCustomersTable.id });
-        if (!updatedCustomer) {
-          throw Object.assign(new Error("حساب البوابة غير موجود"), {
-            status: 404,
-            code: "PORTAL_ACCOUNT_NOT_FOUND",
-          });
-        }
-        const otpOwnerUserId = await syncOwnerUserFromCompany(tx, customer.id);
-        if (otpOwnerUserId) await revokeUserSessions(otpOwnerUserId, tx, undefined, now);
-
-        await tx
-          .update(portalOtpCodesTable)
-          .set({ consumedAt: now })
-          .where(
-            and(
-              eq(portalOtpCodesTable.id, otp.id),
-              isNull(portalOtpCodesTable.consumedAt),
-            ),
-          );
-
-        const [closedResetRequest] = await tx
-          .update(portalPasswordResetRequestsTable)
-          .set({
-            status: "resolved",
-            resolvedByName: "portal_customer_self_service",
-            resolvedAt: now,
-          })
-          .where(
-            and(
-              eq(portalPasswordResetRequestsTable.portalCustomerId, customer.id),
-              eq(portalPasswordResetRequestsTable.status, "pending"),
-            ),
-          )
-          .returning({ id: portalPasswordResetRequestsTable.id });
-
-        const revokedSessionCount = await revokeAllPortalSessions(
-          customer.id,
-          tx,
-          now,
-        );
-
-        await writeAuditEvent({
-          executor: tx,
-          actorName: "portal_customer_otp",
-          actionKey: "portal.customer.password_reset_otp_verified",
-          resourceType: "portal_customer",
-          resourceId: customer.id,
-          beforeData: { otpId: otp.id, attemptCount: otp.attemptCount },
-          afterData: {
-            passwordChanged: true,
-            otpConsumedAt: now,
-            resetRequestClosed: Boolean(closedResetRequest),
-            sessionsRevoked: revokedSessionCount,
-          },
-          decision: "password_reset",
-          reason: "تغيير كلمة المرور بعد التحقق من OTP",
-          ipAddress: req.ip,
-          userAgent: req.get("user-agent"),
-        });
-
-        return { success: true as const };
-      });
-
-      if (!verification.success) {
-        res.status(verification.status).json({
-          error: { code: verification.code, message: verification.message },
-        });
-        return;
-      }
-
-      res.json({ message: "تم تغيير كلمة المرور بنجاح، يمكنك تسجيل الدخول الآن" });
     } catch (err) {
       next(err);
     }

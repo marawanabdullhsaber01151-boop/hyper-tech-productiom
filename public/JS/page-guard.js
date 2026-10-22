@@ -25,7 +25,7 @@
         <i class="fa-solid fa-lock" style="font-size:42px;color:#f59e0b"></i>
         <h2 style="color:#fff;margin:0">مفيش وصول للصفحة دي</h2>
         <p style="margin:0">الصفحة دي مش من صلاحياتك الحالية.</p>
-        <a href="/index.html" style="color:#3b82f6;text-decoration:none">الرجوع للوحة التحكم</a>
+        <a href="/v2/staff" style="color:#3b82f6;text-decoration:none">الرجوع للوحة التحكم</a>
       </body>`;
   }
 

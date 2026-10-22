@@ -106,19 +106,7 @@
       return; // نسيب الـ sidebar الثابت القديم (لو موجود) بدل ما نكسر الصفحة
     }
 
-    const currentPage = location.pathname.split("/").pop() || "index.html";
-
-    // ✅ توجيه فوري لأصحاب القسم الواحد — بس من صفحة index.html نفسها،
-    // عشان محدش يتحول وهو أصلًا فاتح صفحة تانية من صلاحياته.
-    if (
-      nav.singleDepartment &&
-      nav.homeHref &&
-      currentPage === "index.html" &&
-      nav.homeHref !== "index.html"
-    ) {
-      location.replace(nav.homeHref);
-      return;
-    }
+    const currentPage = location.pathname.split("/").pop() || "";
 
     const sidebarContainer = document.getElementById("dynamic-sidebar");
     if (sidebarContainer) {

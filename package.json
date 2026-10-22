@@ -38,7 +38,8 @@
     "db:restore-config": "node scripts/restore-seeded-config.mjs",
     "telegram:webhook": "node scripts/telegram-set-webhook.mjs",
     "typecheck": "tsc --noEmit -p . && tsc --noEmit -p web",
-    "check:all": "npm run typecheck && npm test && npm run test:web && npm run build",
+    "check:routes": "node scripts/api-consumers.mjs --check",
+    "check:all": "npm run typecheck && npm run check:routes && npm test && npm run test:web && npm run build",
     "check:e2e": "npm run test:e2e",
     "delivery:pack": "node scripts/delivery-pack.mjs pack",
     "delivery:verify": "node scripts/delivery-pack.mjs verify"

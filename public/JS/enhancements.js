@@ -35,10 +35,10 @@ const ROLE_HOME_PAGE = {
   executive_manager: "production.html",
   operations_manager: "factory-production-manager.html",
   // Phase 2: purchases.html removed along with the full purchasing module.
-  // Pointing these two roles at the dashboard until Phase 5 introduces a
+  // Pointing these two roles at the staff home until Phase 5 introduces a
   // minimal purchase-request page.
-  purchasing_manager: "index.html",
-  buyer: "index.html",
+  purchasing_manager: "/v2/staff",
+  buyer: "/v2/staff",
   production_manager: "factory-production-manager.html",
   production_controller: "factory-production-manager.html",
   warehouse_manager: "factory-warehouse-manager.html",
@@ -434,7 +434,7 @@ class MyActionsSystem {
 
 function navigateToMyHome() {
   const role = window.HyperTechAuth?.user?.role;
-  location.href = ROLE_HOME_PAGE[role] || "index.html";
+  location.href = ROLE_HOME_PAGE[role] || "/v2/staff";
 }
 
 // ===== SEARCH — الآن بيدوّر في بيانات حقيقية عن طريق الـ API =====

@@ -1,11 +1,11 @@
 /** @format */
 /**
- * Staff view of a company's people: members, join code, company settings and
- * the global portal settings. Staff cannot read or set anyone's password here.
+ * Staff view of a company's people: members, join code, company settings.
+ * Staff cannot read or set anyone's password here.
  */
 import { Router, Request, Response, NextFunction } from "express";
 import { z } from "zod";
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { db } from "../db";
 import {
   portalCustomersTable,
@@ -197,40 +197,5 @@ for (const [action, from, to] of [
     },
   );
 }
-
-/* Global portal settings (WhatsApp numbers, defaults, UI flags). */
-router.get("/portal-settings", ...view, async (_req, res, next) => {
-  try {
-    const rows = await db
-      .select({ key: portalSettingsTable.key, value: portalSettingsTable.value })
-      .from(portalSettingsTable)
-      .where(and(eq(portalSettingsTable.scope, "global"), isNull(portalSettingsTable.scopeId)));
-    res.json({ catalog: describeSettings(), values: rows });
-  } catch (err) {
-    next(err);
-  }
-});
-
-router.put("/portal-settings", ...manage, async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const body = z
-      .object({ key: z.string(), value: z.unknown().optional(), reset: z.boolean().optional() })
-      .parse(req.body);
-    if (!getSettingDef(body.key)) throw domainError(400, "INVALID_SETTING", "الإعداد ده مش موجود");
-    await db.transaction((tx) =>
-      changeSetting(tx, {
-        scope: "global",
-        scopeId: null,
-        key: body.key,
-        value: body.value,
-        reset: body.reset,
-        by: `staff:${req.user!.userId}`,
-      }),
-    );
-    res.json({ message: "اتحفظ" });
-  } catch (err) {
-    next(err);
-  }
-});
 
 export default router;

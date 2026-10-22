@@ -251,7 +251,7 @@ router.post("/portal/recovery/ask-owner", startLimiter, async (req, res, next) =
 });
 
 /* ============================================================
-   POST /portal/recovery/verify  (+ /use-recovery-code alias)
+   POST /portal/recovery/verify
    admin code (8 digits) or one-time recovery code → short-lived reset ticket
 ============================================================ */
 async function verifyHandler(req: Request, res: Response, next: NextFunction) {
@@ -287,7 +287,6 @@ async function verifyHandler(req: Request, res: Response, next: NextFunction) {
   }
 }
 router.post("/portal/recovery/verify", verifyLimiter, verifyHandler);
-router.post("/portal/recovery/use-recovery-code", verifyLimiter, verifyHandler);
 
 /* ============================================================
    POST /portal/recovery/complete — new password with a reset token

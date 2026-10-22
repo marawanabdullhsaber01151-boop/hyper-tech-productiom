@@ -223,26 +223,3 @@ export async function sendCustomerAlert(
 
   return { delivered: result.delivered, provider: adapter.provider };
 }
-
-export async function sendOtpCode(
-  {
-    channel,
-    destination,
-    code,
-  }: {
-    channel: OtpChannel;
-    destination: string;
-    code: string;
-  },
-  options: Readonly<{ adapter?: DeliveryAdapter }> = {},
-): Promise<DeliveryResult> {
-  return sendCustomerAlert(
-    {
-      channel,
-      destination,
-      message: `رمز استرجاع كلمة المرور الخاص بك هو: ${code}`,
-      event: "portal_otp_password_reset",
-    },
-    options,
-  );
-}
