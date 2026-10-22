@@ -83,11 +83,11 @@ describe("capabilitiesFor + /me/access", () => {
     }
   });
 
-  it("لوحة التحكم القديمة بتحمّل المصادر المسموحة بس", () => {
-    const idx = read("public/JS/index.js");
-    expect(idx).toContain('apiCall("/me/access")');
-    expect(idx).toContain('may("productionWorkflowRead")');
-    expect(idx).toContain('may("inventoryRead")');
-    expect(idx).toContain('may("dashboardRead")');
+  it("لوحة التحكم (v2) بتحمّل المصادر المسموحة بس", () => {
+    const dash = read("web/src/staff/Dashboard.tsx");
+    expect(dash).toContain('"/me/access"');
+    expect(dash).toContain('may("productionWorkflowRead")');
+    expect(dash).toContain('may("inventoryRead")');
+    expect(dash).toContain('may("dashboardRead")');
   });
 });

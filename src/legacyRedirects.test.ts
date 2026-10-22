@@ -38,3 +38,11 @@ describe("تحويل صفحات بوابة العميل القديمة", () => {
     expect(portalRedirectTarget("/portal-login.html", "next=//evil.com")).toBe("/v2/portal/login");
   });
 });
+
+describe("الرئيسية القديمة", () => {
+  it("/ و/index.html بيروحوا للرئيسية الجديدة", async () => {
+    const m = await import("./lib/legacyRedirects");
+    expect(m.LEGACY_HOME_PATHS).toEqual(["/", "/index.html"]);
+    expect(m.STAFF_HOME_PATH).toBe("/v2/staff");
+  });
+});

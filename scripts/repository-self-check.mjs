@@ -12,7 +12,6 @@ const requiredFiles = [
   "src/routes/health.ts",
   "drizzle/0000_0000_initial_schema.sql",
   "migrations/0054_phase1_baseline_metadata.sql",
-  "public/index.html",
 ];
 const blockers = requiredFiles
   .filter((file) => !existsSync(path.join(root, file)))

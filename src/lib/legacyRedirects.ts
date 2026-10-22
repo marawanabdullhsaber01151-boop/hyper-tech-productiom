@@ -35,3 +35,7 @@ export function portalRedirectTarget(pathname: string, rawQuery: string): string
   const qs = out.toString();
   return qs ? `${base}?${qs}` : base;
 }
+
+/** لوحة التحكم القديمة (`/` و`/index.html`) اتشالت: الرئيسية بقت `/v2/staff` (بتوجّه لتسجيل الدخول لو مفيش جلسة). */
+export const LEGACY_HOME_PATHS = ["/", "/index.html"];
+export const STAFF_HOME_PATH = "/v2/staff";

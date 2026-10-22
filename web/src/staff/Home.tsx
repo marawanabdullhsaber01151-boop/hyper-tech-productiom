@@ -3,6 +3,7 @@ import { Link, navigate } from "../app/router";
 import { t } from "../copy";
 import { EmptyState, Icon, Spinner } from "../design/components";
 import { NavContext } from "./NavContext";
+import { Dashboard } from "./Dashboard";
 import { deptPageCount, iconFor, resolveHref } from "./nav";
 
 /** الرئيسية: قسم واحد ← تحويل مباشر، غير كده شبكة أقسام. */
@@ -40,6 +41,7 @@ export function Home() {
           );
         })}
       </div>
+      <Dashboard nav={nav} />
     </div>
   );
 }
