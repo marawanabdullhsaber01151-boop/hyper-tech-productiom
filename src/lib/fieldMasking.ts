@@ -66,3 +66,30 @@ export function maskFields<T extends object>(
   };
   return Array.isArray(rows) ? rows.map(mask) : mask(rows);
 }
+
+/** الأدوار اللي مسموح لها ترى الأرقام المالية في /dashboard (قيمة المخزون والإيرادات). */
+export const DASHBOARD_FINANCIAL_ROLES: readonly string[] = ["chairman", "executive_manager"];
+
+/**
+ * /dashboard متاح لأدوار التشغيل (مدير العمليات/الإنتاج/متحكم الإنتاج) عشان أرقام الإنتاج والجودة والمخزون،
+ * لكن قيمة المخزون والإيرادات أرقام مالية: بتتشال من الرد قبل res.json() لغير الأدوار المالية.
+ */
+export function maskDashboardPayload<T extends { inventory?: Record<string, unknown>; sales?: Record<string, unknown> }>(
+  payload: T,
+  userRole: string,
+): T {
+  if (DASHBOARD_FINANCIAL_ROLES.includes(userRole)) return payload;
+  const inventory = payload.inventory ? { ...payload.inventory } : payload.inventory;
+  if (inventory) delete inventory.totalValue;
+  let sales = payload.sales ? { ...payload.sales } : payload.sales;
+  if (sales) {
+    delete sales.totalRevenue;
+    const trend = sales.trend as Record<string, unknown> | undefined;
+    if (trend) {
+      const t = { ...trend };
+      delete t.last7DaysRevenue;
+      sales = { ...sales, trend: t };
+    }
+  }
+  return { ...payload, inventory, sales };
+}

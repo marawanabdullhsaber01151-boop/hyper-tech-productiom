@@ -77,4 +77,19 @@ describe("security hardening — MFA pre-auth token stays distinguishable from a
     const verifyFnBody = authMiddleware.slice(verifyFnIndex, verifyFnIndex + 400);
     expect(verifyFnBody).toContain('payload.purpose !== "mfa_pending"');
   });
+
+  it("2FA: العدّاد والقفل بيتطبقوا على verify-totp كمان، والعدّاد ماتصفّرش بكلمة السر لوحدها", () => {
+    const start = authRoute.indexOf('router.post("/auth/login/verify-totp"');
+    const end = authRoute.indexOf('router.get("/auth/me"', start);
+    const h = authRoute.slice(start, end);
+    expect(h).toContain("isAccountLocked(user.lockedUntil)");
+    expect(h).toContain("recordFailedLogin(user.failedLoginAttempts)");
+    expect(h).toContain("clearLockoutState()");
+    // القفل بيتفحص قبل أي مقارنة رمز
+    expect(h.indexOf("isAccountLocked")).toBeLessThan(h.indexOf("verifyTotpCode"));
+    // التصفير بعد نجاح الرمز مش قبله
+    expect(h.indexOf("clearLockoutState()")).toBeGreaterThan(h.indexOf("recordFailedLogin"));
+    // خطوة كلمة السر مابتصفّرش العدّاد لحساب عليه 2FA
+    expect(authRoute).toContain("!user.totpEnabled && (user.failedLoginAttempts > 0");
+  });
 });

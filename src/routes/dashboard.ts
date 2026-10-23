@@ -12,6 +12,7 @@ import {
   stockMovementsTable,
 } from "../db/schema";
 import { requireAuth, requireRole } from "../middleware/auth";
+import { maskDashboardPayload } from "../lib/fieldMasking";
 
 const router = Router();
 
@@ -153,7 +154,7 @@ router.get("/dashboard", requireAuth, requireRole(...ACCESS.dashboardRead), asyn
         Math.round((qualWeek.passCount / qualWeek.count) * 100)
       : null;
 
-    res.json({
+    res.json(maskDashboardPayload({
       inventory: {
         totalItems: inv.totalItems,
         totalValue: Number(inv.totalValue),
@@ -196,7 +197,7 @@ router.get("/dashboard", requireAuth, requireRole(...ACCESS.dashboardRead), asyn
         },
       },
       recentMovements,
-    });
+    }, _req.user!.role));
   } catch (err) {
     next(err);
   }

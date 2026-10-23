@@ -67,7 +67,8 @@ describe("المرحلة ١ — دخول واحد", () => {
     const nav = read("src/routes/nav.ts");
     expect(nav).toContain("roleLabel: roleLabel(role)");
     const auth = read("src/routes/auth.ts");
-    expect(auth.match(/retryAfterSeconds/g)?.length).toBe(2);
+    // قفل كلمة السر (٢) + قفل التحقق الثنائي (٢، الخطوة 10): كل مكان قفل لازم يرجّع retryAfterSeconds
+    expect(auth.match(/retryAfterSeconds/g)?.length).toBe(4);
   });
 
   it("مفيش قيمة CSS ثابتة (لون/اتجاه فيزيائي) في ستايل الغلاف", () => {

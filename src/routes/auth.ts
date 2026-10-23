@@ -176,8 +176,10 @@ router.post("/auth/login", loginRateLimiter, async (req, res, next) => {
       return;
     }
 
-    // كلمة المرور صحيحة — أي عداد محاولات فاشلة سابق بقى بلا معنى
-    if (user.failedLoginAttempts > 0 || user.lockedUntil) {
+    // كلمة المرور صحيحة — أي عداد محاولات فاشلة سابق بقى بلا معنى،
+    // إلا لو الحساب عليه 2FA: العدّاد بيفضل لحد ما رمز التحقق نفسه يتأكد (verify-totp)،
+    // وإلا المهاجم اللي معاه كلمة السر يصفّر العدّاد بكل محاولة ويخمّن الرمز بلا حدود.
+    if (!user.totpEnabled && (user.failedLoginAttempts > 0 || user.lockedUntil)) {
       const cleared = clearLockoutState();
       await db.update(systemUsersTable).set(cleared).where(eq(systemUsersTable.id, user.id));
     }
@@ -228,6 +230,22 @@ router.post("/auth/login/verify-totp", loginRateLimiter, async (req, res, next) 
       return;
     }
 
+    // قفل الحساب لكل حساب (مش IP بس): نفس عدّاد كلمة السر ونفس مدة القفل.
+    if (isAccountLocked(user.lockedUntil)) {
+      const remaining = lockoutRemainingSeconds(user.lockedUntil);
+      await writeAuditEvent({
+        actorUserId: user.id, actorName: user.username, actionKey: "auth.login.blocked_locked",
+        resourceType: "system_user", resourceId: user.id, decision: "blocked",
+        reason: `الحساب مقفول أثناء التحقق الثنائي (${remaining} ثانية متبقية)`, ipAddress, userAgent: deviceInfo,
+      });
+      res.status(423).json(failure(
+        "ACCOUNT_LOCKED",
+        `الحساب مقفول مؤقتًا بسبب محاولات فاشلة متكررة — حاول تاني بعد ${Math.ceil(remaining / 60)} دقيقة`,
+        { details: { retryAfterSeconds: remaining } },
+      ));
+      return;
+    }
+
     let matchedBackupCode: string | null = null;
     const codeIsValid = verifyTotpCode(user.totpSecret, code);
     if (!codeIsValid) {
@@ -242,12 +260,34 @@ router.post("/auth/login/verify-totp", loginRateLimiter, async (req, res, next) 
     }
 
     if (!codeIsValid && !matchedBackupCode) {
+      const lockoutState = recordFailedLogin(user.failedLoginAttempts);
+      await db.update(systemUsersTable).set({
+        failedLoginAttempts: lockoutState.failedLoginAttempts,
+        lockedUntil: lockoutState.lockedUntil,
+      }).where(eq(systemUsersTable.id, user.id));
+      const justLocked = lockoutState.lockedUntil !== null;
       await writeAuditEvent({
-        actorUserId: user.id, actorName: user.username, actionKey: "auth.login.totp_failed",
-        resourceType: "system_user", resourceId: user.id, decision: "rejected", ipAddress, userAgent: deviceInfo,
+        actorUserId: user.id, actorName: user.username,
+        actionKey: justLocked ? "auth.login.locked" : "auth.login.totp_failed",
+        resourceType: "system_user", resourceId: user.id,
+        decision: justLocked ? "locked" : "rejected",
+        reason: `رمز تحقق ثنائي خاطئ رقم ${lockoutState.failedLoginAttempts}`, ipAddress, userAgent: deviceInfo,
       });
+      if (justLocked) {
+        res.status(423).json(failure(
+          "ACCOUNT_LOCKED",
+          `تم قفل الحساب مؤقتًا بعد ${lockoutState.failedLoginAttempts} محاولات فاشلة — حاول تاني بعد ${LOCKOUT_MINUTES} دقيقة`,
+          { details: { retryAfterSeconds: LOCKOUT_MINUTES * 60 } },
+        ));
+        return;
+      }
       res.status(401).json(failure("UNAUTHORIZED", "رمز التحقق غير صحيح"));
       return;
+    }
+
+    // الرمز صح: دلوقتي بس العدّاد يتصفّر.
+    if (user.failedLoginAttempts > 0 || user.lockedUntil) {
+      await db.update(systemUsersTable).set(clearLockoutState()).where(eq(systemUsersTable.id, user.id));
     }
 
     if (matchedBackupCode) {
