@@ -61,6 +61,7 @@ for (const file of [
 ]) {
   const f = rel(file);
   if (!textExt.test(f)) continue;
+  if (f.startsWith("public/v2/")) continue; // ناتج البناء (vite) — مش مستهلك حقيقي
   if (f === "scripts/api-consumers.mjs") continue;
   const text = readFileSync(file, "utf8");
   if (f.startsWith("src/")) {

@@ -123,6 +123,7 @@ describe("عناصر لوحة الأوامر", () => {
   it("هدف الإشعار", () => {
     expect(notificationTarget({ referenceType: "chat_conversation", referenceId: 9 }, NAV)).toBe("/v2/admin/portal-chat/9");
     expect(notificationTarget({ referenceType: "chat" }, NAV)).toBe("/v2/admin/portal-chat");
+    expect(notificationTarget({ referenceType: "system_health" }, NAV)).toBe("/v2/staff/system-health");
     expect(notificationTarget({ referenceType: "production_workflow" }, NAV)).toBe("production.html");
     expect(notificationTarget({ referenceType: "other" }, NAV)).toBeNull();
   });

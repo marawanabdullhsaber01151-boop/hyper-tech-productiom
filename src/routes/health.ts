@@ -6,6 +6,8 @@ import { requireAuth, requireRole } from "../middleware/auth";
 import { API_CONTRACT_VERSION, failure } from "../contracts/api-response";
 import { ACCESS } from "../lib/accessRegistry";
 import { runSystemHealth } from "../lib/systemHealth";
+import { sendDailyBrief } from "../lib/dailyBrief";
+import { assertCronAuth } from "../lib/cronAuth";
 
 const router = Router();
 const HEALTH_ROLES = ["executive_manager", "operations_manager", "production_manager"];
@@ -250,5 +252,15 @@ router.get(
     }
   },
 );
+
+/** Vercel Cron يوميًا: ملخص الصباح الذكي (لا يتكرر في نفس اليوم). */
+router.get("/cron/daily-brief", async (req, res, next) => {
+  try {
+    assertCronAuth(req);
+    res.json(await sendDailyBrief());
+  } catch (error) {
+    next(error);
+  }
+});
 
 export default router;

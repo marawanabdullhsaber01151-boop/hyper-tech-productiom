@@ -110,6 +110,7 @@ export function pushRecent(userId: number, id: string): string[] {
 /** إشعار ← الصفحة اللي يفتحها (null: مفيش مكان معروف، فبنعلّمه مقروء من غير تنقّل). */
 export function notificationTarget(n: { referenceType?: string | null; referenceId?: number | null }, nav: NavResponse | undefined): string | null {
   if (n.referenceType === "chat_conversation" || n.referenceType === "chat") return n.referenceId ? `/v2/admin/portal-chat/${n.referenceId}` : "/v2/admin/portal-chat";
+  if (n.referenceType === "system_health") return "/v2/staff/system-health";
   if (n.referenceType === "production_workflow") return pickPage(navHrefs(nav), ORDER_PAGES) ?? nav?.homeHref ?? null;
   return null;
 }

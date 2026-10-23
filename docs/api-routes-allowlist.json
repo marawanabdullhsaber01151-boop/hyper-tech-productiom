@@ -12,7 +12,6 @@
   "GET /operations/orders/:orderId/cost": "backlog: تكلفة الأمر بدون شاشة بعد",
   "GET /operations-control/orders/:id/customer-status": "backlog: حالة العميل بدون شاشة بعد",
   "POST /operations-control/sales-orders/:id/execute-plan": "backlog: تنفيذ خطة أمر بيع بدون شاشة بعد",
-  "PATCH /portal-customers/:id/assigned-sales": "gap: مسؤول المبيعات بعد الاعتماد — محتاج واجهة في v2",
   "GET /engineering/change-requests/:id/impact": "tests: مغطى باختبارات الحوكمة",
   "GET /foundation/items/:id/impact": "tests: مغطى باختبارات الحوكمة",
   "GET /operations-manager/cases/:id/revisions": "tests: مغطى باختبارات",
@@ -24,5 +23,6 @@
   "POST /operations-manager/cases/from-sales-order/:salesOrderId": "tests: مغطى باختبارات",
   "POST /portal-outbox/:id/mark-sent": "tests: e2e القنوات",
   "POST /portal/team/:memberId/reset-password": "tests: e2e الهوية",
-  "POST /portal/register": "stub: يرجّع 410 عمدًا (التسجيل المباشر اتقفل) — بيمنع رجوعه بالغلط"
+  "POST /portal/register": "stub: يرجّع 410 عمدًا (التسجيل المباشر اتقفل) — بيمنع رجوعه بالغلط",
+  "GET /cron/daily-brief": "cron: Vercel يناديه يوميًا (ملخص الصباح الذكي)"
 }

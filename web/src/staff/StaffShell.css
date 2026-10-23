@@ -130,7 +130,7 @@
 .st-bell__item:disabled { cursor: default; opacity: 0.7; }
 .st-bell__item--unread { background: var(--c-brand-soft); border-inline-start: 4px solid var(--c-brand); }
 .st-bell__title { font-weight: 800; }
-.st-bell__body { color: var(--c-text-1); font-size: var(--fs-sm); }
+.st-bell__body { color: var(--c-text-1); font-size: var(--fs-sm); white-space: pre-line; /* ملخص الصباح متعدد الأسطر */ }
 .st-bell__time { color: var(--c-text-2); font-size: var(--fs-sm); }
 
 /* ---- لوحة الأوامر (Ctrl+K) ---- */
