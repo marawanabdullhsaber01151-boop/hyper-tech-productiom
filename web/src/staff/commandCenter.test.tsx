@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/preact";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { normalize, scoreMatch } from "./arabicSearch";
-import { emptyState, notificationTarget, pageItems, pickPage, pushRecent, readRecent, recordItems, search, type CmdItem } from "./commands";
+import { emptyState, hasSalesPage, notificationTarget, pageItems, pickPage, pushRecent, readRecent, recordItems, salesItems, search, type CmdItem } from "./commands";
 import { CommandPalette } from "./CommandPalette";
 import { computeMyActions } from "./myActions";
 import { NotificationCenter } from "./NotificationCenter";
@@ -211,6 +211,43 @@ describe("CommandPalette", () => {
     fireEvent.input(box, { target: { value: "zzzz" } });
     expect(await screen.findByText(/مفيش نتيجة/)).toBeTruthy();
     await waitFor(() => expect(log.some((l) => l.includes("/inventory") || l.includes("/production-workflow"))).toBe(false));
+  });
+});
+
+describe("بحث الفواتير والعملاء", () => {
+  const SALES_NAV: NavResponse = {
+    role: "sales_manager",
+    singleDepartment: true,
+    homeHref: null,
+    departments: [{ id: "s", label: "المبيعات", icon: "x", subFunctions: [{ id: "f", label: "فواتير", pages: [{ id: "sales-direct", label: "فواتير الأوفلاين", href: "/v2/staff/sales?channel=direct" }] }] }],
+  };
+  const label = { status: (s: string) => `[${s}]`, money: (v: string) => `$${v}` };
+  const SALES = [{ id: 7, orderNumber: "INV-7", contactId: 5, status: "paid", total: "250.00" }];
+  const CUSTOMERS = [{ id: 5, name: "شركة النور", type: "customer", phone: "01000000000" }, { id: 6, name: "مورّد الورق", type: "supplier" }];
+
+  it("بتظهر بس لو صفحة المبيعات في قايمة المستخدم", () => {
+    expect(hasSalesPage(new Set(["v2/staff/sales?channel=direct"]))).toBe(true);
+    expect(hasSalesPage(new Set(["v2/staff/stock"]))).toBe(false);
+    expect(salesItems(SALES, CUSTOMERS, new Set(["v2/staff/stock"]), () => {}, label)).toEqual([]);
+  });
+  it("الفاتورة بتفتح تفاصيلها، والعميل بيفتح فواتيره، والمورّدين مش بيظهروا", () => {
+    const go = vi.fn();
+    const items = salesItems(SALES, CUSTOMERS, new Set(["v2/staff/sales?channel=direct"]), go, label);
+    expect(items.map((i) => [i.kind, i.title])).toEqual([["sale", "INV-7 — شركة النور"], ["customer", "شركة النور"]]);
+    expect(items[0]!.hint).toBe("[paid] · $250.00");
+    items[0]!.run();
+    items[1]!.run();
+    expect(go).toHaveBeenNthCalledWith(1, "/v2/staff/sales?open=7");
+    expect(go).toHaveBeenNthCalledWith(2, "/v2/staff/sales?customer=5");
+  });
+  it("في اللوحة: رقم الفاتورة واسم العميل بيلاقوا النتيجة وبيفتحوا المكان الصح", async () => {
+    login(1, "sales_manager");
+    serve((p) => (p === "/me/access" ? { data: { can: {} } } : p === "/sales" ? { items: SALES, pagination: { page: 1, pageSize: 100, total: 1, totalPages: 1 } } : p === "/contacts" ? CUSTOMERS : { data: [] }));
+    render(<CommandPalette open onClose={() => {}} nav={SALES_NAV} extra={[]} />);
+    const box = await screen.findByRole("combobox");
+    fireEvent.input(box, { target: { value: "inv 7" } });
+    fireEvent.click(await screen.findByRole("option", { name: /INV-7/ }));
+    expect(nav.navigate).toHaveBeenCalledWith("/staff/sales?open=7");
   });
 });
 

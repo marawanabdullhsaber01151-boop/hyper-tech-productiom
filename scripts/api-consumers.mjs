@@ -121,8 +121,9 @@ for (const st of ["none", "tests-only", "weak"]) {
   if (!list.length) continue;
   console.log(`\n── ${st} (${list.length}) ──`);
   for (const r of list) {
+    // الاختبارات بتظهر بس في «tests-only»؛ في «weak» كانت بتضلّل (اسم آخر جزء بيتطابق مع نصوص كتير).
     const where = Object.entries(r.weak)
-      .filter(([, v]) => v.length)
+      .filter(([k, v]) => v.length && (st === "tests-only" || k !== "tests"))
       .map(([k, v]) => `${k}:${v.slice(0, 2).join(",")}`)
       .join(" | ");
     console.log(`${r.method.padEnd(6)} ${r.path.padEnd(52)} ${r.file}:${r.line}${where ? "   ← " + where : ""}`);

@@ -3,7 +3,7 @@ import type { InvItem, WorkflowOrder } from "./dashboardCore";
 import type { NavResponse } from "./nav";
 
 /** عناصر لوحة الأوامر (Ctrl+K). الدوال خالصة، وتنفيذ العنصر (run) بيجي من برّه عشان نختبر من غير متصفح. */
-export type CmdKind = "page" | "action" | "order" | "item";
+export type CmdKind = "page" | "action" | "sale" | "customer" | "order" | "item";
 export interface CmdItem {
   id: string;
   kind: CmdKind;
@@ -62,11 +62,69 @@ export function recordItems(
   return out;
 }
 
+export interface SaleRow {
+  id: number;
+  orderNumber: string;
+  contactId: number | null;
+  status: string;
+  total: string;
+}
+export interface CustomerRow {
+  id: number;
+  name: string;
+  type?: string;
+  company?: string | null;
+  phone?: string | null;
+}
+
+/** صفحة المبيعات الجديدة (بتظهر في القايمة بروابط فيها ?channel=). */
+export const SALES_PAGE = "v2/staff/sales";
+export const hasSalesPage = (hrefs: Set<string>): boolean => [...hrefs].some((h) => h === SALES_PAGE || h.startsWith(`${SALES_PAGE}?`));
+
+/**
+ * فواتير وعملاء للبحث السريع. بتتعرض بس لو صفحة المبيعات في قايمة المستخدم (هي اللي بتفتحها):
+ * الفاتورة بتفتح تفاصيلها، والعميل بيفتح فواتيره.
+ */
+export function salesItems(
+  sales: SaleRow[],
+  customers: CustomerRow[],
+  hrefs: Set<string>,
+  go: (href: string) => void,
+  label: { status: (s: string) => string; money: (v: string) => string },
+): CmdItem[] {
+  if (!hasSalesPage(hrefs)) return [];
+  const name = new Map(customers.map((c) => [c.id, c.name]));
+  const out: CmdItem[] = [];
+  for (const s of sales) {
+    const who = s.contactId === null ? "" : name.get(s.contactId) ?? "";
+    out.push({
+      id: `sale:${s.id}`,
+      kind: "sale",
+      title: who ? `${s.orderNumber} — ${who}` : s.orderNumber,
+      hint: `${label.status(s.status)} · ${label.money(s.total)}`,
+      keywords: who,
+      run: () => go(`/v2/staff/sales?open=${s.id}`),
+    });
+  }
+  for (const c of customers) {
+    if (c.type && c.type !== "customer" && c.type !== "both") continue;
+    out.push({
+      id: `customer:${c.id}`,
+      kind: "customer",
+      title: c.name,
+      hint: [c.company, c.phone].filter(Boolean).join(" · ") || undefined,
+      keywords: `${c.company ?? ""} ${c.phone ?? ""}`,
+      run: () => go(`/v2/staff/sales?customer=${c.id}`),
+    });
+  }
+  return out;
+}
+
 export const MAX_RESULTS = 12;
 
 /** ترتيب النتائج: الدرجة أولًا، وبعدها الأحدث استخدامًا (recent)، وبعدها النوع (صفحة قبل سجل). */
 export function search(all: CmdItem[], query: string, recent: string[]): CmdItem[] {
-  const kindOrder: Record<CmdKind, number> = { page: 0, action: 1, order: 2, item: 3 };
+  const kindOrder: Record<CmdKind, number> = { page: 0, action: 1, sale: 2, customer: 3, order: 4, item: 5 };
   const rec = (id: string) => {
     const i = recent.indexOf(id);
     return i === -1 ? 0 : 10 - Math.min(i, 9);

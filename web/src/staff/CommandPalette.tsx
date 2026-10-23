@@ -2,8 +2,9 @@ import { useEffect, useId, useMemo, useRef, useState } from "preact/hooks";
 import { navigate } from "../app/router";
 import { staffUser } from "../admin/session";
 import { t, type CopyKey } from "../copy";
+import { formatMoney } from "../lib/format";
 import { Dialog, Input } from "../design/components";
-import { emptyState, navHrefs, pageItems, pushRecent, readRecent, recordItems, search, type CmdItem } from "./commands";
+import { emptyState, hasSalesPage, navHrefs, pageItems, pushRecent, readRecent, recordItems, salesItems, search, type CmdItem, type CustomerRow, type SaleRow } from "./commands";
 import { isKnownStatus, type InvItem, type WorkflowOrder } from "./dashboardCore";
 import { resolveHref, type NavResponse } from "./nav";
 import { getShared } from "./sharedData";
@@ -52,19 +53,28 @@ export function CommandPalette({ open, onClose, nav, extra }: { open: boolean; o
       } catch {
         /* من غير صلاحيات معروفة: صفحات وأوامر بس */
       }
-      const [o, i] = await Promise.allSettled([
+      const withSales = hasSalesPage(hrefs);
+      const [o, i, s, c] = await Promise.allSettled([
         can.productionWorkflowRead ? getShared<WorkflowOrder[]>("/production-workflow") : Promise.resolve([] as WorkflowOrder[]),
         can.inventoryRead ? getShared<InvItem[]>("/inventory") : Promise.resolve([] as InvItem[]),
+        withSales ? getShared<{ items?: SaleRow[] }>("/sales?page=1&page_size=100") : Promise.resolve({} as { items?: SaleRow[] }),
+        withSales ? getShared<CustomerRow[]>("/contacts") : Promise.resolve([] as CustomerRow[]),
       ]);
       if (!alive) return;
+      const sales = s.status === "fulfilled" && Array.isArray(s.value?.items) ? s.value.items : [];
+      const customers = c.status === "fulfilled" && Array.isArray(c.value) ? c.value : [];
       const orders = o.status === "fulfilled" && Array.isArray(o.value) ? o.value : [];
       const items = i.status === "fulfilled" && Array.isArray(i.value) ? i.value : [];
-      setRecords(
-        recordItems(orders, items, hrefs, go, {
-          status: (s) => (isKnownStatus(s) ? t(`staff.dash.st.${s}` as CopyKey) : s),
+      setRecords([
+        ...salesItems(sales, customers, hrefs, go, {
+          status: (st) => (/^(draft|pending_approval|confirmed|shipped|paid|cancelled)$/.test(st) ? t(`sales.status.${st}` as CopyKey) : st),
+          money: (v) => formatMoney(Number(v) || 0),
+        }),
+        ...recordItems(orders, items, hrefs, go, {
+          status: (st) => (isKnownStatus(st) ? t(`staff.dash.st.${st}` as CopyKey) : st),
           unit: (x) => x.unit ?? "",
         }),
-      );
+      ]);
       setLoading(false);
     })();
     return () => {

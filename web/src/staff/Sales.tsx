@@ -38,7 +38,7 @@ export function Sales() {
   const [tab, setTab] = useState<string>(() => fixed ?? (qs.get("channel") === "website" || qs.get("channel") === "direct" ? (qs.get("channel") as string) : "all"));
   const [status, setStatus] = useState(() => ((SALES_STATUSES as readonly string[]).includes(qs.get("status") ?? "") ? (qs.get("status") as string) : ""));
   const [search, setSearch] = useState(qs.get("q") ?? "");
-  const [customer, setCustomer] = useState("");
+  const [customer, setCustomer] = useState(() => (/^\d{1,9}$/.test(qs.get("customer") ?? "") ? (qs.get("customer") as string) : ""));
   const [preset, setPreset] = useState<DatePreset>("all");
   const [page, setPage] = useState(1);
   const [openId, setOpenId] = useState<number | null>(() => Number(qs.get("open")) || null);
