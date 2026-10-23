@@ -144,9 +144,9 @@ describe("Sales — تفاصيل الفاتورة وتغيير الحالة", ()
     fireEvent.click(await screen.findByText("INV-1"));
     await screen.findByText("كرتونة كبيرة");
     expect(screen.getByText(/فاتورة أونلاين: بتتعمل وتتحدّث من البوابة/)).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "المزيد" }));
-    expect(screen.queryByRole("menuitem", { name: "عدّل" })).toBeNull();
-    expect(screen.queryByRole("menuitem", { name: "امسح" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "عدّل" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "امسح" })).toBeNull();
+    expect(screen.getByRole("button", { name: "اطبع" })).toBeTruthy();
   });
 
   it("المنتظرة للاعتماد: تنبيه ومفيش زر خطوة جاية", async () => {

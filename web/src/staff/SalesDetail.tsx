@@ -2,8 +2,8 @@ import { useState } from "preact/hooks";
 import { api } from "../admin/api";
 import { useQuery } from "../api/hooks";
 import { t, type CopyKey } from "../copy";
-import { Button, ConfirmDialog, Drawer, InlineAlert, Menu, Skeleton, StatusPill, Timeline, useToast, type TimelineItem } from "../design/components";
-import { Ban, Copy, Ellipsis, Pencil, Printer, Trash } from "../design/icons";
+import { Button, ConfirmDialog, Drawer, InlineAlert, Skeleton, StatusPill, Timeline, useToast, type TimelineItem } from "../design/components";
+import { Ban, Pencil, Printer, Trash } from "../design/icons";
 import { formatDate, formatDateTime, formatMoney, formatNumber } from "../lib/format";
 import { useAct } from "../admin/act";
 import { printInvoice } from "./salesPrint";
@@ -91,26 +91,6 @@ export function SalesDetail({ id, role, customerName, onClose, onChanged, onEdit
   const print = () => {
     if (o && !printInvoice(o, customerName(o.contactId), statusLabel(o.status))) toast({ tone: "warn", message: t("sales.print.blocked") });
   };
-  const copyNumber = async () => {
-    if (!o) return;
-    try {
-      await navigator.clipboard.writeText(o.orderNumber);
-      toast({ tone: "success", message: t("sales.act.copied") });
-    } catch {
-      toast({ tone: "warn", message: t("common.copyFailed") });
-    }
-  };
-
-  const menu = o
-    ? [
-        ...(canEdit ? [{ label: t("sales.act.edit"), icon: Pencil, onSelect: () => onEdit(o) }] : []),
-        { label: t("sales.act.print"), icon: Printer, onSelect: print },
-        { label: t("sales.act.copy"), icon: Copy, onSelect: () => void copyNumber() },
-        ...(allowedNext(o.status).includes("cancelled") ? [{ label: t("sales.act.cancelled"), icon: Ban, danger: true, onSelect: () => setMove("cancelled") }] : []),
-        ...(canDelete ? [{ label: t("sales.act.delete"), icon: Trash, danger: true, onSelect: () => setDel(true) }] : []),
-      ]
-    : [];
-
   const effects = o && move ? stockEffects(o.status, move) : [];
   const moveDesc = o && move
     ? [
@@ -132,14 +112,11 @@ export function SalesDetail({ id, role, customerName, onClose, onChanged, onEdit
         footer={
           o ? (
             <div class="sales-foot">
-              {next && canMove ? (
-                <Button onClick={() => setMove(next)}>{t(`sales.act.${next}` as CopyKey)}</Button>
-              ) : null}
-              <Menu label={t("common.more")} items={menu} trigger={({ toggle, open, id: tid }) => (
-                <Button variant="secondary" icon={Ellipsis} onClick={toggle} aria-expanded={open} aria-controls={tid}>
-                  {t("common.more")}
-                </Button>
-              )} />
+              {next && canMove ? <Button onClick={() => setMove(next)}>{t(`sales.act.${next}` as CopyKey)}</Button> : null}
+              {canEdit ? <Button variant="secondary" icon={Pencil} onClick={() => onEdit(o)}>{t("sales.act.edit")}</Button> : null}
+              <Button variant="secondary" icon={Printer} onClick={print}>{t("sales.act.print")}</Button>
+              {allowedNext(o.status).includes("cancelled") ? <Button variant="ghost" icon={Ban} onClick={() => setMove("cancelled")}>{t("sales.act.cancelled")}</Button> : null}
+              {canDelete ? <Button variant="ghost" icon={Trash} onClick={() => setDel(true)}>{t("sales.act.delete")}</Button> : null}
             </div>
           ) : undefined
         }
