@@ -58,10 +58,16 @@ export function resolveHref(href: string): ResolvedHref {
   return { kind: "legacy", href: href.startsWith("/") ? href : `/${href}` };
 }
 
-export function isActiveHref(path: string, href: string): boolean {
+export function isActiveHref(path: string, href: string, search: string = typeof location !== "undefined" ? location.search : ""): boolean {
   const r = resolveHref(href);
   if (r.kind !== "spa") return false;
-  return path === r.to || path.startsWith(`${r.to}/`);
+  const [to, query = ""] = r.to.split("?");
+  if (!(path === to || path.startsWith(`${to}/`))) return false;
+  // رابط بباراميتر (زي ?channel=website) بيبقى نشط لما نفس الباراميتر موجود في العنوان الحالي.
+  const want = new URLSearchParams(query);
+  const have = new URLSearchParams(search);
+  for (const [k, v] of want) if (have.get(k) !== v) return false;
+  return true;
 }
 
 export function deptPageCount(d: NavDeptDto): number {

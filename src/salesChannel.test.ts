@@ -1,5 +1,5 @@
 /** @format */
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { getNavForRole } from "./lib/departments";
@@ -8,7 +8,7 @@ import { listScope, manualCreateChannel, parseChannel, PORTAL_INVOICE_NOTE_PREFI
 
 const read = (rel: string) => readFileSync(resolve(process.cwd(), rel), "utf8");
 const salesLinks = (role: string) =>
-  getNavForRole(role as (typeof USER_ROLES)[number]).flatMap((d) => d.subFunctions.flatMap((s) => s.pages.filter((p) => p.href.startsWith("sales.html")).map((p) => p.href)));
+  getNavForRole(role as (typeof USER_ROLES)[number]).flatMap((d) => d.subFunctions.flatMap((s) => s.pages.filter((p) => p.href.startsWith("/v2/staff/sales")).map((p) => p.href)));
 
 describe("نطاق القائمة حسب القناة", () => {
   it("بائع الأونلاين يشوف كل فواتير الأونلاين (مش فواتيره بس) ومن غير فلتر منشئ", () => {
@@ -71,19 +71,23 @@ describe("حراسة الربط (الخلل الأصلي ما يرجعش)", () =
     expect(src).not.toMatch(/orderData\.channel\s*=\s*req\.user!\.role === "online_seller"/);
   });
   it("القايمة: مدخلين مختلفين لصفحة المبيعات (أونلاين/أوفلاين) برابطين ومعرّفين مختلفين", () => {
-    expect(salesLinks("online_seller")).toEqual(["sales.html?channel=website"]);
-    expect(salesLinks("offline_seller")).toEqual(["sales.html?channel=direct"]);
-    expect(salesLinks("sales_manager").sort()).toEqual(["sales.html?channel=direct", "sales.html?channel=website"]);
+    expect(salesLinks("online_seller")).toEqual(["/v2/staff/sales?channel=website"]);
+    expect(salesLinks("offline_seller")).toEqual(["/v2/staff/sales?channel=direct"]);
+    expect(salesLinks("sales_manager").sort()).toEqual(["/v2/staff/sales?channel=direct", "/v2/staff/sales?channel=website"]);
     const ids = getNavForRole("chairman").flatMap((d) => d.subFunctions.flatMap((s) => s.pages.map((p) => p.id)));
     expect(ids.filter((i) => i.startsWith("sales-")).length).toBeGreaterThanOrEqual(2);
     expect(ids).not.toContain("sales");
   });
-  it("صفحة المبيعات: بتبعت القناة للسيرفر، وبتخفي زر الإنشاء في الأونلاين، وبتعرض «بانتظار الاعتماد»", () => {
-    const js = read("public/JS/sales.js");
-    expect(js).toContain('params.set("channel", channel)');
-    expect(js).toContain('newBtn.hidden = channel === "website"');
-    expect(js).toContain("pending_approval");
-    expect(js).not.toMatch(/statusMap\[inv\.status\] \|\| statusMap\.draft/);
-    expect(read("public/sales.html")).toContain('data-status="pending_approval"');
+  it("صفحة المبيعات الجديدة: بتبعت القناة للسيرفر، وبتخفي زر الإنشاء في الأونلاين، وبتعرض «منتظرة الاعتماد»", () => {
+    const page = read("web/src/staff/Sales.tsx");
+    expect(page).toContain("channel,");
+    expect(page).toContain('role !== "online_seller" && tab !== "website"');
+    expect(read("web/src/copy/sales.ts")).toContain('"sales.status.pending_approval"');
+    expect(read("web/src/staff/salesCore.ts")).toContain("pending_approval");
+  });
+  it("الصفحة القديمة اتشالت وبقى ليها تحويل للجديدة", () => {
+    expect(existsSync(resolve(process.cwd(), "public/sales.html"))).toBe(false);
+    expect(existsSync(resolve(process.cwd(), "public/JS/sales.js"))).toBe(false);
+    expect(read("src/main.ts")).toContain("salesRedirectTarget");
   });
 });

@@ -93,7 +93,7 @@ export const DEPARTMENTS: readonly NavDepartment[] = [
         label: "المبيعات أونلاين (من البوابة)",
         roles: ["chairman", "executive_manager", "sales_manager", "online_seller", "hr", "hr_manager"],
         pages: [
-          { id: "sales-online", label: "فواتير الأونلاين", href: "sales.html?channel=website", roles: ["chairman", "executive_manager", "sales_manager", "online_seller", "hr", "hr_manager"] },
+          { id: "sales-online", label: "فواتير الأونلاين", href: "/v2/staff/sales?channel=website", roles: ["chairman", "executive_manager", "sales_manager", "online_seller", "hr", "hr_manager"] },
         ],
       },
       {
@@ -101,7 +101,7 @@ export const DEPARTMENTS: readonly NavDepartment[] = [
         label: "المبيعات أوفلاين",
         roles: ["chairman", "executive_manager", "sales_manager", "offline_seller", "hr", "hr_manager"],
         pages: [
-          { id: "sales-offline", label: "فواتير الأوفلاين", href: "sales.html?channel=direct", roles: ["chairman", "executive_manager", "sales_manager", "offline_seller", "hr", "hr_manager"] },
+          { id: "sales-offline", label: "فواتير الأوفلاين", href: "/v2/staff/sales?channel=direct", roles: ["chairman", "executive_manager", "sales_manager", "offline_seller", "hr", "hr_manager"] },
         ],
       },
       {

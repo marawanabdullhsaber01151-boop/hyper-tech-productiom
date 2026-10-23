@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { chatStaffRedirectTarget, portalRedirectTarget } from "./lib/legacyRedirects";
+import { chatStaffRedirectTarget, portalRedirectTarget, salesRedirectTarget } from "./lib/legacyRedirects";
 
 describe("تحويل رابط شات الإدارة القديم", () => {
   it("بدون رقم → صندوق المحادثات", () => {
@@ -44,5 +44,17 @@ describe("الرئيسية القديمة", () => {
     const m = await import("./lib/legacyRedirects");
     expect(m.LEGACY_HOME_PATHS).toEqual(["/", "/index.html"]);
     expect(m.STAFF_HOME_PATH).toBe("/v2/staff");
+  });
+});
+
+describe("صفحة المبيعات القديمة", () => {
+  it("بتروح للصفحة الجديدة وبتحافظ على القناة والحالة", () => {
+    expect(salesRedirectTarget("")).toBe("/v2/staff/sales");
+    expect(salesRedirectTarget("channel=website")).toBe("/v2/staff/sales?channel=website");
+    expect(salesRedirectTarget("channel=direct&status=paid")).toBe("/v2/staff/sales?channel=direct&status=paid");
+  });
+  it("قيم غريبة وباراميترات تانية بتتشال", () => {
+    expect(salesRedirectTarget("channel=//evil.com&next=//evil.com")).toBe("/v2/staff/sales");
+    expect(salesRedirectTarget("status=drop table")).toBe("/v2/staff/sales");
   });
 });

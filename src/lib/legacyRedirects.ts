@@ -39,3 +39,17 @@ export function portalRedirectTarget(pathname: string, rawQuery: string): string
 /** لوحة التحكم القديمة (`/` و`/index.html`) اتشالت: الرئيسية بقت `/v2/staff` (بتوجّه لتسجيل الدخول لو مفيش جلسة). */
 export const LEGACY_HOME_PATHS = ["/", "/index.html"];
 export const STAFF_HOME_PATH = "/v2/staff";
+
+/** صفحة المبيعات القديمة (`/sales.html?channel=website`) ← `/v2/staff/sales`. بننقل `channel` و`status` بس من قايمة معروفة. */
+export const LEGACY_SALES_PATH = "/sales.html";
+const SALES_STATUS_PARAMS = ["draft", "pending_approval", "confirmed", "shipped", "paid", "cancelled"];
+export function salesRedirectTarget(rawQuery: string): string {
+  const from = new URLSearchParams(rawQuery);
+  const out = new URLSearchParams();
+  const channel = from.get("channel");
+  if (channel === "website" || channel === "direct") out.set("channel", channel);
+  const status = from.get("status");
+  if (status && SALES_STATUS_PARAMS.includes(status)) out.set("status", status);
+  const qs = out.toString();
+  return qs ? `/v2/staff/sales?${qs}` : "/v2/staff/sales";
+}

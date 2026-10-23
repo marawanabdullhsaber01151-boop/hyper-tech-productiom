@@ -46,7 +46,7 @@ import planningRouter from "./routes/planning";
 import navRouter from "./routes/nav";
 import portalChatRouter from "./routes/portal-chat";
 import chatStaffRouter from "./routes/chat-staff";
-import { LEGACY_HOME_PATHS, LEGACY_PORTAL_PATHS, STAFF_HOME_PATH, chatStaffRedirectTarget, portalRedirectTarget } from "./lib/legacyRedirects";
+import { LEGACY_HOME_PATHS, LEGACY_PORTAL_PATHS, LEGACY_SALES_PATH, STAFF_HOME_PATH, chatStaffRedirectTarget, portalRedirectTarget, salesRedirectTarget } from "./lib/legacyRedirects";
 import healthRouter from "./routes/health";
 
 import { errorHandler, notFound } from "./middleware/errorHandler";
@@ -198,6 +198,7 @@ const v2StaticOptions = {
   },
 };
 app.get(LEGACY_HOME_PATHS, (_req, res) => res.redirect(302, STAFF_HOME_PATH));
+app.get(LEGACY_SALES_PATH, (req, res) => res.redirect(302, salesRedirectTarget(req.originalUrl.split("?")[1] ?? "")));
 app.get("/chat-staff.html", (req, res) => res.redirect(302, chatStaffRedirectTarget(req.query.c)));
 app.get(LEGACY_PORTAL_PATHS, (req, res) => {
   const target = portalRedirectTarget(req.path, req.originalUrl.split("?")[1] ?? "");

@@ -256,7 +256,7 @@ const DEFS: CheckDef[] = [
         action: "افتح كل فاتورة وراجع الأسعار والكميات، وعدّلها لحد ما الإجمالي يتصحح.",
         count: bad.length,
         examples: bad.map((b) => `${b.order_number}: الإجمالي ${b.total} والأصناف ${b.items}`),
-        href: "/sales.html",
+        href: "/v2/staff/sales",
       };
     },
   },
@@ -278,7 +278,7 @@ const DEFS: CheckDef[] = [
         action: "صحّح قناة الفاتورة من تفاصيلها.",
         count: bad.length,
         examples: bad.map((b) => `${b.order_number} (${b.channel === "website" ? "أونلاين" : "أوفلاين"}، منشئها ${b.role === "online_seller" ? "بائع أونلاين" : "بائع أوفلاين"})`),
-        href: "/sales.html",
+        href: "/v2/staff/sales",
       };
     },
   },
@@ -294,7 +294,7 @@ const DEFS: CheckDef[] = [
         message: `${countWord(n, { one: "فاتورة", two: "فاتورتين", few: "فواتير", many: "فاتورة" })} مسودة بقالها أكتر من ١٤ يوم من غير ما تتأكد أو تتلغي.`,
         action: "راجعها: أكّدها لو صحيحة، أو الغيها.",
         count: n,
-        href: "/sales.html",
+        href: "/v2/staff/sales",
       };
     },
   },

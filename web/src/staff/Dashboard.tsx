@@ -43,7 +43,7 @@ function pageHrefs(nav: NavResponse | undefined): Set<string> {
 const QUICK: Array<{ href: string; label: CopyKey }> = [
   { href: "production.html", label: "staff.dash.quick.production" },
   { href: "inventory.html", label: "staff.dash.quick.inventory" },
-  { href: "sales.html", label: "staff.dash.quick.sales" },
+  { href: "/v2/staff/sales", label: "staff.dash.quick.sales" },
   { href: "/v2/staff/system-health", label: "staff.dash.quick.health" },
 ];
 

@@ -1,6 +1,7 @@
 /** @format */
 
 import { listScope, manualCreateChannel } from "../lib/salesChannel";
+import { isCatalogPriceOverride } from "../lib/salesPricing";
 import { Router } from "express";
 import {
   SQL,
@@ -169,7 +170,7 @@ async function normalizeSalesOrderItems(
     const unitPrice = inventoryItem?.unitPrice ?? requestedUnitPrice;
     parseScaledDecimal(item.qty, 3, "الكمية");
     parseScaledDecimal(unitPrice, 2, "سعر الوحدة");
-    if (inventoryItem && requestedUnitPrice !== inventoryItem.unitPrice) {
+    if (inventoryItem && isCatalogPriceOverride(requestedUnitPrice, inventoryItem.unitPrice)) {
       priceOverrides.push({
         inventoryItemId: inventoryItem.id,
         requestedUnitPrice,

@@ -29,9 +29,9 @@ async function enhApiCall(path, options = {}) {
 const ROLE_HOME_PAGE = {
   hr: "factory-intake.html",
   hr_manager: "factory-intake.html",
-  sales_manager: "sales.html",
-  online_seller: "sales.html",
-  offline_seller: "sales.html",
+  sales_manager: "/v2/staff/sales",
+  online_seller: "/v2/staff/sales",
+  offline_seller: "/v2/staff/sales",
   executive_manager: "production.html",
   operations_manager: "factory-production-manager.html",
   // Phase 2: purchases.html removed along with the full purchasing module.
@@ -486,7 +486,7 @@ class SearchSystem {
           .map((s) => ({
             title: `فاتورة: ${s.orderNumber}`,
             type: "مبيعات",
-            link: "sales.html",
+            link: "/v2/staff/sales",
           })),
         ...inventory
           .filter(

@@ -7,6 +7,7 @@ import { portalCopy } from "./portal";
 import { adminCopy } from "./admin";
 import { chatCopy } from "./chat";
 import { staffCopy } from "./staff";
+import { salesCopy } from "./sales";
 
 export type Plural = { zero?: string; one?: string; two?: string; few?: string; many?: string; other: string };
 export type Msg = string | Plural;
@@ -128,6 +129,7 @@ export const ar = {
   ...portalCopy,
   ...adminCopy,
   ...staffCopy,
+  ...salesCopy,
   ...chatCopy,
 } as const satisfies Record<string, Msg>;
 

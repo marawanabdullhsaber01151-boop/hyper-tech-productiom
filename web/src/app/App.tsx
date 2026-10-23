@@ -10,11 +10,13 @@ import { StaffShell } from "../staff/StaffShell";
 import { StaffNotFound } from "../staff/SystemPages";
 import { RoleGuard } from "../staff/RoleGuard";
 import { STOCK_ROLES, Stock } from "../staff/Stock";
+import { SALES_PAGE_ROLES, Sales } from "../staff/Sales";
 import { HEALTH_ROLES, SystemHealth } from "../staff/SystemHealth";
 
 /** صفحات الموظفين: كلها بتتعرض جوّه غلاف واحد (سايدبار + هيدر). أي صفحة جديدة بتتحط هنا. */
 export const staffRoutes: RouteDef[] = [
   { path: "/staff", render: () => <Home /> },
+  { path: "/staff/sales", render: () => <RoleGuard roles={SALES_PAGE_ROLES}><Sales key={location.search} /></RoleGuard> },
   { path: "/staff/stock", render: () => <RoleGuard roles={STOCK_ROLES}><Stock /></RoleGuard> },
   { path: "/staff/system-health", render: () => <RoleGuard roles={HEALTH_ROLES}><SystemHealth /></RoleGuard> },
   ...adminRoutes,
