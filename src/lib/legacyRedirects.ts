@@ -58,6 +58,10 @@ export function inventoryRedirectTarget(rawQuery: string, movements = false): st
   return qs ? `/v2/staff/stock?${qs}` : "/v2/staff/stock";
 }
 
+/** صفحة المواد الخام القديمة ← المخزون مفلتر على المواد الخام (الصفحتان كانتا نسخة واحدة من نفس البيانات). */
+export const LEGACY_MATERIAL_PATH = "/material.html";
+export const MATERIAL_REDIRECT_TARGET = "/v2/staff/stock?cat=raw_material";
+
 /** صفحة المبيعات القديمة (`/sales.html?channel=website`) ← `/v2/staff/sales`. بننقل `channel` و`status` بس من قايمة معروفة. */
 export const LEGACY_SALES_PATH = "/sales.html";
 const SALES_STATUS_PARAMS = ["draft", "pending_approval", "confirmed", "shipped", "paid", "cancelled"];

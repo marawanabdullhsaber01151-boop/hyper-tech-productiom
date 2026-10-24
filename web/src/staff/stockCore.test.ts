@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { adjustmentFor, buildMovementRows, canManageStock, inDateRange, moveError, movementTotals, stockValue, totalValue, type Movement } from "./stockCore";
+import { adjustmentFor, buildMovementRows, canManageStock, fillPct, inDateRange, moveError, movementTotals, reorderQty, stockValue, totalValue, type Movement } from "./stockCore";
 
 const mv = (id: number, item: number, type: string, qty: string, at: string): Movement => ({ id, inventoryItemId: item, movementType: type, qty, referenceType: "adjustment", referenceId: item, unitPrice: null, notes: null, createdAt: at });
 
@@ -67,5 +67,20 @@ describe("القيمة والإجماليات", () => {
     expect(canManageStock("storekeeper")).toBe(true);
     expect(canManageStock("buyer")).toBe(false);
     expect(canManageStock(undefined)).toBe(false);
+  });
+});
+
+describe("اقتراح إعادة الطلب وشريط المستوى", () => {
+  it("بنوصل لـ 1.5 × الحد الأدنى", () => {
+    expect(reorderQty(15, 20)).toBe(15);
+    expect(reorderQty(40, 20)).toBe(0);
+    expect(reorderQty(0, 0)).toBe(0);
+    expect(reorderQty(7.2, 10)).toBe(8);
+  });
+  it("النسبة بين 0 و100 ومن غير حد أدنى كاملة", () => {
+    expect(fillPct(15, 20)).toBe(75);
+    expect(fillPct(50, 20)).toBe(100);
+    expect(fillPct(-5, 20)).toBe(0);
+    expect(fillPct(3, 0)).toBe(100);
   });
 });

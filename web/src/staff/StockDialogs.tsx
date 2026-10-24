@@ -3,10 +3,11 @@ import { api } from "../admin/api";
 import { useAct } from "../admin/act";
 import { useQuery } from "../api/hooks";
 import { t, type CopyKey } from "../copy";
-import { Button, ConfirmDialog, Dialog, Drawer, Field, InlineAlert, Input, Select, Skeleton, StatusPill } from "../design/components";
-import { Pencil, Plus, Minus, ClipboardList, Trash } from "../design/icons";
+import { Button, ConfirmDialog, Dialog, Drawer, Field, InlineAlert, Input, Select, Skeleton, StatusPill, useToast } from "../design/components";
+import { Pencil, Plus, Minus, ClipboardList, Printer, Trash } from "../design/icons";
 import { formatDateTime, formatNumber } from "../lib/format";
-import { adjustmentFor, moveError, stockValue, type Movement, type StockItem } from "./stockCore";
+import { adjustmentFor, fillPct, moveError, reorderQty, stockValue, type Movement, type StockItem } from "./stockCore";
+import { printItemReport } from "./stockPrint";
 import { normNum } from "./salesCore";
 
 const CATS = ["raw_material", "wip", "finished_good"] as const;
@@ -137,7 +138,12 @@ interface LinkOpt {
   category: string;
 }
 
-export function ItemEditor({ item, onClose, onSaved }: { item?: StockItem; onClose: () => void; onSaved: () => void }) {
+export interface SupplierOpt {
+  id: number;
+  name: string;
+}
+
+export function ItemEditor({ item, suppliers, onClose, onSaved }: { item?: StockItem; suppliers: SupplierOpt[]; onClose: () => void; onSaved: () => void }) {
   const editing = !!item;
   const act = useAct();
   const links = useQuery((signal) => (editing ? Promise.resolve([] as LinkOpt[]) : api.get<LinkOpt[]>("/inventory/link-options", { signal })), []);
@@ -150,6 +156,8 @@ export function ItemEditor({ item, onClose, onSaved }: { item?: StockItem; onClo
   const [qty0, setQty0] = useState("");
   const [min, setMin] = useState(item ? String(Number(item.minQty) || 0) : "0");
   const [price, setPrice] = useState(item?.unitPrice !== undefined ? String(Number(item.unitPrice) || 0) : "0");
+  const [supplier, setSupplier] = useState(item?.supplierId ? String(item.supplierId) : "");
+  const [lead, setLead] = useState(item?.leadDays ? String(item.leadDays) : "");
   const [tried, setTried] = useState(false);
 
   const opts = useMemo(() => (links.data ?? []).map((l) => ({ value: String(l.id), label: `${l.code} — ${l.name}` })), [links.data]);
@@ -170,6 +178,7 @@ export function ItemEditor({ item, onClose, onSaved }: { item?: StockItem; onClo
     min: !okNum(min),
     price: !okNum(price),
     qty0: !editing && qty0.trim() !== "" && !okNum(qty0),
+    lead: lead.trim() !== "" && !/^\d{1,3}$/.test(normNum(lead)),
   };
   const invalid = Object.values(errs).some(Boolean);
   const save = async () => {
@@ -178,7 +187,7 @@ export function ItemEditor({ item, onClose, onSaved }: { item?: StockItem; onClo
     const ok = await act.run(
       async () => {
         if (editing) {
-          const body: Record<string, unknown> = { minQty: normNum(min), unitPrice: normNum(price), category: cat };
+          const body: Record<string, unknown> = { minQty: normNum(min), unitPrice: normNum(price), category: cat, supplierId: supplier ? Number(supplier) : null, leadDays: lead.trim() ? Number(normNum(lead)) : null };
           if (!linked) Object.assign(body, { name: name.trim(), code: code.trim() || null, unit: unit.trim() || null });
           await api.patch(`/inventory/${item!.id}`, body);
         } else {
@@ -190,6 +199,8 @@ export function ItemEditor({ item, onClose, onSaved }: { item?: StockItem; onClo
             minQty: normNum(min),
             unitPrice: normNum(price),
             foundationItemId: Number(pick),
+            supplierId: supplier ? Number(supplier) : null,
+            leadDays: lead.trim() ? Number(normNum(lead)) : null,
           });
           const open = normNum(qty0);
           if (open && Number(open) > 0) {
@@ -244,6 +255,12 @@ export function ItemEditor({ item, onClose, onSaved }: { item?: StockItem; onClo
           <Field label={t("inv.ed.price")} error={tried && errs.price ? t("inv.ed.err.num") : null}>
             <Input inputMode="decimal" value={price} onInput={(e) => setPrice(val(e))} />
           </Field>
+          <Field label={t("inv.ed.supplier")} optional>
+            <Select value={supplier} placeholder={t("inv.ed.supplier.none")} options={suppliers.map((x) => ({ value: String(x.id), label: x.name }))} onChange={(e) => setSupplier((e.target as HTMLSelectElement).value)} />
+          </Field>
+          <Field label={t("inv.ed.lead")} optional error={tried && errs.lead ? t("inv.ed.err.num") : null}>
+            <Input inputMode="numeric" value={lead} onInput={(e) => setLead(val(e))} />
+          </Field>
           {!editing ? (
             <Field label={t("inv.ed.qty0")} optional error={tried && errs.qty0 ? t("inv.ed.err.num") : null}>
               <Input inputMode="decimal" value={qty0} onInput={(e) => setQty0(val(e))} />
@@ -256,8 +273,16 @@ export function ItemEditor({ item, onClose, onSaved }: { item?: StockItem; onClo
 }
 
 /* ---------- تفاصيل الصنف (Drawer) ---------- */
+export interface Usage {
+  supplier: { id: number; name: string } | null;
+  leadDays: number | null;
+  recipes: Array<{ recipeId: number; productName: string; unit: string | null; qty?: string }>;
+  production: Array<{ id: number; orderNumber: string; productName: string; qty: string; status: string }>;
+}
+
 export interface ItemDrawerProps {
   item: StockItem;
+  supplierName: string | null;
   onClose: () => void;
   onIn: () => void;
   onOut: () => void;
@@ -267,12 +292,22 @@ export interface ItemDrawerProps {
   canDelete: boolean;
 }
 
-export function ItemDrawer({ item, onClose, onIn, onOut, onCount, onEdit, onDeleted, canDelete }: ItemDrawerProps) {
+export function ItemDrawer({ item, supplierName, onClose, onIn, onOut, onCount, onEdit, onDeleted, canDelete }: ItemDrawerProps) {
   const act = useAct();
+  const toast = useToast();
   const [del, setDel] = useState(false);
+  const usage = useQuery((signal) => api.get<Usage>(`/inventory/${item.id}/usage`, { signal }), [item.id]);
   const recent = useQuery((signal) => api.get<Movement[]>("/stock-movements", { signal, query: { item_id: String(item.id) } }), [item.id, item.qty]);
   const s = itemState(item);
   const v = stockValue(item);
+  const need = reorderQty(Number(item.qty), Number(item.minQty));
+  const pct = fillPct(Number(item.qty), Number(item.minQty));
+  const sup = usage.data?.supplier?.name ?? supplierName;
+  const lead = usage.data?.leadDays ?? item.leadDays ?? null;
+  const print = () => {
+    const ok = printItemReport({ item, supplier: sup, leadDays: lead, recipes: (usage.data?.recipes ?? []).map((x) => x.productName), moves: recent.data ?? [] });
+    if (!ok) toast({ tone: "warn", message: t("sales.print.blocked") });
+  };
   const doDelete = async () => {
     const ok = await act.run(
       async () => {
@@ -297,6 +332,7 @@ export function ItemDrawer({ item, onClose, onIn, onOut, onCount, onEdit, onDele
             <Button variant="secondary" icon={Minus} onClick={onOut} disabled={!(Number(item.qty) > 0)}>{t("inv.act.out")}</Button>
             <Button variant="secondary" icon={ClipboardList} onClick={onCount}>{t("inv.act.count")}</Button>
             <Button variant="secondary" icon={Pencil} onClick={onEdit}>{t("inv.act.edit")}</Button>
+            <Button variant="secondary" icon={Printer} onClick={print}>{t("inv.act.print")}</Button>
             {canDelete ? <Button variant="ghost" icon={Trash} onClick={() => setDel(true)}>{t("inv.act.delete")}</Button> : null}
           </div>
         }
@@ -309,6 +345,11 @@ export function ItemDrawer({ item, onClose, onIn, onOut, onCount, onEdit, onDele
           </div>
           {s === "out" ? <InlineAlert tone="danger">{t("inv.out.note")}</InlineAlert> : null}
           {s === "low" ? <InlineAlert tone="warn">{t("inv.low.note", { q: fmt(item.qty), m: fmt(item.minQty) })}</InlineAlert> : null}
+          <div class="inv-level">
+            <div class="inv-level__top"><strong>{fmt(item.qty)} {unitOf(item)}</strong><span class="inv-muted">{t("inv.drawer.level.of", { m: fmt(item.minQty) })}</span></div>
+            <div class="inv-bar-bg" role="img" aria-label={t("inv.drawer.level")}><div class={`inv-bar-fill is-${s}`} style={{ inlineSize: `${pct}%` }} /></div>
+          </div>
+          {need > 0 ? <InlineAlert tone="info">{sup ? t("inv.reorder", { q: fmt(need), unit: unitOf(item), supplier: sup }) : t("inv.reorder.nosup", { q: fmt(need), unit: unitOf(item) })}</InlineAlert> : null}
           <dl class="inv-facts">
             <div><dt>{t("inv.drawer.qty")}</dt><dd>{fmt(item.qty)} {unitOf(item)}</dd></div>
             <div><dt>{t("inv.drawer.reserved")}</dt><dd>{fmt(item.reservedQty ?? 0)}</dd></div>
@@ -316,7 +357,33 @@ export function ItemDrawer({ item, onClose, onIn, onOut, onCount, onEdit, onDele
             <div><dt>{t("inv.drawer.min")}</dt><dd>{fmt(item.minQty)}</dd></div>
             {item.unitPrice !== undefined ? <div><dt>{t("inv.drawer.price")}</dt><dd>{fmt(item.unitPrice)}</dd></div> : null}
             {v !== null ? <div><dt>{t("inv.drawer.value")}</dt><dd>{fmt(v)}</dd></div> : null}
+            <div><dt>{t("inv.drawer.supplier")}</dt><dd>{sup ?? "—"}</dd></div>
+            <div><dt>{t("inv.drawer.lead")}</dt><dd>{lead ? t("inv.drawer.lead.days", { n: lead }) : "—"}</dd></div>
           </dl>
+          <h3 class="inv-h">{t("inv.usage.bom")}</h3>
+          {usage.loading && !usage.data ? <Skeleton lines={2} /> : null}
+          {usage.error ? <InlineAlert tone="warn">{t("inv.usage.err")}</InlineAlert> : null}
+          {usage.data && usage.data.recipes.length === 0 ? <p class="inv-muted">{t("inv.usage.bom.none")}</p> : null}
+          <ul class="inv-recent">
+            {(usage.data?.recipes ?? []).map((r) => (
+              <li key={r.recipeId}>
+                <strong>{r.productName}</strong>
+                {r.qty !== undefined ? <span class="inv-muted">{fmt(r.qty)} {r.unit ?? ""}</span> : null}
+              </li>
+            ))}
+          </ul>
+          <h3 class="inv-h">{t("inv.usage.prod")}</h3>
+          {usage.data && usage.data.production.length === 0 ? <p class="inv-muted">{t("inv.usage.prod.none")}</p> : null}
+          <ul class="inv-recent">
+            {(usage.data?.production ?? []).map((p) => (
+              <li key={p.id}>
+                <strong>{p.orderNumber}</strong>
+                <span>{p.productName}</span>
+                <StatusPill tone="brand">{t(`inv.usage.${p.status}` as CopyKey)}</StatusPill>
+                <span class="inv-muted">{fmt(p.qty)}</span>
+              </li>
+            ))}
+          </ul>
           <h3 class="inv-h">{t("inv.drawer.recent")}</h3>
           {recent.loading && !recent.data ? <Skeleton lines={3} /> : null}
           {recent.error ? <InlineAlert tone="danger">{t("inv.drawer.err")}</InlineAlert> : null}

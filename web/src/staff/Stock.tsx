@@ -6,7 +6,7 @@ import { staffUser } from "../admin/session";
 import { Button, DataTable, EmptyState, FilterBar, InlineAlert, Select, Stat, StatusPill, Tabs, type Column } from "../design/components";
 import { Plus } from "../design/icons";
 import { formatNumber } from "../lib/format";
-import { CountDialog, ItemDrawer, ItemEditor, MovementDialog } from "./StockDialogs";
+import { CountDialog, ItemDrawer, ItemEditor, MovementDialog, type SupplierOpt } from "./StockDialogs";
 import { StockMoves } from "./StockMoves";
 import { canManageStock, stockValue, totalValue, type StockItem } from "./stockCore";
 import "./Stock.css";
@@ -26,6 +26,8 @@ export interface StockRow {
   reservedQty?: string;
   unitPrice?: string;
   foundationItemId?: number | null;
+  supplierId?: number | null;
+  leadDays?: number | null;
 }
 export type StockState = "out" | "low" | "ok";
 
@@ -52,9 +54,16 @@ export function Stock() {
   const [openId, setOpenId] = useState<number | null>(null);
   const [dlg, setDlg] = useState<Dialogs>(null);
   const list = useQuery((signal) => api.get<StockItem[]>("/inventory", { signal }), []);
+  // الموردين لأدوار المخزن بس (المشتريات مالهاش لزوم بيهم هنا)؛ لو فشل التحميل الصفحة تكمّل من غيرهم
+  const sups = useQuery((signal) => (manage ? api.get<SupplierOpt[]>("/inventory/suppliers", { signal }).catch(() => [] as SupplierOpt[]) : Promise.resolve([] as SupplierOpt[])), [manage]);
+  const suppliers = Array.isArray(sups.data) ? sups.data : [];
+  const supName = useMemo(() => new Map(suppliers.map((x) => [x.id, x.name])), [suppliers]);
   // لوحة الأوامر (Ctrl+K) بتفتح الصفحة على البحث باسم الصنف: ?q=
   const [search, setSearch] = useState(() => new URLSearchParams(location.search).get("q") ?? "");
-  const [cat, setCat] = useState("");
+  const [cat, setCat] = useState(() => {
+    const c = params.get("cat") ?? "";
+    return (CATEGORIES as readonly string[]).includes(c) ? c : "";
+  });
   const [status, setStatus] = useState("");
 
   const rows = list.data ?? [];
@@ -72,12 +81,12 @@ export function Stock() {
   const shown = useMemo(() => {
     const q = search.trim().toLowerCase();
     return rows.filter((r) => {
-      if (q && !`${r.name} ${r.code ?? ""}`.toLowerCase().includes(q)) return false;
+      if (q && !`${r.name} ${r.code ?? ""} ${manage && r.supplierId ? supName.get(r.supplierId) ?? "" : ""}`.toLowerCase().includes(q)) return false;
       if (cat && r.category !== cat) return false;
       if (status && stockState(r) !== status) return false;
       return true;
     });
-  }, [rows, search, cat, status]);
+  }, [rows, search, cat, status, supName, manage]);
 
   const value = manage ? totalValue(rows) : null;
   const opened = openId === null ? undefined : rows.find((r) => r.id === openId);
@@ -104,8 +113,9 @@ export function Stock() {
     },
   ];
   if (manage) {
-    columns.splice(6, 0, { key: "price", header: t("inv.col.price"), cell: (r) => (r.unitPrice === undefined ? "—" : num(r.unitPrice)), numeric: true, mobile: "hide" });
-    columns.splice(7, 0, { key: "value", header: t("inv.col.value"), cell: (r) => { const v = stockValue(r); return v === null ? "—" : formatNumber(v); }, numeric: true, mobile: "hide" });
+    columns.splice(3, 0, { key: "supplier", header: t("inv.col.supplier"), cell: (r) => (r.supplierId ? supName.get(r.supplierId) ?? "—" : "—"), mobile: "hide" });
+    columns.splice(7, 0, { key: "price", header: t("inv.col.price"), cell: (r) => (r.unitPrice === undefined ? "—" : num(r.unitPrice)), numeric: true, mobile: "hide" });
+    columns.splice(8, 0, { key: "value", header: t("inv.col.value"), cell: (r) => { const v = stockValue(r); return v === null ? "—" : formatNumber(v); }, numeric: true, mobile: "hide" });
   }
 
   const activeCount = (cat ? 1 : 0) + (status ? 1 : 0);
@@ -121,7 +131,7 @@ export function Stock() {
       <FilterBar
         search={search}
         onSearch={setSearch}
-        searchLabel={t("staff.stock.search")}
+        searchLabel={manage ? t("inv.search") : t("staff.stock.search")}
         activeCount={activeCount}
         onClear={() => {
           setCat("");
@@ -189,6 +199,7 @@ export function Stock() {
       {manage && opened ? (
         <ItemDrawer
           item={opened}
+          supplierName={opened.supplierId ? supName.get(opened.supplierId) ?? null : null}
           canDelete
           onClose={() => setOpenId(null)}
           onIn={() => setDlg({ kind: "in", item: opened })}
@@ -201,8 +212,8 @@ export function Stock() {
           }}
         />
       ) : null}
-      {dlg && dlg.kind === "new" ? <ItemEditor onClose={() => setDlg(null)} onSaved={changed} /> : null}
-      {dlg && dlg.kind === "edit" ? <ItemEditor item={dlg.item} onClose={() => setDlg(null)} onSaved={changed} /> : null}
+      {dlg && dlg.kind === "new" ? <ItemEditor suppliers={suppliers} onClose={() => setDlg(null)} onSaved={changed} /> : null}
+      {dlg && dlg.kind === "edit" ? <ItemEditor item={dlg.item} suppliers={suppliers} onClose={() => setDlg(null)} onSaved={changed} /> : null}
       {dlg && (dlg.kind === "in" || dlg.kind === "out") ? <MovementDialog item={dlg.item} type={dlg.kind} onClose={() => setDlg(null)} onDone={changed} /> : null}
       {dlg && dlg.kind === "count" ? <CountDialog item={dlg.item} onClose={() => setDlg(null)} onDone={changed} /> : null}
     </div>

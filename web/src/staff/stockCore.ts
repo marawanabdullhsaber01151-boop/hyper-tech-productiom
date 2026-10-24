@@ -14,6 +14,8 @@ export interface StockItem {
   /** السيرفر بيبعته لأدوار المخزن بس. */
   unitPrice?: string;
   foundationItemId?: number | null;
+  supplierId?: number | null;
+  leadDays?: number | null;
 }
 export interface Movement {
   id: number;
@@ -109,3 +111,14 @@ export function inDateRange(createdAt: string, from: string, to: string): boolea
 
 export const MANAGE_ROLES = ["chairman", "warehouse_manager", "storekeeper"] as const;
 export const canManageStock = (role: string | undefined) => !!role && (MANAGE_ROLES as readonly string[]).includes(role);
+
+/** الكمية المقترح طلبها: نوصل لـ 1.5 × الحد الأدنى. صفر لو الحد الأدنى مش محدد أو الرصيد كفاية. */
+export function reorderQty(qty: number, min: number): number {
+  if (!(min > 0)) return 0;
+  return Math.max(0, Math.ceil(min * 1.5 - qty));
+}
+/** نسبة الرصيد من الحد الأدنى لشريط المستوى (0 لـ 100). من غير حد أدنى = 100. */
+export function fillPct(qty: number, min: number): number {
+  if (!(min > 0)) return 100;
+  return Math.max(0, Math.min(100, Math.round((qty / min) * 100)));
+}

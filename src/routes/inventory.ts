@@ -1,9 +1,10 @@
 /** @format */
 
 import { Router } from "express";
-import { and, asc, eq, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, or, sql } from "drizzle-orm";
 import { db, inventoryItemsTable, insertInventoryItemSchema } from "../db";
-import { foundationItemsTable } from "../db/schema";
+import { bomRecipeItemsTable, bomRecipesTable, contactsTable, foundationItemsTable, productionWorkflowOrdersTable } from "../db/schema";
+import { ACTIVE_PRODUCTION_STATUSES, STOCK_USAGE_ROLES, shapeUsage } from "../lib/stockUsage";
 import { foundationTypeToCategory } from "../lib/stockManual";
 import {
   requireAuth,
@@ -63,6 +64,68 @@ router.get(
           availableQty: String(Math.max(0, Number(item.qty) - Number(item.reservedQty))),
         };
       }));
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+// GET /api/v1/inventory/suppliers
+// الموردين (للربط في نافذة الصنف). كانت من /contacts اللي أمين المخزن مالوش صلاحية عليها.
+router.get(
+  "/inventory/suppliers",
+  requireAuth,
+  requirePermission("inventory.edit"),
+  async (_req, res, next) => {
+    try {
+      const rows = await db
+        .select({ id: contactsTable.id, name: contactsTable.name })
+        .from(contactsTable)
+        .where(or(eq(contactsTable.type, "supplier"), eq(contactsTable.type, "both")))
+        .orderBy(asc(contactsTable.name));
+      res.json(rows);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+// GET /api/v1/inventory/:id/usage
+// الصنف ده مستخدم في أنهي وصفات وأوامر إنتاج نشطة، وانهي مورّد. بديل لتجميع 3 مسارات في المتصفح
+// (/contacts و/bom و/production-workflow) كان بيرجّع فاضي بصمت لأمين المخزن.
+router.get(
+  "/inventory/:id/usage",
+  requireAuth,
+  requireRole(...STOCK_USAGE_ROLES),
+  async (req, res, next) => {
+    try {
+      const id = parseIdParam(req.params.id, res);
+      if (id === null) return;
+      const [item] = await db
+        .select({ id: inventoryItemsTable.id, supplierId: inventoryItemsTable.supplierId, leadDays: inventoryItemsTable.leadDays })
+        .from(inventoryItemsTable)
+        .where(eq(inventoryItemsTable.id, id))
+        .limit(1);
+      if (!item) {
+        res.status(404).json({ error: { message: "العنصر غير موجود" } });
+        return;
+      }
+      const bom = await db
+        .select({ recipeId: bomRecipeItemsTable.recipeId, productName: bomRecipesTable.productName, qty: bomRecipeItemsTable.qty, unit: bomRecipeItemsTable.unit })
+        .from(bomRecipeItemsTable)
+        .innerJoin(bomRecipesTable, eq(bomRecipeItemsTable.recipeId, bomRecipesTable.id))
+        .where(eq(bomRecipeItemsTable.inventoryItemId, id));
+      const recipeIds = [...new Set(bom.map((b) => b.recipeId))];
+      const orders = recipeIds.length
+        ? await db
+            .select({ id: productionWorkflowOrdersTable.id, orderNumber: productionWorkflowOrdersTable.orderNumber, productName: productionWorkflowOrdersTable.productName, qty: productionWorkflowOrdersTable.qty, workflowStatus: productionWorkflowOrdersTable.workflowStatus, bomRecipeId: productionWorkflowOrdersTable.bomRecipeId })
+            .from(productionWorkflowOrdersTable)
+            .where(and(inArray(productionWorkflowOrdersTable.bomRecipeId, recipeIds), inArray(productionWorkflowOrdersTable.workflowStatus, [...ACTIVE_PRODUCTION_STATUSES])))
+        : [];
+      const [supplier] = item.supplierId
+        ? await db.select({ id: contactsTable.id, name: contactsTable.name }).from(contactsTable).where(eq(contactsTable.id, item.supplierId)).limit(1)
+        : [];
+      res.json({ supplier: supplier ?? null, leadDays: item.leadDays ?? null, ...shapeUsage(req.user!.role, bom, orders) });
     } catch (err) {
       next(err);
     }

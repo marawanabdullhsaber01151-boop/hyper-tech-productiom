@@ -25,6 +25,8 @@ function stub(extra: Record<string, () => Response> = {}) {
     if (key === "GET /inventory") return json({ data: ITEMS });
     if (key === "GET /stock-movements") return json({ data: MOVES });
     if (key === "GET /inventory/link-options") return json({ data: [{ id: 7, code: "F-7", name: "صبغة حمراء", itemType: "raw_material", baseUnit: "لتر", minStock: "5", category: "raw_material" }] });
+    if (key === "GET /inventory/suppliers") return json({ data: [{ id: 5, name: "مورد الخامات" }] });
+    if (/^GET \/inventory\/\d+\/usage$/.test(key)) return json({ data: { supplier: { id: 5, name: "مورد الخامات" }, leadDays: 3, recipes: [{ recipeId: 1, productName: "كيس 5 كجم", unit: "كجم" }], production: [{ id: 10, orderNumber: "PO-1", productName: "كيس 5 كجم", qty: "100", status: "in_production" }] } });
     if (method === "POST") return json({ data: { id: 99 } }, 201);
     return json({ data: {} });
   }));
@@ -60,6 +62,28 @@ describe("المخزون — إدارة أمين المخزن", () => {
     expect(await screen.findByRole("button", { name: /استلام/ })).toBeTruthy();
     expect(screen.getByRole("button", { name: /صرف/ })).toBeTruthy();
     expect(screen.getByRole("button", { name: /جرد/ })).toBeTruthy();
+  });
+
+  it("التفاصيل بتعرض المورد واقتراح الطلب والوصفات وأوامر الإنتاج النشطة", async () => {
+    stub();
+    mount();
+    fireEvent.click(await screen.findByText("ملون أزرق"));
+    expect(await screen.findByText("كيس 5 كجم")).toBeTruthy();
+    expect(screen.getByText("PO-1")).toBeTruthy();
+    expect(screen.getByText("قيد التنفيذ")).toBeTruthy();
+    expect(screen.getByText("3 يوم")).toBeTruthy();
+    // 15 من حد أدنى 20 ← اقتراح 15 من المورد
+    expect(screen.getByText(/يُنصح بطلب 15 كجم من مورد الخامات/)).toBeTruthy();
+    expect(screen.getByRole("button", { name: /اطبع/ })).toBeTruthy();
+  });
+
+  it("الفلتر بالنوع من الرابط (?cat=) بيطبّق من أول عرض", async () => {
+    stub();
+    history.replaceState(null, "", "/v2/staff/stock?cat=finished_good");
+    mount();
+    expect(await screen.findByText("مفيش أصناف مطابقة")).toBeTruthy();
+    history.replaceState(null, "", "/");
+    expect(screen.queryByText("حبيبات بلاستيك")).toBeNull();
   });
 
   it("الاستلام بيبعت حركة يدوية بسبب", async () => {
