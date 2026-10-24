@@ -193,9 +193,9 @@ export const DEPARTMENTS: readonly NavDepartment[] = [
         label: "المخزون",
         roles: ["chairman", "warehouse_manager", "storekeeper"],
         pages: [
-          { id: "inventory", label: "المخزن", href: "inventory.html", roles: ["chairman", "warehouse_manager", "storekeeper"] },
+          { id: "inventory", label: "المخزن", href: "/v2/staff/stock", roles: ["chairman", "warehouse_manager", "storekeeper"] },
           { id: "material", label: "المواد الخام", href: "material.html", roles: ["chairman", "warehouse_manager", "storekeeper"] },
-          { id: "movements", label: "حركات المخزون", href: "movements.html", roles: ["chairman", "warehouse_manager", "storekeeper"] },
+          { id: "movements", label: "حركات المخزون", href: "/v2/staff/stock?tab=movements", roles: ["chairman", "warehouse_manager", "storekeeper"] },
           { id: "factory-warehouse-manager", label: "لوحة مدير المخازن", href: "factory-warehouse-manager.html", roles: ["chairman", "warehouse_manager", "operations_manager"] },
         ],
       },

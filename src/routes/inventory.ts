@@ -1,8 +1,10 @@
 /** @format */
 
 import { Router } from "express";
-import { eq, sql } from "drizzle-orm";
+import { and, asc, eq, sql } from "drizzle-orm";
 import { db, inventoryItemsTable, insertInventoryItemSchema } from "../db";
+import { foundationItemsTable } from "../db/schema";
+import { foundationTypeToCategory } from "../lib/stockManual";
 import {
   requireAuth,
   requireRole,
@@ -67,6 +69,39 @@ router.get(
   },
 );
 
+// GET /api/v1/inventory/link-options
+// الأصناف النشطة في البيانات الأساسية اللي لسه ماتسجّلتش في المخزون (الصنف الجديد لازم يتربط بواحد منهم).
+// كانت بتتقرا من /foundation/items اللي أمين المخزن مالوش صلاحية عليها، فكان مبيقدرش يضيف صنف.
+router.get(
+  "/inventory/link-options",
+  requireAuth,
+  requirePermission("inventory.create"),
+  async (_req, res, next) => {
+    try {
+      const rows = await db
+        .select({
+          id: foundationItemsTable.id,
+          code: foundationItemsTable.code,
+          name: foundationItemsTable.name,
+          itemType: foundationItemsTable.itemType,
+          baseUnit: foundationItemsTable.baseUnit,
+          minStock: foundationItemsTable.minStock,
+        })
+        .from(foundationItemsTable)
+        .where(
+          and(
+            eq(foundationItemsTable.active, true),
+            sql`NOT EXISTS (SELECT 1 FROM inventory_items ii WHERE ii.foundation_item_id = ${foundationItemsTable.id})`,
+          ),
+        )
+        .orderBy(asc(foundationItemsTable.code));
+      res.json(rows.map((r) => ({ ...r, category: foundationTypeToCategory(r.itemType) })));
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
 // POST /api/v1/inventory
 router.post(
   "/inventory",
@@ -75,6 +110,17 @@ router.post(
   async (req, res, next) => {
     try {
       const data = insertInventoryItemSchema.parse(req.body);
+      if (data.foundationItemId) {
+        const [dup] = await db
+          .select({ id: inventoryItemsTable.id })
+          .from(inventoryItemsTable)
+          .where(eq(inventoryItemsTable.foundationItemId, data.foundationItemId))
+          .limit(1);
+        if (dup) {
+          res.status(409).json({ error: { message: "الصنف ده متسجّل في المخزون بالفعل" } });
+          return;
+        }
+      }
       const [created] = await db
         .insert(inventoryItemsTable)
         .values(data)

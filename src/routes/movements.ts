@@ -18,6 +18,7 @@ import { applyStockMovement } from "../lib/stock";
 import { moveToTrash } from "../lib/trash";
 import { PERMISSIONS } from "../lib/permissions";
 import { assertReferencedMovement } from "../lib/phase0";
+import { withManualReference } from "../lib/stockManual";
 
 const router = Router();
 
@@ -50,7 +51,7 @@ router.post(
   requirePermission("movements.create"),
   async (req, res, next) => {
     try {
-      const data = insertStockMovementSchema.parse(req.body);
+      const data = withManualReference(insertStockMovementSchema.parse(req.body));
       assertReferencedMovement(data);
       if (data.referenceType === "production") {
         res.status(403).json({

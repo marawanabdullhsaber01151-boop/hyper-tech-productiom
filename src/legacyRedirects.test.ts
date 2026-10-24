@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { chatStaffRedirectTarget, portalRedirectTarget, salesRedirectTarget } from "./lib/legacyRedirects";
+import { chatStaffRedirectTarget, inventoryRedirectTarget, portalRedirectTarget, salesRedirectTarget } from "./lib/legacyRedirects";
 
 describe("تحويل رابط شات الإدارة القديم", () => {
   it("بدون رقم → صندوق المحادثات", () => {
@@ -56,5 +56,17 @@ describe("صفحة المبيعات القديمة", () => {
   it("قيم غريبة وباراميترات تانية بتتشال", () => {
     expect(salesRedirectTarget("channel=//evil.com&next=//evil.com")).toBe("/v2/staff/sales");
     expect(salesRedirectTarget("status=drop table")).toBe("/v2/staff/sales");
+  });
+});
+
+describe("صفحتا المخزن والحركات القديمتان", () => {
+  it("المخزن ← صفحة المخزون وبيحافظ على البحث", () => {
+    expect(inventoryRedirectTarget("")).toBe("/v2/staff/stock");
+    expect(inventoryRedirectTarget("q=%D8%AE%D9%8A%D8%B7")).toBe("/v2/staff/stock?q=%D8%AE%D9%8A%D8%B7");
+  });
+  it("الحركات ← تبويب الحركات (والصنف لو رقم صحيح)", () => {
+    expect(inventoryRedirectTarget("", true)).toBe("/v2/staff/stock?tab=movements");
+    expect(inventoryRedirectTarget("item=12", true)).toBe("/v2/staff/stock?tab=movements&item=12");
+    expect(inventoryRedirectTarget("item=//evil.com&next=x", true)).toBe("/v2/staff/stock?tab=movements");
   });
 });

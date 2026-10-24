@@ -40,6 +40,24 @@ export function portalRedirectTarget(pathname: string, rawQuery: string): string
 export const LEGACY_HOME_PATHS = ["/", "/index.html"];
 export const STAFF_HOME_PATH = "/v2/staff";
 
+/** صفحتا المخزن وحركات المخزون القديمتان ← صفحة المخزون الموحدة (الحركات تبويب جواها). */
+export const LEGACY_INVENTORY_PATH = "/inventory.html";
+export const LEGACY_MOVEMENTS_PATH = "/movements.html";
+export function inventoryRedirectTarget(rawQuery: string, movements = false): string {
+  const from = new URLSearchParams(rawQuery);
+  const out = new URLSearchParams();
+  if (movements) {
+    out.set("tab", "movements");
+    const item = from.get("item") ?? from.get("item_id");
+    if (item && /^\d{1,9}$/.test(item)) out.set("item", item);
+  } else {
+    const q = from.get("q");
+    if (q && q.length <= 100) out.set("q", q);
+  }
+  const qs = out.toString();
+  return qs ? `/v2/staff/stock?${qs}` : "/v2/staff/stock";
+}
+
 /** صفحة المبيعات القديمة (`/sales.html?channel=website`) ← `/v2/staff/sales`. بننقل `channel` و`status` بس من قايمة معروفة. */
 export const LEGACY_SALES_PATH = "/sales.html";
 const SALES_STATUS_PARAMS = ["draft", "pending_approval", "confirmed", "shipped", "paid", "cancelled"];

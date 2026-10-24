@@ -17,7 +17,7 @@ import { HEALTH_ROLES, SystemHealth } from "../staff/SystemHealth";
 export const staffRoutes: RouteDef[] = [
   { path: "/staff", render: () => <Home /> },
   { path: "/staff/sales", render: () => <RoleGuard roles={SALES_PAGE_ROLES}><Sales key={location.search} /></RoleGuard> },
-  { path: "/staff/stock", render: () => <RoleGuard roles={STOCK_ROLES}><Stock /></RoleGuard> },
+  { path: "/staff/stock", render: () => <RoleGuard roles={STOCK_ROLES}><Stock key={location.search} /></RoleGuard> },
   { path: "/staff/system-health", render: () => <RoleGuard roles={HEALTH_ROLES}><SystemHealth /></RoleGuard> },
   ...adminRoutes,
 ];

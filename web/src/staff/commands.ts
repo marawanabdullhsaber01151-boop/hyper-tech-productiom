@@ -39,7 +39,7 @@ export function pickPage(hrefs: Set<string>, candidates: readonly string[]): str
 }
 
 export const ORDER_PAGES = ["production.html", "factory-production-manager.html", "factory-supervisor.html", "factory-warehouse-manager.html", "factory-quality-controller.html", "production-control.html", "execution-control.html", "operations-manager.html"] as const;
-export const ITEM_PAGES = ["/v2/staff/stock", "inventory.html", "factory-warehouse-manager.html"] as const;
+export const ITEM_PAGES = ["/v2/staff/stock", "factory-warehouse-manager.html"] as const;
 
 export function recordItems(
   orders: WorkflowOrder[],

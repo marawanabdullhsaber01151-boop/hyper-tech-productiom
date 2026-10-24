@@ -2,11 +2,17 @@ import { useMemo, useState } from "preact/hooks";
 import { api } from "../admin/api";
 import { useQuery } from "../api/hooks";
 import { t, type CopyKey } from "../copy";
-import { Button, DataTable, EmptyState, FilterBar, InlineAlert, Select, Stat, StatusPill, type Column } from "../design/components";
+import { staffUser } from "../admin/session";
+import { Button, DataTable, EmptyState, FilterBar, InlineAlert, Select, Stat, StatusPill, Tabs, type Column } from "../design/components";
+import { Plus } from "../design/icons";
 import { formatNumber } from "../lib/format";
+import { CountDialog, ItemDrawer, ItemEditor, MovementDialog } from "./StockDialogs";
+import { StockMoves } from "./StockMoves";
+import { canManageStock, stockValue, totalValue, type StockItem } from "./stockCore";
+import "./Stock.css";
 
 /** الأدوار اللي بتشوف الصفحة (نفس أدوار قايمة /nav للمشتريات + رئيس المجلس). */
-export const STOCK_ROLES = ["chairman", "purchasing_manager", "buyer"] as const;
+export const STOCK_ROLES = ["chairman", "purchasing_manager", "buyer", "warehouse_manager", "storekeeper"] as const;
 
 export interface StockRow {
   id: number;
@@ -17,6 +23,9 @@ export interface StockRow {
   qty: string;
   availableQty: string;
   minQty: string;
+  reservedQty?: string;
+  unitPrice?: string;
+  foundationItemId?: number | null;
 }
 export type StockState = "out" | "low" | "ok";
 
@@ -33,9 +42,16 @@ const TONE = { out: "danger", low: "warn", ok: "success" } as const;
 const CATEGORIES = ["raw_material", "wip", "finished_good"] as const;
 const num = (v: string) => formatNumber(Number(v) || 0);
 
-/** المخزون والمواد الخام — عرض فقط (للمشتريات). سعر الوحدة مش بيوصل لهنا أصلًا: السيرفر بيخفيه. */
+type Dialogs = { kind: "in" | "out" | "count" | "edit"; item: StockItem } | { kind: "new" } | null;
+
+/** المخزون: المشتريات بتشوف فقط (السيرفر بيخفي السعر). أمين المخزن ومديره والرئيس بيديروا الأصناف والحركات. */
 export function Stock() {
-  const list = useQuery((signal) => api.get<StockRow[]>("/inventory", { signal }), []);
+  const manage = canManageStock(staffUser()?.role);
+  const params = new URLSearchParams(location.search);
+  const [tab, setTab] = useState(() => (manage && params.get("tab") === "movements" ? "moves" : "items"));
+  const [openId, setOpenId] = useState<number | null>(null);
+  const [dlg, setDlg] = useState<Dialogs>(null);
+  const list = useQuery((signal) => api.get<StockItem[]>("/inventory", { signal }), []);
   // لوحة الأوامر (Ctrl+K) بتفتح الصفحة على البحث باسم الصنف: ?q=
   const [search, setSearch] = useState(() => new URLSearchParams(location.search).get("q") ?? "");
   const [cat, setCat] = useState("");
@@ -63,6 +79,12 @@ export function Stock() {
     });
   }, [rows, search, cat, status]);
 
+  const value = manage ? totalValue(rows) : null;
+  const opened = openId === null ? undefined : rows.find((r) => r.id === openId);
+  const changed = () => {
+    setDlg(null);
+    void list.refetch();
+  };
   const catLabel = (c: string) => (CATEGORIES.includes(c as (typeof CATEGORIES)[number]) ? t(`staff.stock.cat.${c}` as CopyKey) : c);
   const columns: Column<StockRow>[] = [
     { key: "code", header: t("staff.stock.col.code"), cell: (r) => r.code ?? "—", mobile: "hide" },
@@ -81,17 +103,19 @@ export function Stock() {
       },
     },
   ];
+  if (manage) {
+    columns.splice(6, 0, { key: "price", header: t("inv.col.price"), cell: (r) => (r.unitPrice === undefined ? "—" : num(r.unitPrice)), numeric: true, mobile: "hide" });
+    columns.splice(7, 0, { key: "value", header: t("inv.col.value"), cell: (r) => { const v = stockValue(r); return v === null ? "—" : formatNumber(v); }, numeric: true, mobile: "hide" });
+  }
 
   const activeCount = (cat ? 1 : 0) + (status ? 1 : 0);
-  return (
-    <div class="ad-page">
-      <h1 class="ad-title">{t("staff.stock.title")}</h1>
-      <p class="st-login__sub">{t("staff.stock.subtitle")}</p>
-
+  const itemsPanel = (
+    <>
       <div class="st-stats">
         <Stat label={t("staff.stock.stat.items")} value={formatNumber(rows.length)} />
         <Stat label={t("staff.stock.stat.low")} value={formatNumber(counts.low)} tone={counts.low ? "warn" : "neutral"} />
         <Stat label={t("staff.stock.stat.out")} value={formatNumber(counts.out)} tone={counts.out ? "danger" : "neutral"} />
+        {value !== null ? <Stat label={t("inv.stat.value")} value={formatNumber(value)} hint={t("inv.stat.value.hint")} /> : null}
       </div>
 
       <FilterBar
@@ -135,8 +159,52 @@ export function Stock() {
         rowKey={(r) => r.id}
         caption={t("staff.stock.caption")}
         loading={list.loading}
+        onRowClick={manage ? (r) => setOpenId(r.id) : undefined}
         empty={<EmptyState title={t("staff.stock.empty.title")} description={t("staff.stock.empty.body")} compact />}
       />
+    </>
+  );
+
+  return (
+    <div class="ad-page">
+      <h1 class="ad-title">{t("staff.stock.title")}</h1>
+      <p class="st-login__sub">{t("staff.stock.subtitle")}</p>
+      {manage ? (
+        <>
+          <div class="inv-bar">
+            <Button icon={Plus} onClick={() => setDlg({ kind: "new" })}>{t("inv.new")}</Button>
+          </div>
+          <Tabs
+            value={tab}
+            onChange={setTab}
+            tabs={[
+              { id: "items", label: t("inv.tab.items"), panel: itemsPanel },
+              { id: "moves", label: t("inv.tab.moves"), panel: <StockMoves items={rows} itemId={params.get("item") ?? undefined} onChanged={() => void list.refetch()} /> },
+            ]}
+          />
+        </>
+      ) : (
+        itemsPanel
+      )}
+      {manage && opened ? (
+        <ItemDrawer
+          item={opened}
+          canDelete
+          onClose={() => setOpenId(null)}
+          onIn={() => setDlg({ kind: "in", item: opened })}
+          onOut={() => setDlg({ kind: "out", item: opened })}
+          onCount={() => setDlg({ kind: "count", item: opened })}
+          onEdit={() => setDlg({ kind: "edit", item: opened })}
+          onDeleted={() => {
+            setOpenId(null);
+            changed();
+          }}
+        />
+      ) : null}
+      {dlg && dlg.kind === "new" ? <ItemEditor onClose={() => setDlg(null)} onSaved={changed} /> : null}
+      {dlg && dlg.kind === "edit" ? <ItemEditor item={dlg.item} onClose={() => setDlg(null)} onSaved={changed} /> : null}
+      {dlg && (dlg.kind === "in" || dlg.kind === "out") ? <MovementDialog item={dlg.item} type={dlg.kind} onClose={() => setDlg(null)} onDone={changed} /> : null}
+      {dlg && dlg.kind === "count" ? <CountDialog item={dlg.item} onClose={() => setDlg(null)} onDone={changed} /> : null}
     </div>
   );
 }

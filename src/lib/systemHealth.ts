@@ -372,7 +372,7 @@ const DEFS: CheckDef[] = [
     run: async () => {
       const r = await rows<{ name: string; qty: string }>(sql`SELECT name, qty::text FROM inventory_items WHERE qty < 0 ORDER BY qty LIMIT 50`);
       if (!r.length) return { status: "ok", message: "مفيش صنف كميته بالسالب." };
-      return { status: "bad", message: `${countWord(r.length, { one: "صنف", two: "صنفين", few: "أصناف", many: "صنف" })} كميته بالسالب، ودي معناها إن حركة صرف اتسجلت أكتر من الموجود.`, action: "راجع حركات المخزون للصنف وصحّح الكمية بجرد فعلي.", count: r.length, examples: r.map((x) => `${x.name}: ${x.qty}`), href: "/inventory.html" };
+      return { status: "bad", message: `${countWord(r.length, { one: "صنف", two: "صنفين", few: "أصناف", many: "صنف" })} كميته بالسالب، ودي معناها إن حركة صرف اتسجلت أكتر من الموجود.`, action: "راجع حركات المخزون للصنف وصحّح الكمية بجرد فعلي.", count: r.length, examples: r.map((x) => `${x.name}: ${x.qty}`), href: "/v2/staff/stock" };
     },
   },
   {
@@ -382,7 +382,7 @@ const DEFS: CheckDef[] = [
     run: async () => {
       const r = await rows<{ name: string; qty: string; reserved_qty: string }>(sql`SELECT name, qty::text, reserved_qty::text FROM inventory_items WHERE reserved_qty > qty AND qty >= 0 ORDER BY id DESC LIMIT 50`);
       if (!r.length) return { status: "ok", message: "مفيش صنف محجوز منه أكتر من الموجود." };
-      return { status: "warn", message: `${countWord(r.length, { one: "صنف", two: "صنفين", few: "أصناف", many: "صنف" })} محجوز منه أكتر من الكمية الفعلية، فأوامر هتتعطّل أو تتأخر.`, action: "راجع الحجوزات القديمة وفك اللي مالوش لازمة، أو وفّر الكمية.", count: r.length, examples: r.map((x) => `${x.name}: موجود ${x.qty}، محجوز ${x.reserved_qty}`), href: "/inventory.html" };
+      return { status: "warn", message: `${countWord(r.length, { one: "صنف", two: "صنفين", few: "أصناف", many: "صنف" })} محجوز منه أكتر من الكمية الفعلية، فأوامر هتتعطّل أو تتأخر.`, action: "راجع الحجوزات القديمة وفك اللي مالوش لازمة، أو وفّر الكمية.", count: r.length, examples: r.map((x) => `${x.name}: موجود ${x.qty}، محجوز ${x.reserved_qty}`), href: "/v2/staff/stock" };
     },
   },
 

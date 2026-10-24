@@ -497,7 +497,7 @@ class SearchSystem {
           .map((i) => ({
             title: i.name,
             type: "صنف مخزون",
-            link: "inventory.html",
+            link: "/v2/staff/stock",
           })),
         ...contacts
           .filter((c) => c.name.toLowerCase().includes(q))
