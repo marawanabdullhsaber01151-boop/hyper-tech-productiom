@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { errorHandler } from "./errorHandler";
+import { errorHandler, findPostgresError } from "./errorHandler";
 
 // تسجيل الأخطاء بيروح لقاعدة البيانات — في الاختبار بنعزله.
 vi.mock("../lib/errorEvents", () => ({ recordErrorEvent: vi.fn() }));
@@ -70,5 +70,25 @@ describe("errorHandler", () => {
     const err = Object.assign(new Error("weird"), { status: 999 });
     errorHandler(err, req, res, next);
     expect(res.status).toHaveBeenCalledWith(500);
+  });
+
+  it("خطأ postgres مغلّف في cause (زي drizzle) بيتعرف عليه: 23505 يرجع 409", () => {
+    const { req, res, next } = mockReqRes();
+    const wrapped = Object.assign(new Error("Failed query"), { cause: { code: "23505", detail: "dup" } });
+    errorHandler(wrapped, req, res, next);
+    expect(res.status).toHaveBeenCalledWith(409);
+  });
+
+  it("23503 المغلّف بيرجع 400 مش 500", () => {
+    const { req, res, next } = mockReqRes();
+    const wrapped = Object.assign(new Error("Failed query"), { cause: Object.assign(new Error("fk"), { code: "23503" }) });
+    errorHandler(wrapped, req, res, next);
+    expect(res.status).toHaveBeenCalledWith(400);
+  });
+
+  it("findPostgresError بيتجاهل الأكواد اللي مش بتاعت postgres", () => {
+    expect(findPostgresError({ code: "ECONNRESET" })).toBeNull();
+    expect(findPostgresError(new Error("x"))).toBeNull();
+    expect(findPostgresError({ cause: { cause: { code: "23505" } } })?.code).toBe("23505");
   });
 });

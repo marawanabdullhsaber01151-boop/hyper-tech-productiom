@@ -1,4 +1,4 @@
-import { and, eq, isNull, lte, gte, desc } from "drizzle-orm";
+import { and, eq, isNull, lte, gte, desc, sql } from "drizzle-orm";
 import { db, delegationsTable, auditEventsTable } from "../db";
 import { createHash } from "node:crypto";
 
@@ -32,7 +32,10 @@ export function delegationCoversAmount(delegation: typeof delegationsTable.$infe
   return !delegation.maxAmount || Number(delegation.maxAmount) >= amount;
 }
 
-type AuditExecutor = Pick<typeof db, "select" | "insert">;
+type AuditExecutor = Pick<typeof db, "select" | "insert"> & Partial<Pick<typeof db, "execute">>;
+
+/** رقم ثابت لقفل كتابة سلسلة التدقيق: كاتب واحد بس في اللحظة بيقرا آخر hash ويضيف الصف اللي بعده. */
+const AUDIT_CHAIN_LOCK = 7_420_001;
 
 export async function writeAuditEvent(input: {
   actorUserId?: number | null; actorName?: string | null; actionKey: string;
@@ -43,7 +46,15 @@ export async function writeAuditEvent(input: {
 }) {
   // تمرير tx هنا مهم للعمليات المركبة: لا نسجل تدقيقًا ناجحًا إذا فشل
   // إنشاء الحساب أو أي خطوة أخرى داخل نفس العملية.
-  const executor = input.executor ?? db;
+  if (!input.executor) {
+    // من غير tx جاهزة بنفتح واحدة، عشان القفل والقراءة والإضافة يبقوا ذرّة واحدة.
+    await db.transaction((tx) => writeAuditEvent({ ...input, executor: tx }));
+    return;
+  }
+  const executor = input.executor;
+  // السبب الجذري لكسر السلسلة: عمليتين متزامنتين كانوا بيقروا نفس "آخر hash" ويكتبوا صفين بنفس prev_hash
+  // (تفرّع). القفل ده بيتحرر مع نهاية المعاملة، فالتسجيل بقى متسلسل.
+  await executor.execute?.(sql`SELECT pg_advisory_xact_lock(${AUDIT_CHAIN_LOCK})`);
   const [previous] = await executor.select({ recordHash: auditEventsTable.recordHash })
     .from(auditEventsTable).orderBy(desc(auditEventsTable.id)).limit(1);
   const createdAt = new Date();

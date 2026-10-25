@@ -39,6 +39,9 @@ export default defineConfig(({ command }) => ({
     manifest: true,
     sourcemap: false,
     target: "es2022",
+    // التصغير صريح عشان حجم الحزمة ما يتغيّرش بين جهازك وVercel.
+    minify: "esbuild",
+    cssMinify: "esbuild",
     cssCodeSplit: true,
     assetsInlineLimit: 0,
     rollupOptions: {

@@ -1,4 +1,4 @@
-import { stockState } from "./Stock";
+import { stockState } from "./stockCore";
 
 /** حاجات خالصة (من غير واجهة) للوحة الرئيسية: المؤشرات والتنبيهات والتوزيعات. متغطّية باختبارات. */
 

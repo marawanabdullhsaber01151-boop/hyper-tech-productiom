@@ -8,8 +8,9 @@ import { CircleAlert, CircleCheck, Clock, TriangleAlert } from "../design/icons"
 import { formatNumber, formatRelative } from "../lib/format";
 import { resolveHref } from "./nav";
 
-/** الأدوار اللي بتشوف الصفحة: لازم تتطابق مع ACCESS.systemHealthRead في السيرفر. */
-export const HEALTH_ROLES = ["chairman", "executive_manager"] as const;
+import { HEALTH_ROLES } from "./staffRoles";
+
+export { HEALTH_ROLES };
 
 export type HealthStatus = "ok" | "warn" | "bad" | "unknown";
 export interface HealthCheck {

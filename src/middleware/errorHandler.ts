@@ -54,7 +54,8 @@ export function errorHandler(
   }
 
   // PostgreSQL unique violation
-  if (isPostgresError(err) && err.code === "23505") {
+  const pg = findPostgresError(err);
+  if (pg && pg.code === "23505") {
     res.status(409).json({
       error: {
         code: "DUPLICATE_ENTRY",
@@ -65,7 +66,7 @@ export function errorHandler(
   }
 
   // PostgreSQL foreign key violation
-  if (isPostgresError(err) && err.code === "23503") {
+  if (pg && pg.code === "23503") {
     res.status(400).json({
       error: {
         code: "FOREIGN_KEY_VIOLATION",
@@ -120,10 +121,19 @@ export function errorHandler(
   );
 }
 
-function isPostgresError(
-  err: unknown,
-): err is { code: string; detail?: string } {
-  return typeof err === "object" && err !== null && "code" in err;
+/**
+ * drizzle-orm (0.4x) بيغلّف خطأ postgres جوّه DrizzleQueryError.cause، فالكود (23505 / 23503)
+ * مش بيبقى على الخطأ الخارجي. بنمشي على سلسلة cause عشان نلاقي الخطأ الأصلي،
+ * وإلا أي تعارض أو ارتباط كان بيطلع 500 بدل رسالة واضحة.
+ */
+export function findPostgresError(err: unknown): { code: string; detail?: string } | null {
+  let cur: unknown = err;
+  for (let i = 0; i < 4 && typeof cur === "object" && cur !== null; i += 1) {
+    const code = (cur as { code?: unknown }).code;
+    if (typeof code === "string" && /^[0-9A-Z]{5}$/.test(code)) return cur as { code: string; detail?: string };
+    cur = (cur as { cause?: unknown }).cause;
+  }
+  return null;
 }
 
 export function notFound(_req: Request, res: Response): void {

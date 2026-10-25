@@ -122,3 +122,15 @@ export function fillPct(qty: number, min: number): number {
   if (!(min > 0)) return 100;
   return Math.max(0, Math.min(100, Math.round((qty / min) * 100)));
 }
+
+export type StockState = "out" | "low" | "ok";
+
+/** نفد: الكمية صفر أو أقل. منخفض: وصلت للحد الأدنى (لو الحد الأدنى متحدد). */
+export function stockState(r: { qty: string; minQty: string }): StockState {
+  const q = Number(r.qty);
+  const m = Number(r.minQty);
+  if (!(q > 0)) return "out";
+  if (m > 0 && q <= m) return "low";
+  return "ok";
+}
+

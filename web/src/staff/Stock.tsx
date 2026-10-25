@@ -8,11 +8,12 @@ import { Plus } from "../design/icons";
 import { formatNumber } from "../lib/format";
 import { CountDialog, ItemDrawer, ItemEditor, MovementDialog, type SupplierOpt } from "./StockDialogs";
 import { StockMoves } from "./StockMoves";
-import { canManageStock, stockValue, totalValue, type StockItem } from "./stockCore";
+import { canManageStock, stockState, stockValue, totalValue, type StockItem, type StockState } from "./stockCore";
+import { STOCK_ROLES } from "./staffRoles";
 import "./Stock.css";
 
-/** الأدوار اللي بتشوف الصفحة (نفس أدوار قايمة /nav للمشتريات + رئيس المجلس). */
-export const STOCK_ROLES = ["chairman", "purchasing_manager", "buyer", "warehouse_manager", "storekeeper"] as const;
+export { STOCK_ROLES, stockState };
+export type { StockState };
 
 export interface StockRow {
   id: number;
@@ -29,17 +30,6 @@ export interface StockRow {
   supplierId?: number | null;
   leadDays?: number | null;
 }
-export type StockState = "out" | "low" | "ok";
-
-/** نفد: الكمية صفر أو أقل. منخفض: وصلت للحد الأدنى (لو الحد الأدنى متحدد). */
-export function stockState(r: Pick<StockRow, "qty" | "minQty">): StockState {
-  const q = Number(r.qty);
-  const m = Number(r.minQty);
-  if (!(q > 0)) return "out";
-  if (m > 0 && q <= m) return "low";
-  return "ok";
-}
-
 const TONE = { out: "danger", low: "warn", ok: "success" } as const;
 const CATEGORIES = ["raw_material", "wip", "finished_good"] as const;
 const num = (v: string) => formatNumber(Number(v) || 0);

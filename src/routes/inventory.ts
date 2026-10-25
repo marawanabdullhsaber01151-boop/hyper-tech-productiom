@@ -1,5 +1,6 @@
 /** @format */
 
+import { findPostgresError } from "../middleware/errorHandler";
 import { Router } from "express";
 import { and, asc, eq, inArray, or, sql } from "drizzle-orm";
 import { db, inventoryItemsTable, insertInventoryItemSchema } from "../db";
@@ -279,17 +280,25 @@ router.delete(
         res.status(404).json({ error: { message: "العنصر غير موجود" } });
         return;
       }
-      await moveToTrash(
-        db,
-        "inventory_items",
-        existing,
-        req.user!.userId,
-        req.user!.username,
-        existing.name,
-      );
-      await db
-        .delete(inventoryItemsTable)
-        .where(eq(inventoryItemsTable.id, id));
+      // نقل للسلة + حذف في معاملة واحدة: لو الصنف مرتبط (حركات/وصفات/أوامر شراء...) الحذف بيتلغي
+      // كله ومفيش نسخة يتيمة في السلة، والمستخدم بياخد رسالة واضحة بدل خطأ سيرفر.
+      try {
+        await db.transaction(async (tx) => {
+          await moveToTrash(tx, "inventory_items", existing, req.user!.userId, req.user!.username, existing.name);
+          await tx.delete(inventoryItemsTable).where(eq(inventoryItemsTable.id, id));
+        });
+      } catch (e) {
+        if (findPostgresError(e)?.code === "23503") {
+          res.status(409).json({
+            error: {
+              code: "ITEM_IN_USE",
+              message: "الصنف عليه حركات أو وصفات أو أوامر مرتبطة، فمينفعش يتحذف. عدّل بياناته أو سيبه بدون رصيد.",
+            },
+          });
+          return;
+        }
+        throw e;
+      }
       res.status(204).send();
     } catch (err) {
       next(err);

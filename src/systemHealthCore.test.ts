@@ -130,7 +130,7 @@ describe("الصفحة ↔ الحراسة", () => {
   it("الراوت بيقرا من السجل وفيه حارس الواجهة بنفس الأدوار", () => {
     const root = process.cwd();
     expect(readFileSync(resolve(root, "src/routes/health.ts"), "utf8")).toContain("ACCESS.systemHealthRead");
-    const web = readFileSync(resolve(root, "web/src/staff/SystemHealth.tsx"), "utf8");
+    const web = readFileSync(resolve(root, "web/src/staff/staffRoles.ts"), "utf8");
     const roles = web.match(/HEALTH_ROLES = \[([^\]]*)\]/)?.[1].match(/"([a-z_]+)"/g)?.map((s) => s.replace(/"/g, "")) ?? [];
     expect(roles.sort()).toEqual([...ACCESS.systemHealthRead].sort());
   });
