@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MATERIAL_REDIRECT_TARGET, chatStaffRedirectTarget, inventoryRedirectTarget, portalRedirectTarget, salesRedirectTarget } from "./lib/legacyRedirects";
+import { MATERIAL_REDIRECT_TARGET, contactsRedirectTarget, chatStaffRedirectTarget, inventoryRedirectTarget, portalRedirectTarget, salesRedirectTarget } from "./lib/legacyRedirects";
 
 describe("تحويل رابط شات الإدارة القديم", () => {
   it("بدون رقم → صندوق المحادثات", () => {
@@ -74,5 +74,15 @@ describe("صفحتا المخزن والحركات القديمتان", () => {
 describe("صفحة المواد الخام القديمة", () => {
   it("بتروح للمخزون مفلتر على المواد الخام", () => {
     expect(MATERIAL_REDIRECT_TARGET).toBe("/v2/staff/stock?cat=raw_material");
+  });
+});
+
+describe("صفحة الموردين والعملاء القديمة", () => {
+  it("من غير باراميترات بتروح للصفحة الجديدة", () => {
+    expect(contactsRedirectTarget("")).toBe("/v2/staff/contacts");
+  });
+  it("بتنقل التبويب المعروف والبحث بس", () => {
+    expect(contactsRedirectTarget("type=supplier&q=%D8%A3%D8%AD%D9%85%D8%AF")).toBe("/v2/staff/contacts?tab=supplier&q=%D8%A3%D8%AD%D9%85%D8%AF");
+    expect(contactsRedirectTarget("tab=hack&next=//evil.com")).toBe("/v2/staff/contacts");
   });
 });

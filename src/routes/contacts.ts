@@ -1,14 +1,17 @@
 /** @format */
 
 import { Router } from "express";
-import { eq, and, inArray, ilike, or, ne } from "drizzle-orm";
+import { eq, and, desc, ilike, or, ne, sql } from "drizzle-orm";
 import {
   db,
   contactsTable,
   createContactSchema,
   insertContactSchema,
   portalCustomersTable,
+  inventoryItemsTable,
 } from "../db";
+import { purchaseOrdersTable } from "../db/schema";
+import { deleteBlocker, isSellerRole, phoneKey } from "../lib/contactsCore";
 import {
   requireAuth,
   requireRole,
@@ -22,6 +25,19 @@ import { writeAuditEvent } from "../lib/governance";
 import { z } from "zod";
 
 const router = Router();
+
+/** البائع يشوف جهات الاتصال اللي هو أضافها، أو اللي عملها فواتير بنفسه. */
+const sellerScope = (userId: number) =>
+  sql`(${contactsTable.ownerUserId} = ${userId} or ${contactsTable.id} in (select contact_id from sales_orders where created_by_id = ${userId} and contact_id is not null))`;
+
+async function canAccessContact(contact: { id: number; ownerUserId: number | null }, user: { userId: number; role: string }) {
+  if (!isSellerRole(user.role) || contact.ownerUserId === user.userId) return true;
+  const [ownedOrder] = await db.select({ id: salesOrdersTable.id }).from(salesOrdersTable)
+    .where(and(eq(salesOrdersTable.contactId, contact.id), eq(salesOrdersTable.createdById, user.userId))).limit(1);
+  return !!ownedOrder;
+}
+
+const FORBIDDEN = { error: { message: "لا يمكنك الوصول إلى هذا العميل" } };
 
 // GET /api/v1/contacts/search — بحث صغير للربط اليدوي بطلبات تفعيل البوابة
 router.get(
@@ -70,17 +86,22 @@ router.get(
       const phone = typeof req.query.phone === "string" ? req.query.phone.trim() : "";
       const company = typeof req.query.company === "string" ? req.query.company.trim() : "";
       const excludeId = typeof req.query.excludeId === "string" ? Number(req.query.excludeId) : null;
-      if (!phone && !company) {
+      if (!phoneKey(phone) && !company) {
         res.json({ matches: [] });
         return;
       }
 
       const filters = [];
-      if (phone) filters.push(eq(contactsTable.phone, phone));
-      if (company) filters.push(ilike(contactsTable.company, company));
-      if (excludeId && Number.isInteger(excludeId)) {
-        filters.push(ne(contactsTable.id, excludeId));
+      const key = phoneKey(phone);
+      if (key) {
+        filters.push(
+          key.length === 10
+            ? sql`right(regexp_replace(coalesce(${contactsTable.phone}, ''), '[^0-9]', '', 'g'), 10) = ${key}`
+            : sql`regexp_replace(coalesce(${contactsTable.phone}, ''), '[^0-9]', '', 'g') = ${key}`,
+        );
       }
+      if (company) filters.push(ilike(contactsTable.company, company));
+      const exclude = excludeId && Number.isInteger(excludeId) ? ne(contactsTable.id, excludeId) : undefined;
 
       const matches = await db
         .select({
@@ -90,9 +111,50 @@ router.get(
           phone: contactsTable.phone,
         })
         .from(contactsTable)
-        .where(or(...filters))
+        .where(exclude ? and(or(...filters), exclude) : or(...filters))
         .limit(5);
       res.json({ matches });
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+// GET /api/v1/contacts/overview — قايمة جهات الاتصال مع عدّادات النشاط (فواتير مبيعات / أوامر شراء)
+router.get(
+  "/contacts/overview",
+  requireAuth,
+  requireRole(...PERMISSIONS.contacts.view),
+  async (req, res, next) => {
+    try {
+      const seller = isSellerRole(req.user!.role);
+      const uid = req.user!.userId;
+      const salesCount = seller
+        ? sql<number>`(select count(*)::int from sales_orders so where so.contact_id = ${contactsTable.id} and so.created_by_id = ${uid})`
+        : sql<number>`(select count(*)::int from sales_orders so where so.contact_id = ${contactsTable.id})`;
+      // أوامر الشراء مش شغل البائع، فمش بنبعتها له.
+      const poCount = seller ? sql<number>`0` : sql<number>`(select count(*)::int from purchase_orders po where po.supplier_id = ${contactsTable.id})`;
+      const rows = await db
+        .select({
+          id: contactsTable.id,
+          type: contactsTable.type,
+          name: contactsTable.name,
+          company: contactsTable.company,
+          phone: contactsTable.phone,
+          email: contactsTable.email,
+          address: contactsTable.address,
+          city: contactsTable.city,
+          segment: contactsTable.segment,
+          notes: contactsTable.notes,
+          ownerUserId: contactsTable.ownerUserId,
+          createdAt: contactsTable.createdAt,
+          salesCount,
+          poCount,
+        })
+        .from(contactsTable)
+        .where(seller ? sellerScope(uid) : undefined)
+        .orderBy(contactsTable.name);
+      res.json(rows);
     } catch (err) {
       next(err);
     }
@@ -110,12 +172,7 @@ router.get(
       let query = db.select().from(contactsTable).$dynamic();
       const filters = [];
       if (type) filters.push(eq(contactsTable.type, type));
-      if (["online_seller", "offline_seller"].includes(req.user!.role)) {
-        const orders = await db.select({ contactId: salesOrdersTable.contactId }).from(salesOrdersTable)
-          .where(eq(salesOrdersTable.createdById, req.user!.userId));
-        const ids = orders.flatMap((row) => row.contactId == null ? [] : [row.contactId]);
-        filters.push(ids.length ? inArray(contactsTable.id, ids) : eq(contactsTable.id, -1));
-      }
+      if (isSellerRole(req.user!.role)) filters.push(sellerScope(req.user!.userId));
       if (filters.length) query = query.where(and(...filters));
       const contacts = await query.orderBy(contactsTable.name);
       res.json(contacts);
@@ -133,7 +190,7 @@ router.post(
   async (req, res, next) => {
     try {
       const data = createContactSchema.parse(req.body);
-      if (["online_seller", "offline_seller"].includes(req.user!.role)) {
+      if (isSellerRole(req.user!.role)) {
         data.ownerUserId = req.user!.userId;
       }
 
@@ -163,6 +220,47 @@ router.post(
   },
 );
 
+// GET /api/v1/contacts/:id/activity — آخر الفواتير وأوامر الشراء المرتبطة بجهة الاتصال
+router.get(
+  "/contacts/:id/activity",
+  requireAuth,
+  requireRole(...PERMISSIONS.contacts.view),
+  async (req, res, next) => {
+    try {
+      const id = parseIdParam(req.params.id, res);
+      if (id === null) return;
+      const [contact] = await db.select({ id: contactsTable.id, ownerUserId: contactsTable.ownerUserId }).from(contactsTable).where(eq(contactsTable.id, id)).limit(1);
+      if (!contact) {
+        res.status(404).json({ error: { message: "جهة الاتصال غير موجودة" } });
+        return;
+      }
+      if (!(await canAccessContact(contact, req.user!))) {
+        res.status(403).json(FORBIDDEN);
+        return;
+      }
+      const seller = isSellerRole(req.user!.role);
+      const sales = await db
+        .select({ id: salesOrdersTable.id, orderNumber: salesOrdersTable.orderNumber, status: salesOrdersTable.status, total: salesOrdersTable.total, date: salesOrdersTable.date })
+        .from(salesOrdersTable)
+        .where(seller ? and(eq(salesOrdersTable.contactId, id), eq(salesOrdersTable.createdById, req.user!.userId)) : eq(salesOrdersTable.contactId, id))
+        .orderBy(desc(salesOrdersTable.createdAt))
+        .limit(6);
+      // أوامر الشراء من غير أسعار: السعر ليه أدواره الخاصة في صفحة المشتريات.
+      const purchases = seller
+        ? []
+        : await db
+            .select({ id: purchaseOrdersTable.id, poNumber: purchaseOrdersTable.poNumber, status: purchaseOrdersTable.status, createdAt: purchaseOrdersTable.createdAt })
+            .from(purchaseOrdersTable)
+            .where(eq(purchaseOrdersTable.supplierId, id))
+            .orderBy(desc(purchaseOrdersTable.createdAt))
+            .limit(6);
+      res.json({ sales, purchases });
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
 // GET /api/v1/contacts/:id
 router.get(
   "/contacts/:id",
@@ -182,14 +280,9 @@ router.get(
         res.status(404).json({ error: { message: "جهة الاتصال غير موجودة" } });
         return;
       }
-      if (["online_seller", "offline_seller"].includes(req.user!.role) &&
-          contact.ownerUserId !== req.user!.userId) {
-        const [ownedOrder] = await db.select({ id: salesOrdersTable.id }).from(salesOrdersTable)
-          .where(and(eq(salesOrdersTable.contactId, id), eq(salesOrdersTable.createdById, req.user!.userId))).limit(1);
-        if (!ownedOrder) {
-          res.status(403).json({ error: { message: "لا يمكنك الوصول إلى هذا العميل" } });
-          return;
-        }
+      if (!(await canAccessContact(contact, req.user!))) {
+        res.status(403).json(FORBIDDEN);
+        return;
       }
       res.json(contact);
     } catch (err) {
@@ -208,16 +301,38 @@ router.patch(
       const id = parseIdParam(req.params.id, res);
       if (id === null) return;
       const data = insertContactSchema.partial().parse(req.body);
-      const [updated] = await db
-        .update(contactsTable)
-        .set({ ...data, updatedAt: new Date() })
-        .where(eq(contactsTable.id, id))
-        .returning();
-
-      if (!updated) {
+      const [existing] = await db.select().from(contactsTable).where(eq(contactsTable.id, id)).limit(1);
+      if (!existing) {
         res.status(404).json({ error: { message: "جهة الاتصال غير موجودة" } });
         return;
       }
+      if (!(await canAccessContact(existing, req.user!))) {
+        res.status(403).json(FORBIDDEN);
+        return;
+      }
+      // البائع ما ينقلش ملكية جهة الاتصال لحد تاني.
+      if (isSellerRole(req.user!.role)) delete data.ownerUserId;
+      const updated = await db.transaction(async (tx) => {
+        const [row] = await tx
+          .update(contactsTable)
+          .set({ ...data, updatedAt: new Date() })
+          .where(eq(contactsTable.id, id))
+          .returning();
+        await writeAuditEvent({
+          executor: tx,
+          actorUserId: req.user!.userId,
+          actorName: req.user!.username,
+          actionKey: "contacts.edit",
+          resourceType: "contact",
+          resourceId: id,
+          beforeData: existing,
+          afterData: row,
+          reason: "تعديل جهة اتصال",
+          ipAddress: req.ip,
+          userAgent: req.get("user-agent"),
+        });
+        return row;
+      });
       res.json(updated);
     } catch (err) {
       next(err);
@@ -248,6 +363,19 @@ router.delete(
         res.status(404).json({ error: { message: "جهة الاتصال غير موجودة" } });
         return;
       }
+      if (!(await canAccessContact(existing, req.user!))) {
+        res.status(403).json(FORBIDDEN);
+        return;
+      }
+      const countOf = async (q: Promise<Array<{ n: number }>>) => (await q)[0]?.n ?? 0;
+      const blocker = deleteBlocker({
+        sales: await countOf(db.select({ n: sql<number>`count(*)::int` }).from(salesOrdersTable).where(eq(salesOrdersTable.contactId, id))),
+        purchases: await countOf(db.select({ n: sql<number>`count(*)::int` }).from(purchaseOrdersTable).where(eq(purchaseOrdersTable.supplierId, id))),
+        stockItems: await countOf(db.select({ n: sql<number>`count(*)::int` }).from(inventoryItemsTable).where(eq(inventoryItemsTable.supplierId, id))),
+      });
+      if (blocker) {
+        throw Object.assign(new Error(blocker), { status: 409, code: "CONTACT_IN_USE" });
+      }
       const [linkedPortalCustomer] = await db
         .select({ id: portalCustomersTable.id, isActive: portalCustomersTable.isActive })
         .from(portalCustomersTable)
@@ -274,6 +402,18 @@ router.delete(
           existing.name,
         );
         await tx.delete(contactsTable).where(eq(contactsTable.id, id));
+        await writeAuditEvent({
+          executor: tx,
+          actorUserId: req.user!.userId,
+          actorName: req.user!.username,
+          actionKey: "contacts.delete",
+          resourceType: "contact",
+          resourceId: id,
+          beforeData: existing,
+          reason: "حذف جهة اتصال",
+          ipAddress: req.ip,
+          userAgent: req.get("user-agent"),
+        });
       });
       res.status(204).send();
     } catch (err) {

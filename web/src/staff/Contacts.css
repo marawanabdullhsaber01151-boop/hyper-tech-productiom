@@ -1,0 +1,26 @@
+.con-bar { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-block: var(--sp-3); }
+.con-stats { display: grid; gap: var(--sp-3); grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); margin-block-end: var(--sp-3); }
+.con-form { display: grid; gap: var(--sp-3); }
+.con-grid2 { display: grid; gap: var(--sp-3); grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }
+.con-name { display: inline-flex; align-items: center; gap: var(--sp-2); }
+.con-name small { display: block; }
+.con-avatar { display: inline-grid; place-items: center; inline-size: 44px; block-size: 44px; border-radius: var(--r-pill); background: var(--c-brand-soft); color: var(--c-brand-text); font-weight: 700; flex: none; }
+.con-avatar--sm { inline-size: 32px; block-size: 32px; font-size: var(--fs-xs); }
+.con-muted { margin: 0; font-size: var(--fs-xs); color: var(--c-text-3); }
+.con-tel { color: var(--c-brand-text); text-decoration: none; font-variant-numeric: tabular-nums; }
+.con-tel:hover { text-decoration: underline; }
+.con-detail { display: grid; gap: var(--sp-3); }
+.con-head { display: flex; align-items: center; gap: var(--sp-3); }
+.con-pills { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+.con-quick { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+.con-quick a { text-decoration: none; }
+.con-facts { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-3); margin: 0; padding: var(--sp-3); background: var(--c-surface-2); border-radius: var(--r-md); }
+.con-facts dt { font-size: var(--fs-xs); color: var(--c-text-3); }
+.con-facts dd { margin: var(--sp-1) 0 0; font-size: var(--fs-sm); color: var(--c-text-1); overflow-wrap: anywhere; }
+.con-hrow { display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-3); }
+.con-h { margin: var(--sp-3) 0 var(--sp-1); font-size: var(--fs-md); color: var(--c-text-1); }
+.con-recent { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--sp-2); }
+.con-recent li { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); padding-block-end: var(--sp-2); border-block-end: 1px solid var(--c-border-1); font-size: var(--fs-sm); }
+.con-num { margin-inline-start: auto; font-variant-numeric: tabular-nums; }
+.con-link { background: none; border: 0; padding: 0; color: var(--c-brand-text); font: inherit; font-weight: 600; cursor: pointer; text-decoration: underline; }
+.con-foot { display: flex; flex-wrap: wrap; gap: var(--sp-2); inline-size: 100%; justify-content: flex-end; }

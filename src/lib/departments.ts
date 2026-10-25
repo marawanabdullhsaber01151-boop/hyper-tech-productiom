@@ -109,7 +109,7 @@ export const DEPARTMENTS: readonly NavDepartment[] = [
         label: "العملاء",
         roles: ["chairman", "executive_manager", "sales_manager", "online_seller", "offline_seller", "hr", "hr_manager"],
         pages: [
-          { id: "contacts", label: "الموردون والعملاء", href: "contacts.html", roles: ["chairman", "executive_manager", "sales_manager", "online_seller", "offline_seller", "hr", "hr_manager"] },
+          { id: "contacts", label: "الموردون والعملاء", href: "/v2/staff/contacts", roles: ["chairman", "executive_manager", "sales_manager", "online_seller", "offline_seller", "hr", "hr_manager"] },
           { id: "portal-orders", label: "طلبات بوابة العملاء", href: "/v2/admin/portal-orders", roles: ["chairman", "executive_manager", "sales_manager", "online_seller", "offline_seller", "hr", "hr_manager"] },
         ],
       },

@@ -47,7 +47,7 @@ import planningRouter from "./routes/planning";
 import navRouter from "./routes/nav";
 import portalChatRouter from "./routes/portal-chat";
 import chatStaffRouter from "./routes/chat-staff";
-import { LEGACY_HOME_PATHS, LEGACY_INVENTORY_PATH, LEGACY_MATERIAL_PATH, LEGACY_MOVEMENTS_PATH, MATERIAL_REDIRECT_TARGET, LEGACY_PORTAL_PATHS, LEGACY_SALES_PATH, STAFF_HOME_PATH, chatStaffRedirectTarget, portalRedirectTarget, salesRedirectTarget, inventoryRedirectTarget } from "./lib/legacyRedirects";
+import { LEGACY_CONTACTS_PATH, LEGACY_HOME_PATHS, LEGACY_INVENTORY_PATH, LEGACY_MATERIAL_PATH, LEGACY_MOVEMENTS_PATH, MATERIAL_REDIRECT_TARGET, LEGACY_PORTAL_PATHS, LEGACY_SALES_PATH, STAFF_HOME_PATH, chatStaffRedirectTarget, portalRedirectTarget, salesRedirectTarget, inventoryRedirectTarget, contactsRedirectTarget } from "./lib/legacyRedirects";
 import healthRouter from "./routes/health";
 
 import { errorHandler, notFound } from "./middleware/errorHandler";
@@ -202,6 +202,7 @@ const v2StaticOptions = {
 app.get(LEGACY_HOME_PATHS, (_req, res) => res.redirect(302, STAFF_HOME_PATH));
 app.get(LEGACY_SALES_PATH, (req, res) => res.redirect(302, salesRedirectTarget(req.originalUrl.split("?")[1] ?? "")));
 app.get(LEGACY_INVENTORY_PATH, (req, res) => res.redirect(302, inventoryRedirectTarget(req.originalUrl.split("?")[1] ?? "")));
+app.get(LEGACY_CONTACTS_PATH, (req, res) => res.redirect(302, contactsRedirectTarget(req.originalUrl.split("?")[1] ?? "")));
 app.get(LEGACY_MATERIAL_PATH, (_req, res) => res.redirect(302, MATERIAL_REDIRECT_TARGET));
 app.get(LEGACY_MOVEMENTS_PATH, (req, res) => res.redirect(302, inventoryRedirectTarget(req.originalUrl.split("?")[1] ?? "", true)));
 app.get("/chat-staff.html", (req, res) => res.redirect(302, chatStaffRedirectTarget(req.query.c)));

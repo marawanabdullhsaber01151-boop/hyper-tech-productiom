@@ -502,7 +502,7 @@ class SearchSystem {
           .map((c) => ({
             title: c.name,
             type: c.type === "supplier" ? "مورد" : "عميل",
-            link: "contacts.html",
+            link: "/v2/staff/contacts",
           })),
       ].slice(0, 8);
       this.render(results);

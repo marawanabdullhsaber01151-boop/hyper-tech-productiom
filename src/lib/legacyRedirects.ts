@@ -62,6 +62,19 @@ export function inventoryRedirectTarget(rawQuery: string, movements = false): st
 export const LEGACY_MATERIAL_PATH = "/material.html";
 export const MATERIAL_REDIRECT_TARGET = "/v2/staff/stock?cat=raw_material";
 
+/** صفحة الموردين والعملاء القديمة ← `/v2/staff/contacts`. بننقل `tab` (من قايمة معروفة) و`q` بس. */
+export const LEGACY_CONTACTS_PATH = "/contacts.html";
+export function contactsRedirectTarget(rawQuery: string): string {
+  const from = new URLSearchParams(rawQuery);
+  const out = new URLSearchParams();
+  const tab = from.get("tab") ?? from.get("type");
+  if (tab === "supplier" || tab === "customer") out.set("tab", tab);
+  const q = from.get("q")?.trim();
+  if (q && q.length <= 100) out.set("q", q);
+  const qs = out.toString();
+  return qs ? `/v2/staff/contacts?${qs}` : "/v2/staff/contacts";
+}
+
 /** صفحة المبيعات القديمة (`/sales.html?channel=website`) ← `/v2/staff/sales`. بننقل `channel` و`status` بس من قايمة معروفة. */
 export const LEGACY_SALES_PATH = "/sales.html";
 const SALES_STATUS_PARAMS = ["draft", "pending_approval", "confirmed", "shipped", "paid", "cancelled"];
