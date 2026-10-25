@@ -34,11 +34,9 @@ const ROLE_HOME_PAGE = {
   offline_seller: "/v2/staff/sales",
   executive_manager: "production.html",
   operations_manager: "factory-production-manager.html",
-  // Phase 2: purchases.html removed along with the full purchasing module.
-  // Pointing these two roles at the staff home until Phase 5 introduces a
-  // minimal purchase-request page.
-  purchasing_manager: "/v2/staff",
-  buyer: "/v2/staff",
+  // المشتريات: صفحة الاحتياجات وأوامر الشراء في الواجهة الجديدة.
+  purchasing_manager: "/v2/staff/purchases",
+  buyer: "/v2/staff/purchases",
   production_manager: "factory-production-manager.html",
   production_controller: "factory-production-manager.html",
   warehouse_manager: "factory-warehouse-manager.html",

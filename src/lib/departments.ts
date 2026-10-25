@@ -195,6 +195,7 @@ export const DEPARTMENTS: readonly NavDepartment[] = [
         pages: [
           { id: "inventory", label: "المخزن", href: "/v2/staff/stock", roles: ["chairman", "warehouse_manager", "storekeeper"] },
           { id: "material", label: "المواد الخام", href: "/v2/staff/stock?cat=raw_material", roles: ["chairman", "warehouse_manager", "storekeeper"] },
+          { id: "purchases-receive", label: "استلام أوامر الشراء", href: "/v2/staff/purchases", roles: ["chairman", "warehouse_manager", "storekeeper"] },
           { id: "movements", label: "حركات المخزون", href: "/v2/staff/stock?tab=movements", roles: ["chairman", "warehouse_manager", "storekeeper"] },
           { id: "factory-warehouse-manager", label: "لوحة مدير المخازن", href: "factory-warehouse-manager.html", roles: ["chairman", "warehouse_manager", "operations_manager"] },
         ],
@@ -207,6 +208,14 @@ export const DEPARTMENTS: readonly NavDepartment[] = [
     icon: "truck-ramp-box",
     roles: ["chairman", "purchasing_manager", "buyer"],
     subFunctions: [
+      {
+        id: "purchasing-orders",
+        label: "أوامر الشراء",
+        roles: ["chairman", "purchasing_manager", "buyer"],
+        pages: [
+          { id: "purchases", label: "الاحتياجات وأوامر الشراء", href: "/v2/staff/purchases", roles: ["chairman", "purchasing_manager", "buyer"] },
+        ],
+      },
       {
         id: "purchasing-stock",
         label: "المخزون",

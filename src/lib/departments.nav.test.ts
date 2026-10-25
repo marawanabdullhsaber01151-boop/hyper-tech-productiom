@@ -43,12 +43,17 @@ describe("/nav لكل دور من الـ18 (قبول المرحلة ١)", () => 
     }
   });
 
-  it("المشتريات: الدورين يشوفوا صفحة المخزون للقراءة بس (في الواجهة الجديدة)", () => {
+  it("المشتريات: الدورين يشوفوا الاحتياجات وأوامر الشراء، والمخزون للقراءة بس (الواجهة الجديدة)", () => {
     for (const role of ["purchasing_manager", "buyer"] as const) {
       const depts = getNavForRole(role);
       expect(depts.map((d) => d.id)).toEqual(["purchasing"]);
-      expect(pageIds(role)).toEqual(["stock-view"]);
-      expect(depts[0]!.subFunctions[0]!.pages[0]!.href).toBe("/v2/staff/stock");
+      expect(pageIds(role)).toEqual(["purchases", "stock-view"]);
+      expect(depts[0]!.subFunctions[0]!.pages[0]!.href).toBe("/v2/staff/purchases");
+      expect(depts[0]!.subFunctions[1]!.pages[0]!.href).toBe("/v2/staff/stock");
     }
+  });
+
+  it("المخازن: أمين المخزن ومديره يشوفوا صفحة استلام أوامر الشراء", () => {
+    for (const role of ["storekeeper", "warehouse_manager"] as const) expect(pageIds(role)).toContain("purchases-receive");
   });
 });

@@ -61,6 +61,7 @@ export const ACTION_REGISTRY: readonly ActionDefinition[] = [
   { key: "inventory.create", label: "إضافة صنف مخزون", group: "المخزون", defaultRoles: INVENTORY_WRITE },
   { key: "inventory.edit", label: "تعديل صنف مخزون", group: "المخزون", defaultRoles: INVENTORY_WRITE },
   { key: "inventory.delete", label: "حذف صنف مخزون", group: "المخزون", defaultRoles: INVENTORY_WRITE },
+  { key: "inventory.receivePurchase", label: "استلام بضاعة أمر شراء", group: "المخزون", defaultRoles: INVENTORY_WRITE },
   { key: "movements.create", label: "تسجيل حركة مخزون", group: "المخزون", defaultRoles: MOVEMENTS_WRITE },
   { key: "movements.delete", label: "حذف حركة مخزون", group: "المخزون", defaultRoles: MOVEMENTS_WRITE },
 

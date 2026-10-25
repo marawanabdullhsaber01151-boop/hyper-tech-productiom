@@ -68,7 +68,8 @@ describe("المخزون — إدارة أمين المخزن", () => {
     stub();
     mount();
     fireEvent.click(await screen.findByText("ملون أزرق"));
-    expect(await screen.findByText("كيس 5 كجم")).toBeTruthy();
+    // اسم المنتج بيظهر مرتين: في الوصفة وفي أمر الإنتاج النشط
+    expect((await screen.findAllByText("كيس 5 كجم")).length).toBe(2);
     expect(screen.getByText("PO-1")).toBeTruthy();
     expect(screen.getByText("قيد التنفيذ")).toBeTruthy();
     expect(screen.getByText("3 يوم")).toBeTruthy();

@@ -9,6 +9,7 @@ import { chatCopy } from "./chat";
 import { staffCopy } from "./staff";
 import { salesCopy } from "./sales";
 import { invCopy } from "./inv";
+import { purchasesCopy } from "./purchases";
 
 export type Plural = { zero?: string; one?: string; two?: string; few?: string; many?: string; other: string };
 export type Msg = string | Plural;
@@ -132,6 +133,7 @@ export const ar = {
   ...staffCopy,
   ...salesCopy,
   ...invCopy,
+  ...purchasesCopy,
   ...chatCopy,
 } as const satisfies Record<string, Msg>;
 

@@ -9,6 +9,8 @@ import { Home } from "../staff/Home";
 import { StaffShell } from "../staff/StaffShell";
 import { StaffNotFound } from "../staff/SystemPages";
 import { RoleGuard } from "../staff/RoleGuard";
+import { PURCHASE_ROLES } from "../staff/purchasingCore";
+import { Purchases } from "../staff/Purchases";
 import { STOCK_ROLES, Stock } from "../staff/Stock";
 import { SALES_PAGE_ROLES, Sales } from "../staff/Sales";
 import { HEALTH_ROLES, SystemHealth } from "../staff/SystemHealth";
@@ -17,6 +19,7 @@ import { HEALTH_ROLES, SystemHealth } from "../staff/SystemHealth";
 export const staffRoutes: RouteDef[] = [
   { path: "/staff", render: () => <Home /> },
   { path: "/staff/sales", render: () => <RoleGuard roles={SALES_PAGE_ROLES}><Sales key={location.search} /></RoleGuard> },
+  { path: "/staff/purchases", render: () => <RoleGuard roles={PURCHASE_ROLES}><Purchases key={location.search} /></RoleGuard> },
   { path: "/staff/stock", render: () => <RoleGuard roles={STOCK_ROLES}><Stock key={location.search} /></RoleGuard> },
   { path: "/staff/system-health", render: () => <RoleGuard roles={HEALTH_ROLES}><SystemHealth /></RoleGuard> },
   ...adminRoutes,
