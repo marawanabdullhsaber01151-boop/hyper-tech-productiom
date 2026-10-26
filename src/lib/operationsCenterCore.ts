@@ -244,3 +244,38 @@ export const OPS_CONVERT_ROLES = ["operations_manager", "executive_manager", "ch
 
 /** أدوار يتم إبلاغها لما المدير التشغيلي يطلب توضيح. */
 export const SALES_NOTIFY_ROLES = ["sales_manager", "online_seller", "offline_seller"] as const;
+
+export const TRANSFER_DIRECTIONS = [
+  "warehouse_to_operations",
+  "operations_to_production",
+  "production_to_operations",
+  "operations_to_warehouse",
+] as const;
+export type TransferDirection = (typeof TRANSFER_DIRECTIONS)[number];
+
+const OPS = ["operations_manager", "executive_manager", "chairman"] as const;
+
+/** مين يبدأ كل اتجاه ومين يستلمه (مصدر واحد للسيرفر، والويب بيعكسه). */
+export const TRANSFER_CREATORS: Record<TransferDirection, readonly string[]> = {
+  warehouse_to_operations: ["warehouse_manager", ...OPS],
+  operations_to_production: [...OPS],
+  production_to_operations: ["production_manager", "supervisor", ...OPS],
+  operations_to_warehouse: [...OPS],
+};
+export const TRANSFER_RECEIVERS: Record<TransferDirection, readonly string[]> = {
+  warehouse_to_operations: [...OPS],
+  operations_to_production: ["production_manager", "supervisor"],
+  production_to_operations: [...OPS],
+  operations_to_warehouse: ["warehouse_manager"],
+};
+
+/**
+ * أثر المخزون عند استلام التحويل: الخامة بتخرج من رصيد المخزن مرة واحدة بس (من المخزن للتشغيل)،
+ * ولما ترجع للمخزن بتدخل. التنقل بين التشغيل والإنتاج عهدة بس، من غير حركة مخزون
+ * (قبل كده كان بيخصم تاني عند «من التشغيل للإنتاج» فالخامة كانت بتتخصم مرتين).
+ */
+export function stockEffectOf(direction: string): "out" | "in" | null {
+  if (direction === "warehouse_to_operations") return "out";
+  if (direction === "operations_to_warehouse") return "in";
+  return null;
+}

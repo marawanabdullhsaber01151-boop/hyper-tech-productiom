@@ -2,6 +2,7 @@ import { useState } from "preact/hooks";
 import { useAct } from "../admin/act";
 import { api } from "../admin/api";
 import { useQuery } from "../api/hooks";
+import { navigate } from "../app/router";
 import { t } from "../copy";
 import { Button, ConfirmDialog, DataTable, Dialog, EmptyState, Field, InlineAlert, Select, StatusPill, Textarea, type Column, type Tone } from "../design/components";
 import { Check, Link2 } from "../design/icons";
@@ -30,6 +31,8 @@ interface Requisition {
   status: string;
   reason: string;
   createdAt: string;
+  poId?: number | null;
+  poNumber?: string | null;
 }
 interface ExceptionRow {
   id: number;
@@ -119,30 +122,79 @@ function ClaimQueue({ onChanged }: { onChanged: () => void }) {
 
 function Requisitions({ onChanged }: { onChanged: () => void }) {
   const act = useAct();
+  const [status, setStatus] = useState("pending_operations");
+  const [selected, setSelected] = useState<number[]>([]);
   const list = useQuery((signal) => api.get<Requisition[]>("/operations-control/purchase-requisitions", { signal }), []);
-  const rows = (Array.isArray(list.data) ? list.data : []).filter((r) => r.status === "pending_operations");
+  const all = Array.isArray(list.data) ? list.data : [];
+  const rows = status ? all.filter((r) => r.status === status) : all;
+  const pendingIds = rows.filter((r) => r.status === "pending_operations").map((r) => r.id);
+  const picked = selected.filter((id) => pendingIds.includes(id));
+
+  const refresh = async () => {
+    setSelected([]);
+    await list.refetch();
+    onChanged();
+  };
   const confirm = async (r: Requisition) => {
     const ok = await act.run(async () => {
       await api.patch<unknown>(`/operations-control/purchase-requisitions/${r.id}/confirm`, {});
       return true;
     }, t("opc.req.confirmedToast", { name: r.materialName }));
-    if (ok) {
-      await list.refetch();
-      onChanged();
-    }
+    if (ok) await refresh();
   };
+  const confirmMany = async (ids: number[]) => {
+    const ok = await act.run(async () => {
+      await api.post<unknown>("/operations-control/purchase-requisitions/confirm-bulk", { ids });
+      return true;
+    }, t("opc.req.bulkDone", { n: String(ids.length) }));
+    if (ok) await refresh();
+  };
+  const toggle = (id: number) => setSelected(selected.includes(id) ? selected.filter((x) => x !== id) : [...selected, id]);
+
+  const statusCell = (r: Requisition) =>
+    r.status === "pending_operations" ? (
+      <Button size="sm" icon={Link2} loading={act.busy} onClick={() => void confirm(r)}>{t("opc.req.confirmBtn")}</Button>
+    ) : r.status === "ordered" && r.poId ? (
+      <Button size="sm" variant="secondary" onClick={() => navigate(`/staff/purchases?po=${r.poId}`)}>{t("opc.req.po", { no: r.poNumber ?? String(r.poId) })}</Button>
+    ) : (
+      <StatusPill tone="success">{t(r.status === "ordered" ? "opc.req.ordered" : "opc.req.confirmed")}</StatusPill>
+    );
   const columns: Column<Requisition>[] = [
+    {
+      key: "pick",
+      header: "",
+      cell: (r) => r.status === "pending_operations" ? <input type="checkbox" aria-label={t("opc.req.pick", { name: r.materialName })} checked={selected.includes(r.id)} onChange={() => toggle(r.id)} /> : null,
+      mobile: "hide",
+    },
     { key: "mat", header: t("opc.col.material"), cell: (r) => <strong>{r.materialName}</strong>, mobile: "title" },
     { key: "need", header: t("opc.col.required"), cell: (r) => num(r.requiredQty), numeric: true, mobile: "hide" },
     { key: "have", header: t("opc.col.available"), cell: (r) => num(r.availableQty), numeric: true, mobile: "hide" },
     { key: "short", header: t("opc.col.shortage"), cell: (r) => <StatusPill tone="danger">{num(r.shortageQty)}</StatusPill>, numeric: true },
     { key: "age", header: t("opc.col.waiting"), cell: (r) => formatRelative(r.createdAt), mobile: "hide" },
-    { key: "act", header: t("opc.col.action"), cell: (r) => <Button size="sm" icon={Link2} loading={act.busy} onClick={() => void confirm(r)}>{t("opc.req.confirmBtn")}</Button> },
+    { key: "act", header: t("opc.col.action"), cell: statusCell },
   ];
   return (
     <section class="opc-card">
       <h2 class="opc-h">{t("opc.reqs.title")}</h2>
       <p class="opc-muted">{t("opc.reqs.note")}</p>
+      <div class="opc-toolbar">
+        <Select
+          aria-label={t("opc.col.status")}
+          value={status}
+          options={[
+            { value: "pending_operations", label: t("opc.req.pending") },
+            { value: "confirmed_to_procurement", label: t("opc.req.confirmed") },
+            { value: "ordered", label: t("opc.req.ordered") },
+            { value: "", label: t("opc.tr.status.all") },
+          ]}
+          onChange={(e) => { setStatus(val(e)); setSelected([]); }}
+        />
+        {pendingIds.length > 1 ? (
+          <Button variant="secondary" loading={act.busy} onClick={() => void confirmMany(picked.length ? picked : pendingIds)}>
+            {picked.length ? t("opc.req.confirmPicked", { n: String(picked.length) }) : t("opc.req.confirmAll", { n: String(pendingIds.length) })}
+          </Button>
+        ) : null}
+      </div>
       {list.error ? <InlineAlert tone="danger" title={t("opc.err")}>{list.error.message}</InlineAlert> : null}
       <DataTable columns={columns} rows={rows} rowKey={(r) => r.id} caption={t("opc.reqs.title")} loading={list.loading} empty={<EmptyState title={t("opc.reqs.empty")} compact />} />
     </section>

@@ -232,6 +232,7 @@ export function OperationsCase({ id, onClose, onChanged }: { id: number; onClose
                       <strong>{o.orderNumber}</strong>
                       <span class="opc-muted">{o.productName} | {num(o.qty)} {o.unit}</span>
                       <StatusPill tone={wfTone(o.workflowStatus)}>{wfLabel(o.workflowStatus)}</StatusPill>
+                      <OrderEvents orderId={o.id} />
                     </li>
                   ))}
                 </ul>
@@ -246,7 +247,7 @@ export function OperationsCase({ id, onClose, onChanged }: { id: number; onClose
                     <li key={r.id}>
                       <strong>{r.materialName}</strong>
                       <span class="opc-muted">{t("opc.req.short", { n: num(r.shortageQty) })}</span>
-                      <StatusPill tone={r.status === "pending_operations" ? "warn" : "success"}>{t(r.status === "pending_operations" ? "opc.req.pending" : "opc.req.confirmed")}</StatusPill>
+                      <StatusPill tone={r.status === "pending_operations" ? "warn" : "success"}>{t(r.status === "pending_operations" ? "opc.req.pending" : r.status === "ordered" ? "opc.req.ordered" : "opc.req.confirmed")}</StatusPill>
                     </li>
                   ))}
                 </ul>
@@ -363,5 +364,45 @@ function EditDialog({ rec, onClose, onSaved }: { rec: CaseRec; onClose: () => vo
         </Field>
       </div>
     </Dialog>
+  );
+}
+
+interface OrderEvent {
+  id: number;
+  internalStatus: string;
+  actorName: string | null;
+  automatic: boolean;
+  cause: string | null;
+  details: string | null;
+  createdAt: string;
+}
+
+/** سجل أحداث أمر الإنتاج: بيتحمّل عند الطلب بس. */
+function OrderEvents({ orderId }: { orderId: number }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div class="opc-events">
+      <Button size="sm" variant="ghost" onClick={() => setOpen(!open)}>{open ? t("opc.ev.hide") : t("opc.ev.show")}</Button>
+      {open ? <OrderEventsList orderId={orderId} /> : null}
+    </div>
+  );
+}
+
+function OrderEventsList({ orderId }: { orderId: number }) {
+  const ev = useQuery((signal) => api.get<OrderEvent[]>(`/operations-control/orders/${orderId}/events`, { signal }), [orderId]);
+  const rows = Array.isArray(ev.data) ? ev.data : [];
+  if (ev.loading) return <Skeleton height={48} />;
+  if (ev.error) return <InlineAlert tone="danger" title={t("opc.err")}>{ev.error.message}</InlineAlert>;
+  if (!rows.length) return <p class="opc-muted">{t("opc.ev.empty")}</p>;
+  return (
+    <ol class="opc-timeline">
+      {rows.map((e) => (
+        <li key={e.id}>
+          <strong>{wfLabel(e.internalStatus)}</strong>
+          <span class="opc-muted">{e.automatic ? t("opc.ev.auto") : e.actorName ?? "—"} | {formatRelative(e.createdAt)}</span>
+          {e.details || e.cause ? <span class="opc-muted">{e.details ?? e.cause}</span> : null}
+        </li>
+      ))}
+    </ol>
   );
 }

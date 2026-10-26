@@ -57,3 +57,8 @@
 .opc-note { color: var(--c-text-2); overflow-wrap: anywhere; }
 .opc-form { display: grid; gap: var(--sp-3); }
 .opc-foot { display: flex; flex-wrap: wrap; gap: var(--sp-2); inline-size: 100%; justify-content: flex-end; }
+
+.opc-events {
+  margin-block-start: var(--sp-2);
+  inline-size: 100%;
+}

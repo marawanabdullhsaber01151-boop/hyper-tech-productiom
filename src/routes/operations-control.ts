@@ -1,5 +1,6 @@
 import { Router } from "express";
-import { and, desc, eq, sql } from "drizzle-orm";
+import { z } from "zod";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { db } from "../db";
 import {
   inventoryItemsTable,
@@ -13,6 +14,8 @@ import {
   workflowEventsTable,
   operationTransferSchema,
   systemSettingsTable,
+  purchaseOrderItemsTable,
+  purchaseOrdersTable,
 } from "../db/schema";
 import { requireAuth, requirePermission, requireRole } from "../middleware/auth";
 import { applyStockMovement } from "../lib/stock";
@@ -34,6 +37,8 @@ import {
   subtractDecimalQuantities,
 } from "../lib/decimal-quantity";
 import { maskProductionWorkflowPayload } from "../lib/fieldMasking";
+import { TRANSFER_CREATORS, TRANSFER_RECEIVERS, stockEffectOf, type TransferDirection } from "../lib/operationsCenterCore";
+import { notifyRoles } from "../lib/notifications";
 
 const router = Router();
 router.use((req, res, next) => {
@@ -295,10 +300,32 @@ router.post("/operations-control/sales-orders/:id/execute-plan",
 router.get("/operations-control/purchase-requisitions",
   requireAuth, requireRole(...OPERATIONS_ROLES, "warehouse_manager"),
   async (_req, res, next) => {
-    try { res.json(await db.select().from(purchaseRequisitionsTable).orderBy(desc(purchaseRequisitionsTable.createdAt))); }
+    try {
+      const rows = await db.select().from(purchaseRequisitionsTable).orderBy(desc(purchaseRequisitionsTable.createdAt)).limit(500);
+      // لو الاحتياج اتحوّل لأمر شراء، بنرجّع رقمه عشان التشغيل يتابعه.
+      const ids = rows.map((r) => r.id);
+      const links = ids.length
+        ? await db
+            .select({ requisitionId: purchaseOrderItemsTable.requisitionId, poId: purchaseOrdersTable.id, poNumber: purchaseOrdersTable.poNumber, poStatus: purchaseOrdersTable.status })
+            .from(purchaseOrderItemsTable)
+            .innerJoin(purchaseOrdersTable, eq(purchaseOrdersTable.id, purchaseOrderItemsTable.poId))
+            .where(and(eq(purchaseOrderItemsTable.requisitionSource, "ops"), inArray(purchaseOrderItemsTable.requisitionId, ids)))
+        : [];
+      const byReq = new Map(links.map((l) => [l.requisitionId, l]));
+      res.json(rows.map((r) => ({ ...r, poId: byReq.get(r.id)?.poId ?? null, poNumber: byReq.get(r.id)?.poNumber ?? null, poStatus: byReq.get(r.id)?.poStatus ?? null })));
+    }
     catch (err) { next(err); }
   },
 );
+
+async function notifyProcurement(count: number, names: string[]) {
+  await notifyRoles(["purchasing_manager", "buyer"], {
+    type: "purchase_requisition_confirmed",
+    title: count === 1 ? "احتياج شراء جديد من التشغيل" : `${count} احتياجات شراء جديدة من التشغيل`,
+    body: names.slice(0, 3).join("، ") + (names.length > 3 ? ` و${names.length - 3} كمان` : "") + " — جاهزة لأمر شراء.",
+    referenceType: "purchase_requisition",
+  });
+}
 
 router.patch("/operations-control/purchase-requisitions/:id/confirm",
   requireAuth, requireRole(...OPERATIONS_ROLES),
@@ -312,7 +339,59 @@ router.patch("/operations-control/purchase-requisitions/:id/confirm",
       await writeAuditEvent({ actorUserId: req.user!.userId, actorName: req.user!.username,
         actionKey: "operations.purchaseRequisition.confirm", resourceType: "purchase_requisition", resourceId: id,
         afterData: updated, ipAddress: req.ip, userAgent: req.get("user-agent") });
+      await notifyProcurement(1, [updated.materialName]).catch(() => undefined);
       res.json(updated);
+    } catch (err) { next(err); }
+  },
+);
+
+/** تأكيد مجموعة احتياجات مرة واحدة (بنفس شروط التأكيد الفردي)، وإشعار واحد للمشتريات. */
+router.post("/operations-control/purchase-requisitions/confirm-bulk",
+  requireAuth, requireRole(...OPERATIONS_ROLES),
+  async (req, res, next) => {
+    try {
+      const { ids } = z.object({ ids: z.array(z.number().int().positive()).min(1).max(200) }).parse(req.body ?? {});
+      const updated = await db.update(purchaseRequisitionsTable).set({
+        status: "confirmed_to_procurement", confirmedBy: req.user!.userId, confirmedAt: new Date(),
+      }).where(and(inArray(purchaseRequisitionsTable.id, ids), eq(purchaseRequisitionsTable.status, "pending_operations"))).returning();
+      for (const r of updated) {
+        await writeAuditEvent({ actorUserId: req.user!.userId, actorName: req.user!.username,
+          actionKey: "operations.purchaseRequisition.confirm", resourceType: "purchase_requisition", resourceId: r.id,
+          afterData: r, reason: "bulk", ipAddress: req.ip, userAgent: req.get("user-agent") });
+      }
+      if (updated.length) await notifyProcurement(updated.length, updated.map((r) => r.materialName)).catch(() => undefined);
+      res.json({ confirmed: updated.length, skipped: ids.length - updated.length });
+    } catch (err) { next(err); }
+  },
+);
+
+/** قايمة التحويلات بأسماء مقروءة (أمر الإنتاج والصنف). */
+router.get("/operations-control/transfers",
+  requireAuth, requireRole(...INTERNAL_ROLES),
+  async (req, res, next) => {
+    try {
+      const status = typeof req.query.status === "string" && ["pending", "received"].includes(req.query.status) ? req.query.status : null;
+      const rows = await db.select({
+        id: operationTransfersTable.id,
+        workflowOrderId: operationTransfersTable.workflowOrderId,
+        orderNumber: productionWorkflowOrdersTable.orderNumber,
+        productName: productionWorkflowOrdersTable.productName,
+        direction: operationTransfersTable.direction,
+        inventoryItemId: operationTransfersTable.inventoryItemId,
+        itemName: inventoryItemsTable.name,
+        quantity: operationTransfersTable.quantity,
+        status: operationTransfersTable.status,
+        notes: operationTransfersTable.notes,
+        preparedAt: operationTransfersTable.preparedAt,
+        receivedAt: operationTransfersTable.receivedAt,
+      })
+        .from(operationTransfersTable)
+        .leftJoin(productionWorkflowOrdersTable, eq(productionWorkflowOrdersTable.id, operationTransfersTable.workflowOrderId))
+        .leftJoin(inventoryItemsTable, eq(inventoryItemsTable.id, operationTransfersTable.inventoryItemId))
+        .where(status ? eq(operationTransfersTable.status, status) : undefined)
+        .orderBy(desc(operationTransfersTable.preparedAt))
+        .limit(200);
+      res.json(rows);
     } catch (err) { next(err); }
   },
 );
@@ -322,13 +401,7 @@ router.post("/operations-control/transfers",
   async (req, res, next) => {
     try {
       const data = operationTransferSchema.parse(req.body);
-      const allowed: Record<string, string[]> = {
-        warehouse_to_operations: ["warehouse_manager", ...OPERATIONS_ROLES],
-        operations_to_production: [...OPERATIONS_ROLES],
-        production_to_operations: ["production_manager", "supervisor", ...OPERATIONS_ROLES],
-        operations_to_warehouse: [...OPERATIONS_ROLES],
-      };
-      if (!allowed[data.direction].includes(req.user!.role)) {
+      if (!TRANSFER_CREATORS[data.direction as TransferDirection].includes(req.user!.role)) {
         res.status(403).json({ error: { message: "هذا الانتقال لا يبدأه دورك" } }); return;
       }
       const [transfer] = await db.insert(operationTransfersTable).values({
@@ -347,11 +420,7 @@ router.patch("/operations-control/transfers/:id/receive",
       const id = Number(req.params.id);
       const [transfer] = await db.select().from(operationTransfersTable).where(eq(operationTransfersTable.id, id)).limit(1);
       if (!transfer) { res.status(404).json({ error: { message: "حركة النقل غير موجودة" } }); return; }
-      const receivers: Record<string, string[]> = {
-        warehouse_to_operations: [...OPERATIONS_ROLES], operations_to_production: ["production_manager", "supervisor"],
-        production_to_operations: [...OPERATIONS_ROLES], operations_to_warehouse: ["warehouse_manager"],
-      };
-      if (!receivers[transfer.direction].includes(req.user!.role)) {
+      if (!(TRANSFER_RECEIVERS[transfer.direction as TransferDirection] ?? []).includes(req.user!.role)) {
         res.status(403).json({ error: { message: "هذا الانتقال لا يستلمه دورك" } }); return;
       }
        const updated = await db.transaction(async (tx) => {
@@ -359,21 +428,13 @@ router.patch("/operations-control/transfers/:id/receive",
            status: "received", receivedBy: req.user!.userId, receivedAt: new Date(),
          }).where(and(eq(operationTransfersTable.id, id), eq(operationTransfersTable.status, "pending"))).returning();
          if (!received) return undefined;
-         if (received.inventoryItemId &&
-             ["warehouse_to_operations", "operations_to_production"].includes(received.direction)) {
+         const effect = stockEffectOf(received.direction);
+         if (received.inventoryItemId && effect) {
            await applyStockMovement(tx, {
-             inventoryItemId: received.inventoryItemId, movementType: "out",
+             inventoryItemId: received.inventoryItemId, movementType: effect,
              qty: received.quantity, referenceType: "production",
              referenceId: received.workflowOrderId,
-             notes: `خصم بعد استلام تحويل تشغيلي #${received.id}`,
-           });
-         }
-         if (received.inventoryItemId && received.direction === "operations_to_warehouse") {
-           await applyStockMovement(tx, {
-             inventoryItemId: received.inventoryItemId, movementType: "in",
-             qty: received.quantity, referenceType: "production",
-             referenceId: received.workflowOrderId,
-             notes: `إضافة بعد استلام تحويل تشغيلي #${received.id}`,
+             notes: `${effect === "out" ? "خصم بعد استلام" : "إضافة بعد استلام"} تحويل تشغيلي #${received.id}`,
            });
          }
          return received;

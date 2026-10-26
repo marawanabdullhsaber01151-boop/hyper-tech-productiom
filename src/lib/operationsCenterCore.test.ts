@@ -9,8 +9,7 @@ import {
   planConversion,
   workingHoursBetween,
   cairoDateString,
-  OPS_CONVERT_ROLES,
-} from "./operationsCenterCore";
+  OPS_CONVERT_ROLES, TRANSFER_CREATORS, TRANSFER_DIRECTIONS, TRANSFER_RECEIVERS, stockEffectOf } from "./operationsCenterCore";
 
 const d = (s: string) => new Date(s);
 
@@ -125,5 +124,33 @@ describe("حراسة المسارات (ثغرات اتقفلت)", () => {
     const app = readFileSync("web/src/app/App.tsx", "utf8");
     expect(app).toMatch(/\/staff\/operations[\s\S]{0,80}RoleGuard roles=\{OPERATIONS_ROLES\}/);
     expect(app).toContain('import("../staff/Operations")');
+  });
+
+  it("أثر المخزون: خصم مرة واحدة من المخزن للتشغيل، وإضافة عند الرجوع، والباقي عهدة بس", () => {
+    expect(stockEffectOf("warehouse_to_operations")).toBe("out");
+    expect(stockEffectOf("operations_to_warehouse")).toBe("in");
+    expect(stockEffectOf("operations_to_production")).toBeNull();
+    expect(stockEffectOf("production_to_operations")).toBeNull();
+    // رحلة كاملة مخزن → تشغيل → إنتاج: خصم واحد بس
+    const trip = ["warehouse_to_operations", "operations_to_production"].map(stockEffectOf).filter((e) => e === "out");
+    expect(trip).toHaveLength(1);
+  });
+  it("كل اتجاه له من يبدأه ومن يستلمه، والويب بيعكس نفس الاتجاهات", () => {
+    for (const d of TRANSFER_DIRECTIONS) {
+      expect(TRANSFER_CREATORS[d].length).toBeGreaterThan(0);
+      expect(TRANSFER_RECEIVERS[d].length).toBeGreaterThan(0);
+    }
+    const web = readFileSync("web/src/staff/transferRules.ts", "utf8");
+    for (const d of TRANSFER_DIRECTIONS) expect(web).toContain(`"${d}"`);
+    expect(web).toContain('production_manager", "supervisor"');
+    expect(web).toContain('operations_to_warehouse: ["warehouse_manager"]');
+  });
+  it("مسار الاستلام بيستخدم stockEffectOf، ومفيش خصم صريح لـoperations_to_production", () => {
+    const route = readFileSync("src/routes/operations-control.ts", "utf8");
+    expect(route).toContain("stockEffectOf(received.direction)");
+    expect(route).not.toContain('"operations_to_production"]');
+    expect(route).toContain("/operations-control/transfers\",");
+    expect(route).toContain("purchase-requisitions/confirm-bulk");
+    expect(route).toContain('notifyRoles(["purchasing_manager", "buyer"]');
   });
 });
