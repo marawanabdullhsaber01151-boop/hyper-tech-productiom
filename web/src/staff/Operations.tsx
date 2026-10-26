@@ -9,6 +9,7 @@ import { CircleCheck, Plus, RefreshCw, TriangleAlert } from "../design/icons";
 import { formatDate, formatNumber, formatRelative } from "../lib/format";
 import { OperationsCase } from "./OperationsCase";
 import { OperationsQueues } from "./OperationsQueues";
+import { OperationsPlans } from "./OperationsPlans";
 import { OperationsTransfers } from "./OperationsTransfers";
 import { CaseStatusPill, PriorityPill, ReasonChips, RiskPill } from "./OperationsParts";
 import { CASE_STATUSES, PRIORITIES, focusOf, pipelineSegments, type Kpis, type Overview, type RiskLevel } from "./operationsCore";
@@ -43,7 +44,7 @@ interface Filters {
 }
 const NO_FILTERS: Filters = { status: "", priority: "", risk: "", assignee: "", search: "" };
 const PAGE_SIZE = 15;
-const TABS = ["overview", "cases", "claim", "transfers", "needs"] as const;
+const TABS = ["overview", "cases", "claim", "plans", "transfers", "needs"] as const;
 type Tab = (typeof TABS)[number];
 const val = (e: Event) => (e.target as HTMLInputElement).value;
 
@@ -76,6 +77,7 @@ export function Operations() {
       panel: <CasesPanel filters={filters} setFilters={(f) => { setFilters(f); setPage(1); }} page={page} setPage={setPage} team={o?.team ?? []} onOpen={setOpenId} onIntake={() => setIntake(true)} refreshKey={o?.generatedAt} />,
     },
     { id: "claim", label: t("opc.tab.claim"), badge: o?.kpis.awaitingClaim || undefined, panel: <OperationsQueues part="claim" onChanged={changed} /> },
+    { id: "plans", label: t("opc.tab.plans"), panel: <OperationsPlans onChanged={changed} /> },
     { id: "transfers", label: t("opc.tab.transfers"), badge: o?.kpis.transfersPending || undefined, panel: <OperationsTransfers onChanged={changed} /> },
     { id: "needs", label: t("opc.tab.needs"), badge: o ? o.kpis.requisitionsPending + o.kpis.exceptionsOpen || undefined : undefined, panel: <OperationsQueues part="needs" onChanged={changed} /> },
   ];

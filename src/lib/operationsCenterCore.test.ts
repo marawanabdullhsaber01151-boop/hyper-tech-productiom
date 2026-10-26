@@ -9,7 +9,7 @@ import {
   planConversion,
   workingHoursBetween,
   cairoDateString,
-  OPS_CONVERT_ROLES, TRANSFER_CREATORS, TRANSFER_DIRECTIONS, TRANSFER_RECEIVERS, stockEffectOf } from "./operationsCenterCore";
+  OPS_CONVERT_ROLES, TRANSFER_CREATORS, TRANSFER_DIRECTIONS, TRANSFER_RECEIVERS, stockEffectOf, approvalLevelFor, checkPlanDecision, planShortageValue } from "./operationsCenterCore";
 
 const d = (s: string) => new Date(s);
 
@@ -152,5 +152,37 @@ describe("حراسة المسارات (ثغرات اتقفلت)", () => {
     expect(route).toContain("/operations-control/transfers\",");
     expect(route).toContain("purchase-requisitions/confirm-bulk");
     expect(route).toContain('notifyRoles(["purchasing_manager", "buyer"]');
+  });
+
+  it("مستوى الاعتماد حسب قيمة العجز: تلقائي/50 ألف/200 ألف/فوقها", () => {
+    expect([0, 10_000, 10_000.01, 50_000, 50_001, 200_000, 200_001].map(approvalLevelFor)).toEqual([0, 0, 1, 1, 2, 2, 3]);
+  });
+  it("قيمة العجز بتتجاهل الأصناف من غير سعر أو من غير عجز", () => {
+    expect(planShortageValue([{ shortageQty: "3.5", unitPrice: "10.00" }, { shortageQty: "0", unitPrice: "99" }, { shortageQty: "2", unitPrice: null }])).toBe(35);
+  });
+  it("قرار الاعتماد: الدور حسب المستوى، ومش صاحب الخطة، وسبب في المستوى 3", () => {
+    const b = { role: "executive_manager", userId: 2, level: 1 as const, submittedBy: 1, note: "" };
+    expect(checkPlanDecision(b)).toEqual({ ok: true });
+    expect(checkPlanDecision({ ...b, role: "operations_manager" })).toEqual({ ok: false, code: "ROLE_NOT_ALLOWED" });
+    expect(checkPlanDecision({ ...b, userId: 1 })).toEqual({ ok: false, code: "SELF_APPROVAL" });
+    expect(checkPlanDecision({ ...b, role: "executive_manager", level: 2 })).toEqual({ ok: false, code: "ROLE_NOT_ALLOWED" });
+    expect(checkPlanDecision({ ...b, role: "chairman", level: 3 })).toEqual({ ok: false, code: "NOTE_REQUIRED" });
+    expect(checkPlanDecision({ ...b, role: "chairman", level: 3, note: "سبب" })).toEqual({ ok: true });
+  });
+  it("الخطط: الراوتر متركّب، الهجرة بتعرّف الجدول والترقيم، والمسارات محروسة", () => {
+    const main = readFileSync("src/main.ts", "utf8");
+    expect(main).toContain('import operationsPlansRouter from "./routes/operations-plans"');
+    expect(main).toContain("apiRouter.use(operationsPlansRouter)");
+    const sql = readFileSync("migrations/0082_operations_plans.sql", "utf8");
+    expect(sql).toContain('CREATE TABLE IF NOT EXISTS "operations_plans"');
+    expect(sql).toContain("'operations_plan', 'PLN-'");
+    const route = readFileSync("src/routes/operations-plans.ts", "utf8");
+    expect(route).toContain("OPERATIONS_CONTROL_ACTIONS.planCreate");
+    expect(route).toContain("OPERATIONS_CONTROL_ACTIONS.planSubmit");
+    expect(route).toContain("checkPlanDecision(");
+    expect(route).toContain('.for("update")');
+    // لا حجز مخزون ولا إنشاء إنتاج من الخطة في الخطوة دي
+    expect(route).not.toContain("applyStockMovement");
+    expect(route).not.toContain("productionWorkflowOrdersTable");
   });
 });

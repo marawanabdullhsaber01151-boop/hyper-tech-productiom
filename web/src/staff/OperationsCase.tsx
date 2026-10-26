@@ -82,6 +82,13 @@ export function OperationsCase({ id, onClose, onChanged }: { id: number; onClose
     setText("");
   };
 
+  const savePlan = async () => {
+    const r = await act.run(async () => {
+      await api.post<{ id: number }>("/operations-center/plans", { salesOrderId: data!.case.salesOrderId, caseId: data!.case.id });
+      return true;
+    }, t("opc.plan.saved"));
+    if (r) onChanged();
+  };
   const loadPlan = async () => {
     if (!data) return;
     const r = await act.run(() => api.get<Plan>(`/operations-control/sales-orders/${data.case.salesOrderId}/plan`));
@@ -189,7 +196,10 @@ export function OperationsCase({ id, onClose, onChanged }: { id: number; onClose
 
             <div class="opc-hrow">
               <h3 class="opc-h">{t("opc.plan.title")}</h3>
-              <Button size="sm" variant="secondary" loading={act.busy} onClick={() => void loadPlan()}>{plan ? t("opc.plan.reload") : t("opc.plan.run")}</Button>
+              <span class="opc-hrow">
+                {plan ? <Button size="sm" loading={act.busy} onClick={() => void savePlan()}>{t("opc.plan.save")}</Button> : null}
+                <Button size="sm" variant="secondary" loading={act.busy} onClick={() => void loadPlan()}>{plan ? t("opc.plan.reload") : t("opc.plan.run")}</Button>
+              </span>
             </div>
             <p class="opc-muted">{t("opc.plan.note")}</p>
             {plan ? (

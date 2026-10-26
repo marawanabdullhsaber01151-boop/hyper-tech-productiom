@@ -6,6 +6,7 @@ import {
   numeric,
   timestamp,
   boolean,
+  jsonb,
   index,
   unique,
 } from "drizzle-orm/pg-core";
@@ -123,3 +124,31 @@ export type FulfillmentAllocation = typeof fulfillmentAllocationsTable.$inferSel
 export type PurchaseRequisition = typeof purchaseRequisitionsTable.$inferSelect;
 export type OperationTransfer = typeof operationTransfersTable.$inferSelect;
 export type WorkflowEvent = typeof workflowEventsTable.$inferSelect;
+export const operationsPlansTable = pgTable(
+  "operations_plans",
+  {
+    id: serial("id").primaryKey(),
+    planNumber: text("plan_number").notNull().unique(),
+    salesOrderId: integer("sales_order_id").notNull(),
+    caseId: integer("case_id"),
+    status: text("status").notNull().default("draft"),
+    snapshot: jsonb("snapshot").notNull(),
+    shortageValue: numeric("shortage_value", { precision: 14, scale: 2 }).notNull().default("0"),
+    approvalLevel: integer("approval_level").notNull().default(0),
+    notes: text("notes"),
+    createdBy: integer("created_by").notNull(),
+    createdByName: text("created_by_name"),
+    submittedBy: integer("submitted_by"),
+    submittedAt: timestamp("submitted_at", { withTimezone: true }),
+    decidedBy: integer("decided_by"),
+    decidedByName: text("decided_by_name"),
+    decidedAt: timestamp("decided_at", { withTimezone: true }),
+    decisionNote: text("decision_note"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    orderIdx: index("operations_plans_order_idx").on(table.salesOrderId, table.status),
+    statusIdx: index("operations_plans_status_idx").on(table.status, table.createdAt),
+  }),
+);

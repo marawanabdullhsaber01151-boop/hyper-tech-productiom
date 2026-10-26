@@ -279,3 +279,53 @@ export function stockEffectOf(direction: string): "out" | "in" | null {
   if (direction === "operations_to_warehouse") return "in";
   return null;
 }
+
+/**
+ * مستويات اعتماد خطة التشغيل حسب قيمة عجز الخامات (بالجنيه):
+ * 0 تلقائي لحد 10 آلاف، 1 مدير تنفيذي أو رئيس لحد 50 ألف، 2 رئيس المجلس لحد 200 ألف،
+ * 3 رئيس المجلس بسبب مكتوب فوق 200 ألف. القيم ثابتة هنا لحد ما تبقى إعداد من الشاشة.
+ */
+export const PLAN_LEVEL_LIMITS = { auto: 10_000, level1: 50_000, level2: 200_000 } as const;
+export type PlanLevel = 0 | 1 | 2 | 3;
+
+export function approvalLevelFor(value: number): PlanLevel {
+  if (!Number.isFinite(value) || value <= PLAN_LEVEL_LIMITS.auto) return 0;
+  if (value <= PLAN_LEVEL_LIMITS.level1) return 1;
+  if (value <= PLAN_LEVEL_LIMITS.level2) return 2;
+  return 3;
+}
+
+export const PLAN_LEVEL_ROLES: Record<PlanLevel, readonly string[]> = {
+  0: ["operations_manager", "executive_manager", "chairman"],
+  1: ["executive_manager", "chairman"],
+  2: ["chairman"],
+  3: ["chairman"],
+};
+
+/** قيمة العجز: مجموع (كمية العجز × سعر الوحدة) للخامات اللي لازم تتشترى، مقرّبة لقرشين. */
+export function planShortageValue(rows: ReadonlyArray<{ shortageQty: string; unitPrice: string | null }>): number {
+  let total = 0;
+  for (const r of rows) {
+    const q = Number(r.shortageQty);
+    const p = Number(r.unitPrice ?? 0);
+    if (q > 0 && p > 0) total += q * p;
+  }
+  return Math.round(total * 100) / 100;
+}
+
+export interface PlanDecisionInput {
+  role: string;
+  userId: number;
+  level: PlanLevel;
+  submittedBy: number | null;
+  note: string;
+}
+export type PlanDecisionCheck = { ok: true } | { ok: false; code: "ROLE_NOT_ALLOWED" | "SELF_APPROVAL" | "NOTE_REQUIRED" };
+
+/** مين يقدر يعتمد: الدور المناسب للمستوى، مش نفس اللي رفعها (من المستوى 1)، وسبب مكتوب في المستوى 3. */
+export function checkPlanDecision(i: PlanDecisionInput): PlanDecisionCheck {
+  if (!PLAN_LEVEL_ROLES[i.level].includes(i.role)) return { ok: false, code: "ROLE_NOT_ALLOWED" };
+  if (i.level >= 1 && i.submittedBy !== null && i.submittedBy === i.userId) return { ok: false, code: "SELF_APPROVAL" };
+  if (i.level === 3 && i.note.trim().length < 3) return { ok: false, code: "NOTE_REQUIRED" };
+  return { ok: true };
+}

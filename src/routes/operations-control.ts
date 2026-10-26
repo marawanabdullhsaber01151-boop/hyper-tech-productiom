@@ -183,7 +183,7 @@ async function planningOnlyEnabled() {
   return isPlanningOnlyEnabled(setting?.value);
 }
 
-async function buildSalesOrderPlan(salesOrderId: number) {
+export async function buildSalesOrderPlan(salesOrderId: number) {
   const [order] = await db.select().from(salesOrdersTable)
     .where(eq(salesOrdersTable.id, salesOrderId)).limit(1);
   if (!order) return null;
