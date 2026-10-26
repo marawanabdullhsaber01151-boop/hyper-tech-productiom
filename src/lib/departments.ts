@@ -254,8 +254,7 @@ export const DEPARTMENTS: readonly NavDepartment[] = [
         label: "التحكم في العمليات",
         roles: ["chairman", "operations_manager", "executive_manager", "warehouse_manager", "production_manager", "production_controller", "supervisor", "production_quality_controller"],
         pages: [
-          { id: "operations", label: "التحكم في العمليات", href: "operations.html", roles: ["chairman", "operations_manager", "executive_manager"] },
-          { id: "operations-manager-inbox", label: "مراجعة واستقبال أوامر البيع التشغيلية", href: "operations-manager.html", roles: OPERATIONS_CASE_VIEW_ROLES },
+          { id: "operations-center", label: "مركز قيادة التشغيل", href: "/v2/staff/operations", roles: OPERATIONS_CASE_VIEW_ROLES },
         ],
       },
     ],

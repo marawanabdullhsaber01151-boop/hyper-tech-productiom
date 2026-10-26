@@ -37,7 +37,7 @@ import {
 } from "../lib/operations-intake";
 import { writeAuditEvent } from "../lib/governance";
 import { claimOperationsLine } from "../lib/operations-claim";
-import { notifyRole, notifyRoles } from "../lib/notifications";
+import { notifyRole, notifyRoles, notifyUser } from "../lib/notifications";
 
 const router = Router();
 
@@ -149,6 +149,7 @@ const casesListQuerySchema = z.object({
       "under_validation",
       "needs_sales_clarification",
       "analysis_ready",
+      "converted",
       "cancelled",
       "completed",
       "closed",
@@ -168,7 +169,7 @@ const receiveSalesOrderByNumberSchema = z.object({
   priority: z.enum(["low", "normal", "high", "urgent"]).default("normal"),
 });
 
-const activeCaseCondition = sql`${operationsCasesTable.status} NOT IN ('cancelled', 'completed', 'closed')`;
+const activeCaseCondition = sql`${operationsCasesTable.status} NOT IN ('converted', 'cancelled', 'completed', 'closed')`;
 const cairoToday = sql`(CURRENT_TIMESTAMP AT TIME ZONE 'Africa/Cairo')::date`;
 const overdueCondition = sql<boolean>`${operationsCasesTable.dueDate} IS NOT NULL
   AND ${operationsCasesTable.dueDate} < ${cairoToday}
@@ -820,7 +821,7 @@ router.post(
           tx,
           before,
           updated,
-          "sales_clarification_requested",
+          `sales_clarification_requested: ${reason}`,
           req.user!.userId,
         );
         await writeAuditEvent({
@@ -842,11 +843,213 @@ router.post(
         return { case: updated, changed: true };
       });
 
+      if (result.changed) {
+        // المبيعات لازم تعرف إن فيه سؤال مستني ردها — وبالسبب نفسه.
+        const [order] = await db
+          .select({ createdById: salesOrdersTable.createdById, orderNumber: salesOrdersTable.orderNumber })
+          .from(salesOrdersTable)
+          .where(eq(salesOrdersTable.id, result.case.salesOrderId))
+          .limit(1);
+        const payload = {
+          type: "operations_clarification_requested",
+          title: `التشغيل محتاج توضيح على أمر البيع ${order?.orderNumber ?? ""}`.trim(),
+          body: `${req.user!.username}: ${reason}`,
+          referenceType: "operations_case",
+          referenceId: result.case.id,
+        };
+        if (order?.createdById) await notifyUser(order.createdById, payload);
+        await notifyRole("sales_manager", payload);
+      }
       res.json({
         case: result.case,
         idempotentReplay: !result.changed,
         salesOrderMutated: false,
       });
+    } catch (err) {
+      if (err instanceof Error && "status" in err) {
+        res
+          .status(Number((err as Error & { status?: number }).status) || 422)
+          .json({ error: { message: err.message } });
+        return;
+      }
+      next(err);
+    }
+  },
+);
+
+const resumeSchema = z.object({
+  note: z.string().trim().min(3).max(1000),
+});
+
+/** المبيعات رجّعت الرد: الحالة ترجع «قيد التحقق» والملاحظة تتسجل في سجل النسخ. */
+router.post(
+  "/operations-manager/cases/:id/resume-validation",
+  requireAuth,
+  requirePermission(OPERATIONS_MANAGER_PERMISSIONS.caseEdit),
+  async (req, res, next) => {
+    try {
+      const id = parseIdParam(req.params.id, res);
+      if (id === null) return;
+      const { note } = resumeSchema.parse(req.body ?? {});
+
+      const result = await db.transaction(async (tx) => {
+        const [before] = await tx
+          .select()
+          .from(operationsCasesTable)
+          .where(eq(operationsCasesTable.id, id))
+          .limit(1)
+          .for("update");
+        if (!before) {
+          throw Object.assign(new Error("حالة التشغيل غير موجودة"), { status: 404 });
+        }
+        if (before.status === "under_validation") return { case: before, changed: false };
+        if (before.status !== "needs_sales_clarification") {
+          throw Object.assign(new Error("الحالة مش مستنية توضيح من المبيعات"), { status: 409 });
+        }
+        const [updated] = await tx
+          .update(operationsCasesTable)
+          .set({
+            status: "under_validation",
+            currentRevision: before.currentRevision + 1,
+            version: sql`${operationsCasesTable.version} + 1`,
+            updatedAt: new Date(),
+          })
+          .where(and(eq(operationsCasesTable.id, id), eq(operationsCasesTable.version, before.version)))
+          .returning();
+        if (!updated) {
+          throw Object.assign(new Error("تم تعديل الحالة بالتوازي"), { status: 409 });
+        }
+        await recordCaseTransition(tx, before, updated, `validation_resumed: ${note}`, req.user!.userId);
+        await writeAuditEvent({
+          executor: tx,
+          actorUserId: req.user!.userId,
+          actorName: req.user!.username,
+          actionKey: "operations.case.validationResumed",
+          resourceType: "operations_case",
+          resourceId: id,
+          beforeData: { status: before.status, version: before.version },
+          afterData: { status: updated.status, version: updated.version },
+          reason: note,
+          ipAddress: req.ip,
+          userAgent: req.get("user-agent"),
+        });
+        return { case: updated, changed: true };
+      });
+      res.json({ case: result.case, idempotentReplay: !result.changed });
+    } catch (err) {
+      if (err instanceof Error && "status" in err) {
+        res
+          .status(Number((err as Error & { status?: number }).status) || 422)
+          .json({ error: { message: err.message } });
+        return;
+      }
+      next(err);
+    }
+  },
+);
+
+const caseDetailsSchema = z
+  .object({
+    assignedTo: z.number().int().positive().nullable().optional(),
+    priority: z.enum(["low", "normal", "high", "urgent"]).optional(),
+    dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+    expectedVersion: z.number().int().positive(),
+  })
+  .refine(
+    (v) => v.assignedTo !== undefined || v.priority !== undefined || v.dueDate !== undefined,
+    { message: "مفيش حاجة تتعدّل" },
+  );
+
+/** تعيين مسؤول وتعديل الأولوية والموعد، بقفل نسخة ومسار تدقيق. */
+router.patch(
+  "/operations-manager/cases/:id",
+  requireAuth,
+  requirePermission(OPERATIONS_MANAGER_PERMISSIONS.caseEdit),
+  async (req, res, next) => {
+    try {
+      const id = parseIdParam(req.params.id, res);
+      if (id === null) return;
+      const input = caseDetailsSchema.parse(req.body ?? {});
+
+      const result = await db.transaction(async (tx) => {
+        const [before] = await tx
+          .select()
+          .from(operationsCasesTable)
+          .where(eq(operationsCasesTable.id, id))
+          .limit(1)
+          .for("update");
+        if (!before) {
+          throw Object.assign(new Error("حالة التشغيل غير موجودة"), { status: 404 });
+        }
+        if (["converted", "cancelled", "completed", "closed"].includes(before.status)) {
+          throw Object.assign(new Error("الحالة دي اتقفلت ومينفعش تتعدّل"), { status: 409 });
+        }
+        if (before.version !== input.expectedVersion) {
+          throw Object.assign(new Error("الحالة اتعدّلت من حد تاني — حدّث الصفحة وجرّب تاني"), { status: 409 });
+        }
+        if (input.assignedTo) {
+          const [assignee] = await tx
+            .select({ id: systemUsersTable.id })
+            .from(systemUsersTable)
+            .where(
+              and(
+                eq(systemUsersTable.id, input.assignedTo),
+                eq(systemUsersTable.status, "active"),
+                inArray(systemUsersTable.role, [...OPERATIONS_CONTROL_ROLES.planEdit]),
+              ),
+            )
+            .limit(1);
+          if (!assignee) {
+            throw Object.assign(new Error("المسؤول المختار مش من فريق التشغيل"), { status: 422 });
+          }
+        }
+        const patch: Partial<typeof operationsCasesTable.$inferInsert> = {};
+        if (input.assignedTo !== undefined) patch.assignedTo = input.assignedTo;
+        if (input.priority !== undefined) patch.priority = input.priority;
+        if (input.dueDate !== undefined) patch.dueDate = input.dueDate;
+        const [updated] = await tx
+          .update(operationsCasesTable)
+          .set({
+            ...patch,
+            currentRevision: before.currentRevision + 1,
+            version: sql`${operationsCasesTable.version} + 1`,
+            updatedAt: new Date(),
+          })
+          .where(and(eq(operationsCasesTable.id, id), eq(operationsCasesTable.version, before.version)))
+          .returning();
+        if (!updated) {
+          throw Object.assign(new Error("تم تعديل الحالة بالتوازي"), { status: 409 });
+        }
+        await recordCaseTransition(tx, before, updated, "details_updated", req.user!.userId);
+        await writeAuditEvent({
+          executor: tx,
+          actorUserId: req.user!.userId,
+          actorName: req.user!.username,
+          actionKey: "operations.case.detailsUpdated",
+          resourceType: "operations_case",
+          resourceId: id,
+          beforeData: { assignedTo: before.assignedTo, priority: before.priority, dueDate: before.dueDate },
+          afterData: { assignedTo: updated.assignedTo, priority: updated.priority, dueDate: updated.dueDate },
+          ipAddress: req.ip,
+          userAgent: req.get("user-agent"),
+        });
+        return { case: updated, before };
+      });
+
+      if (
+        result.case.assignedTo &&
+        result.case.assignedTo !== result.before.assignedTo &&
+        result.case.assignedTo !== req.user!.userId
+      ) {
+        await notifyUser(result.case.assignedTo, {
+          type: "operations_case_assigned",
+          title: `اتعيّنت على حالة التشغيل ${result.case.caseNumber}`,
+          body: `عيّنك ${req.user!.username} على الحالة ${result.case.caseNumber}.`,
+          referenceType: "operations_case",
+          referenceId: result.case.id,
+        });
+      }
+      res.json({ case: result.case });
     } catch (err) {
       if (err instanceof Error && "status" in err) {
         res

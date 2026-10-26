@@ -41,7 +41,6 @@ describe("القايمة ↔ حارس الصفحة", () => {
 const CRITICAL_LOADS: Array<{ page: string; access: AccessKey; why: string }> = [
   { page: "factory-quality-controller.html", access: "productionWorkflowRead", why: "قايمة أوامر الفحص" },
   { page: "production.html", access: "productionCycleRead", why: "مراحل دورة الإنتاج" },
-  { page: "operations.html", access: "operationsControl", why: "واجهات التحكم في العمليات" },
 ];
 
 describe("الصفحات الأساسية وبياناتها", () => {

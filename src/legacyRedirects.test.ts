@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MATERIAL_REDIRECT_TARGET, contactsRedirectTarget, chatStaffRedirectTarget, inventoryRedirectTarget, portalRedirectTarget, salesRedirectTarget } from "./lib/legacyRedirects";
+import { LEGACY_OPERATIONS_PATHS, OPERATIONS_REDIRECT_TARGET, MATERIAL_REDIRECT_TARGET, contactsRedirectTarget, chatStaffRedirectTarget, inventoryRedirectTarget, portalRedirectTarget, salesRedirectTarget } from "./lib/legacyRedirects";
 
 describe("تحويل رابط شات الإدارة القديم", () => {
   it("بدون رقم → صندوق المحادثات", () => {
@@ -84,5 +84,12 @@ describe("صفحة الموردين والعملاء القديمة", () => {
   it("بتنقل التبويب المعروف والبحث بس", () => {
     expect(contactsRedirectTarget("type=supplier&q=%D8%A3%D8%AD%D9%85%D8%AF")).toBe("/v2/staff/contacts?tab=supplier&q=%D8%A3%D8%AD%D9%85%D8%AF");
     expect(contactsRedirectTarget("tab=hack&next=//evil.com")).toBe("/v2/staff/contacts");
+  });
+});
+
+describe("صفحتا التشغيل القديمتان", () => {
+  it("الاتنين بيروحوا لمركز قيادة التشغيل", () => {
+    expect(LEGACY_OPERATIONS_PATHS).toEqual(["/operations.html", "/operations-manager.html"]);
+    expect(OPERATIONS_REDIRECT_TARGET).toBe("/v2/staff/operations");
   });
 });

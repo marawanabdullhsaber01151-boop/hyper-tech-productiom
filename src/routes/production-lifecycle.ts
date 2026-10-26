@@ -3,7 +3,9 @@ import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "../db";
 import {
+  bomRecipesTable,
   operationsCaseLinesTable,
+  operationsCaseRevisionsTable,
   operationsCasesTable,
   productionLegacyOrderMappingsTable,
   productionLifecycleAdjustmentsTable,
@@ -25,6 +27,8 @@ import {
 import { transitionCanonicalProductionOrder } from "../lib/production-lifecycle-transition";
 import { recordProductionTransitionEvent } from "../lib/production-lifecycle";
 import { generateWorkflowOrderNumber } from "./production-workflow";
+import { writeAuditEvent } from "../lib/governance";
+import { OPS_CONVERT_ROLES, planConversion } from "../lib/operationsCenterCore";
 import {
   addDecimalQuantities,
   compareDecimalQuantities,
@@ -424,7 +428,13 @@ router.post(
     try {
       const caseId = parseIdParam(req.params.id, res);
       if (caseId === null) return;
-      assertLifecycleRole(req.user!.role, "awaiting_operations_claim");
+      // التحويل قرار تشغيلي: مدير التشغيل والإدارة بس، مش أدوار الإنتاج.
+      if (!(OPS_CONVERT_ROLES as readonly string[]).includes(req.user!.role)) {
+        throw Object.assign(new Error("تحويل حالة التشغيل لأمر إنتاج من صلاحية مدير التشغيل فقط"), {
+          status: 403,
+          code: "OPERATIONS_CONVERT_FORBIDDEN",
+        });
+      }
       const result = await db.transaction(async (tx) => {
         const [source] = await tx
           .select()
@@ -441,16 +451,36 @@ router.post(
             .limit(1);
           return { order: existing, alreadyConverted: true };
         }
+        if (source.status !== "analysis_ready") {
+          throw Object.assign(
+            new Error("لازم التحقق يخلص (جاهزة للتحليل) قبل التحويل لأمر إنتاج"),
+            { status: 409, code: "OPERATIONS_CASE_NOT_READY" },
+          );
+        }
         const lines = await tx
           .select()
           .from(operationsCaseLinesTable)
           .where(eq(operationsCaseLinesTable.caseId, caseId))
           .orderBy(asc(operationsCaseLinesTable.id));
         if (!lines.length) throw Object.assign(new Error("حالة التشغيل بلا بنود"), { status: 409 });
+        // كل بند لازم يتربط بوصفة تصنيع حقيقية (قاعدة نظام الإنتاج)؛ لو مفيش، نرفض بسبب واضح لكل بند.
+        const recipes = await tx
+          .select({ id: bomRecipesTable.id, productName: bomRecipesTable.productName })
+          .from(bomRecipesTable);
+        const conversion = planConversion(lines, recipes);
+        if (conversion.unresolved.length) {
+          throw Object.assign(
+            new Error(
+              `مفيش وصفة تصنيع واضحة لـ ${conversion.unresolved.length} بند — أضف الوصفة أو وحّد الاسم وبعدين حوّل تاني`,
+            ),
+            { status: 422, code: "OPERATIONS_CONVERT_RECIPE_UNRESOLVED", details: conversion.unresolved },
+          );
+        }
+        const recipeByLine = new Map(conversion.resolved.map((r) => [r.lineId, r.recipeId]));
         const line = lines[0];
         const snapshot = buildProductionOrderSnapshot({
           productName: line.productNameSnapshot,
-          bomRecipeId: null,
+          bomRecipeId: recipeByLine.get(line.id) ?? null,
           qty: line.orderedQty,
           unit: line.baseUnit,
           neededBy: line.dueDate ?? source.dueDate,
@@ -475,6 +505,7 @@ router.post(
             prioritySnapshot: snapshot.priority,
             snapshotHash: hashProductionSnapshot(snapshot),
             rootWorkflowOrderId: undefined,
+            bomRecipeId: recipeByLine.get(line.id) ?? null,
             productName: line.productNameSnapshot,
             qty: line.orderedQty,
             unit: line.baseUnit,
@@ -505,7 +536,7 @@ router.post(
           const splitSequence = index + 1;
           const extraSnapshot = buildProductionOrderSnapshot({
             productName: extraLine.productNameSnapshot,
-            bomRecipeId: null,
+            bomRecipeId: recipeByLine.get(extraLine.id) ?? null,
             qty: extraLine.orderedQty,
             unit: extraLine.baseUnit,
             neededBy: extraLine.dueDate ?? source.dueDate,
@@ -537,6 +568,7 @@ router.post(
               rootWorkflowOrderId: rootId,
               parentWorkflowOrderId: rootId,
               splitSequence,
+              bomRecipeId: recipeByLine.get(extraLine.id) ?? null,
               productName: extraLine.productNameSnapshot,
               qty: extraLine.orderedQty,
               unit: extraLine.baseUnit,
@@ -560,10 +592,36 @@ router.post(
             metadata: { rootWorkflowOrderId: rootId, lineId: extraLine.id },
           });
         }
-        await tx
+        const [converted] = await tx
           .update(operationsCasesTable)
-          .set({ workflowOrderId: rootId, updatedAt: new Date() })
-          .where(eq(operationsCasesTable.id, caseId));
+          .set({
+            workflowOrderId: rootId,
+            status: "converted",
+            currentRevision: source.currentRevision + 1,
+            version: source.version + 1,
+            updatedAt: new Date(),
+          })
+          .where(eq(operationsCasesTable.id, caseId))
+          .returning();
+        await tx.insert(operationsCaseRevisionsTable).values({
+          caseId,
+          revision: converted.currentRevision,
+          snapshot: converted.sourceSnapshot,
+          changeReason: `converted_to_production: ${order.orderNumber}`,
+          changedBy: req.user!.userId,
+        });
+        await writeAuditEvent({
+          executor: tx,
+          actorUserId: req.user!.userId,
+          actorName: req.user!.username,
+          actionKey: "operations.case.converted",
+          resourceType: "operations_case",
+          resourceId: caseId,
+          beforeData: { status: source.status, version: source.version },
+          afterData: { status: converted.status, workflowOrderId: rootId, lines: lines.length },
+          ipAddress: req.ip,
+          userAgent: req.get("user-agent"),
+        });
         return { order: { ...order, rootWorkflowOrderId: rootId }, alreadyConverted: false };
       });
       res.status(result.alreadyConverted ? 200 : 201).json({ data: result, meta: { idempotent: result.alreadyConverted, apiVersion: "1.1" } });

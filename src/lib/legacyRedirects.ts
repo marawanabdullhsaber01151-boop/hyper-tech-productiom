@@ -75,6 +75,10 @@ export function contactsRedirectTarget(rawQuery: string): string {
   return qs ? `/v2/staff/contacts?${qs}` : "/v2/staff/contacts";
 }
 
+/** صفحتا التشغيل القديمتان (كانتا نسختين من نفس الواجهة) ← مركز قيادة التشغيل. */
+export const LEGACY_OPERATIONS_PATHS = ["/operations.html", "/operations-manager.html"];
+export const OPERATIONS_REDIRECT_TARGET = "/v2/staff/operations";
+
 /** صفحة المبيعات القديمة (`/sales.html?channel=website`) ← `/v2/staff/sales`. بننقل `channel` و`status` بس من قايمة معروفة. */
 export const LEGACY_SALES_PATH = "/sales.html";
 const SALES_STATUS_PARAMS = ["draft", "pending_approval", "confirmed", "shipped", "paid", "cancelled"];

@@ -8,7 +8,6 @@
   "GET /production-cycle/stages": "backlog: مراحل دورة الإنتاج بدون شاشة بعد",
   "GET /production-workflow/quality-records": "backlog: سجلات الجودة بدون شاشة بعد",
   "POST /production-workflow/:id/split": "backlog: تقسيم أمر إنتاج بدون شاشة بعد",
-  "POST /operations/cases/:id/convert": "backlog: تحويل حالة تشغيل بدون شاشة بعد",
   "GET /operations/orders/:orderId/cost": "backlog: تكلفة الأمر بدون شاشة بعد",
   "GET /operations-control/orders/:id/customer-status": "backlog: حالة العميل بدون شاشة بعد",
   "POST /operations-control/sales-orders/:id/execute-plan": "backlog: تنفيذ خطة أمر بيع بدون شاشة بعد",
@@ -24,5 +23,9 @@
   "POST /portal-outbox/:id/mark-sent": "tests: e2e القنوات",
   "POST /portal/team/:memberId/reset-password": "tests: e2e الهوية",
   "POST /portal/register": "stub: يرجّع 410 عمدًا (التسجيل المباشر اتقفل) — بيمنع رجوعه بالغلط",
-  "GET /cron/daily-brief": "cron: Vercel يناديه يوميًا (ملخص الصباح الذكي)"
+  "GET /cron/daily-brief": "cron: Vercel يناديه يوميًا (ملخص الصباح الذكي)",
+  "POST /operations-control/sales-orders/:id/draft-plan": "backlog: م2 مركز التشغيل (حفظ الخطة كمسودة)",
+  "POST /operations-control/transfers": "backlog: م2 مركز التشغيل (واجهة التحويلات)",
+  "GET /operations-control/orders/:id/events": "backlog: م2 مركز التشغيل (سجل أحداث الأمر)",
+  "POST /operations/cost-entries": "backlog: م3 مركز التشغيل (تكلفة الإنتاج)"
 }

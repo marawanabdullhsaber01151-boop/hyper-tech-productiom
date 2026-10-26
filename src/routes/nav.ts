@@ -50,7 +50,7 @@ router.get("/nav", requireAuth, async (req, res, next) => {
     const canViewOperationsInbox = departments.some((department) =>
       department.subFunctions.some((subFunction) =>
         subFunction.pages.some(
-          (page) => page.id === "operations-manager-inbox",
+          (page) => page.id === "operations-center",
         ),
       ),
     );
@@ -61,7 +61,7 @@ router.get("/nav", requireAuth, async (req, res, next) => {
         subFunctions: department.subFunctions.map((subFunction) => ({
           ...subFunction,
           pages: subFunction.pages.map((page) =>
-            page.id === "operations-manager-inbox"
+            page.id === "operations-center"
               ? { ...page, badgeCount: pendingOperationsCases }
               : page,
           ),

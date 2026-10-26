@@ -12,3 +12,6 @@ export const SALES_PAGE_ROLES = SALES_ROLES;
 /** نفس PERMISSIONS.contacts.view / write في السيرفر. */
 export const CONTACT_ROLES = ["chairman", "executive_manager", "sales_manager", "online_seller", "offline_seller", "hr", "hr_manager"] as const;
 export const CONTACT_WRITE_ROLES = ["chairman", "sales_manager", "online_seller", "offline_seller", "hr", "hr_manager"] as const;
+
+/** نفس OPERATIONS_CONTROL_ROLES.caseView / planEdit في السيرفر (مركز قيادة التشغيل). */
+export const OPERATIONS_ROLES = ["chairman", "executive_manager", "operations_manager"] as const;

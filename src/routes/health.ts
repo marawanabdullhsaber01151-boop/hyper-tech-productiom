@@ -8,6 +8,7 @@ import { ACCESS } from "../lib/accessRegistry";
 import { runSystemHealth } from "../lib/systemHealth";
 import { sendDailyBrief } from "../lib/dailyBrief";
 import { assertCronAuth } from "../lib/cronAuth";
+import { escalateOperationsSla } from "../lib/operationsSla";
 
 const router = Router();
 const HEALTH_ROLES = ["executive_manager", "operations_manager", "production_manager"];
@@ -257,6 +258,8 @@ router.get(
 router.get("/cron/daily-brief", async (req, res, next) => {
   try {
     assertCronAuth(req);
+    // نفس الـcron اليومي بيفحص مهل التشغيل كمان (من غير cron جديد: خطة Vercel المجانية محدودة).
+    await escalateOperationsSla(new Date(), { force: true }).catch(() => undefined);
     res.json(await sendDailyBrief());
   } catch (error) {
     next(error);
