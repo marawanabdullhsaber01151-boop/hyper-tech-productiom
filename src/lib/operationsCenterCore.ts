@@ -329,3 +329,48 @@ export function checkPlanDecision(i: PlanDecisionInput): PlanDecisionCheck {
   if (i.level === 3 && i.note.trim().length < 3) return { ok: false, code: "NOTE_REQUIRED" };
   return { ok: true };
 }
+
+/** الجزء المتاح من كل خامة في الخطة (المطلوب − العجز) متجمّع بالصنف: ده اللي بيتحجز عند الاعتماد. */
+export function planReservationWants(
+  plan: ReadonlyArray<{ requirements?: ReadonlyArray<{ inventoryItemId: number | null; requiredQty: string; shortageQty: string }> }>,
+): Array<{ inventoryItemId: number; qty: number }> {
+  const byItem = new Map<number, number>();
+  for (const line of plan) {
+    for (const r of line.requirements ?? []) {
+      if (r.inventoryItemId === null) continue;
+      const have = Number(r.requiredQty) - Number(r.shortageQty);
+      if (have > 0) byItem.set(r.inventoryItemId, Math.round(((byItem.get(r.inventoryItemId) ?? 0) + have) * 1000) / 1000);
+    }
+  }
+  return [...byItem.entries()].map(([inventoryItemId, qty]) => ({ inventoryItemId, qty }));
+}
+
+/** صرف كمية من الحجوزات النشطة بالترتيب (الأقدم أول) من غير ما يتعدّى المتبقي في كل حجز. */
+export function allocateConsumption(
+  reservations: ReadonlyArray<{ id: number; remaining: number }>,
+  qty: number,
+): Array<{ id: number; take: number }> {
+  const out: Array<{ id: number; take: number }> = [];
+  let left = qty;
+  for (const r of reservations) {
+    if (left <= 0) break;
+    const take = Math.min(r.remaining, left);
+    if (take > 0) {
+      out.push({ id: r.id, take: Math.round(take * 1000) / 1000 });
+      left = Math.round((left - take) * 1000) / 1000;
+    }
+  }
+  return out;
+}
+
+/**
+ * تكلفة الخامة اللي بتتسجل تلقائي على أمر الإنتاج لما التحويل يتستلم:
+ * خروج من المخزن للتشغيل = تكلفة موجبة، ورجوع للمخزن = تكلفة سالبة (بتقلّل الإجمالي). الباقي عهدة بدون تكلفة.
+ */
+export function transferCostAmount(direction: string, qty: string | number, unitPrice: string | number | null): number | null {
+  const sign = direction === "warehouse_to_operations" ? 1 : direction === "operations_to_warehouse" ? -1 : 0;
+  const q = Number(qty);
+  const p = Number(unitPrice ?? 0);
+  if (!sign || !(q > 0) || !(p > 0)) return null;
+  return Math.round(sign * q * p * 100) / 100;
+}

@@ -2,7 +2,7 @@ import { Router, type NextFunction, type Request, type Response } from "express"
 import { z } from "zod";
 import { and, desc, eq, inArray, ne } from "drizzle-orm";
 import { db } from "../db";
-import { inventoryItemsTable, operationsPlansTable, salesOrdersTable } from "../db/schema";
+import { inventoryItemsTable, operationsPlanReservationsTable, operationsPlansTable, salesOrdersTable } from "../db/schema";
 import { requireAuth, requirePermission } from "../middleware/auth";
 import { writeAuditEvent } from "../lib/governance";
 import { nextPhase0Number } from "../lib/phase0";
@@ -10,6 +10,7 @@ import { notifyRoles, notifyUser } from "../lib/notifications";
 import { parseIdParam } from "../lib/validate";
 import { OPERATIONS_CONTROL_ACTIONS, OPERATIONS_CONTROL_ROLES } from "../lib/operations-control-policy";
 import { PLAN_LEVEL_ROLES, approvalLevelFor, checkPlanDecision, planShortageValue, type PlanLevel } from "../lib/operationsCenterCore";
+import { releasePlanReservations, reservePlanMaterials } from "../lib/operationsReservations";
 import { buildSalesOrderPlan } from "./operations-control";
 
 const router = Router();
@@ -110,7 +111,17 @@ router.get("/operations-center/plans/:id", requireAuth, async (req, res, next) =
     if (id === null) return;
     const [row] = await db.select().from(operationsPlansTable).where(eq(operationsPlansTable.id, id)).limit(1);
     if (!row) { res.status(404).json({ error: { message: "الخطة غير موجودة" } }); return; }
-    res.json({ ...summary(row), snapshot: row.snapshot, notes: row.notes, decisionNote: row.decisionNote });
+    const reservations = await db.select({
+      id: operationsPlanReservationsTable.id,
+      inventoryItemId: operationsPlanReservationsTable.inventoryItemId,
+      itemName: inventoryItemsTable.name,
+      qty: operationsPlanReservationsTable.qty,
+      consumedQty: operationsPlanReservationsTable.consumedQty,
+      status: operationsPlanReservationsTable.status,
+    }).from(operationsPlanReservationsTable)
+      .leftJoin(inventoryItemsTable, eq(inventoryItemsTable.id, operationsPlanReservationsTable.inventoryItemId))
+      .where(eq(operationsPlanReservationsTable.planId, id));
+    res.json({ ...summary(row), snapshot: row.snapshot, notes: row.notes, decisionNote: row.decisionNote, reservations });
   } catch (err) { next(err); }
 });
 
@@ -129,7 +140,8 @@ router.post("/operations-center/plans/:id/submit", requireAuth, requirePermissio
         ? { status: "approved", submittedBy: req.user!.userId, submittedAt: now, decidedBy: req.user!.userId, decidedByName: req.user!.username, decidedAt: now, decisionNote: "اعتماد تلقائي: القيمة تحت حد المراجعة", updatedAt: now }
         : { status: "submitted", submittedBy: req.user!.userId, submittedAt: now, updatedAt: now })
         .where(eq(operationsPlansTable.id, id)).returning();
-      await writeAuditEvent({ actorUserId: req.user!.userId, actorName: req.user!.username, actionKey: auto ? "operations.plan.autoApprove" : "operations.plan.submit", resourceType: "operations_plan", resourceId: id, beforeData: { status: "draft" }, afterData: { status: updated!.status, level: row.approvalLevel }, ipAddress: req.ip, userAgent: req.get("user-agent"), executor: tx });
+      const reservation = auto ? await reservePlanMaterials(tx, { id, salesOrderId: row.salesOrderId, snapshot: row.snapshot }) : null;
+      await writeAuditEvent({ actorUserId: req.user!.userId, actorName: req.user!.username, actionKey: auto ? "operations.plan.autoApprove" : "operations.plan.submit", resourceType: "operations_plan", resourceId: id, beforeData: { status: "draft" }, afterData: { status: updated!.status, level: row.approvalLevel, reservation }, ipAddress: req.ip, userAgent: req.get("user-agent"), executor: tx });
       return updated!;
     });
     if (result.status === "submitted") {
@@ -154,7 +166,8 @@ async function decide(req: Request, res: Response, next: NextFunction, to: "appr
       // الرفض مسموح لصاحب الخطة (سحب)، وبدون سبب 3 حروف المنطق فوق بيطلبه.
       if (!check.ok && !(to === "rejected" && check.code !== "ROLE_NOT_ALLOWED")) throw planError(403, `PLAN_${check.code}`, LEVEL_REASONS[check.code]!);
       const [updated] = await tx.update(operationsPlansTable).set({ status: to, decidedBy: req.user!.userId, decidedByName: req.user!.username, decidedAt: new Date(), decisionNote: note || null, updatedAt: new Date() }).where(eq(operationsPlansTable.id, id)).returning();
-      await writeAuditEvent({ actorUserId: req.user!.userId, actorName: req.user!.username, actionKey: to === "approved" ? "operations.plan.approve" : "operations.plan.reject", resourceType: "operations_plan", resourceId: id, beforeData: { status: "submitted" }, afterData: { status: to, level: row.approvalLevel }, reason: note || null, ipAddress: req.ip, userAgent: req.get("user-agent"), executor: tx });
+      const reservation = to === "approved" ? await reservePlanMaterials(tx, { id, salesOrderId: row.salesOrderId, snapshot: row.snapshot }) : null;
+      await writeAuditEvent({ actorUserId: req.user!.userId, actorName: req.user!.username, actionKey: to === "approved" ? "operations.plan.approve" : "operations.plan.reject", resourceType: "operations_plan", resourceId: id, beforeData: { status: "submitted" }, afterData: { status: to, level: row.approvalLevel, reservation }, reason: note || null, ipAddress: req.ip, userAgent: req.get("user-agent"), executor: tx });
       return updated!;
     });
     if (result.submittedBy) {
@@ -165,5 +178,21 @@ async function decide(req: Request, res: Response, next: NextFunction, to: "appr
 }
 router.post("/operations-center/plans/:id/approve", requireAuth, (req, res, next) => void decide(req, res, next, "approved"));
 router.post("/operations-center/plans/:id/reject", requireAuth, (req, res, next) => void decide(req, res, next, "rejected"));
+
+/** تحرير يدوي لحجوزات خطة معتمدة (مثلًا الطلب اتلغى): بيرجّع المتاح للمخزن ومابيغيّرش حالة الخطة. */
+router.post("/operations-center/plans/:id/release", requireAuth, requirePermission(OPERATIONS_CONTROL_ACTIONS.planEdit), async (req, res, next) => {
+  try {
+    const id = parseIdParam(req.params.id, res);
+    if (id === null) return;
+    const released = await db.transaction(async (tx) => {
+      const [row] = await tx.select().from(operationsPlansTable).where(eq(operationsPlansTable.id, id)).for("update");
+      if (!row) throw planError(404, "PLAN_NOT_FOUND", "الخطة غير موجودة");
+      const n = await releasePlanReservations(tx, id);
+      await writeAuditEvent({ actorUserId: req.user!.userId, actorName: req.user!.username, actionKey: "operations.plan.releaseReservations", resourceType: "operations_plan", resourceId: id, afterData: { released: n }, ipAddress: req.ip, userAgent: req.get("user-agent"), executor: tx });
+      return n;
+    });
+    res.json({ released });
+  } catch (err) { next(err); }
+});
 
 export default router;

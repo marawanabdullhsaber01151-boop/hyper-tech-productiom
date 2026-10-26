@@ -152,3 +152,21 @@ export const operationsPlansTable = pgTable(
     statusIdx: index("operations_plans_status_idx").on(table.status, table.createdAt),
   }),
 );
+
+export const operationsPlanReservationsTable = pgTable(
+  "operations_plan_reservations",
+  {
+    id: serial("id").primaryKey(),
+    planId: integer("plan_id").notNull(),
+    inventoryItemId: integer("inventory_item_id").notNull(),
+    qty: numeric("qty", { precision: 14, scale: 3 }).notNull(),
+    consumedQty: numeric("consumed_qty", { precision: 14, scale: 3 }).notNull().default("0"),
+    status: text("status").notNull().default("active"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    releasedAt: timestamp("released_at", { withTimezone: true }),
+  },
+  (table) => ({
+    planIdx: index("operations_plan_reservations_plan_idx").on(table.planId, table.status),
+    itemIdx: index("operations_plan_reservations_item_idx").on(table.inventoryItemId, table.status),
+  }),
+);

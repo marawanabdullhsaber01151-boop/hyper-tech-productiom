@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
-import { db } from "../db";
+import { db, productionCostEntriesTable } from "../db";
 import {
   inventoryItemsTable,
   salesOrdersTable,
@@ -37,7 +37,8 @@ import {
   subtractDecimalQuantities,
 } from "../lib/decimal-quantity";
 import { maskProductionWorkflowPayload } from "../lib/fieldMasking";
-import { TRANSFER_CREATORS, TRANSFER_RECEIVERS, stockEffectOf, type TransferDirection } from "../lib/operationsCenterCore";
+import { TRANSFER_CREATORS, TRANSFER_RECEIVERS, stockEffectOf, transferCostAmount, type TransferDirection } from "../lib/operationsCenterCore";
+import { consumePlanReservation } from "../lib/operationsReservations";
 import { notifyRoles } from "../lib/notifications";
 
 const router = Router();
@@ -430,6 +431,21 @@ router.patch("/operations-control/transfers/:id/receive",
          if (!received) return undefined;
          const effect = stockEffectOf(received.direction);
          if (received.inventoryItemId && effect) {
+           if (effect === "out") {
+             // الخامة المحجوزة لخطة معتمدة بتتصرف من حجزها (من غير ما نحجز تاني ولا نسيب حجز يتيم).
+             const [order] = await tx.select({ salesOrderId: productionWorkflowOrdersTable.salesOrderId }).from(productionWorkflowOrdersTable).where(eq(productionWorkflowOrdersTable.id, received.workflowOrderId)).limit(1);
+             await consumePlanReservation(tx, { salesOrderId: order?.salesOrderId ?? null, inventoryItemId: received.inventoryItemId, qty: received.quantity });
+           }
+           const [costItem] = await tx.select({ unitPrice: inventoryItemsTable.unitPrice }).from(inventoryItemsTable).where(eq(inventoryItemsTable.id, received.inventoryItemId)).limit(1);
+           const cost = transferCostAmount(received.direction, received.quantity, costItem?.unitPrice ?? null);
+           if (cost !== null) {
+             // تكلفة الخامة بتتسجل تلقائي على أمر الإنتاج (والرجوع للمخزن بيقلّلها).
+             await tx.insert(productionCostEntriesTable).values({
+               workflowOrderId: received.workflowOrderId, costType: "material", amount: String(cost), quantity: received.quantity,
+               unitRate: costItem?.unitPrice ?? null, sourceType: "stock_movement", sourceId: received.id,
+               note: `تحويل تشغيلي #${received.id}`, status: "approved", createdBy: req.user!.userId,
+             });
+           }
            await applyStockMovement(tx, {
              inventoryItemId: received.inventoryItemId, movementType: effect,
              qty: received.quantity, referenceType: "production",

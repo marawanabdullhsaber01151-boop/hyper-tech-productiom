@@ -9,6 +9,7 @@ import { Button, ConfirmDialog, Dialog, Drawer, Field, InlineAlert, Input, Selec
 import { CircleCheck, Pencil, Play, RefreshCw, Send, Workflow } from "../design/icons";
 import { formatDate, formatNumber, formatRelative } from "../lib/format";
 import { CaseStatusPill, PriorityPill, ReasonChips, RiskPill, wfLabel, wfTone } from "./OperationsParts";
+import { OrderCost } from "./OperationsCost";
 import { PRIORITIES, parseRevisionReason, unresolvedFrom, type NextAction, type RiskLevel, type UnresolvedLine } from "./operationsCore";
 
 interface CaseRec {
@@ -243,6 +244,7 @@ export function OperationsCase({ id, onClose, onChanged }: { id: number; onClose
                       <span class="opc-muted">{o.productName} | {num(o.qty)} {o.unit}</span>
                       <StatusPill tone={wfTone(o.workflowStatus)}>{wfLabel(o.workflowStatus)}</StatusPill>
                       <OrderEvents orderId={o.id} />
+                      <OrderCost orderId={o.id} />
                     </li>
                   ))}
                 </ul>

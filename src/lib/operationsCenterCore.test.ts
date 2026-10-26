@@ -9,7 +9,7 @@ import {
   planConversion,
   workingHoursBetween,
   cairoDateString,
-  OPS_CONVERT_ROLES, TRANSFER_CREATORS, TRANSFER_DIRECTIONS, TRANSFER_RECEIVERS, stockEffectOf, approvalLevelFor, checkPlanDecision, planShortageValue } from "./operationsCenterCore";
+  OPS_CONVERT_ROLES, TRANSFER_CREATORS, TRANSFER_DIRECTIONS, TRANSFER_RECEIVERS, stockEffectOf, approvalLevelFor, checkPlanDecision, planShortageValue, planReservationWants, allocateConsumption, transferCostAmount } from "./operationsCenterCore";
 
 const d = (s: string) => new Date(s);
 
@@ -184,5 +184,37 @@ describe("حراسة المسارات (ثغرات اتقفلت)", () => {
     // لا حجز مخزون ولا إنشاء إنتاج من الخطة في الخطوة دي
     expect(route).not.toContain("applyStockMovement");
     expect(route).not.toContain("productionWorkflowOrdersTable");
+  });
+
+  it("الحجز: المتاح من كل خامة (المطلوب − العجز) متجمّع بالصنف، من غير أصناف مجهولة أو عجز كامل", () => {
+    const plan = [
+      { requirements: [{ inventoryItemId: 1, requiredQty: "10", shortageQty: "4" }, { inventoryItemId: null, requiredQty: "5", shortageQty: "0" }, { inventoryItemId: 2, requiredQty: "3", shortageQty: "3" }] },
+      { requirements: [{ inventoryItemId: 1, requiredQty: "2", shortageQty: "0" }] },
+    ];
+    expect(planReservationWants(plan)).toEqual([{ inventoryItemId: 1, qty: 8 }]);
+  });
+  it("صرف الحجز بالأقدم أول ومن غير ما يتعدّى المتبقي", () => {
+    expect(allocateConsumption([{ id: 1, remaining: 3 }, { id: 2, remaining: 5 }], 6)).toEqual([{ id: 1, take: 3 }, { id: 2, take: 3 }]);
+    expect(allocateConsumption([{ id: 1, remaining: 3 }], 9)).toEqual([{ id: 1, take: 3 }]);
+    expect(allocateConsumption([], 4)).toEqual([]);
+  });
+  it("تكلفة الخامة التلقائية: موجبة عند الصرف، سالبة عند الرجوع، ولا شيء للعهدة أو السعر صفر", () => {
+    expect(transferCostAmount("warehouse_to_operations", "2.5", "10")).toBe(25);
+    expect(transferCostAmount("operations_to_warehouse", "1", "10")).toBe(-10);
+    expect(transferCostAmount("operations_to_production", "1", "10")).toBeNull();
+    expect(transferCostAmount("warehouse_to_operations", "1", "0")).toBeNull();
+  });
+  it("م3ب: الحجز عند الاعتماد (يدوي وتلقائي)، الصرف عند الاستلام، التكلفة التلقائية، والهجرة", () => {
+    const plans = readFileSync("src/routes/operations-plans.ts", "utf8");
+    expect(plans.match(/reservePlanMaterials\(/g)).toHaveLength(2);
+    expect(plans).toContain("/operations-center/plans/:id/release");
+    const route = readFileSync("src/routes/operations-control.ts", "utf8");
+    expect(route).toContain("consumePlanReservation(");
+    expect(route).toContain("transferCostAmount(");
+    expect(route).toContain("productionCostEntriesTable");
+    const sql = readFileSync("migrations/0083_operations_plan_reservations.sql", "utf8");
+    expect(sql).toContain('CREATE TABLE IF NOT EXISTS "operations_plan_reservations"');
+    // الخطة نفسها لسه ما بتنشئش إنتاج
+    expect(plans).not.toContain("productionWorkflowOrdersTable");
   });
 });

@@ -25,6 +25,7 @@ interface PlanDetail extends PlanRow {
   notes: string | null;
   decisionNote: string | null;
   decidedByName: string | null;
+  reservations?: Array<{ id: number; itemName: string | null; qty: string; consumedQty: string; status: string }>;
   snapshot: {
     plan: Array<{ productName: string; requestedQty: string; allocation: { fromStock: string; toProduction: string }; purchaseShortages: Array<{ materialName: string; shortageQty: string }> }>;
   };
@@ -83,6 +84,7 @@ function PlanDrawer({ id, onClose, onChanged }: { id: number; onClose: () => voi
   const actor = { role: me?.role ?? "", userId: me?.id ?? 0 };
   const access = p ? planDecisionAccess(p, actor) : { approve: false, reject: false, needsNote: false };
   const canSubmit = p ? canSubmitPlan(p, actor) : false;
+  const canRelease = p?.status === "approved" && Boolean(p.reservations?.some((r) => r.status === "active")) && actor.role !== "" && ["operations_manager", "executive_manager", "chairman"].includes(actor.role);
 
   const run = async (url: string, body: unknown, done: CopyKey) => {
     const ok = await act.run(async () => {
@@ -136,6 +138,21 @@ function PlanDrawer({ id, onClose, onChanged }: { id: number; onClose: () => voi
               </li>
             ))}
           </ul>
+          {p.reservations?.length ? (
+            <>
+              <h3 class="opc-h">{t("opc.pl.res.title")}</h3>
+              <ul class="opc-lines">
+                {p.reservations.map((r) => (
+                  <li key={r.id}>
+                    <strong>{r.itemName ?? "—"}</strong>
+                    <span class="opc-muted">{t("opc.pl.res.line", { q: formatNumber(Number(r.qty)), c: formatNumber(Number(r.consumedQty)) })}</span>
+                    <StatusPill tone={r.status === "active" ? "warn" : "neutral"}>{t(`opc.pl.res.${r.status}` as CopyKey)}</StatusPill>
+                  </li>
+                ))}
+              </ul>
+              {canRelease ? <Button size="sm" variant="secondary" loading={act.busy} onClick={() => void run(`/operations-center/plans/${id}/release`, {}, "opc.pl.res.done")}>{t("opc.pl.res.release")}</Button> : null}
+            </>
+          ) : null}
           {access.approve || access.reject ? (
             <Field label={t("opc.pl.note.label")} hint={access.needsNote ? t("opc.pl.note.need") : t("opc.pl.note.hint")}>
               <Textarea value={note} onInput={(e) => setNote(val(e))} maxLength={500} />
