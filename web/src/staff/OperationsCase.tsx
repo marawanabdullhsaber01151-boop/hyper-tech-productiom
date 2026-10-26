@@ -10,6 +10,7 @@ import { CircleCheck, Pencil, Play, RefreshCw, Send, Workflow } from "../design/
 import { formatDate, formatNumber, formatRelative } from "../lib/format";
 import { CaseStatusPill, PriorityPill, ReasonChips, RiskPill, wfLabel, wfTone } from "./OperationsParts";
 import { OrderCost } from "./OperationsCost";
+import { verdictTone, type PromiseVerdict } from "./capacityCore";
 import { PRIORITIES, parseRevisionReason, unresolvedFrom, type NextAction, type RiskLevel, type UnresolvedLine } from "./operationsCore";
 
 interface CaseRec {
@@ -194,6 +195,8 @@ export function OperationsCase({ id, onClose, onChanged }: { id: number; onClose
                 </li>
               ))}
             </ul>
+
+            {!["converted", "cancelled", "completed", "closed"].includes(data.case.status) ? <PromiseBlock caseId={data.case.id} /> : null}
 
             <div class="opc-hrow">
               <h3 class="opc-h">{t("opc.plan.title")}</h3>
@@ -416,5 +419,45 @@ function OrderEventsList({ orderId }: { orderId: number }) {
         </li>
       ))}
     </ol>
+  );
+}
+
+interface Promise3 {
+  earliest: string;
+  likely: string;
+  latest: string;
+  verdict: PromiseVerdict;
+  dueDate: string | null;
+  queueDays: number;
+  linesAssumed: boolean;
+  assumedDurationLines: number;
+}
+
+/** وعد التسليم للحالة: نطاق تاريخ حسب الطابور الحالي والسعة، ومقارنته بموعد الحالة. */
+function PromiseBlock({ caseId }: { caseId: number }) {
+  const act = useAct();
+  const [p, setP] = useState<Promise3 | null>(null);
+  const run = async () => {
+    const r = await act.run(() => api.get<Promise3>(`/operations-center/cases/${caseId}/promise`));
+    if (r) setP(r);
+  };
+  return (
+    <>
+      <div class="opc-hrow">
+        <h3 class="opc-h">{t("opc.pr.title")}</h3>
+        <Button size="sm" variant="secondary" loading={act.busy} onClick={() => void run()}>{p ? t("opc.plan.reload") : t("opc.pr.run")}</Button>
+      </div>
+      {p ? (
+        <div class="opc-stack">
+          <div class="opc-promise">
+            <StatusPill tone={verdictTone(p.verdict)}>{t(`opc.pr.v.${p.verdict}` as CopyKey)}</StatusPill>
+            <span>{t("opc.pr.range", { a: formatDate(p.earliest), b: formatDate(p.likely), c: formatDate(p.latest) })}</span>
+            {p.dueDate ? <span class="opc-muted">{t("opc.pr.due", { d: formatDate(p.dueDate) })}</span> : null}
+          </div>
+          {p.assumedDurationLines > 0 ? <p class="opc-muted">{t("opc.pr.assumed", { n: String(p.assumedDurationLines) })}</p> : null}
+          {p.linesAssumed ? <p class="opc-muted">{t("opc.cap.assumed")}</p> : null}
+        </div>
+      ) : <p class="opc-muted">{t("opc.pr.note")}</p>}
+    </>
   );
 }

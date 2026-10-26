@@ -11,6 +11,7 @@ import {
   operationTransfersTable,
   salesOrdersTable,
   systemUsersTable,
+  bomRecipesTable,
 } from "../db/schema";
 import { requireAuth, requirePermission } from "../middleware/auth";
 import { parseIdParam } from "../lib/validate";
@@ -24,6 +25,9 @@ import {
   type RiskReason,
 } from "../lib/operationsCenterCore";
 import { escalateOperationsSla } from "../lib/operationsSla";
+import { loadCapacityForecast } from "../lib/operationsCapacity";
+import { CAPACITY_CAP, deliveryPromise, orderDemandDays, todayCairo } from "../lib/operationsCapacityCore";
+import { planConversion } from "../lib/operationsCenterCore";
 
 const router = Router();
 
@@ -269,6 +273,74 @@ router.get(
         requisitions,
         risk: { level: risk.level, reasons: risk.reasons, sla: risk.sla },
         nextAction: nextActionFor(record.status, Boolean(record.workflowOrderId)),
+      });
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+/** السعة: حمل المصنع على 14 يوم عمل جاية بسقف تحميل 85%، من الأوامر المفتوحة ومدد وصفاتها. */
+router.get(
+  "/operations-center/capacity",
+  requireAuth,
+  requirePermission(OPERATIONS_MANAGER_PERMISSIONS.caseView),
+  async (_req, res, next) => {
+    try {
+      const now = new Date();
+      const cap = await loadCapacityForecast(now);
+      res.json({
+        generatedAt: now.toISOString(),
+        cap: CAPACITY_CAP,
+        lines: cap.lines,
+        linesAssumed: cap.linesAssumed,
+        openOrders: cap.openOrders,
+        noRecipeOrders: cap.noRecipeOrders,
+        ...cap.forecast,
+      });
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+/** وعد التسليم للحالة: نطاق (الأقرب/الأرجح/الأبعد) مقارنة بموعد الحالة، على أساس الطابور الحالي. */
+router.get(
+  "/operations-center/cases/:id/promise",
+  requireAuth,
+  requirePermission(OPERATIONS_MANAGER_PERMISSIONS.caseView),
+  async (req, res, next) => {
+    try {
+      const id = parseIdParam(req.params.id, res);
+      if (id === null) return;
+      const [record] = await db.select().from(operationsCasesTable).where(eq(operationsCasesTable.id, id)).limit(1);
+      if (!record) {
+        res.status(404).json({ error: { message: "حالة التشغيل غير موجودة" } });
+        return;
+      }
+      const [lines, recipes] = await Promise.all([
+        db.select().from(operationsCaseLinesTable).where(eq(operationsCaseLinesTable.caseId, id)),
+        db.select({ id: bomRecipesTable.id, productName: bomRecipesTable.productName, outputQty: bomRecipesTable.outputQty, days: bomRecipesTable.expectedProductionDays }).from(bomRecipesTable),
+      ]);
+      const plan = planConversion(lines.map((l) => ({ id: l.id, productNameSnapshot: l.productNameSnapshot })), recipes);
+      const recipeById = new Map(recipes.map((r) => [r.id, r]));
+      const recipeOf = new Map(plan.resolved.map((r) => [r.lineId, recipeById.get(r.recipeId)]));
+      let needed = 0;
+      for (const l of lines) {
+        const r = recipeOf.get(l.id);
+        needed += orderDemandDays({ expectedProductionDays: r?.days ?? null, qty: Number(l.orderedQty), outputQty: Number(r?.outputQty ?? 1), status: "claimed" });
+      }
+      const now = new Date();
+      const cap = await loadCapacityForecast(now);
+      const promise = deliveryPromise({ queueDays: cap.forecast.queueDays, newDays: needed, lines: cap.lines, startIso: todayCairo(now), dueDate: record.dueDate });
+      res.json({
+        ...promise,
+        dueDate: record.dueDate,
+        queueDays: cap.forecast.queueDays,
+        lines: cap.lines,
+        linesAssumed: cap.linesAssumed,
+        assumedDurationLines: plan.unresolved.length,
+        utilization: cap.forecast.utilization,
       });
     } catch (err) {
       next(err);

@@ -62,3 +62,45 @@
   margin-block-start: var(--sp-2);
   inline-size: 100%;
 }
+
+.opc-cap {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(3.5rem, 1fr));
+  gap: var(--sp-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.opc-cap__day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-1);
+  block-size: 9rem;
+  justify-content: flex-end;
+}
+.opc-cap__bar {
+  inline-size: 100%;
+  border-radius: var(--r-sm);
+  background: var(--c-success);
+}
+.opc-cap__day--busy .opc-cap__bar {
+  background: var(--c-warn);
+}
+.opc-cap__day--full .opc-cap__bar {
+  background: var(--c-danger);
+}
+.opc-cap__pct {
+  font-size: var(--fs-sm);
+  font-weight: 700;
+}
+.opc-cap__date {
+  font-size: var(--fs-xs);
+  color: var(--c-text-3);
+}
+.opc-promise {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  align-items: center;
+}
