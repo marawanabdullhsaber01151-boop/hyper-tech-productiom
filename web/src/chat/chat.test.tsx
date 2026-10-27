@@ -22,7 +22,7 @@ describe("ChatThread", () => {
     const onSend = vi.fn(async () => undefined);
     render(<ToastProvider><ChatThread messages={[msg(1, { senderType: "staff", status: "read" }), msg(2, { kind: "system", body: "اتقفلت المحادثة" })]} me="staff" backend={backend} onSend={onSend} /></ToastProvider>);
     expect(screen.getByText("رسالة 1")).toBeTruthy();
-    expect(screen.getByText("اتقرت")).toBeTruthy();
+    expect(screen.getByText("تمت القراءة")).toBeTruthy();
     expect(screen.getByText("اتقفلت المحادثة")).toBeTruthy();
     const send = screen.getByRole("button", { name: "ابعت" }) as HTMLButtonElement;
     expect(send.disabled).toBe(true);
@@ -37,7 +37,7 @@ describe("ChatThread", () => {
   });
   it("الرسالة المخفية بتظهر بنص بديل", () => {
     render(<ToastProvider><ChatThread messages={[msg(1, { hidden: true })]} me="customer" backend={backend} /></ToastProvider>);
-    expect(screen.getByText("الرسالة دي اتخفت")).toBeTruthy();
+    expect(screen.getByText("الرسالة دي مخفية")).toBeTruthy();
   });
   it("إتاحة: من غير مخالفات", async () => {
     const { container } = render(<ToastProvider><ChatThread messages={[msg(1)]} me="staff" backend={backend} onSend={async () => undefined} allowInternal /></ToastProvider>);

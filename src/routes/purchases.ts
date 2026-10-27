@@ -42,7 +42,7 @@ async function claim(tx: Tx, items: Array<{ requisition?: { source: "ops" | "pla
       r.source === "ops"
         ? await tx.update(purchaseRequisitionsTable).set({ status: "ordered" }).where(and(eq(purchaseRequisitionsTable.id, r.id), eq(purchaseRequisitionsTable.status, "confirmed_to_procurement"))).returning({ id: purchaseRequisitionsTable.id })
         : await tx.update(planningPurchaseRequisitionsTable).set({ status: "ordered" }).where(and(eq(planningPurchaseRequisitionsTable.id, r.id), eq(planningPurchaseRequisitionsTable.status, "draft"))).returning({ id: planningPurchaseRequisitionsTable.id });
-    if (!rows.length) throw err("أحد الاحتياجات اتحوّل لأمر شراء قبل كده أو مش متاح", 409);
+    if (!rows.length) throw err("أحد الاحتياجات تم تحويله لأمر شراء قبل كده أو مش متاح", 409);
   }
 }
 async function release(tx: Tx, items: Array<{ requisitionSource: string | null; requisitionId: number | null }>) {

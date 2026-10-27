@@ -352,7 +352,7 @@ router.post(
         .from(portalCustomersTable)
         .where(eq(portalCustomersTable.id, a.companyId))
         .limit(1);
-      const message = `أهلاً ${body.fullName}، اتضفت لحساب ${company?.name ?? "الشركة"} في Hyper-Tech.\nرقمك: ${body.phone.trim()}\nكلمة السر المؤقتة: ${result.tempPassword}\nهتغيّرها أول ما تدخل.`;
+      const message = `أهلاً ${body.fullName}، تمت إضافتك لحساب ${company?.name ?? "الشركة"} في Hyper-Tech.\nرقمك: ${body.phone.trim()}\nكلمة السر المؤقتة: ${result.tempPassword}\nهتغيّرها أول ما تدخل.`;
       res.status(201).json({
         memberId: result.memberId,
         tempPassword: result.tempPassword,
@@ -621,7 +621,7 @@ router.post(
           targetId: memberId,
         });
       });
-      res.json({ message: "اتقبل" });
+      res.json({ message: "تم القبول" });
     } catch (err) {
       next(err);
     }

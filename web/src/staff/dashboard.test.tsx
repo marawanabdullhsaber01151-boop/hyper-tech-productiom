@@ -52,7 +52,7 @@ const NAV: NavResponse = {
   role: "chairman",
   singleDepartment: false,
   homeHref: null,
-  departments: [{ id: "d", label: "قسم", icon: "industry", subFunctions: [{ id: "s", label: "م", pages: [{ id: "p", label: "الإنتاج", href: "production.html" }] }] }],
+  departments: [{ id: "d", label: "قسم", icon: "industry", subFunctions: [{ id: "s", label: "م", pages: [{ id: "p", label: "الإنتاج", href: "/v2/staff/production?tab=orders" }] }] }],
 };
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
 /** بنحاكي السيرفر على مستوى fetch (فالغلاف { data } بيتفك بالعميل الحقيقي زي الإنتاج). */
@@ -94,7 +94,7 @@ describe("Dashboard (الواجهة)", () => {
     expect(screen.getByText("97%")).toBeTruthy();
     expect(screen.getByText("أحسن من الأسبوع اللي فات")).toBeTruthy();
     expect(screen.getByText("مباشر")).toBeTruthy();
-    expect(screen.getByRole("link", { name: "أوامر الإنتاج" }).getAttribute("href")).toBe("/production.html");
+    expect(screen.getByRole("link", { name: "أوامر الإنتاج" }).getAttribute("href")).toBe("/v2/staff/production?tab=orders");
     expect(screen.queryByRole("link", { name: "المبيعات" })).toBeNull();
   });
   it("دور مخزن بس: مبينادش الإنتاج ولا الملخص ومفيش خطأ", async () => {

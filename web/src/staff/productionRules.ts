@@ -1,3 +1,5 @@
+import { ORDER_VIEW_ROLES } from "./orderRules";
+
 /** قواعد صفحة الإنتاج (طلبات الإنتاج + الجودة + التتبع). بدون واجهة، عشان تتختبر لوحدها. السيرفر هو الحَكَم الفعلي. */
 
 export const REQUEST_STATUSES = ["pending_warehouse", "pending_director", "approved", "partial_approved", "rejected", "cancelled"] as const;
@@ -15,16 +17,17 @@ export const REQUEST_CANCEL_ROLES = ["chairman", "production_manager", "supervis
 export const QUALITY_VIEW_ROLES = ["chairman", "production_manager", "production_controller", "supervisor", "production_quality_controller"] as const;
 export const NCR_CLOSE_ROLES = ["chairman", "production_manager", "production_quality_controller"] as const;
 
-export const PRODUCTION_PAGE_ROLES = [...new Set<string>([...REQUEST_VIEW_ROLES, ...QUALITY_VIEW_ROLES])];
+export const PRODUCTION_PAGE_ROLES = [...new Set<string>([...REQUEST_VIEW_ROLES, ...QUALITY_VIEW_ROLES, ...ORDER_VIEW_ROLES])];
 
 const has = (list: readonly string[], role: string) => list.includes(role);
 
-export type ProductionTab = "requests" | "quality" | "trace";
+export type ProductionTab = "requests" | "orders" | "quality" | "trace";
 
 /** التبويبات اللي الدور يشوفها: كل دور ما يشوفش غير اللي السيرفر هيسمحله بيه. */
 export function availableTabs(role: string): ProductionTab[] {
   const out: ProductionTab[] = [];
   if (has(REQUEST_VIEW_ROLES, role)) out.push("requests");
+  if (has(ORDER_VIEW_ROLES, role)) out.push("orders");
   if (has(QUALITY_VIEW_ROLES, role)) out.push("quality", "trace");
   return out;
 }
@@ -82,4 +85,9 @@ export function defectSuggestions(rows: readonly { defectCode: string }[], limit
     if (c) n.set(c, (n.get(c) ?? 0) + 1);
   }
   return [...n.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).slice(0, limit).map(([c]) => c);
+}
+
+/** التبويب اللي بيتفتح من غير اختيار: أول تبويب مش «الأوامر» (عشان كل دور يفتح على شغله القديم)، والأوامر لو هي الوحيدة. */
+export function defaultTab(allowed: ProductionTab[]): ProductionTab | undefined {
+  return allowed.find((x) => x !== "orders") ?? allowed[0];
 }

@@ -132,7 +132,7 @@ describe("CopyField", () => {
     render(<CopyField label="كود الشركة" value="HT-7K9M-2QXH" />);
     fireEvent.click(screen.getByRole("button", { name: /انسخ/ }));
     await waitFor(() => expect(write).toHaveBeenCalledWith("HT-7K9M-2QXH"));
-    expect(await screen.findByRole("button", { name: /اتنسخ/ })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: /تم النسخ/ })).toBeInTheDocument();
   });
   it("لو النسخ فشل بيعرض رسالة بديلة", async () => {
     Object.defineProperty(navigator, "clipboard", { value: { writeText: vi.fn().mockRejectedValue(new Error("no")) }, configurable: true });

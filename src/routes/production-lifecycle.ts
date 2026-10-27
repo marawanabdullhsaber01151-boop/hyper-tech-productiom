@@ -13,7 +13,9 @@ import {
   productionWorkflowOrdersTable,
   systemUsersTable,
 } from "../db/schema";
-import { requireAuth } from "../middleware/auth";
+import { requireAuth, requireRole } from "../middleware/auth";
+import { ACCESS } from "../lib/accessRegistry";
+import { maskProductionWorkflowPayload } from "../lib/fieldMasking";
 import { parseIdParam } from "../lib/validate";
 import {
   CANONICAL_PRODUCTION_STATUSES,
@@ -37,6 +39,14 @@ import {
 } from "../lib/decimal-quantity";
 
 const router = Router();
+
+// نفس حدّ إخفاء بيانات العميل اللي في production-workflow.ts: دورة الحياة بترجّع صف الأمر كامل
+// ولقطة متطلبات العميل، فكانت بتكشف الهاتف والاسم لأدوار الأرضية.
+router.use((req, res, next) => {
+  const originalJson = res.json.bind(res);
+  res.json = ((body: unknown) => originalJson(maskProductionWorkflowPayload(body, req.user?.role ?? ""))) as typeof res.json;
+  next();
+});
 const lifecycleRoles = [
   "chairman",
   "executive_manager",
@@ -121,6 +131,7 @@ async function loadOrder(id: number) {
 router.get(
   "/production-workflow/:id/lifecycle",
   requireAuth,
+  requireRole(...ACCESS.productionWorkflowRead),
   async (req, res, next) => {
     try {
       const id = parseIdParam(req.params.id, res);

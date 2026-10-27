@@ -80,7 +80,7 @@ describe("مركز قيادة التشغيل", () => {
     mount();
     expect(await screen.findByRole("button", { name: "حوّل لأمر إنتاج" })).toBeTruthy();
     expect(screen.getByText("بطارية 12 فولت")).toBeTruthy();
-    expect(screen.getByText("اتطلب توضيح من المبيعات")).toBeTruthy();
+    expect(screen.getByText("تم طلب توضيح من المبيعات")).toBeTruthy();
     expect(screen.getByText("السعر ناقص")).toBeTruthy();
   });
 

@@ -226,7 +226,7 @@ router.post(
         return;
       }
       if (inquiry.status !== "pending") {
-        res.status(409).json({ error: { message: "طلب السعر ده اتردّ عليه بالفعل" } });
+        res.status(409).json({ error: { message: "طلب السعر ده تم الرد عليه بالفعل" } });
         return;
       }
 

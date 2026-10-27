@@ -1469,7 +1469,7 @@ router.post(
         });
       });
       void sendSecurityAlert(userId, "password_changed", customerId);
-      res.json({ message: "اتغيّرت كلمة السر" });
+      res.json({ message: "تم تغيير كلمة السر" });
     } catch (err) {
       next(err);
     }

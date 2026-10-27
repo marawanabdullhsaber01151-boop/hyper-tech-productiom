@@ -35,7 +35,7 @@ describe("طلبات الأسعار (العميل)", () => {
     expect(await screen.findByText("سألت عن: كوب ورق")).toBeTruthy();
     expect(screen.getByText(/السعر:/)).toBeTruthy();
     expect(screen.getByText("مستنيين رد المبيعات")).toBeTruthy();
-    expect(screen.getByText("اتردّ عليه")).toBeTruthy();
+    expect(screen.getByText("تم الرد عليه")).toBeTruthy();
   });
   it("لو مفيش طلبات بيقول كده", async () => {
     get.mockResolvedValue([]);

@@ -32,7 +32,7 @@ export const ar = {
   "common.loading": "ثواني...",
   "common.retry": "جرّب تاني",
   "common.copy": "انسخ",
-  "common.copied": "اتنسخ",
+  "common.copied": "تم النسخ",
   "common.copyFailed": "ماقدرناش ننسخ. حدّد النص وانسخه بإيدك.",
   "common.more": "المزيد",
   "common.required": "مطلوب",

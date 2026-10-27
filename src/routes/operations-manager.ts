@@ -985,7 +985,7 @@ router.patch(
           throw Object.assign(new Error("الحالة دي مغلقة ولا يمكن تعديلها"), { status: 409 });
         }
         if (before.version !== input.expectedVersion) {
-          throw Object.assign(new Error("الحالة اتعدّلت من حد تاني — حدّث الصفحة وجرّب تاني"), { status: 409 });
+          throw Object.assign(new Error("تم تعديل الحالة من شخص آخر — حدّث الصفحة وجرّب تاني"), { status: 409 });
         }
         if (input.assignedTo) {
           const [assignee] = await tx
@@ -1043,7 +1043,7 @@ router.patch(
       ) {
         await notifyUser(result.case.assignedTo, {
           type: "operations_case_assigned",
-          title: `اتعيّنت على حالة التشغيل ${result.case.caseNumber}`,
+          title: `تم تعيينك على حالة التشغيل ${result.case.caseNumber}`,
           body: `عيّنك ${req.user!.username} على الحالة ${result.case.caseNumber}.`,
           referenceType: "operations_case",
           referenceId: result.case.id,

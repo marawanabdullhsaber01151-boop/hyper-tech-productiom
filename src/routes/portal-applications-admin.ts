@@ -587,7 +587,7 @@ router.post("/portal-admin/applications/:id/approve", ...write, async (req, res,
           body: { fullName: app.fullName, phone: app.phone, email: app.email, roleKey },
           joinedVia: "admin_created",
         });
-        const message = `أهلاً ${app.fullName}، اتضفت لحساب ${company.companyName} في Hyper-Tech.\nرقمك: ${app.phone}\nكلمة السر المؤقتة: ${created.tempPassword}\nهتغيّرها أول ما تدخل.`;
+        const message = `أهلاً ${app.fullName}، تمت إضافتك لحساب ${company.companyName} في Hyper-Tech.\nرقمك: ${app.phone}\nكلمة السر المؤقتة: ${created.tempPassword}\nهتغيّرها أول ما تدخل.`;
         out = { member: { id: created.memberId, roleKey: created.roleKey }, tempPassword: created.tempPassword, whatsappUrl: buildWhatsAppLink(app.phone, message), message };
       } else {
         await assertContactsFree(tx, app);
@@ -662,7 +662,7 @@ router.post("/portal-admin/applications/:id/approve", ...write, async (req, res,
     if (result.issued && result.customerForDelivery) {
       activation = await deliverActivation(result.customerForDelivery, result.issued, { companyId: result.companyId, staffId: req.user!.userId });
     }
-    res.json({ message: "اتوافق على الطلب", decision: result.decision, companyId: result.companyId, setup: result.applied, ...result.out, activation });
+    res.json({ message: "تمت الموافقة على الطلب", decision: result.decision, companyId: result.companyId, setup: result.applied, ...result.out, activation });
   } catch (e) {
     next(e);
   }

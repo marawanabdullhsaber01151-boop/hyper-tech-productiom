@@ -271,7 +271,7 @@ router.post(
         companyName: outcome.companyName,
         message:
           outcome.status === "joined"
-            ? "تمام، اتضفت للشركة. سجّل دخول بالرقم وكلمة السر"
+            ? "تمام، تمت إضافتك للشركة. سجّل دخول بالرقم وكلمة السر"
             : "طلبك وصل لرئيس الشركة. هتقدر تدخل أول ما يوافق",
       });
     } catch (err) {

@@ -40,7 +40,6 @@ describe("القايمة ↔ حارس الصفحة", () => {
 /** صفحات أساسية: لو الصفحة دي ظاهرة لدور، المفتاح ده لازم يسمح له (وإلا الصفحة بتفشل في التحميل). */
 const CRITICAL_LOADS: Array<{ page: string; access: AccessKey; why: string }> = [
   { page: "factory-quality-controller.html", access: "productionWorkflowRead", why: "قايمة أوامر الفحص" },
-  { page: "production.html", access: "productionCycleRead", why: "مراحل دورة الإنتاج" },
 ];
 
 describe("الصفحات الأساسية وبياناتها", () => {

@@ -463,21 +463,33 @@ router.get(
   },
 );
 
+// GET /production-workflow/recipes — وصفات التصنيع النشطة لشاشة إنشاء أمر إنتاج.
+// أدوار الإنشاء (مثل المدير التنفيذي) مش كلها عندها صلاحية قراءة /bom، فده مسار خفيف (اسم وكود بس).
+// لازم يتسجل قبل "/production-workflow/:id".
+router.get(
+  "/production-workflow/recipes",
+  requireAuth,
+  requireRole("hr", "hr_manager", "sales_manager", "executive_manager", "chairman", "production_manager"),
+  async (_req: Request, res: Response, next: NextFunction) => {
+    try {
+      const recipes = await db
+        .select({ id: bomRecipesTable.id, productName: bomRecipesTable.productName, productCode: bomRecipesTable.productCode })
+        .from(bomRecipesTable)
+        .where(eq(bomRecipesTable.isActive, true))
+        .orderBy(bomRecipesTable.productName);
+      res.json({ data: recipes });
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
 // GET /production-workflow/:id
 router.get(
   "/production-workflow/:id",
   requireAuth,
-  requireRole(
-    "chairman",
-    "executive_manager",
-    "operations_manager",
-    "hr",
-    "hr_manager",
-    "production_manager",
-    "warehouse_manager",
-    "supervisor",
-    "production_quality_controller",
-  ),
+  // نفس أدوار القايمة بالظبط: كان مدير التحكم (production_controller) بيشوف الأمر في القايمة ويتحجب عن تفاصيله.
+  requireRole(...ACCESS.productionWorkflowRead),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const id = parseIdParam(req.params.id, res);
@@ -880,7 +892,7 @@ router.patch(
       await notifyUser(supervisor.id, {
         type: "workflow_assigned_pending_materials",
         title: `تم تعيينك على أمر إنتاج ${existing.orderNumber}`,
-        body: `أمر "${existing.productName}" اتعيّنت عليه مشرفًا — لسه في انتظار اعتماد المواد من المخازن.`,
+        body: `أمر "${existing.productName}" تم تعيينك عليه مشرفًا — لسه في انتظار اعتماد المواد من المخازن.`,
         referenceType: "production_workflow",
         referenceId: id,
       });

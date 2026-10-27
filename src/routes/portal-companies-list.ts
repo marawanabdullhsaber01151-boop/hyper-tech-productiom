@@ -74,7 +74,7 @@ const view = [requireAuth, requireRole(...PERMISSIONS.portalCompanies.view)];
 const manage = [requireAuth, requireRole(...PERMISSIONS.portalCompanies.manage)];
 
 const STATUS_LABEL: Record<string, string> = {
-  not_activated: "لسه ما اتفعّلش",
+  not_activated: "لم يُفعَّل بعد",
   active: "شغال",
   suspended: "موقوف",
   archived: "مؤرشف",
@@ -361,7 +361,7 @@ router.post("/portal-companies/:id/archive", ...manage, async (req: Request, res
       });
       return open;
     });
-    res.json({ message: "اتأرشفت الشركة. بياناتها كلها محفوظة وتقدر ترجّعها في أي وقت.", openOrders });
+    res.json({ message: "تمت أرشفة الشركة. بياناتها كلها محفوظة وتقدر ترجّعها في أي وقت.", openOrders });
   } catch (e) {
     next(e);
   }
@@ -410,7 +410,7 @@ router.post("/portal-companies/:id/restore", ...manage, async (req: Request, res
         userAgent: req.get("user-agent"),
       });
     });
-    res.json({ message: "اترجّعت الشركة من الأرشيف. هتغيّر كلمة السر عند أول دخول." });
+    res.json({ message: "تمت استعادة الشركة من الأرشيف. هتغيّر كلمة السر عند أول دخول." });
   } catch (e) {
     next(e);
   }
@@ -615,7 +615,7 @@ router.post("/portal-companies/:id/members", ...manage, async (req, res, next) =
       });
       return c;
     });
-    const message = `أهلاً ${body.fullName}، اتضفت لحساب ${company.companyName} في Hyper-Tech.\nرقمك: ${body.phone.trim()}\nكلمة السر المؤقتة: ${created.tempPassword}\nهتغيّرها أول ما تدخل.`;
+    const message = `أهلاً ${body.fullName}، تمت إضافتك لحساب ${company.companyName} في Hyper-Tech.\nرقمك: ${body.phone.trim()}\nكلمة السر المؤقتة: ${created.tempPassword}\nهتغيّرها أول ما تدخل.`;
     res.status(201).json({
       memberId: created.memberId,
       tempPassword: created.tempPassword,
@@ -675,7 +675,7 @@ router.post("/portal-companies/:id/members/:memberId/remove", ...manage, async (
     await db.transaction(async (tx) => {
       const m = await memberInCompany(tx, companyId, memberId);
       if (m.isOwner) throw domainError(403, "OWNER_PROTECTED", "رئيس الشركة مينفعش يتشال من هنا");
-      if (m.status === "removed") throw domainError(409, "INVALID_STATE", "الموظف ده اتشال قبل كده");
+      if (m.status === "removed") throw domainError(409, "INVALID_STATE", "الموظف ده تمت إزالته قبل كده");
       await tx.update(portalMembersTable).set({ status: "removed" }).where(eq(portalMembersTable.id, memberId));
       await revokeMemberSessions(memberId, tx);
       await writePortalAudit(tx, {

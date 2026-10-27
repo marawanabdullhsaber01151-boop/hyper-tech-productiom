@@ -23,12 +23,12 @@ const DEFAULTS: Record<TemplateKey, { subject: string; body: string }> = {
     body: "كود التأكيد بتاعك في Hyper-Tech: {code}\nصالح {duration}.",
   },
   password_changed: {
-    subject: "اتغيّرت كلمة السر",
-    body: "كلمة سر حسابك في Hyper-Tech اتغيّرت دلوقتي.\nلو مش إنت، كلّم الدعم فورًا.",
+    subject: "تم تغيير كلمة السر",
+    body: "تم تغيير كلمة سر حسابك في Hyper-Tech دلوقتي.\nلو مش إنت، كلّم الدعم فورًا.",
   },
   recovery_code_used: {
-    subject: "اتستخدم كود استعادة",
-    body: "اتستخدم كود استعادة على حسابك في Hyper-Tech.\nلو مش إنت، كلّم الدعم فورًا.",
+    subject: "تم استخدام كود استعادة",
+    body: "تم استخدام كود استعادة على حسابك في Hyper-Tech.\nلو مش إنت، كلّم الدعم فورًا.",
   },
   owner_reset_link: {
     subject: "رابط تعيين كلمة سر جديدة",

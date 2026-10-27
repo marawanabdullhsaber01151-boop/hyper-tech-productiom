@@ -157,7 +157,7 @@ router.post("/portal/activate/preview", tokenLimiter, async (req, res, next) => 
       const map = {
         invalid: [400, "INVALID_TOKEN", "الرابط غلط أو منتهي"],
         expired: [410, "TOKEN_EXPIRED", "الرابط انتهت صلاحيته، اطلب رابط جديد"],
-        used: [409, "TOKEN_USED", "الرابط ده اتستخدم قبل كده"],
+        used: [409, "TOKEN_USED", "الرابط ده استُخدم قبل كده"],
       } as const;
       const [s, c, m] = map[check.reason];
       throw err(s, c, m);
@@ -306,7 +306,7 @@ router.post("/portal/recovery/complete", tokenLimiter, async (req, res, next) =>
     });
     await auditUser(userId, "portal.recovery.completed", req);
     void sendSecurityAlert(userId, "password_changed");
-    res.json({ ok: true, message: "اتغيّرت كلمة السر، ادخل بيها دلوقتي" });
+    res.json({ ok: true, message: "تم تغيير كلمة السر، ادخل بيها دلوقتي" });
   } catch (e) {
     next(e);
   }
@@ -549,7 +549,7 @@ router.post("/portal/telegram/webhook", async (req, res) => {
         await auditUser(link.userId, "portal.channel.added", req, { type: "telegram" }, "telegram_bot");
         await telegramSend(String(chatId), "تم ربط حسابك في Hyper-Tech بتيليجرام ✅");
       } else {
-        await telegramSend(String(chatId), "الرابط ده انتهى أو اتستخدم. اطلب رابط جديد من إعدادات حسابك.");
+        await telegramSend(String(chatId), "الرابط ده انتهى أو استُخدم. اطلب رابط جديد من إعدادات حسابك.");
       }
     }
   } catch {

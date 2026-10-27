@@ -30,7 +30,7 @@ const login = (id: number, role: string) => sessionStorage.setItem("hyper_erp_se
 const NAV: NavResponse = {
   role: "chairman",
   singleDepartment: false,
-  homeHref: "production.html",
+  homeHref: "/v2/staff/production?tab=orders",
   departments: [
     {
       id: "top",
@@ -42,7 +42,7 @@ const NAV: NavResponse = {
           label: "الحوكمة",
           pages: [
             { id: "customers", label: "عملاء البوابة", href: "/v2/admin/portal-customers" },
-            { id: "prod", label: "الإنتاج", href: "production.html" },
+            { id: "prod", label: "الإنتاج", href: "/v2/staff/production?tab=orders" },
             { id: "stock", label: "المخزون", href: "/v2/staff/stock" },
           ],
         },
@@ -98,11 +98,11 @@ describe("عناصر لوحة الأوامر", () => {
     const label = { status: (s: string) => s, unit: (i: InvItem) => i.unit ?? "" };
     const none = recordItems([po({ id: 1 })], [inv({ id: 1 })], new Set(["x.html"]), go, label);
     expect(none).toEqual([]);
-    const some = recordItems([po({ id: 1 })], [inv({ id: 1, name: "ورق A4" })], new Set(["production.html", "v2/staff/stock"]), go, label);
+    const some = recordItems([po({ id: 1 })], [inv({ id: 1, name: "ورق A4" })], new Set(["v2/staff/production?tab=orders", "v2/staff/stock"]), go, label);
     expect(some.map((x) => x.kind)).toEqual(["order", "item"]);
     some[1]!.run();
     expect(go).toHaveBeenLastCalledWith(`/v2/staff/stock?q=${encodeURIComponent("ورق A4")}`);
-    expect(pickPage(new Set(["factory-supervisor.html"]), ["production.html", "factory-supervisor.html"])).toBe("factory-supervisor.html");
+    expect(pickPage(new Set(["factory-supervisor.html"]), ["x.html", "factory-supervisor.html"])).toBe("factory-supervisor.html");
   });
   it("البحث متسامح، والأخيرة بتتقدّم عند تساوي الدرجة، والشاشة الفاضية بتبدأ بالأخيرة", () => {
     const mk = (id: string, title: string): CmdItem => ({ id, kind: "page", title, run: () => {} });
@@ -124,7 +124,7 @@ describe("عناصر لوحة الأوامر", () => {
     expect(notificationTarget({ referenceType: "chat_conversation", referenceId: 9 }, NAV)).toBe("/v2/admin/portal-chat/9");
     expect(notificationTarget({ referenceType: "chat" }, NAV)).toBe("/v2/admin/portal-chat");
     expect(notificationTarget({ referenceType: "system_health" }, NAV)).toBe("/v2/staff/system-health");
-    expect(notificationTarget({ referenceType: "production_workflow" }, NAV)).toBe("production.html");
+    expect(notificationTarget({ referenceType: "production_workflow" }, NAV)).toBe("/v2/staff/production?tab=orders");
     expect(notificationTarget({ referenceType: "other" }, NAV)).toBeNull();
   });
 });

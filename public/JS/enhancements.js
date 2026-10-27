@@ -32,13 +32,13 @@ const ROLE_HOME_PAGE = {
   sales_manager: "/v2/staff/sales",
   online_seller: "/v2/staff/sales",
   offline_seller: "/v2/staff/sales",
-  executive_manager: "production.html",
-  operations_manager: "factory-production-manager.html",
+  executive_manager: "/v2/staff/production?tab=orders",
+  operations_manager: "/v2/staff/production?tab=orders",
   // المشتريات: صفحة الاحتياجات وأوامر الشراء في الواجهة الجديدة.
   purchasing_manager: "/v2/staff/purchases",
   buyer: "/v2/staff/purchases",
-  production_manager: "factory-production-manager.html",
-  production_controller: "factory-production-manager.html",
+  production_manager: "/v2/staff/production?tab=orders",
+  production_controller: "/v2/staff/production?tab=orders",
   warehouse_manager: "factory-warehouse-manager.html",
   storekeeper: "factory-warehouse-manager.html",
   supervisor: "factory-supervisor.html",
@@ -46,9 +46,9 @@ const ROLE_HOME_PAGE = {
   production_quality_controller: "factory-quality-controller.html",
   raw_material_quality_controller: "factory-quality-controller.html",
   quality_engineer: "factory-quality-controller.html",
-  admin: "production.html",
-  manager: "production.html",
-  chairman: "production.html",
+  admin: "/v2/staff/production?tab=orders",
+  manager: "/v2/staff/production?tab=orders",
+  chairman: "/v2/staff/production?tab=orders",
 };
 
 function escHtmlLocal(str) {

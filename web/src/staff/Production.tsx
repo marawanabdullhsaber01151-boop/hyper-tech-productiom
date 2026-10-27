@@ -2,9 +2,10 @@ import { useState } from "preact/hooks";
 import { staffUser } from "../admin/session";
 import { t } from "../copy";
 import { InlineAlert, Tabs } from "../design/components";
+import { ProductionOrders } from "./ProductionOrders";
 import { ProductionQuality, ProductionTrace } from "./ProductionQuality";
 import { ProductionRequests } from "./ProductionRequests";
-import { PRODUCTION_PAGE_ROLES, availableTabs, type ProductionTab } from "./productionRules";
+import { PRODUCTION_PAGE_ROLES, availableTabs, defaultTab, type ProductionTab } from "./productionRules";
 import "./Production.css";
 
 export { PRODUCTION_PAGE_ROLES };
@@ -14,12 +15,13 @@ export function Production() {
   const role = staffUser()?.role ?? "";
   const allowed = availableTabs(role);
   const start = new URLSearchParams(location.search).get("tab");
-  const [tab, setTab] = useState<ProductionTab>(() => (allowed.includes(start as ProductionTab) ? (start as ProductionTab) : (allowed[0] ?? "requests")));
+  const [tab, setTab] = useState<ProductionTab>(() => (allowed.includes(start as ProductionTab) ? (start as ProductionTab) : (defaultTab(allowed) ?? "requests")));
 
   if (!allowed.length) return <div class="ad-page"><InlineAlert tone="warn">{t("prd.noAccess")}</InlineAlert></div>;
 
   const defs = {
     requests: { label: t("prd.tab.requests"), panel: <ProductionRequests /> },
+    orders: { label: t("prd.tab.orders"), panel: <ProductionOrders /> },
     quality: { label: t("prd.tab.quality"), panel: <ProductionQuality /> },
     trace: { label: t("prd.tab.trace"), panel: <ProductionTrace /> },
   } as const;

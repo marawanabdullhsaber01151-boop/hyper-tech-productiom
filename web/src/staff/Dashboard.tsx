@@ -41,7 +41,7 @@ function pageHrefs(nav: NavResponse | undefined): Set<string> {
 }
 
 const QUICK: Array<{ href: string; label: CopyKey }> = [
-  { href: "production.html", label: "staff.dash.quick.production" },
+  { href: "/v2/staff/production?tab=orders", label: "staff.dash.quick.production" },
   { href: "/v2/staff/stock", label: "staff.dash.quick.inventory" },
   { href: "/v2/staff/sales", label: "staff.dash.quick.sales" },
   { href: "/v2/staff/system-health", label: "staff.dash.quick.health" },
@@ -186,7 +186,7 @@ export function Dashboard({ nav }: { nav?: NavResponse }) {
         <Card class="st-dash__card">
           <div class="st-dash__row">
             <h3 class="st-dash__h3">{t("staff.dash.orders.title")}</h3>
-            {hrefs.has("production.html") ? <a class="st-dash__link" href="/production.html">{t("staff.dash.viewAll")}</a> : null}
+            {hrefs.has("v2/staff/production?tab=orders") ? <a class="st-dash__link" href="/v2/staff/production?tab=orders">{t("staff.dash.viewAll")}</a> : null}
           </div>
           <DataTable
             columns={columns}

@@ -47,7 +47,7 @@ function def<T>(d: SettingDef<T>): SettingDef<T> {
 }
 
 export const PORTAL_SETTING_DEFS: readonly SettingDef<any>[] = [
-  def({ key: "portal.multiuser.enabled", label: "تعدد الموظفين", description: "لو اتقفل، كل شركة بتشتغل بحساب واحد (الرئيس بس).", group: "team", schema: z.boolean(), default: true, scopes: ["global"], editableBy: ["staff"] }),
+  def({ key: "portal.multiuser.enabled", label: "تعدد الموظفين", description: "لو أُغلق، كل شركة بتشتغل بحساب واحد (الرئيس بس).", group: "team", schema: z.boolean(), default: true, scopes: ["global"], editableBy: ["staff"] }),
   def({ key: "team.max_members", label: "أقصى عدد موظفين", description: "أكبر عدد أعضاء نشطين في الشركة (بما فيهم الرئيس).", group: "team", schema: z.number().int().min(1).max(1000), default: 10, scopes: ["global", "company"], editableBy: ["staff"] }),
   def({ key: "join.mode", label: "طريقة الانضمام بالكود", description: "مباشر، أو بموافقة الرئيس، أو مقفول.", group: "join", schema: joinMode, default: "approval" as const, scopes: ["global", "company"], editableBy: ["staff", "owner"] }),
   def({ key: "join.code.enabled", label: "كود الانضمام شغال", description: "يقفل أو يفتح الانضمام بالكود.", group: "join", schema: z.boolean(), default: true, scopes: ["global", "company"], editableBy: ["staff", "owner"] }),
