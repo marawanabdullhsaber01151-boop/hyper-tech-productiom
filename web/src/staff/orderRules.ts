@@ -2,7 +2,7 @@
 
 /** نفس ACCESS.productionWorkflowRead في السيرفر. */
 export const ORDER_VIEW_ROLES = [
-  "chairman", "executive_manager", "operations_manager", "hr", "hr_manager", "production_manager", "production_controller",
+  "chairman", "executive_manager", "operations_manager", "sales_manager", "hr", "hr_manager", "production_manager", "production_controller",
   "warehouse_manager", "supervisor", "production_quality_controller", "quality_engineer", "raw_material_quality_controller",
 ] as const;
 /** نفس POST /production-workflow (اللي يقدر يشوف القايمة منهم). */
@@ -24,13 +24,21 @@ export const FINAL_STATUSES = ["delivered_customer", "delivered_warehouse", "can
 export const LIFECYCLE_ROLES = ["chairman", "executive_manager", "operations_manager", "production_manager", "production_controller", "supervisor", "production_quality_controller", "warehouse_manager"] as const;
 /** نفس أدوار PATCH /production-workflow/:id/dispatch. */
 export const DISPATCH_ROLES = ["chairman", "executive_manager", "operations_manager", "production_manager", "production_controller"] as const;
+/** نفس أدوار PATCH /production-workflow/:id/advance-stage. */
+export const ADVANCE_ROLES = ["chairman", "executive_manager", "operations_manager", "production_manager", "supervisor"] as const;
+/** مراحل التنفيذ بالترتيب (نفس PRODUCTION_STAGES في السيرفر). */
+export const STAGES = ["line_setup", "manufacturing", "assembly_packing", "ready_for_quality"] as const;
+
+/** رقم المرحلة الحالية (من 0). المرحلة الفاضية = تجهيز الخط. */
+export const stageIndex = (stage: string | null | undefined) => Math.max(0, STAGES.indexOf((stage || "line_setup") as (typeof STAGES)[number]));
+
 /** نفس assertLifecycleRole للتصحيح (corrected). */
 export const CORRECT_ROLES = ["chairman", "executive_manager", "production_manager", "quality_engineer"] as const;
 export const ORDER_PRIORITIES = ["urgent", "high", "normal", "low"] as const;
 
 const has = (list: readonly string[], role: string) => list.includes(role);
 
-export type OrderAction = "receive" | "cancel" | "deliver" | "confirm" | "dispatch" | "hold" | "resume" | "rework" | "partial" | "correct";
+export type OrderAction = "advance" | "receive" | "cancel" | "deliver" | "confirm" | "dispatch" | "hold" | "resume" | "rework" | "partial" | "correct";
 
 /** الكمية الجزئية: أكبر من صفر وأقل من كمية الأمر (نفس قاعدة السيرفر). */
 export function partialQtyError(qty: string, total: string): "bad" | "tooMuch" | null {
@@ -47,6 +55,7 @@ export function orderActions(role: string, status: string): OrderAction[] {
   if (status === "completed" && has(ORDER_DELIVER_ROLES, role)) out.push("deliver");
   if (status === "delivery_pending_customer" && has(CONFIRM_CUSTOMER_ROLES, role)) out.push("confirm");
   if (status === "delivery_pending_warehouse" && has(CONFIRM_WAREHOUSE_ROLES, role)) out.push("confirm");
+  if (status === "in_production" && has(ADVANCE_ROLES, role)) out.push("advance");
   if ((status === "materials_approved" || status === "materials_partial") && has(DISPATCH_ROLES, role)) out.push("dispatch");
   if (has(LIFECYCLE_ROLES, role)) {
     if (["in_production", "quality_check", "partially_completed", "rework"].includes(status)) out.push("hold");

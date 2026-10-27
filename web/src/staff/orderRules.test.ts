@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { canEditNeededBy, partialQtyError, countByStatus, createError, groupOf, isOverdue, isWaitingForRole, leastLoaded, orderActions, receiveError } from "./orderRules";
+import { canEditNeededBy, partialQtyError, stageIndex, countByStatus, createError, groupOf, isOverdue, isWaitingForRole, leastLoaded, orderActions, receiveError } from "./orderRules";
 
 describe("إجراءات أمر الإنتاج حسب الدور والحالة", () => {
   it("الاستلام عند claimed لمدير الإنتاج بس (مش new)", () => {
@@ -20,6 +20,17 @@ describe("إجراءات أمر الإنتاج حسب الدور والحالة"
   it("التسليم بعد الاكتمال لمدير الإنتاج", () => {
     expect(orderActions("production_manager", "completed")).toContain("deliver");
     expect(orderActions("supervisor", "completed")).not.toContain("deliver");
+  });
+});
+
+describe("مراحل التنفيذ", () => {
+  it("المشرف ينقل الأمر للمرحلة التالية وهو قيد التنفيذ بس", () => {
+    expect(orderActions("supervisor", "in_production")).toContain("advance");
+    expect(orderActions("supervisor", "quality_check")).not.toContain("advance");
+    expect(orderActions("hr", "in_production")).not.toContain("advance");
+    expect(stageIndex(null)).toBe(0);
+    expect(stageIndex("assembly_packing")).toBe(2);
+    expect(stageIndex("غلط")).toBe(0);
   });
 });
 

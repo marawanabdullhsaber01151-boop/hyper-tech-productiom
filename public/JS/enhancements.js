@@ -41,7 +41,7 @@ const ROLE_HOME_PAGE = {
   production_controller: "/v2/staff/production?tab=orders",
   warehouse_manager: "factory-warehouse-manager.html",
   storekeeper: "factory-warehouse-manager.html",
-  supervisor: "factory-supervisor.html",
+  supervisor: "/v2/staff/production?tab=orders",
   quality_controller: "factory-quality-controller.html",
   production_quality_controller: "factory-quality-controller.html",
   raw_material_quality_controller: "factory-quality-controller.html",

@@ -142,6 +142,28 @@ describe("تبويب أوامر الإنتاج", () => {
     await waitFor(() => expect(calls.find((c) => c.key === "PATCH /production-workflow/2/needed-by")?.body).toMatchObject({ neededBy: "2099-02-02" }));
   });
 
+  it("المشرف يفتح على أوامره بس وينقلها للمرحلة التالية", async () => {
+    login("supervisor");
+    stub();
+    mount();
+    await screen.findAllByText("PO-2");
+    expect(screen.queryByText("PO-1")).toBeNull();
+    expect(within(rowOf("PO-2")).getByText(/المرحلة 1 من 4/)).toBeTruthy();
+    fireEvent.click(within(rowOf("PO-2")).getByRole("button", { name: "المرحلة التالية" }));
+    const dlg = await screen.findByRole("dialog");
+    fireEvent.click(within(dlg).getByRole("button", { name: "نقل للمرحلة التالية" }));
+    await waitFor(() => expect(calls.some((c) => c.key === "PATCH /production-workflow/2/advance-stage")).toBe(true));
+  });
+
+  it("مدير المبيعات يتابع الأوامر من غير أزرار تنفيذ", async () => {
+    login("sales_manager");
+    stub();
+    mount();
+    expect((await screen.findAllByText("PO-1")).length).toBeGreaterThan(0);
+    expect(screen.queryByRole("button", { name: "استلام وتوزيع" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "المرحلة التالية" })).toBeNull();
+  });
+
   it("فلتر «ينتظر إجراءك» بيعرض أوامر الدور بس", async () => {
     login("production_manager");
     stub();

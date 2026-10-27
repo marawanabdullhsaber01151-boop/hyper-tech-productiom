@@ -150,7 +150,7 @@ describe("صفحة الإنتاج: الجودة والتتبع", () => {
   });
 
   it("دور من غير صلاحية بيشوف رسالة وضحة", () => {
-    login("sales_manager");
+    login("online_seller");
     stub();
     mount();
     expect(screen.getByText(/مفيش تبويب متاح/)).toBeTruthy();

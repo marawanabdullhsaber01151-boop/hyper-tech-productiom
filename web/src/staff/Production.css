@@ -7,3 +7,7 @@
 .prd-kv { display: flex; justify-content: space-between; gap: var(--sp-3); border-block-end: 1px solid var(--c-border-1); padding-block: var(--sp-1); }
 .prd-h { margin: var(--sp-2) 0 0; font-size: var(--fs-sm); }
 .prd-list { margin: 0; padding-inline-start: var(--sp-4); display: grid; gap: var(--sp-1); font-size: var(--fs-sm); }
+.prd-stages { display: flex; flex-wrap: wrap; gap: var(--sp-1); margin: 0; padding: 0; list-style: none; }
+.prd-stages li { padding: var(--sp-1) var(--sp-2); border: 1px solid var(--c-border-1); border-radius: var(--r-sm); font-size: var(--fs-xs); color: var(--c-text-3); }
+.prd-stages li.is-done { color: var(--c-success); border-color: var(--c-success); }
+.prd-stages li.is-current { color: var(--c-brand-text); background: var(--c-brand-soft); border-color: var(--c-brand); font-weight: 700; }

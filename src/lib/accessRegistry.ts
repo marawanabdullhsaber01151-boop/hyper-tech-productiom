@@ -34,6 +34,7 @@ export const ACCESS = {
     "chairman",
     "executive_manager",
     "operations_manager",
+    "sales_manager",
     "hr",
     "hr_manager",
     "production_manager",

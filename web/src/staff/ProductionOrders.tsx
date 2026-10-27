@@ -19,6 +19,8 @@ import {
   leastLoaded,
   partialQtyError,
   orderActions,
+  stageIndex,
+  STAGES,
   ownerRoleKey,
   receiveError,
   type OrderAction,
@@ -35,6 +37,7 @@ export interface OrderRow {
   neededBy: string | null;
   createdById?: number;
   lifecycleRevision?: number;
+  currentStage?: string | null;
   createdByName?: string | null;
   customerName?: string | null;
   customerPhone?: string | null;
@@ -56,19 +59,21 @@ interface Lifecycle {
 const val = (e: Event) => (e.target as HTMLInputElement).value;
 const today = () => new Date().toISOString().slice(0, 10);
 /** الأزرار اللي بتظهر في الصف مباشرة (الباقي جوّه التفاصيل عشان الجدول ما يزدحمش). */
-const ROW_ACTIONS: readonly OrderAction[] = ["receive", "dispatch", "deliver", "confirm", "resume"];
+const ROW_ACTIONS: readonly OrderAction[] = ["advance", "receive", "dispatch", "deliver", "confirm", "resume"];
 const LINE_KEY = "hyper_prd_last_line";
 const readLine = () => { try { return localStorage.getItem(LINE_KEY) ?? ""; } catch { return ""; } };
 const TONE: Record<string, "warn" | "info" | "success" | "danger" | "neutral"> = { waiting: "warn", inProgress: "info", done: "success", cancelled: "neutral" };
 const PRIO_TONE: Record<string, "danger" | "warn" | "neutral"> = { urgent: "danger", high: "warn", normal: "neutral", low: "neutral" };
 const statusLabel = (s: string) => t(`prd.ord.status.${s}` as CopyKey);
+const stageLabel = (s: string) => t(`prd.ord.stage.${s}` as CopyKey);
 const prioLabel = (p: string) => t(`prd.prio.${p}` as CopyKey);
 
 /** أوامر الإنتاج: القايمة، «عند مين الأمر؟»، سجل الحركة، والإجراءات المسموحة لدورك فقط. */
 export function ProductionOrders() {
   const user = staffUser();
   const role = user?.role ?? "";
-  const [filter, setFilter] = useState("");
+  // المشرف يفتح على «ينتظر إجراءك» (أوامره اللي شغالة)، والباقي على الكل.
+  const [filter, setFilter] = useState(() => (role === "supervisor" ? "mine" : ""));
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState<OrderRow | null>(null);
   const [creating, setCreating] = useState(false);
@@ -101,6 +106,7 @@ export function ProductionOrders() {
       <div class="prd-status">
         <StatusPill tone={TONE[groupOf(r.workflowStatus)] ?? "neutral"}>{statusLabel(r.workflowStatus)}</StatusPill>
         <small class="prd-muted">{t(`prd.ord.why.${r.workflowStatus}` as CopyKey)}</small>
+        {r.workflowStatus === "in_production" ? <small class="prd-muted">{t("prd.ord.stage.of", { n: stageIndex(r.currentStage) + 1, total: STAGES.length, name: stageLabel(STAGES[stageIndex(r.currentStage)]!) })}</small> : null}
       </div>
     ) },
     { key: "owner", header: t("prd.ord.col.owner"), cell: (r) => t(`prd.ord.owner.${ownerRoleKey(r.workflowStatus)}` as CopyKey), mobile: "hide" },
@@ -171,6 +177,11 @@ function OrderDetail({ row, role, userId, onClose, onAction }: { row: OrderRow; 
       <div class="prd-form">
         <StatusPill tone={TONE[groupOf(row.workflowStatus)] ?? "neutral"}>{statusLabel(row.workflowStatus)}</StatusPill>
         <p class="prd-muted">{t(`prd.ord.why.${row.workflowStatus}` as CopyKey)} {t(`prd.ord.owner.${ownerRoleKey(row.workflowStatus)}` as CopyKey)}</p>
+        {row.workflowStatus === "in_production" ? (
+          <ol class="prd-stages" aria-label={t("prd.ord.stage.title")}>
+            {STAGES.map((s, i) => <li key={s} class={i < stageIndex(row.currentStage) ? "is-done" : i === stageIndex(row.currentStage) ? "is-current" : ""}>{stageLabel(s)}</li>)}
+          </ol>
+        ) : null}
         <h3 class="prd-h">{t("prd.ord.d.info")}</h3>
         <Row label={t("prd.ord.col.product")} value={`${row.productName} | ${formatNumber(Number(row.qty))} ${row.unit}`} />
         <Row label={t("prd.ord.d.customer")} value={row.customerName ?? t("prd.ord.d.hidden")} />
@@ -243,7 +254,8 @@ function OrderDialog({ row, kind, onClose, onDone }: { row: OrderRow; kind: Orde
   const send = async () => {
     const id = row.id;
     const ok = await act.run(async () => {
-      if (kind === "receive") await api.patch<unknown>(`/production-workflow/${id}/receive`, { supervisorId: Number(autoSup), qualityControllerUserId: Number(autoQc), productionLine: line.trim(), startDate, operationalStatus: operational, pendingReason: operational === "pending" ? pendingReason.trim() : undefined });
+      if (kind === "advance") await api.patch<unknown>(`/production-workflow/${id}/advance-stage`, {});
+      else if (kind === "receive") await api.patch<unknown>(`/production-workflow/${id}/receive`, { supervisorId: Number(autoSup), qualityControllerUserId: Number(autoQc), productionLine: line.trim(), startDate, operationalStatus: operational, pendingReason: operational === "pending" ? pendingReason.trim() : undefined });
       else if (kind === "cancel") await api.patch<unknown>(`/production-workflow/${id}/cancel`, { reason: reason.trim() });
       else if (kind === "deliver") await api.patch<unknown>(`/production-workflow/${id}/deliver`, { deliveryType, deliveryNotes: notes.trim() || undefined });
       else if (kind === "confirm") await api.patch<unknown>(`/production-workflow/${id}/confirm-delivery`, {});
@@ -267,7 +279,7 @@ function OrderDialog({ row, kind, onClose, onDone }: { row: OrderRow; kind: Orde
       footer={<><Button variant="ghost" onClick={onClose}>{t("common.cancel")}</Button><Button loading={act.busy} disabled={invalid} onClick={() => void send()}>{t(`prd.ord.${k}.send` as CopyKey)}</Button></>}
     >
       <div class="prd-form">
-        <p class="prd-muted">{t(`prd.ord.${k}.text` as CopyKey)}</p>
+        <p class="prd-muted">{kind === "advance" ? t("prd.ord.a.text", { next: stageLabel(STAGES[Math.min(stageIndex(row.currentStage) + 1, STAGES.length - 1)]!) }) : t(`prd.ord.${k}.text` as CopyKey)}</p>
         <p><strong>{row.productName}</strong> | {formatNumber(Number(row.qty))} {row.unit}</p>
         {kind === "receive" ? (
           <>
@@ -313,7 +325,7 @@ function OrderDialog({ row, kind, onClose, onDone }: { row: OrderRow; kind: Orde
   );
 }
 
-const KEY = { receive: "r", cancel: "c", deliver: "v", confirm: "f", due: "u", dispatch: "x", hold: "h", resume: "s", rework: "w", partial: "p", correct: "o" } as const;
+const KEY = { advance: "a", receive: "r", cancel: "c", deliver: "v", confirm: "f", due: "u", dispatch: "x", hold: "h", resume: "s", rework: "w", partial: "p", correct: "o" } as const;
 const kindKey = (kind: OrderAction | "due") => KEY[kind];
 /** الحالة الهدف لكل انتقال عام (نفس CANONICAL_PRODUCTION_TRANSITIONS في السيرفر). */
 const TARGET = { hold: "held", resume: "in_production", rework: "rework", correct: "corrected" } as const;

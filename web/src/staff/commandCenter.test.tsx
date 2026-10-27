@@ -102,7 +102,7 @@ describe("عناصر لوحة الأوامر", () => {
     expect(some.map((x) => x.kind)).toEqual(["order", "item"]);
     some[1]!.run();
     expect(go).toHaveBeenLastCalledWith(`/v2/staff/stock?q=${encodeURIComponent("ورق A4")}`);
-    expect(pickPage(new Set(["factory-supervisor.html"]), ["x.html", "factory-supervisor.html"])).toBe("factory-supervisor.html");
+    expect(pickPage(new Set(["factory-warehouse-manager.html"]), ["x.html", "factory-warehouse-manager.html"])).toBe("factory-warehouse-manager.html");
   });
   it("البحث متسامح، والأخيرة بتتقدّم عند تساوي الدرجة، والشاشة الفاضية بتبدأ بالأخيرة", () => {
     const mk = (id: string, title: string): CmdItem => ({ id, kind: "page", title, run: () => {} });

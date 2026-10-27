@@ -20,13 +20,14 @@ const roleList = (src: string, name: string): string[] => {
 
 describe("تبويب أوامر الإنتاج الموحّد", () => {
   it("الصفحات والسكربتات القديمة اتمسحت", () => {
-    for (const f of ["public/production.html", "public/JS/production.js", "public/JS/factory-control-tower.js", "public/factory-production-manager.html", "public/JS/factory-production-manager.js"]) {
+    for (const f of ["public/production.html", "public/JS/production.js", "public/JS/factory-control-tower.js", "public/factory-production-manager.html", "public/JS/factory-production-manager.js", "public/factory-supervisor.html", "public/JS/factory-supervisor.js"]) {
       expect(existsSync(resolve(root, f))).toBe(false);
     }
   });
 
   it("الروابط القديمة بتتحوّل لتبويب الأوامر", () => {
     expect(PRODUCTION_PAGE_REDIRECTS["/production.html"]).toBe("/v2/staff/production?tab=orders");
+    expect(PRODUCTION_PAGE_REDIRECTS["/factory-supervisor.html"]).toBe("/v2/staff/production?tab=orders");
     expect(PRODUCTION_PAGE_REDIRECTS["/factory-production-manager.html"]).toBe("/v2/staff/production?tab=orders");
   });
 
@@ -39,6 +40,7 @@ describe("تبويب أوامر الإنتاج الموحّد", () => {
 
   it("سكربت الدخول القديم ما بيوجّهش لصفحات اتمسحت", () => {
     const src = read("public/JS/enhancements.js");
+    expect(src).not.toContain("factory-supervisor.html");
     expect(src).not.toContain('"production.html"');
     expect(src).not.toContain('"factory-production-manager.html"');
   });
@@ -50,6 +52,14 @@ describe("تبويب أوامر الإنتاج الموحّد", () => {
     const wf = read("src/routes/production-workflow.ts");
     expect(wf).toContain('"/production-workflow/:id",\n  requireAuth,\n  // نفس أدوار القايمة بالظبط');
     expect(wf).toContain("requireRole(...ACCESS.productionWorkflowRead)");
+  });
+
+  it("مدير المبيعات والاتش آر بيشوفوا متابعة الإنتاج من قسم المبيعات (والإدارة العليا من قسم الإنتاج)", () => {
+    for (const role of ["sales_manager", "hr", "hr_manager"] as const) {
+      const hrefs = getNavForRole(role).flatMap((d) => d.subFunctions.flatMap((s) => s.pages.map((p) => p.href)));
+      expect(hrefs).toContain("/v2/staff/production?tab=orders");
+    }
+    expect((ACCESS.productionWorkflowRead as readonly string[]).includes("sales_manager")).toBe(true);
   });
 
   it("مسار الوصفات مسجّل قبل /:id (وإلا Express يفسّره id)", () => {
@@ -69,5 +79,6 @@ describe("تبويب أوامر الإنتاج الموحّد", () => {
     };
     expect(roleList(web, "ORDER_RECEIVE_ROLES").sort()).toEqual(guard(":id/receive"));
     expect(roleList(web, "DISPATCH_ROLES").sort()).toEqual(guard(":id/dispatch"));
+    expect(roleList(web, "ADVANCE_ROLES").sort()).toEqual(guard(":id/advance-stage"));
   });
 });

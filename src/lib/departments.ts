@@ -113,6 +113,14 @@ export const DEPARTMENTS: readonly NavDepartment[] = [
           { id: "portal-orders", label: "طلبات بوابة العملاء", href: "/v2/admin/portal-orders", roles: ["chairman", "executive_manager", "sales_manager", "online_seller", "offline_seller", "hr", "hr_manager"] },
         ],
       },
+      {
+        id: "sales-production",
+        label: "متابعة الإنتاج",
+        roles: ["sales_manager", "hr", "hr_manager"],
+        pages: [
+          { id: "production", label: "أوامر الإنتاج", href: "/v2/staff/production?tab=orders", roles: ["sales_manager", "hr", "hr_manager"] },
+        ],
+      },
     ],
   },
   {
@@ -124,10 +132,9 @@ export const DEPARTMENTS: readonly NavDepartment[] = [
       {
         id: "production-orders",
         label: "أوامر الإنتاج",
-        roles: ["chairman", "executive_manager", "operations_manager", "production_manager", "production_controller"],
+        roles: ["chairman", "executive_manager", "operations_manager", "production_manager", "production_controller", "supervisor"],
         pages: [
-          { id: "production", label: "أوامر الإنتاج", href: "/v2/staff/production?tab=orders", roles: ["chairman", "executive_manager", "operations_manager", "production_manager", "production_controller"] },
-          { id: "factory-supervisor", label: "لوحة المشرف", href: "factory-supervisor.html", roles: ["chairman", "production_manager", "supervisor"] },
+          { id: "production", label: "أوامر الإنتاج", href: "/v2/staff/production?tab=orders", roles: ["chairman", "executive_manager", "operations_manager", "production_manager", "production_controller", "supervisor"] },
         ],
       },
       {
