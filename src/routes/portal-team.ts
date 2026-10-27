@@ -232,7 +232,7 @@ router.patch(
         });
       });
       invalidateMemberAccess();
-      res.json({ message: "اتحفظ" });
+      res.json({ message: "تم الحفظ" });
     } catch (err) {
       next(err);
     }
@@ -272,7 +272,7 @@ router.delete(
           before: { key: role.key, name: role.name },
         });
       });
-      res.json({ message: "اتمسح" });
+      res.json({ message: "تم الحذف" });
     } catch (err) {
       next(err);
     }
@@ -435,7 +435,7 @@ router.patch(
         });
       });
       invalidateMemberAccess(memberId);
-      res.json({ message: "اتحفظ" });
+      res.json({ message: "تم الحفظ" });
     } catch (err) {
       next(err);
     }
@@ -652,7 +652,7 @@ router.post(
           targetId: memberId,
         });
       });
-      res.json({ message: "اترفض" });
+      res.json({ message: "تم الرفض" });
     } catch (err) {
       next(err);
     }
@@ -758,7 +758,7 @@ router.put(
           after: { value: body.reset ? "reset" : body.value },
         });
       });
-      res.json({ message: "اتحفظ" });
+      res.json({ message: "تم الحفظ" });
     } catch (err) {
       next(err);
     }

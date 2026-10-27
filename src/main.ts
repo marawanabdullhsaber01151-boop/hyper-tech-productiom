@@ -49,7 +49,7 @@ import planningRouter from "./routes/planning";
 import navRouter from "./routes/nav";
 import portalChatRouter from "./routes/portal-chat";
 import chatStaffRouter from "./routes/chat-staff";
-import { LEGACY_CONTACTS_PATH, LEGACY_HOME_PATHS, LEGACY_OPERATIONS_PATHS, OPERATIONS_REDIRECT_TARGET, LEGACY_INVENTORY_PATH, LEGACY_MATERIAL_PATH, LEGACY_MOVEMENTS_PATH, MATERIAL_REDIRECT_TARGET, LEGACY_PORTAL_PATHS, LEGACY_SALES_PATH, STAFF_HOME_PATH, chatStaffRedirectTarget, portalRedirectTarget, salesRedirectTarget, inventoryRedirectTarget, contactsRedirectTarget } from "./lib/legacyRedirects";
+import { LEGACY_CONTACTS_PATH, LEGACY_HOME_PATHS, LEGACY_OPERATIONS_PATHS, OPERATIONS_REDIRECT_TARGET, LEGACY_PRODUCTION_PATHS, PRODUCTION_PAGE_REDIRECTS, LEGACY_INVENTORY_PATH, LEGACY_MATERIAL_PATH, LEGACY_MOVEMENTS_PATH, MATERIAL_REDIRECT_TARGET, LEGACY_PORTAL_PATHS, LEGACY_SALES_PATH, STAFF_HOME_PATH, chatStaffRedirectTarget, portalRedirectTarget, salesRedirectTarget, inventoryRedirectTarget, contactsRedirectTarget } from "./lib/legacyRedirects";
 import healthRouter from "./routes/health";
 
 import { errorHandler, notFound } from "./middleware/errorHandler";
@@ -208,6 +208,7 @@ app.get(LEGACY_SALES_PATH, (req, res) => res.redirect(302, salesRedirectTarget(r
 app.get(LEGACY_INVENTORY_PATH, (req, res) => res.redirect(302, inventoryRedirectTarget(req.originalUrl.split("?")[1] ?? "")));
 app.get(LEGACY_CONTACTS_PATH, (req, res) => res.redirect(302, contactsRedirectTarget(req.originalUrl.split("?")[1] ?? "")));
 app.get(LEGACY_OPERATIONS_PATHS, (_req, res) => res.redirect(302, OPERATIONS_REDIRECT_TARGET));
+app.get(LEGACY_PRODUCTION_PATHS, (req, res) => res.redirect(302, PRODUCTION_PAGE_REDIRECTS[req.path.toLowerCase()] ?? "/v2/staff/production"));
 app.get(LEGACY_MATERIAL_PATH, (_req, res) => res.redirect(302, MATERIAL_REDIRECT_TARGET));
 app.get(LEGACY_MOVEMENTS_PATH, (req, res) => res.redirect(302, inventoryRedirectTarget(req.originalUrl.split("?")[1] ?? "", true)));
 app.get("/chat-staff.html", (req, res) => res.redirect(302, chatStaffRedirectTarget(req.query.c)));

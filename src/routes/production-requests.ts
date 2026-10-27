@@ -13,6 +13,7 @@ import {
 } from "../db/schema";
 import { requireAuth, requireRole } from "../middleware/auth";
 import { parseIdParam } from "../lib/validate";
+import { PRODUCTION_REQUEST_VIEW_ROLES } from "../lib/productionQualityCore";
 import { notifyRole, notifyUser, notifyRoles } from "../lib/notifications";
 import { generateWorkflowOrderNumber } from "./production-workflow";
 import { writeAuditEvent } from "../lib/governance";
@@ -152,6 +153,7 @@ router.get(
 router.get(
   "/production-requests",
   requireAuth,
+  requireRole(...PRODUCTION_REQUEST_VIEW_ROLES),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const user = req.user!;
@@ -215,6 +217,7 @@ router.get(
 router.get(
   "/production-requests/:id",
   requireAuth,
+  requireRole(...PRODUCTION_REQUEST_VIEW_ROLES),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const user = req.user!;

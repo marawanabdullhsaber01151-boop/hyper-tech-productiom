@@ -40,7 +40,7 @@ export const STATUS_TONE = {
   cancelled: "danger",
 } as const;
 
-/** الوضع الطبيعي للأمر: مسودة ← مؤكد ← اتشحن ← اتدفع. */
+/** الوضع الطبيعي للأمر: مسودة ← مؤكد ← تم الشحن ← تم الدفع. */
 const LIFECYCLE: Record<string, number> = { draft: 0, confirmed: 1, shipped: 2, paid: 3 };
 
 /** الحالات اللي ينفع تتنقل لها من حالة معيّنة (نفس قواعد salesStatusTransition في السيرفر). الاعتماد بيتم من قرار الاعتماد، مش من هنا. */
@@ -121,7 +121,7 @@ export function dateBounds(p: DatePreset, now: Date = new Date()): { from?: stri
   return { from: `${now.getFullYear()}-01-01`, to };
 }
 
-/** الفاتورة متأخرة: ليها استحقاق عدّى وهي لسه قيد التحصيل (مؤكدة أو اتشحنت). */
+/** الفاتورة متأخرة: ليها استحقاق عدّى وهي لسه قيد التحصيل (مؤكدة أو تم شحنها). */
 export function isOverdue(o: Pick<SalesOrder, "status" | "dueDate">, now: Date = new Date()): boolean {
   if (!o.dueDate) return false;
   if (o.status !== "confirmed" && o.status !== "shipped") return false;

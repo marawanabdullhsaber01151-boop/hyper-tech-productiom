@@ -41,7 +41,7 @@ function ToastButtons() {
   const push = useToast();
   return (
     <div class="ht-row">
-      <Button variant="secondary" onClick={() => push({ tone: "success", message: "اتحفظ" })}>نجاح</Button>
+      <Button variant="secondary" onClick={() => push({ tone: "success", message: "تم الحفظ" })}>نجاح</Button>
       <Button variant="secondary" onClick={() => push({ tone: "info", message: "في طلب جديد من شركة النور" })}>معلومة</Button>
       <Button variant="secondary" onClick={() => push({ tone: "danger", message: "ماقدرناش نحفظ. جرّب تاني." })}>خطأ</Button>
     </div>
@@ -130,7 +130,7 @@ function Gallery() {
           <div class="ht-grid g-mt">
             <div><Checkbox label="افتكرني على الجهاز ده" /><Checkbox label="مفعّل" checked /><Checkbox label="مقفول" disabled /></div>
             <div><Radio name="r" label="مباشر" hint="الموظف ينضم من غير موافقة" checked /><Radio name="r" label="بموافقة الرئيس" /></div>
-            <Switch label="السماح بالانضمام بالكود" hint="لو اتقفل، الكود مش هيشتغل" checked={sw} onChange={setSw} />
+            <Switch label="السماح بالانضمام بالكود" hint="لو أُغلق، الكود مش هيشتغل" checked={sw} onChange={setSw} />
           </div>
         </Section>
 
@@ -144,7 +144,7 @@ function Gallery() {
         <Section title="الحالات والأرقام">
           <div class="ht-row g-mb">
             <StatusPill>مسودة</StatusPill><StatusPill tone="brand">جديد</StatusPill><StatusPill tone="success">شغّال</StatusPill>
-            <StatusPill tone="warn" pulse>مستني</StatusPill><StatusPill tone="danger">اتلغى</StatusPill><StatusPill tone="info">قيد المراجعة</StatusPill>
+            <StatusPill tone="warn" pulse>مستني</StatusPill><StatusPill tone="danger">ملغي</StatusPill><StatusPill tone="info">قيد المراجعة</StatusPill>
             <Avatar name="محمد سمير" /><Avatar name="هدى عادل" size={48} /><Avatar name="خالد" size={28} />
           </div>
           <div class="ht-grid">
@@ -171,7 +171,7 @@ function Gallery() {
         <Section title="التنبيهات والإشعارات">
           <div class="ht-stack">
             <InlineAlert tone="info" title="معلومة">الكود بيفضل شغّال لحد ما تغيّره.</InlineAlert>
-            <InlineAlert tone="success" title="اتحفظ">التعديلات اتسجلت.</InlineAlert>
+            <InlineAlert tone="success" title="تم الحفظ">تم تسجيل التعديلات.</InlineAlert>
             <InlineAlert tone="warn" title="انتبه">الشركة وصلت لأقصى عدد موظفين.</InlineAlert>
             <InlineAlert tone="danger" title="مشكلة" action={<Button size="sm" variant="secondary">جرّب تاني</Button>}>ماقدرناش نوصل للسيرفر.</InlineAlert>
             <ToastButtons />
@@ -182,7 +182,7 @@ function Gallery() {
           <Tabs value={tab} onChange={setTab} tabs={[{ id: "a", label: "الفريق", badge: 3, panel: <p>قائمة الموظفين هنا.</p> }, { id: "b", label: "الصلاحيات", panel: <p>الأدوار والصلاحيات.</p> }, { id: "c", label: "النشاط", panel: <p>سجل النشاط.</p> }]} />
           <div class="g-mt ht-grid g-cols2">
             <Card><StepWizard current={step} onChange={setStep} onFinish={() => setStep(0)} steps={[{ id: "1", title: "الشركة", content: <Field label="كود الشركة"><CodeInput value={code} onChange={(f) => setCode(f)} /></Field> }, { id: "2", title: "بياناتك", content: <Field label="اسمك"><Input /></Field> }, { id: "3", title: "تأكيد", content: <p>راجع بياناتك وكمّل.</p> }]} /></Card>
-            <Card><Timeline items={[{ id: 1, title: "الطلب اتعمل", meta: "النهارده 10:02 ص", tone: "brand" }, { id: 2, title: "اتأكد من الإدارة", meta: "النهارده 11:15 ص", body: "تم تأكيد المخزون.", tone: "success" }, { id: 3, title: "بيتجهّز", meta: "دلوقتي", tone: "warn" }]} /></Card>
+            <Card><Timeline items={[{ id: 1, title: "تم إنشاء الطلب", meta: "النهارده 10:02 ص", tone: "brand" }, { id: 2, title: "أكدته الإدارة", meta: "النهارده 11:15 ص", body: "تم تأكيد المخزون.", tone: "success" }, { id: 3, title: "بيتجهّز", meta: "دلوقتي", tone: "warn" }]} /></Card>
           </div>
         </Section>
 

@@ -11,13 +11,14 @@ import { StaffShell } from "../staff/StaffShell";
 import { StaffNotFound } from "../staff/SystemPages";
 import { RoleGuard } from "../staff/RoleGuard";
 import { PURCHASE_ROLES } from "../staff/purchasingCore";
-import { CONTACT_ROLES, HEALTH_ROLES, OPERATIONS_ROLES, SALES_PAGE_ROLES, STOCK_ROLES } from "../staff/staffRoles";
+import { CONTACT_ROLES, HEALTH_ROLES, OPERATIONS_ROLES, PRODUCTION_PAGE_ROLES, SALES_PAGE_ROLES, STOCK_ROLES } from "../staff/staffRoles";
 import { LazyPage } from "./lazyPage";
 
 const loadSales = () => import("../staff/Sales").then((m) => m.Sales as ComponentType<{ key?: string }>);
 const loadPurchases = () => import("../staff/Purchases").then((m) => m.Purchases as ComponentType<{ key?: string }>);
 const loadContacts = () => import("../staff/Contacts").then((m) => m.Contacts as ComponentType<{ key?: string }>);
 const loadOperations = () => import("../staff/Operations").then((m) => m.Operations as ComponentType<{ key?: string }>);
+const loadProduction = () => import("../staff/Production").then((m) => m.Production as ComponentType<{ key?: string }>);
 const loadStock = () => import("../staff/Stock").then((m) => m.Stock as ComponentType<{ key?: string }>);
 const loadHealth = () => import("../staff/SystemHealth").then((m) => m.SystemHealth as ComponentType<Record<string, never>>);
 
@@ -28,6 +29,7 @@ export const staffRoutes: RouteDef[] = [
   { path: "/staff/purchases", render: () => <RoleGuard roles={PURCHASE_ROLES}><LazyPage key={location.search} load={loadPurchases} props={{}} /></RoleGuard> },
   { path: "/staff/contacts", render: () => <RoleGuard roles={CONTACT_ROLES}><LazyPage key={location.search} load={loadContacts} props={{}} /></RoleGuard> },
   { path: "/staff/operations", render: () => <RoleGuard roles={OPERATIONS_ROLES}><LazyPage key={location.search} load={loadOperations} props={{}} /></RoleGuard> },
+  { path: "/staff/production", render: () => <RoleGuard roles={PRODUCTION_PAGE_ROLES}><LazyPage key={location.search} load={loadProduction} props={{}} /></RoleGuard> },
   { path: "/staff/stock", render: () => <RoleGuard roles={STOCK_ROLES}><LazyPage key={location.search} load={loadStock} props={{}} /></RoleGuard> },
   { path: "/staff/system-health", render: () => <RoleGuard roles={HEALTH_ROLES}><LazyPage load={loadHealth} props={{}} /></RoleGuard> },
   ...adminRoutes,

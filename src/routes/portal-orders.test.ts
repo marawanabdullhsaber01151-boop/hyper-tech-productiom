@@ -123,7 +123,7 @@ describe("portal review race protection", () => {
       'candidate.constraint === "portal_order_reviews_batch_ref_unique"',
     );
     expect(portalOrdersSource).toContain(
-      "الإرسالية دي اتراجعت بالفعل من موظف تاني في نفس اللحظة",
+      "الإرسالية دي تمت مراجعتها بالفعل من موظف تاني في نفس اللحظة",
     );
   });
 });

@@ -53,6 +53,13 @@ describe("/nav لكل دور من الـ18 (قبول المرحلة ١)", () => 
     }
   });
 
+  it("المخازن: أمين المخزن ومديره يوصلوا لطلبات الإنتاج (قرار المخزن) في الصفحة الجديدة", () => {
+    for (const role of ["storekeeper", "warehouse_manager"] as const) {
+      const page = getNavForRole(role).flatMap((d) => d.subFunctions.flatMap((s) => s.pages)).find((p) => p.id === "production-requests-warehouse");
+      expect(page?.href).toBe("/v2/staff/production?tab=requests");
+    }
+  });
+
   it("المخازن: أمين المخزن ومديره يشوفوا صفحة استلام أوامر الشراء", () => {
     for (const role of ["storekeeper", "warehouse_manager"] as const) expect(pageIds(role)).toContain("purchases-receive");
   });

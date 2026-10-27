@@ -982,7 +982,7 @@ router.patch(
           throw Object.assign(new Error("حالة التشغيل غير موجودة"), { status: 404 });
         }
         if (["converted", "cancelled", "completed", "closed"].includes(before.status)) {
-          throw Object.assign(new Error("الحالة دي اتقفلت ومينفعش تتعدّل"), { status: 409 });
+          throw Object.assign(new Error("الحالة دي مغلقة ولا يمكن تعديلها"), { status: 409 });
         }
         if (before.version !== input.expectedVersion) {
           throw Object.assign(new Error("الحالة اتعدّلت من حد تاني — حدّث الصفحة وجرّب تاني"), { status: 409 });

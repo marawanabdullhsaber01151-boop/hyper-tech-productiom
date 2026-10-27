@@ -366,7 +366,7 @@ router.post("/portal-admin/channels/email/test", ...staffWrite, async (req, res,
       return;
     }
     const r = await adapter.send({ to: normalizeEmail(to), subject: "تجربة Hyper-Tech", text: "لو وصلتلك الرسالة دي، إعدادات الإيميل شغالة." });
-    res.json({ ok: r.ok, configured: true, errorCode: r.errorCode ?? null, message: r.ok ? "اتبعتت رسالة التجربة" : "الإرسال فشل، راجع إعدادات SMTP" });
+    res.json({ ok: r.ok, configured: true, errorCode: r.errorCode ?? null, message: r.ok ? "تم إرسال رسالة التجربة" : "الإرسال فشل، راجع إعدادات SMTP" });
   } catch (e) {
     next(e);
   }
@@ -466,7 +466,7 @@ router.post("/portal/me/channels/email/verify", requirePortalAuth, tokenLimiter,
       .values({ userId, type: "email", address, verifiedAt: new Date(), isPrimary: has.length === 0 })
       .onConflictDoUpdate({ target: [portalChannelsTable.userId, portalChannelsTable.type, portalChannelsTable.address], set: { verifiedAt: new Date(), enabled: true } });
     await auditUser(userId, "portal.channel.added", req, { type: "email" });
-    res.json({ ok: true, message: "الإيميل اتأكد واتحفظ" });
+    res.json({ ok: true, message: "تم تأكيد الإيميل وحفظه" });
   } catch (e) {
     next(e);
   }
@@ -547,7 +547,7 @@ router.post("/portal/telegram/webhook", async (req, res) => {
           .values({ userId: link.userId, type: "telegram", address: String(chatId), verifiedAt: now, isPrimary: has.length === 0 })
           .onConflictDoUpdate({ target: [portalChannelsTable.userId, portalChannelsTable.type, portalChannelsTable.address], set: { verifiedAt: now, enabled: true } });
         await auditUser(link.userId, "portal.channel.added", req, { type: "telegram" }, "telegram_bot");
-        await telegramSend(String(chatId), "اتربط حسابك في Hyper-Tech بتيليجرام ✅");
+        await telegramSend(String(chatId), "تم ربط حسابك في Hyper-Tech بتيليجرام ✅");
       } else {
         await telegramSend(String(chatId), "الرابط ده انتهى أو اتستخدم. اطلب رابط جديد من إعدادات حسابك.");
       }

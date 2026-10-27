@@ -50,7 +50,7 @@ export function isBatchReviewUniqueViolation(error: unknown): boolean {
 }
 
 const batchReviewConflictMessage =
-  "الإرسالية دي اتراجعت بالفعل من موظف تاني في نفس اللحظة";
+  "الإرسالية دي تمت مراجعتها بالفعل من موظف تاني في نفس اللحظة";
 
 async function generateSalesOrderNumber(tx: Transaction): Promise<string> {
   const now = new Date();

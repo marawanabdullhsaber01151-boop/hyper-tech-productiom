@@ -371,7 +371,7 @@ router.patch("/portal-admin/applications/:id", ...write, async (req, res, next) 
       if (!app) throw domainError(404, "APPLICATION_NOT_FOUND", "طلب الانضمام غير موجود");
       const open = OPEN_STAGES.includes(app.stage);
       const touchesData = ["fullName", "companyName", "phone", "email", "address", "city", "commercialRegisterNo", "taxId", "expectedMonthlyVolume"].some((k) => (body as Record<string, unknown>)[k] !== undefined);
-      if (touchesData && !open) throw domainError(409, "APPLICATION_ALREADY_DECIDED", "الطلب اتقفل ومينفعش نعدّل بياناته");
+      if (touchesData && !open) throw domainError(409, "APPLICATION_ALREADY_DECIDED", "الطلب مغلق ولا يمكن تعديل بياناته");
 
       const set: Record<string, unknown> = { updatedAt: new Date() };
       const changed: string[] = [];
@@ -421,7 +421,7 @@ router.patch("/portal-admin/applications/:id", ...write, async (req, res, next) 
       return updated!;
     });
     const [limits, names] = await Promise.all([slaLimits(), reviewerNames()]);
-    res.json({ message: "اتحفظ", application: present(result, limits, names) });
+    res.json({ message: "تم الحفظ", application: present(result, limits, names) });
   } catch (e) {
     next(e);
   }
@@ -481,7 +481,7 @@ router.post("/portal-admin/applications/:id/reject", ...write, async (req, res, 
   try {
     const { reason } = reasonSchema.parse(req.body ?? {});
     await closeOrAsk(req, id(req.params.id), "rejected", reason);
-    res.json({ message: "اترفض الطلب واتسجّل السبب" });
+    res.json({ message: "تم رفض الطلب وتسجيل السبب" });
   } catch (e) {
     next(e);
   }

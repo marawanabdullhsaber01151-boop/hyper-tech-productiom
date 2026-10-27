@@ -2,6 +2,7 @@
 
 import { Router } from "express";
 import { desc, eq } from "drizzle-orm";
+import { z } from "zod";
 import { db } from "../db";
 import {
   createDowntimeSchema,
@@ -13,6 +14,7 @@ import {
   productionNcrsTable,
   productionOperationConfirmationsTable,
   productionTraceabilityTable,
+  productionWorkflowOrdersTable,
 } from "../db/schema";
 import {
   requireAuth,
@@ -22,8 +24,15 @@ import {
 import { parseIdParam } from "../lib/validate";
 import { validateBatchQuantities } from "../domain/production-execution";
 import { nextPhase0Number } from "../lib/phase0";
+import { writeAuditEvent } from "../lib/governance";
+import { NCR_CLOSE_ROLES, NCR_DISPOSITIONS, checkNcrClose } from "../lib/productionQualityCore";
 
 const router = Router();
+const closeNcrSchema = z.object({
+  rootCause: z.string().trim().max(1000).default(""),
+  correctiveAction: z.string().trim().max(1000).default(""),
+  disposition: z.enum(NCR_DISPOSITIONS).optional(),
+});
 const productionRoles = [
   "chairman",
   "production_manager",
@@ -193,6 +202,13 @@ router.post(
     try {
       const data = createNcrSchema.parse(req.body);
       const created = await db.transaction(async (tx) => {
+        // أمر الإنتاج لازم يكون موجود؛ من غيره كان بيطلع خطأ قاعدة بيانات (500) بدل رسالة مفهومة.
+        const [order] = await tx
+          .select({ id: productionWorkflowOrdersTable.id })
+          .from(productionWorkflowOrdersTable)
+          .where(eq(productionWorkflowOrdersTable.id, data.workflowOrderId))
+          .limit(1);
+        if (!order) throw Object.assign(new Error("أمر الإنتاج غير موجود"), { status: 404, code: "WORKFLOW_ORDER_NOT_FOUND" });
         const ncrNumber = await nextPhase0Number(tx, "production_ncr");
         const [record] = await tx
           .insert(productionNcrsTable)
@@ -202,6 +218,7 @@ router.post(
             createdBy: req.user!.userId,
           })
           .returning();
+        await writeAuditEvent({ actorUserId: req.user!.userId, actorName: req.user!.username, actionKey: "production.ncr.open", resourceType: "production_ncr", resourceId: record!.id, afterData: { ncrNumber, workflowOrderId: data.workflowOrderId, defectCode: data.defectCode, affectedQty: data.affectedQty, disposition: data.disposition ?? null }, ipAddress: req.ip, userAgent: req.get("user-agent"), executor: tx });
         return record;
       });
       res.status(201).json({ data: created });
@@ -217,12 +234,47 @@ router.get(
   requireRole(...productionRoles),
   async (_req, res, next) => {
     try {
-      res.json({
-        data: await db
-          .select()
-          .from(productionNcrsTable)
-          .orderBy(desc(productionNcrsTable.createdAt)),
+      // رقم الأمر واسم المنتج جنب كل حالة، عشان المستخدم ما يدوّرش على رقم داخلي.
+      const rows = await db
+        .select({
+          ncr: productionNcrsTable,
+          orderNumber: productionWorkflowOrdersTable.orderNumber,
+          productName: productionWorkflowOrdersTable.productName,
+        })
+        .from(productionNcrsTable)
+        .leftJoin(productionWorkflowOrdersTable, eq(productionNcrsTable.workflowOrderId, productionWorkflowOrdersTable.id))
+        .orderBy(desc(productionNcrsTable.createdAt));
+      res.json({ data: rows.map(({ ncr, orderNumber, productName }) => ({ ...ncr, orderNumber, productName })) });
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+// قفل حالة عدم مطابقة: لازم سبب جذري وإجراء تصحيحي، ومعاهم قيد تدقيق في نفس المعاملة.
+router.patch(
+  "/production-execution/ncrs/:id/close",
+  requireAuth,
+  requireRole(...NCR_CLOSE_ROLES),
+  async (req, res, next) => {
+    try {
+      const id = parseIdParam(req.params.id, res);
+      if (id === null) return;
+      const body = closeNcrSchema.parse(req.body);
+      const updated = await db.transaction(async (tx) => {
+        const [row] = await tx.select().from(productionNcrsTable).where(eq(productionNcrsTable.id, id)).for("update").limit(1);
+        if (!row) throw Object.assign(new Error("حالة عدم المطابقة غير موجودة"), { status: 404, code: "NCR_NOT_FOUND" });
+        const check = checkNcrClose({ status: row.status, rootCause: body.rootCause, correctiveAction: body.correctiveAction });
+        if (!check.ok) throw Object.assign(new Error(check.message), { status: check.code === "ALREADY_CLOSED" ? 409 : 400, code: check.code });
+        const [result] = await tx
+          .update(productionNcrsTable)
+          .set({ status: "closed", rootCause: check.rootCause, correctiveAction: check.correctiveAction, disposition: body.disposition ?? row.disposition, closedBy: req.user!.userId, closedAt: new Date() })
+          .where(eq(productionNcrsTable.id, id))
+          .returning();
+        await writeAuditEvent({ actorUserId: req.user!.userId, actorName: req.user!.username, actionKey: "production.ncr.close", resourceType: "production_ncr", resourceId: id, beforeData: { status: row.status, disposition: row.disposition }, afterData: { status: "closed", disposition: result!.disposition, rootCause: check.rootCause, correctiveAction: check.correctiveAction }, ipAddress: req.ip, userAgent: req.get("user-agent"), executor: tx });
+        return result!;
       });
+      res.json({ data: updated });
     } catch (err) {
       next(err);
     }
@@ -256,18 +308,14 @@ router.get(
   requireRole(...productionRoles),
   async (req, res, next) => {
     try {
-      res.json({
-        data: await db
-          .select()
-          .from(productionTraceabilityTable)
-          .where(
-            eq(
-              productionTraceabilityTable.lotNumber,
-              String(req.params.lotNumber),
-            ),
-          )
-          .orderBy(desc(productionTraceabilityTable.createdAt)),
-      });
+      // رقم أمر الإنتاج جنب كل سجل بدل رقم داخلي.
+      const rows = await db
+        .select({ trace: productionTraceabilityTable, orderNumber: productionWorkflowOrdersTable.orderNumber })
+        .from(productionTraceabilityTable)
+        .leftJoin(productionWorkflowOrdersTable, eq(productionTraceabilityTable.workflowOrderId, productionWorkflowOrdersTable.id))
+        .where(eq(productionTraceabilityTable.lotNumber, String(req.params.lotNumber)))
+        .orderBy(desc(productionTraceabilityTable.createdAt));
+      res.json({ data: rows.map(({ trace, orderNumber }) => ({ ...trace, orderNumber })) });
     } catch (err) {
       next(err);
     }

@@ -38,7 +38,7 @@ export function pickPage(hrefs: Set<string>, candidates: readonly string[]): str
   return null;
 }
 
-export const ORDER_PAGES = ["production.html", "factory-production-manager.html", "factory-supervisor.html", "factory-warehouse-manager.html", "factory-quality-controller.html", "production-control.html", "execution-control.html", "/v2/staff/operations"] as const;
+export const ORDER_PAGES = ["production.html", "factory-production-manager.html", "factory-supervisor.html", "factory-warehouse-manager.html", "factory-quality-controller.html", "production-control.html", "/v2/staff/production?tab=quality", "/v2/staff/operations"] as const;
 export const ITEM_PAGES = ["/v2/staff/stock", "factory-warehouse-manager.html"] as const;
 
 export function recordItems(
@@ -172,6 +172,7 @@ export function notificationTarget(n: { referenceType?: string | null; reference
   if (n.referenceType === "operations_center") return "/v2/staff/operations";
   if (n.referenceType === "operations_plan") return "/v2/staff/operations?tab=plans";
   if (n.referenceType === "purchase_requisition") return "/v2/staff/purchases";
+  if (n.referenceType === "production_request") return "/v2/staff/production?tab=requests";
   if (n.referenceType === "operations_case") return n.referenceId ? `/v2/staff/operations?case=${n.referenceId}` : "/v2/staff/operations";
   if (n.referenceType === "production_workflow") return pickPage(navHrefs(nav), ORDER_PAGES) ?? nav?.homeHref ?? null;
   return null;

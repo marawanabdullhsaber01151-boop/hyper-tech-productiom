@@ -79,6 +79,13 @@ export function contactsRedirectTarget(rawQuery: string): string {
 export const LEGACY_OPERATIONS_PATHS = ["/operations.html", "/operations-manager.html"];
 export const OPERATIONS_REDIRECT_TARGET = "/v2/staff/operations";
 
+/** صفحتا «طلبات الإنتاج» و«التنفيذ والجودة والتتبع» القديمتان ← صفحة الإنتاج الجديدة (تبويب لكل واحدة). */
+export const PRODUCTION_PAGE_REDIRECTS: Readonly<Record<string, string>> = {
+  "/production-requests.html": "/v2/staff/production?tab=requests",
+  "/execution-control.html": "/v2/staff/production?tab=quality",
+};
+export const LEGACY_PRODUCTION_PATHS = Object.keys(PRODUCTION_PAGE_REDIRECTS);
+
 /** صفحة المبيعات القديمة (`/sales.html?channel=website`) ← `/v2/staff/sales`. بننقل `channel` و`status` بس من قايمة معروفة. */
 export const LEGACY_SALES_PATH = "/sales.html";
 const SALES_STATUS_PARAMS = ["draft", "pending_approval", "confirmed", "shipped", "paid", "cancelled"];

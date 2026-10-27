@@ -1,0 +1,6 @@
+.prd-muted { margin: 0; font-size: var(--fs-xs); color: var(--c-text-3); }
+.prd-stats { display: grid; gap: var(--sp-3); grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); margin-block-end: var(--sp-3); }
+.prd-toolbar { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-block: var(--sp-2); align-items: center; }
+.prd-form { display: grid; gap: var(--sp-3); }
+.prd-status { display: grid; gap: var(--sp-1); justify-items: start; }
+.prd-actions { display: flex; flex-wrap: wrap; gap: var(--sp-1); }

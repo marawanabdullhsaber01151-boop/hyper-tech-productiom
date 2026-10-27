@@ -12,13 +12,14 @@ import { invCopy } from "./inv";
 import { purchasesCopy } from "./purchases";
 import { contactsCopy } from "./contacts";
 import { operationsCopy } from "./operations";
+import { productionCopy } from "./production";
 
 export type Plural = { zero?: string; one?: string; two?: string; few?: string; many?: string; other: string };
 export type Msg = string | Plural;
 
 export const ar = {
   "common.save": "احفظ",
-  "common.saved": "اتحفظ",
+  "common.saved": "تم الحفظ",
   "common.cancel": "إلغاء",
   "common.close": "قفل",
   "common.confirm": "تأكيد",
@@ -45,7 +46,7 @@ export const ar = {
   "common.no": "لأ",
 
   "error.generic": "حصلت مشكلة. جرّب تاني بعد شوية.",
-  "error.network": "الاتصال ضعيف أو واقف. اتأكد من النت وجرّب تاني.",
+  "error.network": "الاتصال ضعيف أو واقف. تأكد من النت وجرّب تاني.",
   "error.server": "السيرفر مش بيرد دلوقتي. جرّب تاني بعد شوية.",
   "error.forbidden": "مالكش صلاحية للحاجة دي.",
   "error.notFound": "مش لاقيين اللي بتدوّر عليه.",
@@ -99,7 +100,7 @@ export const ar = {
   "status.pending": "مستني",
   "status.active": "شغّال",
   "status.done": "خلص",
-  "status.canceled": "اتلغى",
+  "status.canceled": "ملغي",
   "status.blocked": "واقف",
   "status.draft": "مسودة",
 
@@ -138,6 +139,7 @@ export const ar = {
   ...purchasesCopy,
   ...contactsCopy,
   ...operationsCopy,
+  ...productionCopy,
   ...chatCopy,
 } as const satisfies Record<string, Msg>;
 

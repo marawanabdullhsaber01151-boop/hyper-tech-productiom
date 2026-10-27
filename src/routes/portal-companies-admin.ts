@@ -150,7 +150,7 @@ router.put(
           after: { value: body.reset ? "reset" : body.value },
         });
       });
-      res.json({ message: "اتحفظ" });
+      res.json({ message: "تم الحفظ" });
     } catch (err) {
       next(err);
     }

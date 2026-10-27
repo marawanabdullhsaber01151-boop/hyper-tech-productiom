@@ -69,8 +69,8 @@ export const contactsCopy = {
   "con.ed.address": "العنوان",
   "con.ed.notes": "ملاحظات",
   "con.ed.save": "احفظ",
-  "con.ed.created": "اتضافت جهة الاتصال",
-  "con.ed.updated": "اتحدّثت جهة الاتصال",
+  "con.ed.created": "تمت إضافة جهة الاتصال",
+  "con.ed.updated": "تم تحديث جهة الاتصال",
   "con.ed.err.name": "اكتب الاسم",
   "con.ed.err.phone": "رقم التليفون مش صحيح",
   "con.ed.err.email": "الإيميل مش صحيح",
@@ -81,7 +81,7 @@ export const contactsCopy = {
   "con.dr.info": "البيانات",
   "con.dr.address": "العنوان",
   "con.dr.notes": "ملاحظات",
-  "con.dr.since": "اتضافت",
+  "con.dr.since": "تاريخ الإضافة",
   "con.dr.sales": "آخر فواتير المبيعات",
   "con.dr.sales.none": "مفيش فواتير لسه.",
   "con.dr.po": "آخر أوامر الشراء",
@@ -91,5 +91,5 @@ export const contactsCopy = {
 
   "con.del.title": "تحذف {name}؟",
   "con.del.desc": "هتتنقل لسلة المحذوفات. لو عليها فواتير أو أوامر شراء الحذف مش هيتم.",
-  "con.deleted": "اتحذفت جهة الاتصال",
+  "con.deleted": "تم حذف جهة الاتصال",
 } as const;

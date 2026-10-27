@@ -340,7 +340,7 @@ router.post(`${BASE}/:id/resend`, ...write, async (req, res, next) => {
       const [r] = await tx.select().from(portalActivationRequestsTable).where(eq(portalActivationRequestsTable.id, rid)).for("update");
       if (!r) throw domainError(404, "ACTIVATION_REQUEST_NOT_FOUND", "طلب التفعيل غير موجود");
       if (r.status !== "confirmed" || !r.matchedPortalCustomerId) {
-        throw domainError(409, "ACTIVATION_NOT_CONFIRMED", "الطلب ده لسه ماتأكدش");
+        throw domainError(409, "ACTIVATION_NOT_CONFIRMED", "الطلب ده لسه ما تمش تأكيده");
       }
       const [c] = await tx.select().from(portalCustomersTable).where(eq(portalCustomersTable.id, r.matchedPortalCustomerId)).limit(1);
       if (!c) throw domainError(404, "PORTAL_CUSTOMER_NOT_FOUND", "حساب الشركة مش موجود");

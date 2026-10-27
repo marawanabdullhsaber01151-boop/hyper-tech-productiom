@@ -274,7 +274,7 @@ router.post("/portal-companies/bulk", ...manage, async (req: Request, res: Respo
       });
       return rows.length;
     });
-    res.json({ updated: result, message: "اتحفظ" });
+    res.json({ updated: result, message: "تم الحفظ" });
   } catch (e) {
     next(e);
   }
@@ -439,7 +439,7 @@ router.put("/portal-admin/settings/:key", ...manage, async (req, res, next) => {
     await db.transaction((tx) =>
       changeSetting(tx, { scope: "global", scopeId: null, key, value: body.value, reset: body.reset, by: staffName(req) }),
     );
-    res.json({ message: "اتحفظ" });
+    res.json({ message: "تم الحفظ" });
   } catch (e) {
     next(e);
   }
@@ -556,7 +556,7 @@ router.put("/portal-companies/:id/settings/:key", ...manage, async (req, res, ne
       await changeSetting(tx, { scope: "company", scopeId: companyId, key, value: body.value, reset: body.reset, by: staffName(req) });
       await writePortalAudit(tx, { companyId, ...staffActor(req), action: "setting.changed", targetType: "setting", targetId: key, after: { value: body.reset ? "reset" : body.value } });
     });
-    res.json({ message: "اتحفظ", settings: await companySettings(companyId) });
+    res.json({ message: "تم الحفظ", settings: await companySettings(companyId) });
   } catch (e) {
     next(e);
   }
@@ -662,7 +662,7 @@ router.patch("/portal-companies/:id/members/:memberId", ...manage, async (req, r
       });
     });
     invalidateMemberAccess(memberId);
-    res.json({ message: "اتحفظ" });
+    res.json({ message: "تم الحفظ" });
   } catch (e) {
     next(e);
   }
@@ -703,7 +703,7 @@ router.post("/portal-companies/:id/members/:memberId/revoke-sessions", ...manage
       return n;
     });
     invalidateMemberAccess(memberId);
-    res.json({ revoked: count, message: "اتقفلت الجلسات" });
+    res.json({ revoked: count, message: "تم إغلاق الجلسات" });
   } catch (e) {
     next(e);
   }

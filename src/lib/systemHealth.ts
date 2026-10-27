@@ -353,7 +353,7 @@ const DEFS: CheckDef[] = [
     title: "رسائل ما وصلتش للعملاء",
     run: async () => {
       const n = await count(sql`SELECT count(*)::int AS n FROM portal_outbox WHERE status = 'failed' AND created_at > now() - interval '1 day'`);
-      if (!n) return { status: "ok", message: "كل الرسائل (كود التفعيل والإشعارات) اتبعتت تمام آخر ٢٤ ساعة." };
+      if (!n) return { status: "ok", message: "كل الرسائل (كود التفعيل والإشعارات) أُرسلت بنجاح آخر ٢٤ ساعة." };
       return {
         status: statusFromCount(n, { warnAt: 1, badAt: 10 }),
         message: `${countWord(n, { one: "رسالة", two: "رسالتين", few: "رسائل", many: "رسالة" })} للعملاء فشل إرسالها آخر ٢٤ ساعة (كود تفعيل أو إشعار). العميل ممكن يكون مستني كود ومش جاي.`,

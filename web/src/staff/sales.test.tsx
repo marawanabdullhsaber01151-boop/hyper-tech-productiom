@@ -110,7 +110,7 @@ describe("Sales — القايمة", () => {
     const calls = setup();
     mount();
     await screen.findByText("INV-1");
-    fireEvent.click(screen.getByRole("button", { name: /^اتدفعت/ }));
+    fireEvent.click(screen.getByRole("button", { name: /^تم الدفع/ }));
     await waitFor(() => expect(calls.some((c) => c.path === "/api/v1/sales" && c.query.get("status") === "paid")).toBe(true));
   });
 

@@ -14,4 +14,7 @@ export const CONTACT_ROLES = ["chairman", "executive_manager", "sales_manager", 
 export const CONTACT_WRITE_ROLES = ["chairman", "sales_manager", "online_seller", "offline_seller", "hr", "hr_manager"] as const;
 
 /** نفس OPERATIONS_CONTROL_ROLES.caseView / planEdit في السيرفر (مركز قيادة التشغيل). */
+/** الإنتاج: اتحاد أدوار طلبات الإنتاج والجودة (التفاصيل في productionRules). */
+export { PRODUCTION_PAGE_ROLES } from "./productionRules";
+
 export const OPERATIONS_ROLES = ["chairman", "executive_manager", "operations_manager"] as const;

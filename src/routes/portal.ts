@@ -386,7 +386,7 @@ router.post(
               kind: duplicate ? "auto_closed" : "submitted",
               stageTo: stage,
               actorLabel: "customer",
-              note: duplicate ? "اتقفل تلقائيًا: الرقم له حساب أو طلب مفتوح" : null,
+              note: duplicate ? "أُغلق تلقائيًا: الرقم له حساب أو طلب مفتوح" : null,
             });
           }
         } catch (err) {
@@ -2741,7 +2741,7 @@ router.post(
             throw Object.assign(
               new Error(
                 decision.reason === "finished"
-                  ? "الصنف ده خلص أو اتلغى قبل كده، مينفعش يتلغي"
+                  ? "الصنف ده خلص أو ملغي قبل كده، ولا يمكن إلغاؤه"
                   : "الإلغاء في المرحلة دي محتاج تواصل مع المبيعات",
               ),
               { status: 409 },
@@ -2801,7 +2801,7 @@ router.post(
           await notifyRole(role, {
             type: "order.cancelled_late",
             title: "إلغاء متأخر لطلب بوابة",
-            body: `${updated.orderNumber} اتلغى من العميل وهو في مرحلة ${stage}. محتاج قرار إدارة.`,
+            body: `${updated.orderNumber} ألغاه العميل وهو في مرحلة ${stage}. محتاج قرار إدارة.`,
             referenceType: "production_workflow",
             referenceId: updated.id,
           });

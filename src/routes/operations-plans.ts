@@ -171,7 +171,7 @@ async function decide(req: Request, res: Response, next: NextFunction, to: "appr
       return updated!;
     });
     if (result.submittedBy) {
-      await notifyUser(result.submittedBy, { type: "operations_plan_decided", title: `خطة ${result.planNumber} ${to === "approved" ? "اتعتمدت" : "اترفضت"}`, body: result.decisionNote ?? "", referenceType: "operations_plan", referenceId: result.id }).catch(() => undefined);
+      await notifyUser(result.submittedBy, { type: "operations_plan_decided", title: `خطة ${result.planNumber} ${to === "approved" ? "تم اعتمادها" : "تم رفضها"}`, body: result.decisionNote ?? "", referenceType: "operations_plan", referenceId: result.id }).catch(() => undefined);
     }
     res.json(summary(result));
   } catch (err) { next(err); }

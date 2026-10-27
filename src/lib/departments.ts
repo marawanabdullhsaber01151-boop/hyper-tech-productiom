@@ -144,7 +144,7 @@ export const DEPARTMENTS: readonly NavDepartment[] = [
         label: "طلبات الإنتاج",
         roles: ["chairman", "supervisor", "production_manager"],
         pages: [
-          { id: "production-requests", label: "طلبات الإنتاج", href: "production-requests.html", roles: ["chairman", "supervisor", "production_manager"] },
+          { id: "production-requests", label: "طلبات الإنتاج", href: "/v2/staff/production?tab=requests", roles: ["chairman", "supervisor", "production_manager", "warehouse_manager"] },
           { id: "factory-intake", label: "استقبال طلبات الإنتاج", href: "factory-intake.html", roles: ["chairman", "supervisor", "production_manager"] },
         ],
       },
@@ -161,7 +161,7 @@ export const DEPARTMENTS: readonly NavDepartment[] = [
         label: "التنفيذ والجودة والتتبع",
         roles: ["chairman", "production_manager", "production_controller", "supervisor", "production_quality_controller"],
         pages: [
-          { id: "execution-control", label: "التنفيذ والجودة والتتبع", href: "execution-control.html", roles: ["chairman", "production_manager", "production_controller", "supervisor", "production_quality_controller"] },
+          { id: "execution-control", label: "التنفيذ والجودة والتتبع", href: "/v2/staff/production?tab=quality", roles: ["chairman", "production_manager", "production_controller", "supervisor", "production_quality_controller"] },
         ],
       },
       {
@@ -196,6 +196,7 @@ export const DEPARTMENTS: readonly NavDepartment[] = [
           { id: "inventory", label: "المخزن", href: "/v2/staff/stock", roles: ["chairman", "warehouse_manager", "storekeeper"] },
           { id: "material", label: "المواد الخام", href: "/v2/staff/stock?cat=raw_material", roles: ["chairman", "warehouse_manager", "storekeeper"] },
           { id: "purchases-receive", label: "استلام أوامر الشراء", href: "/v2/staff/purchases", roles: ["chairman", "warehouse_manager", "storekeeper"] },
+          { id: "production-requests-warehouse", label: "طلبات إنتاج بانتظار المخزن", href: "/v2/staff/production?tab=requests", roles: ["chairman", "warehouse_manager", "storekeeper"] },
           { id: "movements", label: "حركات المخزون", href: "/v2/staff/stock?tab=movements", roles: ["chairman", "warehouse_manager", "storekeeper"] },
           { id: "factory-warehouse-manager", label: "لوحة مدير المخازن", href: "factory-warehouse-manager.html", roles: ["chairman", "warehouse_manager", "operations_manager"] },
         ],
