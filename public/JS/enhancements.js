@@ -39,8 +39,8 @@ const ROLE_HOME_PAGE = {
   buyer: "/v2/staff/purchases",
   production_manager: "/v2/staff/production?tab=orders",
   production_controller: "/v2/staff/production?tab=orders",
-  warehouse_manager: "factory-warehouse-manager.html",
-  storekeeper: "factory-warehouse-manager.html",
+  warehouse_manager: "/v2/staff/production?tab=orders",
+  storekeeper: "/v2/staff/production?tab=orders",
   supervisor: "/v2/staff/production?tab=orders",
   quality_controller: "/v2/staff/production?tab=inspect",
   production_quality_controller: "/v2/staff/production?tab=inspect",
@@ -343,6 +343,7 @@ class MyActionsSystem {
         return orders
           .filter((o) => o.workflowStatus === "new")
           .map((o) => ({ ...o, actionLabel: "بانتظار استلامك وتوزيعه" }));
+      case "storekeeper":
       case "warehouse_manager":
         return orders
           .filter((o) =>

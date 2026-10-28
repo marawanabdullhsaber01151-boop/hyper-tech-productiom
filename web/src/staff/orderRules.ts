@@ -1,9 +1,10 @@
 /** قواعد تبويب «أوامر الإنتاج»: مين يعمل إيه وعلى أنهي حالة. السيرفر هو الحَكَم الفعلي، وده بس عشان نخفي الأزرار اللي هتترفض. */
+import { MATERIALS_DECIDE_ROLES } from "./materialsRules";
 
 /** نفس ACCESS.productionWorkflowRead في السيرفر. */
 export const ORDER_VIEW_ROLES = [
   "chairman", "executive_manager", "operations_manager", "sales_manager", "hr", "hr_manager", "production_manager", "production_controller",
-  "warehouse_manager", "supervisor", "production_quality_controller", "quality_engineer", "raw_material_quality_controller",
+  "warehouse_manager", "storekeeper", "supervisor", "production_quality_controller", "quality_engineer", "raw_material_quality_controller",
 ] as const;
 /** نفس POST /production-workflow (اللي يقدر يشوف القايمة منهم). */
 export const ORDER_CREATE_ROLES = ["chairman", "executive_manager", "hr", "hr_manager"] as const;
@@ -38,7 +39,7 @@ export const ORDER_PRIORITIES = ["urgent", "high", "normal", "low"] as const;
 
 const has = (list: readonly string[], role: string) => list.includes(role);
 
-export type OrderAction = "advance" | "receive" | "cancel" | "deliver" | "confirm" | "dispatch" | "hold" | "resume" | "rework" | "partial" | "correct";
+export type OrderAction = "advance" | "receive" | "cancel" | "deliver" | "confirm" | "dispatch" | "hold" | "resume" | "rework" | "partial" | "correct" | "decide";
 
 /** الكمية الجزئية: أكبر من صفر وأقل من كمية الأمر (نفس قاعدة السيرفر). */
 export function partialQtyError(qty: string, total: string): "bad" | "tooMuch" | null {
@@ -55,6 +56,7 @@ export function orderActions(role: string, status: string): OrderAction[] {
   if (status === "completed" && has(ORDER_DELIVER_ROLES, role)) out.push("deliver");
   if (status === "delivery_pending_customer" && has(CONFIRM_CUSTOMER_ROLES, role)) out.push("confirm");
   if (status === "delivery_pending_warehouse" && has(CONFIRM_WAREHOUSE_ROLES, role)) out.push("confirm");
+  if (status === "materials_requested" && has(MATERIALS_DECIDE_ROLES, role)) out.push("decide");
   if (status === "in_production" && has(ADVANCE_ROLES, role)) out.push("advance");
   if ((status === "materials_approved" || status === "materials_partial") && has(DISPATCH_ROLES, role)) out.push("dispatch");
   if (has(LIFECYCLE_ROLES, role)) {
@@ -79,7 +81,7 @@ export const canViewOrders = (role: string) => has(ORDER_VIEW_ROLES, role);
 const WAITING: Record<string, readonly string[]> = {
   claimed: ORDER_RECEIVE_ROLES,
   pending_supervisor: ["supervisor"],
-  materials_requested: ["warehouse_manager", "operations_manager", "executive_manager", "chairman"],
+  materials_requested: MATERIALS_DECIDE_ROLES,
   materials_approved: DISPATCH_ROLES,
   materials_partial: DISPATCH_ROLES,
   held: ["production_manager", "supervisor"],

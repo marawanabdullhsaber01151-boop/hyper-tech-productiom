@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { canEditNeededBy, partialQtyError, stageIndex, countByStatus, createError, groupOf, isOverdue, isWaitingForRole, leastLoaded, orderActions, receiveError } from "./orderRules";
+import { canEditNeededBy, canViewOrders, partialQtyError, stageIndex, countByStatus, createError, groupOf, isOverdue, isWaitingForRole, leastLoaded, orderActions, receiveError } from "./orderRules";
 
 describe("إجراءات أمر الإنتاج حسب الدور والحالة", () => {
   it("الاستلام عند claimed لمدير الإنتاج بس (مش new)", () => {
@@ -98,5 +98,17 @@ describe("حسابات مساعدة", () => {
     expect(groupOf("claimed")).toBe("waiting");
     expect(groupOf("in_production")).toBe("inProgress");
     expect(groupOf("delivered_warehouse")).toBe("done");
+  });
+  it("قرار الخامات: أدوار المخزن والتشغيل والإدارة على «طلب مواد» بس، والمشرف ومدير الإنتاج لأ", () => {
+    for (const r of ["warehouse_manager", "storekeeper", "operations_manager", "executive_manager", "chairman"]) expect(orderActions(r, "materials_requested")).toContain("decide");
+    for (const r of ["supervisor", "production_manager", "hr", "sales_manager"]) expect(orderActions(r, "materials_requested")).not.toContain("decide");
+    expect(orderActions("warehouse_manager", "materials_approved")).not.toContain("decide");
+    expect(orderActions("warehouse_manager", "in_production")).not.toContain("decide");
+  });
+  it("أمين المخزن يشوف الأوامر وبيظهر له «ينتظر إجراءك» على الخامات والاستلام", () => {
+    expect(canViewOrders("storekeeper")).toBe(true);
+    expect(isWaitingForRole("storekeeper", "materials_requested")).toBe(true);
+    expect(isWaitingForRole("storekeeper", "delivery_pending_warehouse")).toBe(true);
+    expect(isWaitingForRole("storekeeper", "claimed")).toBe(false);
   });
 });

@@ -40,6 +40,7 @@ export const ACCESS = {
     "production_manager",
     "production_controller",
     "warehouse_manager",
+    "storekeeper",
     "supervisor",
     "production_quality_controller",
     "quality_engineer",

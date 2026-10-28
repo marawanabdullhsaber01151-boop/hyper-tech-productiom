@@ -11,3 +11,13 @@
 .prd-stages li { padding: var(--sp-1) var(--sp-2); border: 1px solid var(--c-border-1); border-radius: var(--r-sm); font-size: var(--fs-xs); color: var(--c-text-3); }
 .prd-stages li.is-done { color: var(--c-success); border-color: var(--c-success); }
 .prd-stages li.is-current { color: var(--c-brand-text); background: var(--c-brand-soft); border-color: var(--c-brand); font-weight: 700; }
+.prd-scroll { overflow-x: auto; }
+.prd-mat { width: 100%; border-collapse: collapse; font-size: var(--fs-sm); }
+.prd-mat th, .prd-mat td { padding: var(--sp-1) var(--sp-2); text-align: start; border-block-end: 1px solid var(--c-border-1); white-space: nowrap; }
+.prd-mat thead th { font-size: var(--fs-xs); color: var(--c-text-3); font-weight: 600; }
+.prd-mat tbody th { font-weight: 600; }
+.prd-qty { width: 7rem; padding: var(--sp-1) var(--sp-2); border: 1px solid var(--c-border-1); border-radius: var(--r-sm); font: inherit; background: inherit; color: inherit; }
+.prd-modes { display: flex; flex-wrap: wrap; gap: var(--sp-3); }
+.prd-warn { margin: 0; font-size: var(--fs-sm); color: var(--c-danger-text); font-weight: 600; }
+.prd-ok { margin: 0; font-size: var(--fs-sm); color: var(--c-success-text); font-weight: 600; }
+.prd-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }

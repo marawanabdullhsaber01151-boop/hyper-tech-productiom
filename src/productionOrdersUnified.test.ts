@@ -20,7 +20,7 @@ const roleList = (src: string, name: string): string[] => {
 
 describe("تبويب أوامر الإنتاج الموحّد", () => {
   it("الصفحات والسكربتات القديمة اتمسحت", () => {
-    for (const f of ["public/production.html", "public/JS/production.js", "public/JS/factory-control-tower.js", "public/factory-production-manager.html", "public/JS/factory-production-manager.js", "public/factory-supervisor.html", "public/JS/factory-supervisor.js", "public/factory-quality-controller.html", "public/JS/factory-quality-controller.js"]) {
+    for (const f of ["public/production.html", "public/JS/production.js", "public/JS/factory-control-tower.js", "public/factory-production-manager.html", "public/JS/factory-production-manager.js", "public/factory-supervisor.html", "public/JS/factory-supervisor.js", "public/factory-quality-controller.html", "public/JS/factory-quality-controller.js", "public/factory-warehouse-manager.html", "public/JS/factory-warehouse-manager.js"]) {
       expect(existsSync(resolve(root, f))).toBe(false);
     }
   });
@@ -106,5 +106,41 @@ describe("فحص الجودة (الخطوة 25)", () => {
   it("أدوار قرار الجودة في الويب مطابقة للسيرفر", () => {
     const pick = (src: string, name: string) => [...src.match(new RegExp(`${name} = \\[([^\\]]*)\\]`))![1]!.matchAll(/"([^"]+)"/g)].map((x) => x[1]!).sort();
     expect(pick(read("web/src/staff/qualityRules.ts"), "QUALITY_DECIDE_ROLES")).toEqual(pick(read("src/lib/productionQualityCore.ts"), "QUALITY_DECIDE_ROLES"));
+  });
+});
+
+describe("قرار خامات المخزن (الخطوة 26)", () => {
+  const pick = (src: string, name: string) => [...src.match(new RegExp(`${name} = \\[([^\\]]*)\\]`))![1]!.matchAll(/"([^"]+)"/g)].map((x) => x[1]!).sort();
+
+  it("لوحة المخزن القديمة بتتحوّل لتبويب الأوامر، والقايمة بتشاور عليه لأدوار المخزن", () => {
+    expect(PRODUCTION_PAGE_REDIRECTS["/factory-warehouse-manager.html"]).toBe("/v2/staff/production?tab=orders");
+    for (const role of ["warehouse_manager", "storekeeper"] as const) {
+      const hrefs = getNavForRole(role).flatMap((d) => d.subFunctions.flatMap((s) => s.pages.map((p) => p.href)));
+      expect(hrefs).toContain("/v2/staff/production?tab=orders");
+      expect(hrefs).not.toContain("factory-warehouse-manager.html");
+    }
+  });
+
+  it("أمين المخزن يقدر يقرا قايمة الأوامر (كان بيفشل عليه تحميل صفحته الرئيسية)", () => {
+    expect(ACCESS.productionWorkflowRead).toContain("storekeeper");
+    expect(read("public/JS/enhancements.js")).toContain('storekeeper: "/v2/staff/production?tab=orders"');
+  });
+
+  it("أدوار قرار الخامات: الويب = السيرفر = الصلاحية الافتراضية في سجل الإجراءات", () => {
+    const server = pick(read("src/lib/warehouseDecisionCore.ts"), "MATERIALS_DECIDE_ROLES");
+    expect(pick(read("web/src/staff/materialsRules.ts"), "MATERIALS_DECIDE_ROLES")).toEqual(server);
+    const reg = read("src/lib/actionRegistry.ts");
+    const line = reg.split("\n").find((l) => l.includes('key: "productionWorkflow.warehouseAction"'))!;
+    expect([...line.match(/defaultRoles: \[([^\]]*)\]/)![1]!.matchAll(/"([^"]+)"/g)].map((x) => x[1]!).sort()).toEqual(server);
+  });
+
+  it("السيرفر بيفحص قواعد القرار قبل أي تنفيذ، وأدوار المخزن كلها بتجهّز بدون خصم مباشر", () => {
+    const wf = read("src/routes/production-workflow.ts");
+    const i = wf.indexOf('"/production-workflow/:id/warehouse-action"');
+    const body = wf.slice(i, i + 9000);
+    expect(body).toContain("checkMaterialsDecision({");
+    expect(body.indexOf("checkMaterialsDecision({")).toBeLessThan(body.indexOf("db.transaction"));
+    expect(body).toContain('user.role === "warehouse_manager" || user.role === "storekeeper"');
+    expect(pick(read("web/src/staff/materialsRules.ts"), "PREPARE_ONLY_ROLES")).toEqual(["storekeeper", "warehouse_manager"]);
   });
 });

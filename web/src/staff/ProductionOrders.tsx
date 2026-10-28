@@ -7,6 +7,7 @@ import { t, type CopyKey } from "../copy";
 import { Button, DataTable, Dialog, EmptyState, Field, InlineAlert, Input, Select, Stat, StatusPill, Textarea, type Column } from "../design/components";
 import { Plus, RefreshCw } from "../design/icons";
 import { formatDate, formatDateTime, formatNumber } from "../lib/format";
+import { MaterialsDialog } from "./ProductionMaterials";
 import {
   ORDER_PRIORITIES,
   canCreateOrder,
@@ -59,7 +60,7 @@ interface Lifecycle {
 const val = (e: Event) => (e.target as HTMLInputElement).value;
 const today = () => new Date().toISOString().slice(0, 10);
 /** الأزرار اللي بتظهر في الصف مباشرة (الباقي جوّه التفاصيل عشان الجدول ما يزدحمش). */
-const ROW_ACTIONS: readonly OrderAction[] = ["advance", "receive", "dispatch", "deliver", "confirm", "resume"];
+const ROW_ACTIONS: readonly OrderAction[] = ["advance", "receive", "decide", "dispatch", "deliver", "confirm", "resume"];
 const LINE_KEY = "hyper_prd_last_line";
 const readLine = () => { try { return localStorage.getItem(LINE_KEY) ?? ""; } catch { return ""; } };
 const TONE: Record<string, "warn" | "info" | "success" | "danger" | "neutral"> = { waiting: "warn", inProgress: "info", done: "success", cancelled: "neutral" };
@@ -72,8 +73,8 @@ const prioLabel = (p: string) => t(`prd.prio.${p}` as CopyKey);
 export function ProductionOrders() {
   const user = staffUser();
   const role = user?.role ?? "";
-  // المشرف يفتح على «ينتظر إجراءك» (أوامره اللي شغالة)، والباقي على الكل.
-  const [filter, setFilter] = useState(() => (role === "supervisor" ? "mine" : ""));
+  // المشرف والمخزن يفتحوا على «ينتظر إجراءك» (شغلهم بس)، والباقي على الكل.
+  const [filter, setFilter] = useState(() => (role === "supervisor" || role === "warehouse_manager" || role === "storekeeper" ? "mine" : ""));
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState<OrderRow | null>(null);
   const [creating, setCreating] = useState(false);
@@ -157,7 +158,8 @@ export function ProductionOrders() {
       <DataTable columns={columns} rows={rows} rowKey={(r) => r.id} caption={t("prd.ord.caption")} loading={list.loading} empty={<EmptyState title={t("prd.ord.empty")} compact />} />
       {open ? <OrderDetail row={open} role={role} userId={user?.id} onClose={() => setOpen(null)} onAction={(kind) => { const row = open; setOpen(null); setDialog({ row, kind }); }} /> : null}
       {creating ? <NewOrderDialog onClose={() => setCreating(false)} onDone={async () => { setCreating(false); await refresh(); }} /> : null}
-      {dialog ? <OrderDialog row={dialog.row} kind={dialog.kind} onClose={() => setDialog(null)} onDone={async () => { setDialog(null); await refresh(); }} /> : null}
+      {dialog?.kind === "decide" ? <MaterialsDialog row={dialog.row} role={role} onClose={() => setDialog(null)} onDone={async () => { setDialog(null); await refresh(); }} /> : null}
+      {dialog && dialog.kind !== "decide" ? <OrderDialog row={dialog.row} kind={dialog.kind} onClose={() => setDialog(null)} onDone={async () => { setDialog(null); await refresh(); }} /> : null}
     </>
   );
 }
@@ -325,7 +327,7 @@ function OrderDialog({ row, kind, onClose, onDone }: { row: OrderRow; kind: Orde
   );
 }
 
-const KEY = { advance: "a", receive: "r", cancel: "c", deliver: "v", confirm: "f", due: "u", dispatch: "x", hold: "h", resume: "s", rework: "w", partial: "p", correct: "o" } as const;
+const KEY = { advance: "a", receive: "r", cancel: "c", deliver: "v", confirm: "f", due: "u", dispatch: "x", hold: "h", resume: "s", rework: "w", partial: "p", correct: "o", decide: "m" } as const;
 const kindKey = (kind: OrderAction | "due") => KEY[kind];
 /** الحالة الهدف لكل انتقال عام (نفس CANONICAL_PRODUCTION_TRANSITIONS في السيرفر). */
 const TARGET = { hold: "held", resume: "in_production", rework: "rework", correct: "corrected" } as const;

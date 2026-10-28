@@ -12,7 +12,7 @@
 import { ACCESS } from "../lib/accessRegistry";
 import { QUALITY_DECIDE_ROLES, checkQualityDone } from "../lib/productionQualityCore";
 import { Router, Request, Response, NextFunction } from "express";
-import { eq, desc, sql, and } from "drizzle-orm";
+import { eq, desc, sql, and, inArray } from "drizzle-orm";
 import { db } from "../db";
 import {
   productionWorkflowOrdersTable,
@@ -26,6 +26,7 @@ import {
   stockMovementsTable,
   operationTransfersTable,
   productionLifecycleAdjustmentsTable,
+  inventoryItemsTable,
 } from "../db/schema";
 import { nextPhase0Number } from "../lib/phase0";
 import {
@@ -42,6 +43,7 @@ import { applyStockMovement } from "../lib/stock";
 import { computeRequiredMaterialsForOrder } from "../lib/materials";
 import { PERMISSIONS } from "../lib/permissions";
 import { assertProductionTransition } from "../domain/production-status";
+import { checkMaterialsDecision } from "../lib/warehouseDecisionCore";
 import {
   buildProductionOrderSnapshot,
   hashProductionSnapshot,
@@ -991,6 +993,34 @@ router.patch(
         });
         return;
       }
+      {
+        // قواعد القرار على الخامات: الرفض بسبب، والاعتماد الكامل ممنوع مع نقص، والجزئي بكميات سليمة.
+        const requested = ((existing.requestedMaterials as any[]) || []).map((m) => ({
+          inventoryItemId: m.inventoryItemId ?? null,
+          materialName: String(m.materialName ?? ""),
+          requestedQty: String(m.requestedQty ?? "0"),
+        }));
+        const ids = requested.map((m) => m.inventoryItemId).filter((x): x is number => typeof x === "number");
+        const stockRows = ids.length ?
+            await db
+              .select({ id: inventoryItemsTable.id, qty: inventoryItemsTable.qty })
+              .from(inventoryItemsTable)
+              .where(inArray(inventoryItemsTable.id, ids))
+          : [];
+        const availableById: Record<number, number> = {};
+        for (const r of stockRows) availableById[r.id] = Number(r.qty);
+        const verdict = checkMaterialsDecision({
+          action: data.action,
+          comment: data.comment,
+          requested,
+          availableById,
+          decisions: data.materialDecisions?.map((d) => ({ inventoryItemId: d.inventoryItemId ?? null, materialName: d.materialName, approvedQty: d.approvedQty })),
+        });
+        if (!verdict.ok) {
+          res.status(400).json({ error: { code: verdict.code, message: verdict.message } });
+          return;
+        }
+      }
       if (
         user.role === "operations_manager" ||
         user.role === "executive_manager" ||
@@ -1019,7 +1049,7 @@ router.patch(
 
       if (data.action === "approve" || data.action === "partial") {
         // مدير المخازن يجهّز ويسلّم لمدير التشغيل فقط؛ لا يخصم المخزون من هذا المسار.
-        if (user.role === "warehouse_manager") {
+        if (user.role === "warehouse_manager" || user.role === "storekeeper") {
           assertProductionTransition(
             existing.workflowStatus,
             data.action === "partial" ?
@@ -1102,6 +1132,15 @@ router.patch(
               data.comment,
             );
             return { updated, createdTransfers };
+          });
+          const prepTitle = `مواد أمر ${existing.orderNumber} جاهزة للاستلام${data.action === "partial" ? " (جزئيًا)" : ""}`;
+          const prepBody = `جهّز "${user.username}" مواد "${existing.productName}" وسلّمها لمدير التشغيل.` + (data.comment ? `\nملاحظة: ${data.comment}` : "");
+          await notifyRole("operations_manager", {
+            type: "workflow_materials_approved",
+            title: prepTitle,
+            body: prepBody,
+            referenceType: "production_workflow",
+            referenceId: id,
           });
           res.json({
             message: "تم تجهيز المواد وتسليمها لمدير التشغيل دون خصم مباشر.",

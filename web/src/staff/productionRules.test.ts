@@ -18,7 +18,7 @@ describe("إجراءات طلب الإنتاج حسب الدور والحالة"
   it("إنشاء الطلب والتبويبات", () => {
     expect(canCreateRequest("supervisor")).toBe(true);
     expect(canCreateRequest("storekeeper")).toBe(false);
-    expect(availableTabs("storekeeper")).toEqual(["requests"]);
+    expect(availableTabs("storekeeper")).toEqual(["requests", "orders"]);
     expect(availableTabs("production_quality_controller")).toEqual(["orders", "inspect", "quality", "trace"]);
     expect(availableTabs("raw_material_quality_controller")).toEqual(["orders"]);
     expect(availableTabs("supervisor")).toEqual(["requests", "orders", "quality", "trace"]);
