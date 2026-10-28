@@ -85,6 +85,7 @@ export const PRODUCTION_PAGE_REDIRECTS: Readonly<Record<string, string>> = {
   "/execution-control.html": "/v2/staff/production?tab=quality",
   "/production.html": "/v2/staff/production?tab=orders",
   "/factory-supervisor.html": "/v2/staff/production?tab=orders",
+  "/factory-quality-controller.html": "/v2/staff/production?tab=inspect",
   "/factory-production-manager.html": "/v2/staff/production?tab=orders",
 };
 export const LEGACY_PRODUCTION_PATHS = Object.keys(PRODUCTION_PAGE_REDIRECTS);

@@ -6,7 +6,6 @@
   "GET /production-lifecycle/legacy-audit": "ops: تدقيق البيانات القديمة (سكريبت phase2)",
   "GET /sales/integrity-report": "ops: تقرير سلامة المبيعات",
   "GET /production-cycle/stages": "backlog: مراحل دورة الإنتاج بدون شاشة بعد",
-  "GET /production-workflow/quality-records": "backlog: سجلات الجودة بدون شاشة بعد",
   "POST /production-workflow/:id/split": "backlog: تقسيم أمر إنتاج بدون شاشة بعد",
   "GET /operations-control/orders/:id/customer-status": "backlog: حالة العميل بدون شاشة بعد",
   "POST /operations-control/sales-orders/:id/execute-plan": "backlog: تنفيذ خطة أمر بيع بدون شاشة بعد",

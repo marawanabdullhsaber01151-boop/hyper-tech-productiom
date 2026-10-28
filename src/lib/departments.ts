@@ -245,7 +245,7 @@ export const DEPARTMENTS: readonly NavDepartment[] = [
         label: "مراقبة الجودة",
         roles: ["chairman", "raw_material_quality_controller", "quality_engineer", "production_quality_controller"],
         pages: [
-          { id: "factory-quality-controller", label: "مراقب الجودة", href: "factory-quality-controller.html", roles: ["chairman", "raw_material_quality_controller", "quality_engineer", "production_quality_controller"] },
+          { id: "factory-quality-controller", label: "مراقب الجودة", href: "/v2/staff/production?tab=inspect", roles: ["chairman", "raw_material_quality_controller", "quality_engineer", "production_quality_controller"] },
         ],
       },
     ],

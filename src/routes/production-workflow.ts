@@ -10,6 +10,7 @@
  */
 
 import { ACCESS } from "../lib/accessRegistry";
+import { QUALITY_DECIDE_ROLES, checkQualityDone } from "../lib/productionQualityCore";
 import { Router, Request, Response, NextFunction } from "express";
 import { eq, desc, sql, and } from "drizzle-orm";
 import { db } from "../db";
@@ -1602,21 +1603,18 @@ router.patch(
 router.patch(
   "/production-workflow/:id/quality-done",
   requireAuth,
-  requireRole(
-    "quality_controller",
-    "production_quality_controller",
-    "quality_engineer",
-    "supervisor",
-    "operations_manager",
-    "executive_manager",
-    "chairman",
-  ),
+  requireRole(...QUALITY_DECIDE_ROLES),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const id = parseIdParam(req.params.id, res);
       if (id === null) return;
       const data = qualityDoneSchema.parse(req.body);
       const user = req.user!;
+      const qualityCheck = checkQualityDone(data);
+      if (!qualityCheck.ok) {
+        res.status(400).json({ error: { code: qualityCheck.code, message: qualityCheck.message } });
+        return;
+      }
 
       const [existing] = await db
         .select()
@@ -1696,6 +1694,22 @@ router.patch(
           checklist: data.checklist ?? [],
           recordedById: user.userId,
           recordedByName: user.username,
+        });
+        // قرار الجودة بيتسجّل في التدقيق حتى لو الأمر فضل في فحص الجودة (حالة الرسوب)
+        await writeAuditEvent({
+          executor: tx,
+          actorUserId: user.userId,
+          actorName: user.username,
+          actionKey: "production.quality.decision",
+          resourceType: "production_workflow_order",
+          resourceId: id,
+          beforeData: { workflowStatus: locked.workflowStatus },
+          afterData: {
+            workflowStatus: up.workflowStatus,
+            qualityStatus: data.qualityStatus,
+            samplePassRate: qualityCheck.rate,
+          },
+          reason: data.qualityNotes ?? null,
         });
         await auditWorkflowTransition(
           tx,

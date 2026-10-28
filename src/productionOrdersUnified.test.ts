@@ -20,7 +20,7 @@ const roleList = (src: string, name: string): string[] => {
 
 describe("تبويب أوامر الإنتاج الموحّد", () => {
   it("الصفحات والسكربتات القديمة اتمسحت", () => {
-    for (const f of ["public/production.html", "public/JS/production.js", "public/JS/factory-control-tower.js", "public/factory-production-manager.html", "public/JS/factory-production-manager.js", "public/factory-supervisor.html", "public/JS/factory-supervisor.js"]) {
+    for (const f of ["public/production.html", "public/JS/production.js", "public/JS/factory-control-tower.js", "public/factory-production-manager.html", "public/JS/factory-production-manager.js", "public/factory-supervisor.html", "public/JS/factory-supervisor.js", "public/factory-quality-controller.html", "public/JS/factory-quality-controller.js"]) {
       expect(existsSync(resolve(root, f))).toBe(false);
     }
   });
@@ -80,5 +80,31 @@ describe("تبويب أوامر الإنتاج الموحّد", () => {
     expect(roleList(web, "ORDER_RECEIVE_ROLES").sort()).toEqual(guard(":id/receive"));
     expect(roleList(web, "DISPATCH_ROLES").sort()).toEqual(guard(":id/dispatch"));
     expect(roleList(web, "ADVANCE_ROLES").sort()).toEqual(guard(":id/advance-stage"));
+  });
+});
+
+describe("فحص الجودة (الخطوة 25)", () => {
+  it("لوحة مراقب الجودة القديمة بتتحوّل لتبويب الفحص، والقايمة بتشاور عليه", () => {
+    expect(PRODUCTION_PAGE_REDIRECTS["/factory-quality-controller.html"]).toBe("/v2/staff/production?tab=inspect");
+    for (const role of ["production_quality_controller", "quality_engineer", "raw_material_quality_controller"] as const) {
+      const hrefs = getNavForRole(role).flatMap((d) => d.subFunctions.flatMap((s) => s.pages.map((p) => p.href)));
+      expect(hrefs).toContain("/v2/staff/production?tab=inspect");
+    }
+  });
+
+  it("قرار الجودة في السيرفر: أدوار بدون المشرف + فحص القواعد + تدقيق", () => {
+    const wf = read("src/routes/production-workflow.ts");
+    const i = wf.indexOf('"/production-workflow/:id/quality-done"');
+    expect(wf.slice(i, i + 300)).toContain("requireRole(...QUALITY_DECIDE_ROLES)");
+    expect(wf).toContain("checkQualityDone(data)");
+    expect(wf).toContain('actionKey: "production.quality.decision"');
+    const core = read("src/lib/productionQualityCore.ts");
+    const m = core.match(/QUALITY_DECIDE_ROLES = \[([^\]]*)\]/)!;
+    expect(m[1]).not.toContain("supervisor");
+  });
+
+  it("أدوار قرار الجودة في الويب مطابقة للسيرفر", () => {
+    const pick = (src: string, name: string) => [...src.match(new RegExp(`${name} = \\[([^\\]]*)\\]`))![1]!.matchAll(/"([^"]+)"/g)].map((x) => x[1]!).sort();
+    expect(pick(read("web/src/staff/qualityRules.ts"), "QUALITY_DECIDE_ROLES")).toEqual(pick(read("src/lib/productionQualityCore.ts"), "QUALITY_DECIDE_ROLES"));
   });
 });

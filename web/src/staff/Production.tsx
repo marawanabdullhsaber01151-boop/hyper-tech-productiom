@@ -2,6 +2,7 @@ import { useState } from "preact/hooks";
 import { staffUser } from "../admin/session";
 import { t } from "../copy";
 import { InlineAlert, Tabs } from "../design/components";
+import { ProductionInspect } from "./ProductionInspect";
 import { ProductionOrders } from "./ProductionOrders";
 import { ProductionQuality, ProductionTrace } from "./ProductionQuality";
 import { ProductionRequests } from "./ProductionRequests";
@@ -22,6 +23,7 @@ export function Production() {
   const defs = {
     requests: { label: t("prd.tab.requests"), panel: <ProductionRequests /> },
     orders: { label: t("prd.tab.orders"), panel: <ProductionOrders /> },
+    inspect: { label: t("prd.tab.inspect"), panel: <ProductionInspect /> },
     quality: { label: t("prd.tab.quality"), panel: <ProductionQuality /> },
     trace: { label: t("prd.tab.trace"), panel: <ProductionTrace /> },
   } as const;

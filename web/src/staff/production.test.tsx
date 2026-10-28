@@ -98,6 +98,7 @@ describe("صفحة الإنتاج: الجودة والتتبع", () => {
   it("مراقب الجودة يقفل الحالة بسبب جذري وإجراء تصحيحي", async () => {
     login("production_quality_controller");
     stub();
+    history.replaceState(null, "", "/v2/staff/production?tab=quality");
     mount();
     expect(await screen.findByText("NCR-000007")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "قفل الحالة" }));
@@ -123,6 +124,7 @@ describe("صفحة الإنتاج: الجودة والتتبع", () => {
   it("فتح حالة بيعرض أوامر التصنيع بس ويبعت الأمر والكمية", async () => {
     login("production_quality_controller");
     stub();
+    history.replaceState(null, "", "/v2/staff/production?tab=quality");
     mount();
     fireEvent.click(await screen.findByRole("button", { name: "فتح حالة عدم مطابقة" }));
     const dlg = await screen.findByRole("dialog");
