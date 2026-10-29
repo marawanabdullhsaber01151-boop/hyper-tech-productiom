@@ -29,6 +29,7 @@ jobs:
         with:
           node-version: 22
           cache: npm
+      - run: npm i -g npm@11
       - run: npm ci --include=dev
       - name: typecheck (server + web)
         run: npx tsc --noEmit -p . && npx tsc --noEmit -p web
