@@ -5,6 +5,7 @@ import { asc, gt } from "drizzle-orm";
 import { sql } from "drizzle-orm";
 import { auditEventsTable, db } from "../db";
 import { emptyChainState, verifyAuditBatch } from "./auditChain";
+import { backupHealth, type LastRun } from "./backupCore";
 import { DEPARTMENTS, getNavForRole } from "./departments";
 import { purgeOldErrorEvents } from "./errorEvents";
 import { USER_ROLES, type UserRole } from "./roles";
@@ -99,6 +100,26 @@ const DEFS: CheckDef[] = [
         action: "راجع الملاحظات وصحّح البيانات المتأثرة.",
         count: n,
       };
+    },
+  },
+
+  {
+    id: "backups",
+    group: "base",
+    title: "النسخ الاحتياطي واختبار الاسترجاع",
+    run: async () => {
+      // آخر تشغيلة لكل (نوع، مخزن). لو الجدول لسه ما اتعملش، فحص «تحديثات هيكل البيانات» فوق هو اللي بيقول.
+      // آخر تشغيلة «ناجحة» بس هي اللي بتتحسب لعمر النسخة، لكن آخر محاولة فاشلة بتغلب لو أحدث منها.
+      const last = await rows<{ kind: LastRun["kind"]; store: string; status: LastRun["status"]; finished_at: string | Date; error: string | null; size_bytes: string | null }>(sql`
+        SELECT DISTINCT ON (kind, store) kind, store, status, finished_at, error, size_bytes::text
+        FROM backup_runs ORDER BY kind, store, finished_at DESC`);
+      const okSize = await rows<{ store: string; size_bytes: string | null }>(sql`
+        SELECT DISTINCT ON (store) store, size_bytes::text FROM backup_runs WHERE kind = 'backup' AND status = 'ok' ORDER BY store, finished_at DESC`);
+      const sizeBy = new Map(okSize.map((r) => [r.store, r.size_bytes ? Number(r.size_bytes) : null]));
+      return backupHealth(
+        last.map((r) => ({ kind: r.kind, store: r.store, status: r.status, finishedAt: new Date(r.finished_at), error: r.error, sizeBytes: r.kind === "backup" ? (sizeBy.get(r.store) ?? null) : null })),
+        new Date(),
+      );
     },
   },
 

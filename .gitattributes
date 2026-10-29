@@ -1,0 +1,3 @@
+# سكربتات bash وworkflows لازم LF حتى لو الجهاز ويندوز (وإلا بتفشل على GitHub Actions)
+*.sh text eol=lf
+*.yml text eol=lf

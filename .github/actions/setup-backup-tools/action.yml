@@ -1,0 +1,29 @@
+name: setup-backup-tools
+description: يثبّت أدوات Postgres (نفس إصدار الخادم) وأداة age ويجهّز npm لسكربتات النسخ الاحتياطي
+inputs:
+  pg-major:
+    description: رقم إصدار PostgreSQL الرئيسي (لازم يساوي أو يزيد عن إصدار خادم Neon)
+    default: "17"
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 22
+        cache: npm
+    - name: npm ci (لـ tsx و pg)
+      shell: bash
+      run: npm ci --include=dev
+    - name: أدوات Postgres ${{ inputs.pg-major }} + age
+      shell: bash
+      run: |
+        set -euo pipefail
+        sudo apt-get update -qq
+        sudo apt-get install -y -qq curl ca-certificates gnupg lsb-release age
+        sudo install -d /usr/share/postgresql-common/pgdg
+        sudo curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc
+        echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list >/dev/null
+        sudo apt-get update -qq
+        sudo apt-get install -y -qq "postgresql-client-${{ inputs.pg-major }}"
+        age --version
+        /usr/lib/postgresql/${{ inputs.pg-major }}/bin/pg_dump --version

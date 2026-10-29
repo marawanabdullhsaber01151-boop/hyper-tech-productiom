@@ -19,3 +19,10 @@ delivery/
 /MANIFEST.md
 /checksums.json
 /files/
+
+# backups and encryption keys must never be committed
+*.dump
+*.dump.age
+*.manifest.json
+age-key*.txt
+*backup-key*.txt
