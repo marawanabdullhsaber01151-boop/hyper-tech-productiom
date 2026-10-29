@@ -6,6 +6,7 @@ import { sql } from "drizzle-orm";
 import { auditEventsTable, db } from "../db";
 import { emptyChainState, verifyAuditBatch } from "./auditChain";
 import { backupHealth, type LastRun } from "./backupCore";
+import { outboxHealth } from "./outboxCore";
 import { DEPARTMENTS, getNavForRole } from "./departments";
 import { purgeOldErrorEvents } from "./errorEvents";
 import { USER_ROLES, type UserRole } from "./roles";
@@ -120,6 +121,22 @@ const DEFS: CheckDef[] = [
         last.map((r) => ({ kind: r.kind, store: r.store, status: r.status, finishedAt: new Date(r.finished_at), error: r.error, sizeBytes: r.kind === "backup" ? (sizeBy.get(r.store) ?? null) : null })),
         new Date(),
       );
+    },
+  },
+
+  {
+    id: "outbox",
+    group: "base",
+    title: "الرسائل والإشعارات المعلّقة",
+    run: async () => {
+      const r = await rows<{ pending: number; retrying: number; dead: number; oldest_due: string | Date | null }>(sql`
+        SELECT count(*) FILTER (WHERE status = 'pending')::int AS pending,
+               count(*) FILTER (WHERE status = 'pending' AND attempts > 0)::int AS retrying,
+               count(*) FILTER (WHERE status = 'dead')::int AS dead,
+               min(next_attempt_at) FILTER (WHERE status = 'pending' AND next_attempt_at <= now()) AS oldest_due
+        FROM outbox_events`);
+      const x = r[0];
+      return outboxHealth({ pending: Number(x?.pending ?? 0), retrying: Number(x?.retrying ?? 0), dead: Number(x?.dead ?? 0), oldestDueAt: x?.oldest_due ? new Date(x.oldest_due) : null }, new Date());
     },
   },
 

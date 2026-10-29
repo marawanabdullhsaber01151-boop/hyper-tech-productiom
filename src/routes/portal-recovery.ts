@@ -280,7 +280,7 @@ async function verifyHandler(req: Request, res: Response, next: NextFunction) {
     if (!ok) throw BAD_CODE();
     const issued = await issueAuthToken(db, { userId: user.id, purpose: "password_reset", ttlMinutes: 10, meta: { kind: "ticket", via } });
     await auditUser(user.id, "portal.recovery.verified", req, { via });
-    if (via === "recovery_code") void sendSecurityAlert(user.id, "recovery_code_used");
+    if (via === "recovery_code") await sendSecurityAlert(user.id, "recovery_code_used");
     res.json({ ok: true, resetToken: issued.raw, expiresAt: issued.expiresAt });
   } catch (e) {
     next(e);
@@ -305,7 +305,7 @@ router.post("/portal/recovery/complete", tokenLimiter, async (req, res, next) =>
       return c.token.userId;
     });
     await auditUser(userId, "portal.recovery.completed", req);
-    void sendSecurityAlert(userId, "password_changed");
+    await sendSecurityAlert(userId, "password_changed");
     res.json({ ok: true, message: "تم تغيير كلمة السر، ادخل بيها دلوقتي" });
   } catch (e) {
     next(e);

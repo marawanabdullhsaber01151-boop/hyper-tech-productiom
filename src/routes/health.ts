@@ -10,6 +10,7 @@ import { sendDailyBrief } from "../lib/dailyBrief";
 import { assertCronAuth } from "../lib/cronAuth";
 import { sendOperationsDigest } from "../lib/operationsDigest";
 import { escalateOperationsSla } from "../lib/operationsSla";
+import { drainOutbox, purgeDoneOutbox } from "../lib/outbox";
 
 const router = Router();
 const HEALTH_ROLES = ["executive_manager", "operations_manager", "production_manager"];
@@ -263,6 +264,8 @@ router.get("/cron/daily-brief", async (req, res, next) => {
     await escalateOperationsSla(new Date(), { force: true }).catch(() => undefined);
     // ملخص التشغيل اليومي (مرة في اليوم) على نفس الـcron.
     await sendOperationsDigest().catch(() => undefined);
+    // وكمان بنصرّف صندوق الصادر (احتياطي لو عامل GitHub Actions اتأخر).
+    await drainOutbox({ limit: 50, deadlineMs: 15_000 }).catch(() => undefined);
     res.json(await sendDailyBrief());
   } catch (error) {
     next(error);
@@ -270,3 +273,17 @@ router.get("/cron/daily-brief", async (req, res, next) => {
 });
 
 export default router;
+/**
+ * عامل صندوق الصادر: بيتنادى كل 15 دقيقة من GitHub Actions (outbox-drain.yml)، ومن الـcrons اليومية كاحتياطي،
+ * وفورًا بعد أي حدث جديد. تشغيله أكتر من مرة في نفس الوقت آمن (SKIP LOCKED).
+ */
+router.get("/cron/outbox-drain", async (req, res, next) => {
+  try {
+    assertCronAuth(req);
+    const drained = await drainOutbox({ limit: 100, deadlineMs: 25_000 });
+    const purged = await purgeDoneOutbox().catch(() => 0);
+    res.json({ ...drained, purged });
+  } catch (error) {
+    next(error);
+  }
+});

@@ -1468,7 +1468,7 @@ router.post(
           userAgent: req.get("user-agent"),
         });
       });
-      void sendSecurityAlert(userId, "password_changed", customerId);
+      await sendSecurityAlert(userId, "password_changed", customerId);
       res.json({ message: "تم تغيير كلمة السر" });
     } catch (err) {
       next(err);

@@ -62,6 +62,7 @@ import { pushPublicKey } from "../lib/chatPush";
 import { mergeChatConfig, validateChatConfig, type ChatConfig } from "../lib/chatPolicy";
 import { notifyPortalCustomer } from "../lib/portalNotifications";
 import { notifyUser } from "../lib/notifications";
+import { drainOutbox } from "../lib/outbox";
 import { sendImage } from "./portal-chat";
 
 import { purgeExpiredCommands } from "../lib/commandRetention";
@@ -733,7 +734,9 @@ router.get("/chat/cron/maintenance", async (req: Request, res: Response, next: N
         error: error instanceof Error ? error.message : String(error),
       });
     }
-    res.json({ purgedAttachments: purged, escalated, purgedCommands });
+    // صندوق الصادر: تصريف احتياطي على الـcron اليومي (الأساسي كل 15 دقيقة من GitHub Actions)
+    const outbox = await drainOutbox({ limit: 50, deadlineMs: 15_000 }).catch(() => null);
+    res.json({ purgedAttachments: purged, escalated, purgedCommands, outbox });
   } catch (err) {
     next(err);
   }

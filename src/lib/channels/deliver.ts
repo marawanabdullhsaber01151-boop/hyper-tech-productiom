@@ -11,6 +11,8 @@ import { portalChannelsTable, portalOutboxTable, portalUsersTable } from "../../
 import { buildWhatsAppLink } from "../portalActivation";
 import { logger } from "../logger";
 import { resolveSetting } from "../portalSettings";
+import { drainOutbox, enqueueOutbox } from "../outbox";
+import { dedupeKey, hourBucket } from "../outboxCore";
 import { getChannelAdapter } from "./registry";
 import { renderTemplate, type TemplateKey } from "./templates";
 import { maskAddress, type ChannelId } from "./types";
@@ -149,11 +151,20 @@ export async function deliver(input: DeliverInput): Promise<DeliverResult> {
   return result;
 }
 
-/** Security alert on every verified channel (email + telegram). Never throws. */
+/**
+ * Security alert on every verified channel (email + telegram). Never throws.
+ * بقى مضمون: التنبيه بيتكتب في صندوق الصادر (بدون تكرار: واحد في الساعة لنفس المستخدم والنوع)، فلو الإرسال فشل
+ * أو السيرفر اتجمّد بعد الرد بيتعاد بتراجع زمني. وبنحاول فورًا بدون ما نعطّل الرد.
+ */
 export async function sendSecurityAlert(userId: number, template: "password_changed" | "recovery_code_used", companyId?: number | null): Promise<void> {
   try {
-    await deliver({ purpose: "alert", userId, companyId, template, vars: {}, allowUnverified: false, only: ["email", "telegram"] });
+    const q = await enqueueOutbox(db, {
+      type: "portal.alert",
+      payload: { userId, companyId: companyId ?? null, template },
+      dedupeKey: dedupeKey("alert", userId, template, hourBucket(new Date())),
+    });
+    if (!q.duplicate) void drainOutbox({ limit: 3, deadlineMs: 8000 }).catch(() => undefined);
   } catch (e) {
-    logger.warn("Security alert failed", { errorClass: e instanceof Error ? e.name : "unknown" });
+    logger.warn("Security alert could not be queued", { errorClass: e instanceof Error ? e.name : "unknown" });
   }
 }

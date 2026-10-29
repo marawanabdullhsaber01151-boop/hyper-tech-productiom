@@ -22,5 +22,6 @@
   "POST /portal/team/:memberId/reset-password": "tests: e2e الهوية",
   "POST /portal/register": "stub: يرجّع 410 عمدًا (التسجيل المباشر اتقفل) — بيمنع رجوعه بالغلط",
   "GET /cron/daily-brief": "cron: Vercel يناديه يوميًا (ملخص الصباح الذكي)",
+  "GET /cron/outbox-drain": "cron: GitHub Actions يناديه كل 15 دقيقة (عامل صندوق الصادر المضمون)",
   "POST /operations-control/sales-orders/:id/draft-plan": "backlog: م2 مركز التشغيل (حفظ الخطة كمسودة)"
 }
