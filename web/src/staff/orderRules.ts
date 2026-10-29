@@ -146,10 +146,34 @@ export function receiveError(v: { supervisorId: string; qcId: string; line: stri
 export const QTY_RE = /^\d+(\.\d{1,4})?$/;
 export const isPositiveQty = (s: string) => QTY_RE.test(s.trim()) && Number(s) > 0;
 
-export function createError(v: { recipeId: string; qty: string; customer: string; neededBy: string }): "recipe" | "qty" | "customer" | "date" | null {
+/** مرآة لـ src/lib/orderIntakeCore.ts (checkOrderCreate): نفس الحدود، واختبار التطابق بيمسك أي اختلاف. */
+export const CREATE_QTY_RE = /^\d+(\.\d{1,3})?$/;
+const isRealDate = (s: string) => {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
+  if (!m) return false;
+  const [y, mo, d] = [Number(m[1]), Number(m[2]), Number(m[3])];
+  const dt = new Date(Date.UTC(y, mo - 1, d));
+  return dt.getUTCFullYear() === y && dt.getUTCMonth() === mo - 1 && dt.getUTCDate() === d;
+};
+/** تاريخ اليوم بتوقيت القاهرة YYYY-MM-DD. */
+export const cairoToday = (now: Date = new Date()) =>
+  new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Cairo", year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
+
+export type CreateErrorKind = "recipe" | "qty" | "customer" | "date" | "datePast" | "phone" | "email";
+
+export function createError(
+  v: { recipeId: string; qty: string; customer: string; neededBy: string; phone?: string; email?: string },
+  today: string = cairoToday(),
+): CreateErrorKind | null {
   if (!v.recipeId) return "recipe";
-  if (!isPositiveQty(v.qty)) return "qty";
+  const qty = v.qty.trim();
+  if (!CREATE_QTY_RE.test(qty) || Number(qty) <= 0) return "qty";
   if (!v.customer.trim()) return "customer";
-  if (!v.neededBy) return "date";
+  if (!v.neededBy || !isRealDate(v.neededBy)) return "date";
+  if (v.neededBy < today) return "datePast";
+  const phone = (v.phone ?? "").trim();
+  if (phone && phone.replace(/\D/g, "").length < 7) return "phone";
+  const email = (v.email ?? "").trim();
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return "email";
   return null;
 }

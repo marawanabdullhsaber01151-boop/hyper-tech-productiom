@@ -89,9 +89,23 @@ describe("حسابات مساعدة", () => {
     expect(receiveError(ok)).toBeNull();
     expect(receiveError({ ...ok, supervisorId: "" })).toBe("supervisor");
     expect(receiveError({ ...ok, operational: "pending" })).toBe("pending");
-    expect(createError({ recipeId: "1", qty: "10", customer: "شركة", neededBy: "2026-11-01" })).toBeNull();
-    expect(createError({ recipeId: "1", qty: "0", customer: "شركة", neededBy: "2026-11-01" })).toBe("qty");
-    expect(createError({ recipeId: "1", qty: "1,5", customer: "شركة", neededBy: "2026-11-01" })).toBe("qty");
+    const T = "2026-10-28";
+    expect(createError({ recipeId: "1", qty: "10", customer: "شركة", neededBy: "2026-11-01" }, T)).toBeNull();
+    expect(createError({ recipeId: "1", qty: "0", customer: "شركة", neededBy: "2026-11-01" }, T)).toBe("qty");
+    expect(createError({ recipeId: "1", qty: "1,5", customer: "شركة", neededBy: "2026-11-01" }, T)).toBe("qty");
+  });
+  it("تحقق الإنشاء (الخطوة 27): تاريخ الماضي والموبايل والإيميل وخانات الكمية", () => {
+    const T = "2026-10-28";
+    const ok = { recipeId: "1", qty: "10", customer: "شركة", neededBy: "2026-10-28" };
+    expect(createError(ok, T)).toBeNull();
+    expect(createError({ ...ok, neededBy: "2026-10-27" }, T)).toBe("datePast");
+    expect(createError({ ...ok, neededBy: "2026-02-30" }, T)).toBe("date");
+    expect(createError({ ...ok, qty: "1.2345" }, T)).toBe("qty");
+    expect(createError({ ...ok, qty: "2.125" }, T)).toBeNull();
+    expect(createError({ ...ok, customer: "  " }, T)).toBe("customer");
+    expect(createError({ ...ok, phone: "123" }, T)).toBe("phone");
+    expect(createError({ ...ok, phone: "010-1234-5678", email: "a@b.co" }, T)).toBeNull();
+    expect(createError({ ...ok, email: "no-at" }, T)).toBe("email");
   });
   it("تجميع الحالات", () => {
     expect(countByStatus([{ workflowStatus: "new" }, { workflowStatus: "new" }, { workflowStatus: "completed" }])).toEqual({ new: 2, completed: 1 });

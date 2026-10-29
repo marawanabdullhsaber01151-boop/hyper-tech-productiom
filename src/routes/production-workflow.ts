@@ -44,6 +44,7 @@ import { computeRequiredMaterialsForOrder } from "../lib/materials";
 import { PERMISSIONS } from "../lib/permissions";
 import { assertProductionTransition } from "../domain/production-status";
 import { checkMaterialsDecision } from "../lib/warehouseDecisionCore";
+import { ORDER_CREATE_ROLES, checkOrderCreate } from "../lib/orderIntakeCore";
 import {
   buildProductionOrderSnapshot,
   hashProductionSnapshot,
@@ -527,17 +528,18 @@ router.get(
 router.post(
   "/production-workflow",
   requireAuth,
-  requireRole(
-    "hr",
-    "hr_manager",
-    "sales_manager",
-    "executive_manager",
-    "chairman",
-  ),
+  requireRole(...ORDER_CREATE_ROLES),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const data = createWorkflowOrderSchema.parse(req.body);
       const user = req.user!;
+
+      // ✅ فحص الحدود: اسم العميل والكمية وتاريخ التسليم (مش في الماضي) والموبايل
+      const intake = checkOrderCreate(data);
+      if (!intake.ok) {
+        res.status(400).json({ error: { code: intake.code, message: intake.message } });
+        return;
+      }
 
       // ✅ لازم يكون مربوط بوصفة تصنيع حقيقية — واسم المنتج يُشتق منها دايمًا، مش من إدخال المستخدم
       if (!data.bomRecipeId) {

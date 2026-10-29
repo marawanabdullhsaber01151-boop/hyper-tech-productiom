@@ -20,7 +20,7 @@ const roleList = (src: string, name: string): string[] => {
 
 describe("تبويب أوامر الإنتاج الموحّد", () => {
   it("الصفحات والسكربتات القديمة اتمسحت", () => {
-    for (const f of ["public/production.html", "public/JS/production.js", "public/JS/factory-control-tower.js", "public/factory-production-manager.html", "public/JS/factory-production-manager.js", "public/factory-supervisor.html", "public/JS/factory-supervisor.js", "public/factory-quality-controller.html", "public/JS/factory-quality-controller.js", "public/factory-warehouse-manager.html", "public/JS/factory-warehouse-manager.js"]) {
+    for (const f of ["public/production.html", "public/JS/production.js", "public/JS/factory-control-tower.js", "public/factory-production-manager.html", "public/JS/factory-production-manager.js", "public/factory-supervisor.html", "public/JS/factory-supervisor.js", "public/factory-quality-controller.html", "public/JS/factory-quality-controller.js", "public/factory-warehouse-manager.html", "public/JS/factory-warehouse-manager.js", "public/factory-intake.html", "public/JS/factory-intake.js"]) {
       expect(existsSync(resolve(root, f))).toBe(false);
     }
   });
@@ -142,5 +142,47 @@ describe("قرار خامات المخزن (الخطوة 26)", () => {
     expect(body.indexOf("checkMaterialsDecision({")).toBeLessThan(body.indexOf("db.transaction"));
     expect(body).toContain('user.role === "warehouse_manager" || user.role === "storekeeper"');
     expect(pick(read("web/src/staff/materialsRules.ts"), "PREPARE_ONLY_ROLES")).toEqual(["storekeeper", "warehouse_manager"]);
+  });
+});
+
+describe("استقبال أوامر الإنتاج (الخطوة 27)", () => {
+  const pick = (src: string, name: string) => [...src.match(new RegExp(`${name} = \\[([^\\]]*)\\]`))![1]!.matchAll(/"([^"]+)"/g)].map((x) => x[1]!).sort();
+
+  it("لوحة الاستقبال القديمة بتتحوّل لتبويب الأوامر ومش في القايمة تاني", () => {
+    expect(PRODUCTION_PAGE_REDIRECTS["/factory-intake.html"]).toBe("/v2/staff/production?tab=orders");
+    for (const role of ["chairman", "hr", "hr_manager", "production_manager", "supervisor"] as const) {
+      const hrefs = getNavForRole(role).flatMap((d) => d.subFunctions.flatMap((s) => s.pages.map((p) => p.href)));
+      expect(hrefs).not.toContain("factory-intake.html");
+    }
+    const hr = getNavForRole("hr").flatMap((d) => d.subFunctions.flatMap((s) => s.pages.map((p) => p.href)));
+    expect(hr).toContain("/v2/staff/production?tab=orders");
+    const home = read("public/JS/enhancements.js");
+    expect(home).not.toContain("factory-intake");
+    expect(home).toContain('hr: "/v2/staff/production?tab=orders"');
+  });
+
+  it("أدوار الإنشاء: الويب = السيرفر = حارس POST، وsales_manager للقراءة فقط", () => {
+    const server = pick(read("src/lib/orderIntakeCore.ts"), "ORDER_CREATE_ROLES");
+    expect(pick(read("web/src/staff/orderRules.ts"), "ORDER_CREATE_ROLES")).toEqual(server);
+    expect(server).not.toContain("sales_manager");
+    const wf = read("src/routes/production-workflow.ts");
+    const i = wf.indexOf('router.post(\n  "/production-workflow",');
+    expect(i).toBeGreaterThan(0);
+    expect(wf.slice(i, i + 400)).toContain("requireRole(...ORDER_CREATE_ROLES)");
+  });
+
+  it("السيرفر بيفحص الإدخال قبل فتح الـtransaction", () => {
+    const wf = read("src/routes/production-workflow.ts");
+    const i = wf.indexOf("requireRole(...ORDER_CREATE_ROLES)");
+    const body = wf.slice(i, i + 4000);
+    expect(body).toContain("checkOrderCreate(data)");
+    expect(body.indexOf("checkOrderCreate(data)")).toBeLessThan(body.indexOf("db.transaction"));
+  });
+
+  it("حدود الفحص متطابقة بين السيرفر والويب (3 خانات عشرية، 7 أرقام للموبايل)", () => {
+    expect(read("src/lib/orderIntakeCore.ts")).toContain("\\.\\d{1,3}");
+    expect(read("web/src/staff/orderRules.ts")).toContain("CREATE_QTY_RE = /^\\d+(\\.\\d{1,3})?$/");
+    expect(read("src/lib/orderIntakeCore.ts")).toContain("length < 7");
+    expect(read("web/src/staff/orderRules.ts")).toContain("length < 7");
   });
 });

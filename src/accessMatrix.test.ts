@@ -37,17 +37,20 @@ describe("القايمة ↔ حارس الصفحة", () => {
   });
 });
 
-/** صفحات أساسية: لو الصفحة دي ظاهرة لدور، المفتاح ده لازم يسمح له (وإلا الصفحة بتفشل في التحميل). */
-const CRITICAL_LOADS: Array<{ page: string; access: AccessKey; why: string }> = [
-  { page: "factory-intake.html", access: "productionWorkflowRead", why: "قايمة أوامر الاستقبال" },
+const navHrefs = (role: string) =>
+  [...new Set(getNavForRole(role as (typeof USER_ROLES)[number]).flatMap((d) => d.subFunctions.flatMap((s) => s.pages.map((p) => p.href))))];
+
+/** صفحات أساسية: لو الصفحة دي ظاهرة لدور، المفتاح ده لازم يسمح له (وإلا الصفحة بتفشل في التحميل). بتشمل صفحات /v2 كمان، فالقايمة عمرها ما تبقى فاضية. */
+const CRITICAL_LOADS: Array<{ href: string; access: AccessKey; why: string }> = [
+  { href: "/v2/staff/production?tab=orders", access: "productionWorkflowRead", why: "قايمة أوامر الإنتاج" },
 ];
 
 describe("الصفحات الأساسية وبياناتها", () => {
   for (const c of CRITICAL_LOADS) {
-    it(`${c.page}: كل دور بيشوفها يقدر يقرا (${c.why})`, () => {
-      const blocked = USER_ROLES.filter(
-        (role) => role !== "chairman" && legacyPages(role).includes(c.page) && !(ACCESS[c.access] as readonly string[]).includes(role),
-      );
+    it(`${c.href}: كل دور بيشوفها يقدر يقرا (${c.why})`, () => {
+      const seen = USER_ROLES.filter((role) => navHrefs(role).includes(c.href));
+      expect(seen.length).toBeGreaterThan(0);
+      const blocked = seen.filter((role) => role !== "chairman" && !(ACCESS[c.access] as readonly string[]).includes(role));
       expect(blocked).toEqual([]);
     });
   }

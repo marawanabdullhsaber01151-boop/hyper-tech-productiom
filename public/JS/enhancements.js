@@ -27,8 +27,8 @@ async function enhApiCall(path, options = {}) {
 
 // الصفحة الأقرب لكل دور — تُستخدم للتنقل من إشعار أو "مطلوب مني"
 const ROLE_HOME_PAGE = {
-  hr: "factory-intake.html",
-  hr_manager: "factory-intake.html",
+  hr: "/v2/staff/production?tab=orders",
+  hr_manager: "/v2/staff/production?tab=orders",
   sales_manager: "/v2/staff/sales",
   online_seller: "/v2/staff/sales",
   offline_seller: "/v2/staff/sales",

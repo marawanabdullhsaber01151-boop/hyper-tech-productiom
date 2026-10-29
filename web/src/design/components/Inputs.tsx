@@ -18,7 +18,7 @@ function useA11y(props: { id?: string; invalid?: boolean; required?: boolean; di
   };
 }
 
-type InputProps = Omit<JSX.IntrinsicElements["input"], "size"> & { invalid?: boolean };
+type InputProps = Omit<JSX.IntrinsicElements["input"], "size"> & { invalid?: boolean; /** id لـ<datalist> للاقتراحات. */ list?: string };
 
 export function Input({ invalid, class: cls, ...rest }: InputProps) {
   const a = useA11y({ ...rest, invalid } as never);

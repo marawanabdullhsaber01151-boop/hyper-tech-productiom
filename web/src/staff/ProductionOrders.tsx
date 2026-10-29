@@ -12,6 +12,7 @@ import {
   ORDER_PRIORITIES,
   canCreateOrder,
   canEditNeededBy,
+  cairoToday,
   countByStatus,
   createError,
   groupOf,
@@ -42,6 +43,9 @@ export interface OrderRow {
   createdByName?: string | null;
   customerName?: string | null;
   customerPhone?: string | null;
+  customerEmail?: string | null;
+  bomRecipeId?: number | null;
+  orderSource?: string | null;
   orderDetails?: string | null;
   productionLine?: string | null;
   startDate?: string | null;
@@ -58,7 +62,7 @@ interface Lifecycle {
 }
 
 const val = (e: Event) => (e.target as HTMLInputElement).value;
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => cairoToday();
 /** الأزرار اللي بتظهر في الصف مباشرة (الباقي جوّه التفاصيل عشان الجدول ما يزدحمش). */
 const ROW_ACTIONS: readonly OrderAction[] = ["advance", "receive", "decide", "dispatch", "deliver", "confirm", "resume"];
 const LINE_KEY = "hyper_prd_last_line";
@@ -77,7 +81,7 @@ export function ProductionOrders() {
   const [filter, setFilter] = useState(() => (role === "supervisor" || role === "warehouse_manager" || role === "storekeeper" ? "mine" : ""));
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState<OrderRow | null>(null);
-  const [creating, setCreating] = useState(false);
+  const [creating, setCreating] = useState<OrderRow | boolean>(false);
   const [dialog, setDialog] = useState<{ row: OrderRow; kind: OrderAction | "due" } | null>(null);
   const list = useQuery((signal) => api.get<OrderRow[]>("/production-workflow", { signal }), []);
   const all = Array.isArray(list.data) ? list.data : [];
@@ -100,6 +104,7 @@ export function ProductionOrders() {
       <div class="prd-status">
         <span>{r.productName}</span>
         <StatusPill tone={PRIO_TONE[r.priority] ?? "neutral"}>{prioLabel(r.priority)}</StatusPill>
+        {r.orderSource === "website" ? <StatusPill tone="info">{t("prd.ord.src.website")}</StatusPill> : null}
       </div>
     ) },
     { key: "qty", header: t("prd.ord.col.qty"), cell: (r) => `${formatNumber(Number(r.qty))} ${r.unit}`, numeric: true, mobile: "hide" },
@@ -156,8 +161,8 @@ export function ProductionOrders() {
       </div>
       {list.error ? <InlineAlert tone="danger" title={t("prd.err")} action={<Button size="sm" variant="secondary" onClick={() => void refresh()}>{t("common.retry")}</Button>}>{list.error.message}</InlineAlert> : null}
       <DataTable columns={columns} rows={rows} rowKey={(r) => r.id} caption={t("prd.ord.caption")} loading={list.loading} empty={<EmptyState title={t("prd.ord.empty")} compact />} />
-      {open ? <OrderDetail row={open} role={role} userId={user?.id} onClose={() => setOpen(null)} onAction={(kind) => { const row = open; setOpen(null); setDialog({ row, kind }); }} /> : null}
-      {creating ? <NewOrderDialog onClose={() => setCreating(false)} onDone={async () => { setCreating(false); await refresh(); }} /> : null}
+      {open ? <OrderDetail row={open} role={role} userId={user?.id} onClose={() => setOpen(null)} onDuplicate={canCreateOrder(role) ? () => { const row = open; setOpen(null); setCreating(row); } : undefined} onAction={(kind) => { const row = open; setOpen(null); setDialog({ row, kind }); }} /> : null}
+      {creating ? <NewOrderDialog initial={typeof creating === "object" ? creating : undefined} known={all} onClose={() => setCreating(false)} onDone={async () => { setCreating(false); await refresh(); }} /> : null}
       {dialog?.kind === "decide" ? <MaterialsDialog row={dialog.row} role={role} onClose={() => setDialog(null)} onDone={async () => { setDialog(null); await refresh(); }} /> : null}
       {dialog && dialog.kind !== "decide" ? <OrderDialog row={dialog.row} kind={dialog.kind} onClose={() => setDialog(null)} onDone={async () => { setDialog(null); await refresh(); }} /> : null}
     </>
@@ -168,7 +173,7 @@ function Row({ label, value }: { label: string; value: string | null | undefined
   return <div class="prd-kv"><span class="prd-muted">{label}</span><span>{value || "—"}</span></div>;
 }
 
-function OrderDetail({ row, role, userId, onClose, onAction }: { row: OrderRow; role: string; userId: number | undefined; onClose: () => void; onAction: (k: OrderAction | "due") => void }) {
+function OrderDetail({ row, role, userId, onClose, onAction, onDuplicate }: { row: OrderRow; role: string; userId: number | undefined; onClose: () => void; onAction: (k: OrderAction | "due") => void; onDuplicate?: () => void }) {
   const life = useQuery((signal) => api.get<Lifecycle>(`/production-workflow/${row.id}/lifecycle`, { signal }), [row.id]);
   const acts = orderActions(role, row.workflowStatus);
   const timeline = life.data?.timeline ?? [];
@@ -188,6 +193,8 @@ function OrderDetail({ row, role, userId, onClose, onAction }: { row: OrderRow; 
         <Row label={t("prd.ord.col.product")} value={`${row.productName} | ${formatNumber(Number(row.qty))} ${row.unit}`} />
         <Row label={t("prd.ord.d.customer")} value={row.customerName ?? t("prd.ord.d.hidden")} />
         {row.customerName !== undefined ? <Row label={t("prd.ord.d.phone")} value={row.customerPhone} /> : null}
+        {row.customerName !== undefined && row.customerEmail ? <Row label={t("prd.ord.d.email")} value={row.customerEmail} /> : null}
+        {row.orderSource === "website" ? <Row label={t("prd.ord.d.source")} value={t("prd.ord.src.website")} /> : null}
         <Row label={t("prd.ord.d.priority")} value={prioLabel(row.priority)} />
         <Row label={t("prd.ord.d.due")} value={row.neededBy ? formatDate(row.neededBy) : null} />
         <Row label={t("prd.ord.d.suggested")} value={row.suggestedDueDate ? formatDate(row.suggestedDueDate) : null} />
@@ -198,6 +205,7 @@ function OrderDetail({ row, role, userId, onClose, onAction }: { row: OrderRow; 
         {row.cancelReason ? <Row label={t("prd.ord.d.cancelReason")} value={row.cancelReason} /> : null}
         <div class="prd-actions">
           {acts.map((k) => <Button key={k} size="sm" variant={k === "cancel" ? "secondary" : "primary"} onClick={() => onAction(k)}>{t(`prd.ord.act.${k}` as CopyKey)}</Button>)}
+          {onDuplicate ? <Button size="sm" variant="secondary" onClick={onDuplicate}>{t("prd.ord.act.duplicate")}</Button> : null}
           {canEditNeededBy(userId, row) ? <Button size="sm" variant="secondary" onClick={() => onAction("due")}>{t("prd.ord.act.due")}</Button> : null}
         </div>
         <p class="prd-muted">{t("prd.ord.d.otherBoards")}</p>
@@ -333,31 +341,43 @@ const kindKey = (kind: OrderAction | "due") => KEY[kind];
 const TARGET = { hold: "held", resume: "in_production", rework: "rework", correct: "corrected" } as const;
 
 const LAST_CUSTOMER_KEY = "hyper_prd_last_customer";
-function NewOrderDialog({ onClose, onDone }: { onClose: () => void; onDone: () => void | Promise<void> }) {
+function NewOrderDialog({ initial, known, onClose, onDone }: { initial?: OrderRow; known: OrderRow[]; onClose: () => void; onDone: () => void | Promise<void> }) {
   const act = useAct();
   const recipes = useQuery((signal) => api.get<Recipe[]>("/production-workflow/recipes", { signal }), []);
   const recipeList = Array.isArray(recipes.data) ? recipes.data : [];
-  const [recipeId, setRecipe] = useState("");
-  const [qty, setQty] = useState("");
-  const [unit, setUnit] = useState(() => t("prd.ord.n.unitDefault"));
-  const [customer, setCustomer] = useState("");
-  const [phone, setPhone] = useState("");
+  const [recipeId, setRecipe] = useState(initial?.bomRecipeId ? String(initial.bomRecipeId) : "");
+  const [qty, setQty] = useState(initial ? String(Number(initial.qty)) : "");
+  const [unit, setUnit] = useState(() => initial?.unit || t("prd.ord.n.unitDefault"));
+  const [customer, setCustomer] = useState(initial?.customerName ?? "");
+  const [phone, setPhone] = useState(initial?.customerPhone ?? "");
+  const [email, setEmail] = useState(initial?.customerEmail ?? "");
   const [neededBy, setNeededBy] = useState("");
-  const [priority, setPriority] = useState("normal");
-  const [details, setDetails] = useState("");
-  const err = createError({ recipeId, qty, customer, neededBy });
+  const [priority, setPriority] = useState(initial?.priority ?? "normal");
+  const [details, setDetails] = useState(initial?.orderDetails ?? "");
+  const err = createError({ recipeId, qty, customer, neededBy, phone, email });
+  // عملاء معروفين من الأوامر الحالية (بدون تكرار)؛ لما الاسم يطابق واحد منهم بنكمّل الموبايل والإيميل لو فاضيين.
+  const customers = (() => {
+    const m = new Map<string, OrderRow>();
+    for (const r of known) { const n = r.customerName?.trim(); if (n && !m.has(n)) m.set(n, r); }
+    return [...m.values()];
+  })();
+  const pickCustomer = (name: string) => {
+    setCustomer(name);
+    const hit = customers.find((r) => r.customerName?.trim() === name.trim());
+    if (hit) { if (!phone && hit.customerPhone) setPhone(hit.customerPhone); if (!email && hit.customerEmail) setEmail(hit.customerEmail); }
+  };
   const save = async () => {
     const recipe = recipeList.find((r) => String(r.id) === recipeId);
     if (!recipe) return;
     const ok = await act.run(async () => {
-      await api.post<unknown>("/production-workflow", { bomRecipeId: recipe.id, productName: recipe.productName, qty: qty.trim(), unit: unit.trim() || t("prd.ord.n.unitDefault"), customerName: customer.trim(), customerPhone: phone.trim() || undefined, orderSource: "direct", orderDetails: details.trim() || undefined, priority, neededBy });
+      await api.post<unknown>("/production-workflow", { bomRecipeId: recipe.id, productName: recipe.productName, qty: qty.trim(), unit: unit.trim() || t("prd.ord.n.unitDefault"), customerName: customer.trim(), customerPhone: phone.trim() || undefined, customerEmail: email.trim() || undefined, orderSource: "direct", orderDetails: details.trim() || undefined, priority, neededBy });
       return true;
     }, t("prd.ord.n.done"));
     if (ok) { try { localStorage.setItem(LAST_CUSTOMER_KEY, customer.trim()); } catch { /* التخزين اختياري */ } await onDone(); }
   };
   const last = (() => { try { return localStorage.getItem(LAST_CUSTOMER_KEY) ?? ""; } catch { return ""; } })();
   return (
-    <Dialog open onClose={onClose} title={t("prd.ord.n.title")} footer={<><Button variant="ghost" onClick={onClose}>{t("common.cancel")}</Button><Button loading={act.busy} disabled={err !== null} onClick={() => void save()}>{t("prd.ord.n.save")}</Button></>}>
+    <Dialog open onClose={onClose} title={initial ? t("prd.ord.n.titleDup", { no: initial.orderNumber }) : t("prd.ord.n.title")} footer={<><Button variant="ghost" onClick={onClose}>{t("common.cancel")}</Button><Button loading={act.busy} disabled={err !== null} onClick={() => void save()}>{t("prd.ord.n.save")}</Button></>}>
       <div class="prd-form">
         <p class="prd-muted">{t("prd.ord.n.text")}</p>
         {recipes.error ? <InlineAlert tone="danger">{t("prd.ord.n.recipesFail")}</InlineAlert> : null}
@@ -366,9 +386,13 @@ function NewOrderDialog({ onClose, onDone }: { onClose: () => void; onDone: () =
         </Field>
         <Field label={t("prd.ord.n.qty")} required error={qty && err === "qty" ? t("prd.ord.n.qtyBad") : undefined}><Input inputMode="decimal" value={qty} onInput={(e) => setQty(val(e))} /></Field>
         <Field label={t("prd.ord.n.unit")}><Input value={unit} onInput={(e) => setUnit(val(e))} /></Field>
-        <Field label={t("prd.ord.n.customer")} required hint={last && !customer ? t("prd.ord.n.lastCustomer", { name: last }) : undefined}><Input value={customer} onInput={(e) => setCustomer(val(e))} /></Field>
-        <Field label={t("prd.ord.n.phone")}><Input inputMode="tel" value={phone} onInput={(e) => setPhone(val(e))} /></Field>
-        <Field label={t("prd.ord.n.due")} required><Input type="date" value={neededBy} onInput={(e) => setNeededBy(val(e))} /></Field>
+        <Field label={t("prd.ord.n.customer")} required hint={last && !customer ? t("prd.ord.n.lastCustomer", { name: last }) : undefined}>
+          <Input list="prd-known-customers" value={customer} onInput={(e) => pickCustomer(val(e))} />
+        </Field>
+        <datalist id="prd-known-customers">{customers.map((r) => <option key={r.customerName} value={r.customerName ?? ""} />)}</datalist>
+        <Field label={t("prd.ord.n.phone")} error={phone && err === "phone" ? t("prd.ord.n.phoneBad") : undefined}><Input inputMode="tel" value={phone} onInput={(e) => setPhone(val(e))} /></Field>
+        <Field label={t("prd.ord.n.email")} error={email && err === "email" ? t("prd.ord.n.emailBad") : undefined}><Input type="email" inputMode="email" value={email} onInput={(e) => setEmail(val(e))} /></Field>
+        <Field label={t("prd.ord.n.due")} required error={err === "datePast" ? t("prd.ord.n.datePast") : undefined}><Input type="date" min={today()} value={neededBy} onInput={(e) => setNeededBy(val(e))} /></Field>
         <Field label={t("prd.ord.n.priority")}><Select value={priority} options={ORDER_PRIORITIES.map((p) => ({ value: p, label: prioLabel(p) }))} onChange={(e) => setPriority(val(e))} /></Field>
         <Field label={t("prd.ord.n.details")}><Textarea rows={2} maxLength={500} value={details} onInput={(e) => setDetails(val(e))} /></Field>
       </div>

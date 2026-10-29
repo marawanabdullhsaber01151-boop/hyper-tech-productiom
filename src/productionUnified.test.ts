@@ -20,7 +20,7 @@ describe("صفحة الإنتاج الموحّدة", () => {
   });
 
   it("الروابط القديمة بتتحوّل لتبويبها، والتحويل قبل الملفات الثابتة", () => {
-    expect([...LEGACY_PRODUCTION_PATHS].sort()).toEqual(["/execution-control.html", "/factory-production-manager.html", "/factory-quality-controller.html", "/factory-supervisor.html", "/factory-warehouse-manager.html", "/production-requests.html", "/production.html"]);
+    expect([...LEGACY_PRODUCTION_PATHS].sort()).toEqual(["/execution-control.html", "/factory-intake.html", "/factory-production-manager.html", "/factory-quality-controller.html", "/factory-supervisor.html", "/factory-warehouse-manager.html", "/production-requests.html", "/production.html"]);
     expect(PRODUCTION_PAGE_REDIRECTS["/production-requests.html"]).toBe("/v2/staff/production?tab=requests");
     expect(PRODUCTION_PAGE_REDIRECTS["/execution-control.html"]).toBe("/v2/staff/production?tab=quality");
     const main = read("src/main.ts");
