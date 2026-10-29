@@ -15,7 +15,7 @@ web/dist
 *.zip
 delivery/
 
-# ????? ?? ??? ???????
+# delivery package files (not part of the project)
 /MANIFEST.md
 /checksums.json
 /files/
@@ -26,3 +26,6 @@ delivery/
 *.manifest.json
 age-key*.txt
 *backup-key*.txt
+
+# migrations are always tracked (0084_backup_runs.sql matched the backup dump pattern)
+!migrations/*.sql
