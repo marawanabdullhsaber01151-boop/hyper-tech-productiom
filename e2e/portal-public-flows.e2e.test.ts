@@ -79,10 +79,12 @@ suite("بوابة العميل — الصفحات العامة (طلب انضم�
     const { rows } = await pool.query("select id from portal_applications where normalized_phone = $1 order by id desc limit 1", [`+20${phone.slice(1)}`]);
     const ok = await call(`/portal-applications/${rows[0].id}/approve`, { method: "PATCH", body: JSON.stringify({}) }, staffToken);
     expect(ok.status).toBe(200);
-    const before = await call("/portal-activation-requests?status=pending", {}, staffToken);
+    // العدّ بالرقم ده بالذات (مش عدد كل المعلّقين): ملفات e2e التانية بتغيّر القايمة العامة في نفس اللحظة
+    const countForPhone = async () =>
+      Number((await pool.query("select count(*)::int as n from portal_activation_requests where phone_entered = $1", [phone])).rows[0].n);
+    const before = await countForPhone();
     const r = await post("/portal/activation-requests", { companyName: "اي اسم", phone });
-    const after = await call("/portal-activation-requests?status=pending", {}, staffToken);
-    expect(after.body.length).toBe(before.body.length);
+    expect(await countForPhone()).toBe(before);
     const fresh = await post("/portal/activation-requests", { companyName: "شركة مجهولة", phone: newPhone() });
     expect(r.body.message).toBe(fresh.body.message);
     expect(r.status).toBe(fresh.status);
