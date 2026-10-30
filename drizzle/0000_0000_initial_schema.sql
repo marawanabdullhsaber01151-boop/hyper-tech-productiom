@@ -294,6 +294,7 @@ CREATE TABLE "production_requests" (
 	"director_override_qty" numeric(12, 3),
 	"status" text DEFAULT 'pending_warehouse' NOT NULL,
 	"final_qty" numeric(12, 3),
+	"workflow_order_id" integer,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	CONSTRAINT "production_requests_request_number_unique" UNIQUE("request_number")
