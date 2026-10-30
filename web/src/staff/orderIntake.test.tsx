@@ -89,6 +89,8 @@ describe("استقبال أمر إنتاج جديد", () => {
     login("chairman");
     stub();
     mount();
+    // لازم قايمة الأوامر تتحمّل الأول: العملاء المعروفين بيتاخدوا منها (على جهاز بطيء الزر بيظهر قبلها).
+    await screen.findByText("بطارية 12 فولت");
     fireEvent.click(await screen.findByRole("button", { name: "أمر إنتاج جديد" }));
     const dlg = await screen.findByRole("dialog");
     fireEvent.input(within(dlg).getByLabelText(/^اسم العميل/), { target: { value: "شركة النور" } });
