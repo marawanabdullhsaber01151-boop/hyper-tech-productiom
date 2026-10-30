@@ -27,13 +27,17 @@ function preloadBaseFont(): Plugin {
   };
 }
 
-export default defineConfig(({ command }) => ({
+export default defineConfig(({ command }) => {
+  // البناء لازم يكون production دايمًا. لو NODE_ENV جه من البيئة بقيمة تانية (Vercel مثلًا) Vite بيبني وضع التطوير:
+  // JSX بيشيل اسم الملف والسطر لكل عنصر وبيتضاف preact/debug، فالحزمة بتبقى حوالي الضعف (120.0KB على Vercel مقابل 104.3KB).
+  if (command === "build") process.env.NODE_ENV = "production";
+  return {
   root: here,
   base: "/v2/",
   plugins: [preact(), preloadBaseFont()],
   resolve: { alias: { "@": path.join(here, "src") } },
-  // esbuild بيحوّل أي حرف غير ASCII لـ \uXXXX لو charset مش محدد؛ والنصوص عندنا عربية، فالحزمة بتتضخّم حوالي الضعف
-  // (قياس: نصوص copy لوحدها 451KB بدل 931KB خام، وحوالي +20KB بعد gzip). التحديد الصريح بيثبّت الناتج في أي بيئة.
+  // احتياط: esbuild بيحوّل الحروف غير ASCII لـ \uXXXX لو charset مش محدد (والنصوص عندنا عربية). تحديده صراحةً بيثبّت الناتج.
+  // (اتقاس على Vercel وطلع مش هو سبب تضخّم الحزمة: \uXXXX=25 بس؛ السبب كان وضع التطوير، شوف أول الدالة.)
   esbuild: { charset: "utf8" },
   publicDir: false,
   build: {
@@ -61,4 +65,5 @@ export default defineConfig(({ command }) => ({
     },
   },
   define: { __DEV__: JSON.stringify(command === "serve") },
-}));
+  };
+});

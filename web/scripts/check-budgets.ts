@@ -37,6 +37,9 @@ const entries = Object.entries(manifest).filter(([, v]) => v.isEntry);
 for (const [key] of entries) {
   const { js, css } = entryAssets(key);
   row(`${key} JS (gz)`, js.reduce((a, f) => a + gz(f), 0), budgets.portalJsGzKb!);
+  // بصمة البيئة + علامات وضع التطوير في الناتج (lineNumber: من jsxDEV). لازم تبقى 0 في بناء الإنتاج.
+  const devMarks = js.reduce((a, f) => a + (readFileSync(join(dist, f), "utf8").match(/lineNumber:/g) ?? []).length, 0);
+  console.log(`    بيئة البناء: NODE_ENV=${process.env.NODE_ENV ?? "(غير مضبوط)"} node=${process.version} VERCEL=${process.env.VERCEL ?? "-"} | علامات التطوير (lineNumber)=${devMarks}`);
   if (process.env.BUDGET_VERBOSE || js.reduce((a, f) => a + gz(f), 0) > budgets.portalJsGzKb!) {
     for (const f of js) {
       const text = readFileSync(join(dist, f), "utf8");
