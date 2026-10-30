@@ -98,6 +98,7 @@ describe("actionRegistry — تطابق الأدوار الافتراضية مع
       "الاستثناءات",
       "Operations Control",
       "الإعدادات",
+      "المهام", // الخطوة 30: إسناد المهام البشرية
     ]);
     for (const action of ACTION_REGISTRY) {
       expect(knownGroups.has(action.group)).toBe(true);

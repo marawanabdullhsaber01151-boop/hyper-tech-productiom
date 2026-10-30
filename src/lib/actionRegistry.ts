@@ -97,6 +97,9 @@ export const ACTION_REGISTRY: readonly ActionDefinition[] = [
   { key: "operations.plan.approve", label: "اعتماد خطة التشغيل", group: "Operations Control", defaultRoles: OPERATIONS_PLAN_APPROVE },
   { key: "operations.plan.dispatch", label: "تسليم خطة تشغيل معتمدة", group: "Operations Control", defaultRoles: OPERATIONS_PLAN_DISPATCH },
 
+  // ── المهام البشرية (الخطوة 30) ── إسناد مهمة لغيرك أو إعادة توزيعها. مهام الموظف نفسه مفتوحة له بدون صلاحية خاصة.
+  { key: "tasks.assign", label: "إسناد مهمة لموظف أو دور وإعادة توزيعها", group: "المهام", defaultRoles: ["chairman", "executive_manager", "sales_manager", "operations_manager", "purchasing_manager", "production_manager", "warehouse_manager", "hr_manager"] },
+
   // ── الإعدادات: مالك النشاط فقط مع تسجيل كل عملية في سجل التدقيق ──
   { key: "settings.manageUsers", label: "إدارة المستخدمين", group: "الإعدادات", defaultRoles: ["chairman"] },
   { key: "settings.managePermissions", label: "إدارة الصلاحيات المخصّصة", group: "الإعدادات", defaultRoles: ["chairman"] },

@@ -63,6 +63,8 @@ import { mergeChatConfig, validateChatConfig, type ChatConfig } from "../lib/cha
 import { notifyPortalCustomer } from "../lib/portalNotifications";
 import { notifyUser } from "../lib/notifications";
 import { drainOutbox } from "../lib/outbox";
+import { runEscalations } from "../lib/humanTasks";
+import { drainSagas } from "../lib/sagas";
 import { sendImage } from "./portal-chat";
 
 import { purgeExpiredCommands } from "../lib/commandRetention";
@@ -736,7 +738,9 @@ router.get("/chat/cron/maintenance", async (req: Request, res: Response, next: N
     }
     // صندوق الصادر: تصريف احتياطي على الـcron اليومي (الأساسي كل 15 دقيقة من GitHub Actions)
     const outbox = await drainOutbox({ limit: 50, deadlineMs: 15_000 }).catch(() => null);
-    res.json({ purgedAttachments: purged, escalated, purgedCommands, outbox });
+    const taskEscalations = await runEscalations({ limit: 100 }).catch(() => null);
+    const sagas = await drainSagas({ limit: 25, deadlineMs: 8_000 }).catch(() => null);
+    res.json({ purgedAttachments: purged, escalated, purgedCommands, outbox, taskEscalations, sagas });
   } catch (err) {
     next(err);
   }

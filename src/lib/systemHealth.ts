@@ -7,6 +7,7 @@ import { auditEventsTable, db } from "../db";
 import { emptyChainState, verifyAuditBatch } from "./auditChain";
 import { backupHealth, type LastRun } from "./backupCore";
 import { outboxHealth } from "./outboxCore";
+import { taskHealth } from "./humanTaskCore";
 import { DEPARTMENTS, getNavForRole } from "./departments";
 import { purgeOldErrorEvents } from "./errorEvents";
 import { USER_ROLES, type UserRole } from "./roles";
@@ -137,6 +138,21 @@ const DEFS: CheckDef[] = [
         FROM outbox_events`);
       const x = r[0];
       return outboxHealth({ pending: Number(x?.pending ?? 0), retrying: Number(x?.retrying ?? 0), dead: Number(x?.dead ?? 0), oldestDueAt: x?.oldest_due ? new Date(x.oldest_due) : null }, new Date());
+    },
+  },
+
+  {
+    id: "human_tasks",
+    group: "base",
+    title: "المهام المتأخرة والتصعيد",
+    run: async () => {
+      const r = await rows<{ overdue: number; stuck: number; oldest: number | null }>(sql`
+        SELECT count(*) FILTER (WHERE due_at < now())::int AS overdue,
+               count(*) FILTER (WHERE next_escalation_at < now() - interval '1 hour')::int AS stuck,
+               max(extract(epoch FROM (now() - due_at)) / 3600) FILTER (WHERE due_at < now()) AS oldest
+        FROM human_tasks WHERE status IN ('open', 'in_progress')`);
+      const x = r[0];
+      return taskHealth({ overdue: Number(x?.overdue ?? 0), stuckUnescalated: Number(x?.stuck ?? 0), oldestOverdueHours: Math.floor(Number(x?.oldest ?? 0)) });
     },
   },
 

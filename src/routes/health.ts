@@ -11,6 +11,8 @@ import { assertCronAuth } from "../lib/cronAuth";
 import { sendOperationsDigest } from "../lib/operationsDigest";
 import { escalateOperationsSla } from "../lib/operationsSla";
 import { drainOutbox, purgeDoneOutbox } from "../lib/outbox";
+import { runEscalations } from "../lib/humanTasks";
+import { drainSagas } from "../lib/sagas";
 
 const router = Router();
 const HEALTH_ROLES = ["executive_manager", "operations_manager", "production_manager"];
@@ -282,7 +284,10 @@ router.get("/cron/outbox-drain", async (req, res, next) => {
     assertCronAuth(req);
     const drained = await drainOutbox({ limit: 100, deadlineMs: 25_000 });
     const purged = await purgeDoneOutbox().catch(() => 0);
-    res.json({ ...drained, purged });
+    // تصعيد المهام المتأخرة وتقديم العمليات الطويلة: فشلهم ما بيوقفش تصريف الصندوق
+    const escalations = await runEscalations({ limit: 100 }).catch(() => null);
+    const sagas = await drainSagas({ limit: 50, deadlineMs: 10_000 }).catch(() => null);
+    res.json({ ...drained, purged, escalations, sagas });
   } catch (error) {
     next(error);
   }
