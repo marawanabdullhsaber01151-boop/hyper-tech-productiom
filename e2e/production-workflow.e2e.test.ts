@@ -1,6 +1,26 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { Pool } from "pg";
 
+// سجل التدقيق ممنوع حذفه (هجرة 0077) إلا بصيانة معلنة داخل transaction؛ التنضيف بعد الاختبار بيعلنها صراحةً.
+async function purgeAudit(
+  pool: { connect: () => Promise<{ query: (sql: string, params?: unknown[]) => Promise<unknown>; release: () => void }> },
+  sql: string,
+  params: unknown[],
+): Promise<void> {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    await client.query("SET LOCAL hypertech.audit_maintenance = 'on'");
+    await client.query(sql, params);
+    await client.query("COMMIT");
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
 const enabled = Boolean(
   process.env.E2E_DATABASE_URL && process.env.E2E_ADMIN_PASSWORD,
 );
@@ -202,7 +222,8 @@ suite("دورة الإنتاج — اختبار HTTP وقاعدة البيانا
   afterAll(async () => {
     if (pool) {
       if (orderIds.length) {
-        await pool.query(
+        await purgeAudit(
+          pool,
           `DELETE FROM audit_events
            WHERE resource_type = 'production_workflow_order'
              AND resource_id = ANY($1::int[])`,
@@ -233,7 +254,7 @@ suite("دورة الإنتاج — اختبار HTTP وقاعدة البيانا
         inventoryId,
       ]);
       if (tempUserIds.length) {
-        await pool.query("DELETE FROM audit_events WHERE actor_user_id = ANY($1::int[])", [tempUserIds]).catch(() => undefined);
+        await purgeAudit(pool, "DELETE FROM audit_events WHERE actor_user_id = ANY($1::int[])", [tempUserIds]).catch(() => undefined);
         await pool.query("DELETE FROM system_users WHERE id = ANY($1::int[])", [tempUserIds]).catch(() => undefined);
       }
       await pool.end();
