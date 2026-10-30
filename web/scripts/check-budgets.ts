@@ -38,7 +38,11 @@ for (const [key] of entries) {
   const { js, css } = entryAssets(key);
   row(`${key} JS (gz)`, js.reduce((a, f) => a + gz(f), 0), budgets.portalJsGzKb!);
   if (process.env.BUDGET_VERBOSE || js.reduce((a, f) => a + gz(f), 0) > budgets.portalJsGzKb!) {
-    for (const f of js) console.log(`    ${f}  ${gz(f).toFixed(1)}KB gz  ${(readFileSync(join(dist, f)).length / 1024).toFixed(1)}KB raw`);
+    for (const f of js) {
+      const text = readFileSync(join(dist, f), "utf8");
+      const escaped = (text.match(/\\u[0-9a-fA-F]{4}/g) ?? []).length;
+      console.log(`    ${f}  ${gz(f).toFixed(1)}KB gz  ${(readFileSync(join(dist, f)).length / 1024).toFixed(1)}KB raw  \\uXXXX=${escaped}`);
+    }
   }
   row(`${key} CSS (gz)`, [...new Set(css)].reduce((a, f) => a + gz(f), 0), budgets.cssGzKb!);
 }
