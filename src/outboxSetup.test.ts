@@ -3,7 +3,7 @@
  * الخطوة 29: حراسة تركيب صندوق الصادر المضمون (نصوص الكود والهجرة والـworkflow).
  * بيمسك: ثغرة تكرار الرسالة، إشعار بيكسر الطلب بعد ما اتسجّل، عامل من غير قفل، cron تالت على Vercel…
  */
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { OUTBOX_TYPES } from "./lib/outboxCore";
@@ -102,4 +102,19 @@ describe("التشغيل", () => {
   it("فحص «outbox» مسجّل في صحة النظام", () => {
     expect(read("src/lib/systemHealth.ts")).toContain('id: "outbox",\n    group: "base",');
   });
+
+  it("تنبيه الأمان بيجرّب الحدث بتاعه بالذات وبينتظره بحد أقصى (مش void ولا أقدم 3 أحداث)", () => {
+    const src = read("src/lib/channels/deliver.ts");
+    const fn = src.slice(src.indexOf("export async function sendSecurityAlert"));
+    expect(fn).toContain("await settleWithin(drainOutboxEvent(q.id)");
+    expect(fn).not.toMatch(/void drainOutbox/);
+  });
+
+  it("قاعدة عامة: مفيش «void drainOutbox» (تشغيل منسي) في أي كود تشغيلي — على Vercel الدالة بتتجمّد بعد الرد", () => {
+    const walk = (dir: string): string[] =>
+      readdirSync(dir, { withFileTypes: true }).flatMap((d) => (d.isDirectory() ? walk(`${dir}/${d.name}`) : d.name.endsWith(".ts") && !d.name.includes(".test.") ? [`${dir}/${d.name}`] : []));
+    const offenders = walk("src").filter((f) => /void\s+drainOutbox/.test(readFileSync(f, "utf8")));
+    expect(offenders).toEqual([]);
+  });
 });
+

@@ -11,8 +11,8 @@ import { portalChannelsTable, portalOutboxTable, portalUsersTable } from "../../
 import { buildWhatsAppLink } from "../portalActivation";
 import { logger } from "../logger";
 import { resolveSetting } from "../portalSettings";
-import { drainOutbox, enqueueOutbox } from "../outbox";
-import { dedupeKey, hourBucket } from "../outboxCore";
+import { drainOutboxEvent, enqueueOutbox } from "../outbox";
+import { dedupeKey, hourBucket, settleWithin } from "../outboxCore";
 import { getChannelAdapter } from "./registry";
 import { renderTemplate, type TemplateKey } from "./templates";
 import { maskAddress, type ChannelId } from "./types";
@@ -154,8 +154,11 @@ export async function deliver(input: DeliverInput): Promise<DeliverResult> {
 /**
  * Security alert on every verified channel (email + telegram). Never throws.
  * بقى مضمون: التنبيه بيتكتب في صندوق الصادر (بدون تكرار: واحد في الساعة لنفس المستخدم والنوع)، فلو الإرسال فشل
- * أو السيرفر اتجمّد بعد الرد بيتعاد بتراجع زمني. وبنحاول فورًا بدون ما نعطّل الرد.
+ * أو السيرفر اتجمّد بعد الرد بيتعاد بتراجع زمني. وبنحاول فورًا الحدث ده بالذات (مش أي أحداث قديمة) وبننتظره حتى
+ * 3 ثواني: على Vercel الدالة بتتجمّد بعد الرد، فالمحاولة اللي مش متنتظرة ممكن ما تكمّلش (ولا تكون مضمونة في الاختبارات).
+ * لو الإرسال أبطأ من كده بنرد ونسيبه للعامل (كل 15 دقيقة).
  */
+export const SECURITY_ALERT_WAIT_MS = 3000;
 export async function sendSecurityAlert(userId: number, template: "password_changed" | "recovery_code_used", companyId?: number | null): Promise<void> {
   try {
     const q = await enqueueOutbox(db, {
@@ -163,7 +166,7 @@ export async function sendSecurityAlert(userId: number, template: "password_chan
       payload: { userId, companyId: companyId ?? null, template },
       dedupeKey: dedupeKey("alert", userId, template, hourBucket(new Date())),
     });
-    if (!q.duplicate) void drainOutbox({ limit: 3, deadlineMs: 8000 }).catch(() => undefined);
+    if (!q.duplicate && q.id !== null) await settleWithin(drainOutboxEvent(q.id), SECURITY_ALERT_WAIT_MS);
   } catch (e) {
     logger.warn("Security alert could not be queued", { errorClass: e instanceof Error ? e.name : "unknown" });
   }

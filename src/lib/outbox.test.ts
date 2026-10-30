@@ -1,6 +1,6 @@
 /** @format */
 import { describe, expect, it } from "vitest";
-import { drainOutbox, enqueueOutbox, type DrainDb, type OutboxHandler } from "./outbox";
+import { drainOutbox, drainOutboxEvent, enqueueOutbox, type DrainDb, type OutboxHandler } from "./outbox";
 
 type Chunk = { value?: unknown };
 /** نص الاستعلام (الأجزاء الثابتة) والقيم المتغيّرة في drizzle sql`...` */
@@ -119,3 +119,25 @@ describe("الكتابة في الصندوق", () => {
     expect(touched).toBe(false);
   });
 });
+
+describe("drainOutboxEvent — تنفيذ حدث بعينه", () => {
+  it("بينفّذ الحدث المطلوب بالرقم حتى لو في أحداث أقدم منه", async () => {
+    const f = fake([ev({ id: 1 }), ev({ id: 2 }), ev({ id: 3 }), ev({ id: 4, payload: { userId: 4 } })]);
+    const seen: unknown[] = [];
+    const r = await drainOutboxEvent(4, { database: f.database, handlers: { "notify.user": async (_tx, p) => void seen.push(p) } });
+    expect(r).toBe("done");
+    expect(seen).toEqual([{ userId: 4 }]);
+  });
+  it("حدث مقفول أو اتنفذ قبل كده = skipped من غير أثر", async () => {
+    const f = fake([{ id: 9, locked: true }]);
+    expect(await drainOutboxEvent(9, { database: f.database, handlers: {} })).toBe("skipped");
+    expect(f.log).toEqual([]);
+  });
+  it("فشل المعالج بيتسجّل على الحدث ويرجع retried", async () => {
+    const f = fake([ev({ id: 5 })]);
+    const r = await drainOutboxEvent(5, { database: f.database, handlers: { "notify.user": async () => { throw new Error("x"); } } });
+    expect(r).toBe("retried");
+    expect(f.log).toEqual(["rollback", "failure-update"]);
+  });
+});
+

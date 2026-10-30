@@ -11,6 +11,7 @@ import { computeMyActions, hasActionList, type MyAction } from "./myActions";
 import { openHref } from "./CommandPalette";
 import type { NavResponse } from "./nav";
 import { getShared } from "./sharedData";
+import { dueState, isActive, sortTasks, type TaskRow } from "./tasksCore";
 
 interface Note {
   id: number;
@@ -35,6 +36,7 @@ export function NotificationCenter({ nav }: { nav: NavResponse | undefined }) {
   const [tab, setTab] = useState("actions");
   const [unread, setUnread] = useState(0);
   const [actions, setActions] = useState<MyAction[]>([]);
+  const [tasks, setTasks] = useState<TaskRow[]>([]);
   const [notes, setNotes] = useState<Note[] | null>(null);
   const [error, setError] = useState(false);
   const hrefs = useMemo(() => navHrefs(nav), [nav]);
@@ -46,6 +48,12 @@ export function NotificationCenter({ nav }: { nav: NavResponse | undefined }) {
       setUnread(Number(r?.count) || 0);
     } catch {
       /* العدّاد بيفضل على آخر قيمة */
+    }
+    try {
+      const mine = await api.get<TaskRow[]>("/tasks", { query: { scope: "mine", status: "active" } });
+      setTasks(Array.isArray(mine) ? mine.filter((x) => isActive(x.status)) : []);
+    } catch {
+      /* المهام بتفضل على آخر قيمة */
     }
     if (!hasActionList(me.role)) return;
     try {
@@ -85,7 +93,8 @@ export function NotificationCenter({ nav }: { nav: NavResponse | undefined }) {
     void loadNotes();
   }, [open]);
 
-  const total = unread + actions.length;
+  const myTasks = useMemo(() => sortTasks(tasks).slice(0, 15), [tasks]);
+  const total = unread + actions.length + tasks.length;
   const ordersPage = pickPage(hrefs, ORDER_PAGES) ?? nav?.homeHref ?? null;
 
   const markAll = async () => {
@@ -114,10 +123,26 @@ export function NotificationCenter({ nav }: { nav: NavResponse | undefined }) {
     }
   };
 
+  const taskList = myTasks.length ? (
+    <ul class="st-bell__list">
+      {myTasks.map((k) => (
+        <li key={`task-${k.id}`}>
+          <button type="button" class="st-bell__item" onClick={() => (setOpen(false), openHref(`/v2/staff/tasks?task=${k.id}`))}>
+            <span class="st-bell__title">{t("tasks.bell.title", { title: k.title })}</span>
+            <span class="st-bell__body">{dueState(k) === "overdue" ? t("tasks.bell.overdue") : t("tasks.bell.open")}</span>
+            {k.dueAt ? <span class="st-bell__time">{t("tasks.bell.due", { when: formatRelative(k.dueAt) })}</span> : null}
+          </button>
+        </li>
+      ))}
+    </ul>
+  ) : null;
+
   const actionsPanel =
-    actions.length === 0 ? (
+    actions.length === 0 && !taskList ? (
       <EmptyState title={t("staff.bell.actions.empty")} description={t("staff.bell.actions.emptyBody")} compact />
     ) : (
+      <>
+      {taskList}
       <ul class="st-bell__list">
         {actions.slice(0, 30).map((a) => (
           <li key={a.order.id}>
@@ -131,6 +156,7 @@ export function NotificationCenter({ nav }: { nav: NavResponse | undefined }) {
           </li>
         ))}
       </ul>
+      </>
     );
 
   const notesPanel = error ? (
@@ -178,7 +204,7 @@ export function NotificationCenter({ nav }: { nav: NavResponse | undefined }) {
           value={tab}
           onChange={setTab}
           tabs={[
-            { id: "actions", label: t("staff.bell.tab.actions"), badge: actions.length || undefined, panel: actionsPanel },
+            { id: "actions", label: t("staff.bell.tab.actions"), badge: actions.length + tasks.length || undefined, panel: actionsPanel },
             { id: "notes", label: t("staff.bell.tab.notes"), badge: unread || undefined, panel: notesPanel },
           ]}
         />

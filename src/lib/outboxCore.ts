@@ -109,3 +109,21 @@ export function outboxHealth(stats: OutboxStats, now: Date): CheckOutcome {
     message: stats.pending > 0 ? `${stats.pending} رسالة أو إشعار في الطريق${stats.retrying ? `، منها ${stats.retrying} بتتعاد بعد فشل بسيط` : ""}.` : "مفيش رسائل أو إشعارات معلّقة. كل حاجة اتبعتت.",
   };
 }
+
+/** ينتظر الوعد بحد أقصى ms، وبعدها يكمّل (الوعد نفسه بيفضل شغّال). بيرجّع true لو خلص في الوقت. ما بيرميش أبدًا. */
+export async function settleWithin(work: Promise<unknown>, ms: number): Promise<boolean> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      work.then(
+        () => true,
+        () => true,
+      ),
+      new Promise<boolean>((resolve) => {
+        timer = setTimeout(() => resolve(false), ms);
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}

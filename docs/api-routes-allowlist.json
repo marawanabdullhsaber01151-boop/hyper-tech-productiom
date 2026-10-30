@@ -23,12 +23,5 @@
   "POST /portal/register": "stub: يرجّع 410 عمدًا (التسجيل المباشر اتقفل) — بيمنع رجوعه بالغلط",
   "GET /cron/daily-brief": "cron: Vercel يناديه يوميًا (ملخص الصباح الذكي)",
   "GET /cron/outbox-drain": "cron: GitHub Actions يناديه كل 15 دقيقة (عامل صندوق الصادر المضمون)",
-  "POST /operations-control/sales-orders/:id/draft-plan": "backlog: م2 مركز التشغيل (حفظ الخطة كمسودة)",
-  "GET /tasks": "ui-next: شاشة المهام (الخطوة 30ب)؛ الواجهة بتتبني بعد API",
-  "GET /tasks/:id": "ui-next: تفاصيل المهمة وسجلها (30ب)",
-  "POST /tasks": "ui-next: إنشاء مهمة (30ب)",
-  "POST /tasks/:id/claim": "ui-next: استلام مهمة (30ب)",
-  "POST /tasks/:id/complete": "ui-next: تنفيذ مهمة (30ب)",
-  "POST /tasks/:id/cancel": "ui-next: إلغاء مهمة (30ب)",
-  "POST /tasks/:id/reassign": "ui-next: إعادة توزيع مهمة (30ب)"
+  "POST /operations-control/sales-orders/:id/draft-plan": "backlog: م2 مركز التشغيل (حفظ الخطة كمسودة)"
 }

@@ -1,6 +1,6 @@
 /** @format */
 import { describe, expect, it } from "vitest";
-import { BACKOFF_MINUTES, MAX_ATTEMPTS, afterFailure, backoffMs, dedupeKey, hourBucket, outboxHealth, validatePayload, type OutboxStats } from "./outboxCore";
+import { BACKOFF_MINUTES, MAX_ATTEMPTS, afterFailure, backoffMs, dedupeKey, hourBucket, outboxHealth, settleWithin, validatePayload, type OutboxStats } from "./outboxCore";
 
 const NOW = new Date("2026-10-29T12:00:00Z");
 const ago = (h: number) => new Date(NOW.getTime() - h * 3_600_000);
@@ -78,3 +78,19 @@ describe("فحص صحة النظام للصندوق", () => {
     expect(outboxHealth(stats({ dead: 5 }), NOW).status).toBe("bad");
   });
 });
+
+describe("settleWithin", () => {
+  it("بيرجّع true لو الشغل خلص في الوقت (حتى لو فشل، ومن غير ما يرمي)", async () => {
+    expect(await settleWithin(Promise.resolve(1), 200)).toBe(true);
+    expect(await settleWithin(Promise.reject(new Error("x")), 200)).toBe(true);
+  });
+  it("بيرجّع false لو الشغل أبطأ من الحد وبيسيبه شغّال", async () => {
+    let finished = false;
+    const slow = new Promise<void>((r) => setTimeout(() => ((finished = true), r()), 60));
+    expect(await settleWithin(slow, 5)).toBe(false);
+    expect(finished).toBe(false);
+    await slow;
+    expect(finished).toBe(true);
+  });
+});
+

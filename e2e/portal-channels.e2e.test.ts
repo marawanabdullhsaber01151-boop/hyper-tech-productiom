@@ -132,7 +132,8 @@ suite("plan 03 — activation, recovery, channels (HTTP + PostgreSQL)", () => {
     expect((await login(co.phone, PASS)).status).toBe(401);
     expect((await login(co.phone, NEW)).status).toBe(200);
     expect((await call("/portal/me", {}, before.body.token)).status).toBe(401);
-    expect(sent.at(-1)!.text).toContain("تم تغيير كلمة سر حسابك");
+    // التنبيه بيتبعت على قنوات متعددة والترتيب مش مضمون، فبنبحث في كل الرسائل مش آخر واحدة بس
+    expect(sent.some((m) => m.text.includes("تم تغيير كلمة سر حسابك"))).toBe(true);
     (co as any).pass = NEW;
   });
 

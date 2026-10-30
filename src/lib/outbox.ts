@@ -99,6 +99,16 @@ async function processOne(db: DrainDb, id: number, handlers: Record<string, Outb
 }
 
 /**
+ * ينفّذ حدث واحد بعينه (بالرقم) فورًا. بنستخدمه بعد enqueueOutbox عشان التنبيه اللي لسه اتكتب يتجرّب هو بالذات،
+ * مش «أقدم 3 أحداث» (كان ممكن أحداث قديمة تاخد الدور وتنبيهنا يستنى 15 دقيقة). فشله بيتسجّل على الحدث ويتعاد.
+ */
+export async function drainOutboxEvent(id: number, deps: DrainDeps = {}): Promise<"done" | "retried" | "dead" | "skipped" | "error"> {
+  const db = deps.database ?? (await realDb());
+  const handlers = deps.handlers ?? (await import("./outboxHandlers")).OUTBOX_HANDLERS;
+  return processOne(db, id, handlers);
+}
+
+/**
  * ينفّذ الأحداث المستحقة (الأقدم أولًا) حتى limit أو مهلة deadlineMs. ما بيرميش بسبب فشل حدث: الفشل بيتسجّل على الحدث نفسه ويكمّل الباقي.
  * متعدد التشغيل بأمان: تشغيلتين متزامنتين ما بيمسكوش نفس الحدث (SKIP LOCKED).
  */
