@@ -67,9 +67,10 @@ const report = {
 if (process.env.DATABASE_URL && blockers.length === 0) {
   const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
+    // PGSSLMODE=disable لقاعدة محلية بدون SSL (CI)؛ الإنتاج (Neon) على حاله.
     ssl:
-      process.env.PGSSL_STRICT === "true" ?
-        true
+      process.env.PGSSLMODE === "disable" ? false
+      : process.env.PGSSL_STRICT === "true" ? true
       : { rejectUnauthorized: false },
   });
   try {
