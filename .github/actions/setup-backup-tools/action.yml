@@ -11,6 +11,11 @@ runs:
       with:
         node-version: 22
         cache: npm
+    # package-lock.json مكتوب بـnpm 11؛ npm 10 (الافتراضي مع Node 22) بيرفضه بـ«Missing: esbuild@0.28.2 from lock file».
+    # لازم نفس الإصدار في كل مكان بيعمل التثبيت النظيف (ci.yml وvercel.json وهنا)؛ src/ciInstallNpm.test.ts بيحرس ده.
+    - name: npm 11
+      shell: bash
+      run: npm i -g npm@11
     - name: npm ci (لـ tsx و pg)
       shell: bash
       run: npm ci --include=dev
