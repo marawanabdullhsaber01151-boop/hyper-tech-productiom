@@ -535,17 +535,22 @@ router.post("/portal/telegram/webhook", async (req, res) => {
     const m = /^\/start\s+(\S{10,80})$/.exec(text.trim());
     if (chatId && m) {
       const now = new Date();
-      const [link] = await db
-        .update(portalTelegramLinksTable)
-        .set({ consumedAt: now })
-        .where(and(eq(portalTelegramLinksTable.tokenHash, hashToken(m[1]!)), sql`${portalTelegramLinksTable.consumedAt} IS NULL`, gt(portalTelegramLinksTable.expiresAt, now)))
-        .returning();
-      if (link) {
-        const has = await db.select({ id: portalChannelsTable.id }).from(portalChannelsTable).where(and(eq(portalChannelsTable.userId, link.userId), eq(portalChannelsTable.type, "telegram")));
-        await db
+      // استهلاك الرمز + إضافة القناة معاملة واحدة: لو انقطع التيار بينهم ما يتحرقش الرمز من غير قناة.
+      const link = await db.transaction(async (tx) => {
+        const [consumed] = await tx
+          .update(portalTelegramLinksTable)
+          .set({ consumedAt: now })
+          .where(and(eq(portalTelegramLinksTable.tokenHash, hashToken(m[1]!)), sql`${portalTelegramLinksTable.consumedAt} IS NULL`, gt(portalTelegramLinksTable.expiresAt, now)))
+          .returning();
+        if (!consumed) return null;
+        const has = await tx.select({ id: portalChannelsTable.id }).from(portalChannelsTable).where(and(eq(portalChannelsTable.userId, consumed.userId), eq(portalChannelsTable.type, "telegram")));
+        await tx
           .insert(portalChannelsTable)
-          .values({ userId: link.userId, type: "telegram", address: String(chatId), verifiedAt: now, isPrimary: has.length === 0 })
+          .values({ userId: consumed.userId, type: "telegram", address: String(chatId), verifiedAt: now, isPrimary: has.length === 0 })
           .onConflictDoUpdate({ target: [portalChannelsTable.userId, portalChannelsTable.type, portalChannelsTable.address], set: { verifiedAt: now, enabled: true } });
+        return consumed;
+      });
+      if (link) {
         await auditUser(link.userId, "portal.channel.added", req, { type: "telegram" }, "telegram_bot");
         await telegramSend(String(chatId), "تم ربط حسابك في Hyper-Tech بتيليجرام ✅");
       } else {

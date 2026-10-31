@@ -286,13 +286,19 @@ router.post("/auth/login/verify-totp", loginRateLimiter, async (req, res, next) 
     }
 
     // الرمز صح: دلوقتي بس العدّاد يتصفّر.
-    if (user.failedLoginAttempts > 0 || user.lockedUntil) {
-      await db.update(systemUsersTable).set(clearLockoutState()).where(eq(systemUsersTable.id, user.id));
+    // تصفير العدّاد + استهلاك الكود الاحتياطي في جملة واحدة: انقطاع بينهم كان بيسيب كود «اتستخدم» لسه صالح.
+    const needsLockoutClear = user.failedLoginAttempts > 0 || Boolean(user.lockedUntil);
+    const remaining = matchedBackupCode
+      ? ((user.totpBackupCodes as string[] | null) ?? []).filter((c) => c !== matchedBackupCode)
+      : null;
+    if (needsLockoutClear || remaining) {
+      await db
+        .update(systemUsersTable)
+        .set({ ...(needsLockoutClear ? clearLockoutState() : {}), ...(remaining ? { totpBackupCodes: remaining } : {}) })
+        .where(eq(systemUsersTable.id, user.id));
     }
 
-    if (matchedBackupCode) {
-      const remaining = ((user.totpBackupCodes as string[] | null) ?? []).filter((c) => c !== matchedBackupCode);
-      await db.update(systemUsersTable).set({ totpBackupCodes: remaining }).where(eq(systemUsersTable.id, user.id));
+    if (matchedBackupCode && remaining) {
       await writeAuditEvent({
         actorUserId: user.id, actorName: user.username, actionKey: "auth.login.totp_backup_code_used",
         resourceType: "system_user", resourceId: user.id, decision: "executed",

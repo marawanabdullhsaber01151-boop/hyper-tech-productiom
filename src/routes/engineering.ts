@@ -137,14 +137,19 @@ router.post("/engineering/product-versions/:id/components", requireAuth, require
     // editing it in place." Only draft/in_review accept new components.
     assertEngineeringVersionEditable(version.status);
     const data = createBomComponentSchema.parse(req.body);
-    const [component] = await db.insert(engineeringBomComponentsTable).values({
-      ...data, productVersionId: id, qty: String(data.qty), scrapFactorPct: String(data.scrapFactorPct),
-    }).returning();
-    // Editing components invalidates any previous validation result — this
-    // is enforced, not just documented: approve() below re-checks
-    // validationStatus/validatedAt against the version's current state.
-    await db.update(engineeringProductVersionsTable).set({ validationStatus: "not_validated" })
-      .where(eq(engineeringProductVersionsTable.id, id));
+    // البند + إبطال نتيجة التحقق = معاملة واحدة: لو انقطع التيار بينهم يبقى بند مضاف
+    // ونسخة لسه «متحقق منها» (الاعتماد يعدّي على بيانات ما اتفحصتش).
+    const component = await db.transaction(async (tx) => {
+      const [created] = await tx.insert(engineeringBomComponentsTable).values({
+        ...data, productVersionId: id, qty: String(data.qty), scrapFactorPct: String(data.scrapFactorPct),
+      }).returning();
+      // Editing components invalidates any previous validation result — this
+      // is enforced, not just documented: approve() below re-checks
+      // validationStatus/validatedAt against the version's current state.
+      await tx.update(engineeringProductVersionsTable).set({ validationStatus: "not_validated" })
+        .where(eq(engineeringProductVersionsTable.id, id));
+      return created;
+    });
     res.status(201).json({ data: component });
   } catch (err) { next(err); }
 });
@@ -157,11 +162,16 @@ router.delete("/engineering/product-versions/:id/components/:componentId", requi
     const version = await loadVersionOr404(id, res);
     if (!version) return;
     assertEngineeringVersionEditable(version.status);
-    const [deleted] = await db.delete(engineeringBomComponentsTable)
-      .where(eq(engineeringBomComponentsTable.id, componentId)).returning();
+    // الحذف + إبطال التحقق معاملة واحدة (نفس سبب الإضافة).
+    const deleted = await db.transaction(async (tx) => {
+      const [row] = await tx.delete(engineeringBomComponentsTable)
+        .where(eq(engineeringBomComponentsTable.id, componentId)).returning();
+      if (!row) return null;
+      await tx.update(engineeringProductVersionsTable).set({ validationStatus: "not_validated" })
+        .where(eq(engineeringProductVersionsTable.id, id));
+      return row;
+    });
     if (!deleted) { res.status(404).json({ error: { message: "المكوّن غير موجود" } }); return; }
-    await db.update(engineeringProductVersionsTable).set({ validationStatus: "not_validated" })
-      .where(eq(engineeringProductVersionsTable.id, id));
     res.json({ deleted: true });
   } catch (err) { next(err); }
 });
@@ -267,13 +277,17 @@ router.post("/engineering/routings/:versionId/operations", requireAuth, requireR
     // version's routing could be changed in place with no guard at all.
     assertEngineeringVersionEditable(version.status);
     const data = createRoutingSchema.parse(req.body);
-    const [operation] = await db.insert(engineeringRoutingsTable).values({
-      ...data,
-      productVersionId,
-      runMinutesPerUnit: String(data.runMinutesPerUnit),
-    }).returning();
-    await db.update(engineeringProductVersionsTable).set({ validationStatus: "not_validated" })
-      .where(eq(engineeringProductVersionsTable.id, productVersionId));
+    // العملية + إبطال التحقق معاملة واحدة (انقطاع بينهم = مسار تصنيع جديد على نسخة لسه «متحقق منها»).
+    const operation = await db.transaction(async (tx) => {
+      const [created] = await tx.insert(engineeringRoutingsTable).values({
+        ...data,
+        productVersionId,
+        runMinutesPerUnit: String(data.runMinutesPerUnit),
+      }).returning();
+      await tx.update(engineeringProductVersionsTable).set({ validationStatus: "not_validated" })
+        .where(eq(engineeringProductVersionsTable.id, productVersionId));
+      return created;
+    });
     res.status(201).json({ data: operation });
   } catch (err) {
     next(err);

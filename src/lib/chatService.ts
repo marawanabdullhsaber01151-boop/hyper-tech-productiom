@@ -478,13 +478,17 @@ export async function postMessage(
   };
 }
 
+type ChatExecutor = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
+
 async function insertSystemMessage(
   conversationId: number,
   event: string,
   body: string,
   opts: { internal?: boolean; bump?: boolean } = {},
+  // اختياري: معاملة المستدعي، عشان الرسالة وتحديث المحادثة يبقوا مع باقي العملية في معاملة واحدة.
+  executor: ChatExecutor = db,
 ): Promise<ChatMessage> {
-  const [row] = await db
+  const [row] = await executor
     .insert(chatMessagesTable)
     .values({
       conversationId,
@@ -497,7 +501,7 @@ async function insertSystemMessage(
     })
     .returning();
   if (opts.bump && !opts.internal) {
-    await db
+    await executor
       .update(chatConversationsTable)
       .set({
         lastMessageId: row.id,

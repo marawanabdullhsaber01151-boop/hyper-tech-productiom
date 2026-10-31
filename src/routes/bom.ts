@@ -114,26 +114,31 @@ router.post(
         recipeData.foundationItemId,
       );
 
-      const [recipe] = await db
-        .insert(bomRecipesTable)
-        .values({ ...recipeData, ...foundationFields })
-        .returning();
+      // الوصفة + مكوّناتها معاملة واحدة: انقطاع بينهم كان بيسيب وصفة من غير مكوّنات،
+      // والإنتاج عليها كان هيستهلك صفر خامات.
+      const { recipe, recipeItems } = await db.transaction(async (tx) => {
+        const [created] = await tx
+          .insert(bomRecipesTable)
+          .values({ ...recipeData, ...foundationFields })
+          .returning();
 
-      if (items && items.length > 0) {
-        await db
-          .insert(bomRecipeItemsTable)
-          .values(
-            items.map((item: (typeof items)[0]) => ({
-              ...item,
-              recipeId: recipe.id,
-            })),
-          );
-      }
+        if (items && items.length > 0) {
+          await tx
+            .insert(bomRecipeItemsTable)
+            .values(
+              items.map((item: (typeof items)[0]) => ({
+                ...item,
+                recipeId: created.id,
+              })),
+            );
+        }
 
-      const recipeItems = await db
-        .select()
-        .from(bomRecipeItemsTable)
-        .where(eq(bomRecipeItemsTable.recipeId, recipe.id));
+        const rows = await tx
+          .select()
+          .from(bomRecipeItemsTable)
+          .where(eq(bomRecipeItemsTable.recipeId, created.id));
+        return { recipe: created, recipeItems: rows };
+      });
 
       res.status(201).json({ ...recipe, items: recipeItems });
     } catch (err) {
@@ -531,17 +536,19 @@ router.delete(
         res.status(404).json({ error: { message: "المكوّن غير موجود" } });
         return;
       }
-      await moveToTrash(
-        db,
-        "bom_recipe_items",
-        existing,
-        req.user!.userId,
-        req.user!.username,
-        existing.materialName,
-      );
-      await db
-        .delete(bomRecipeItemsTable)
-        .where(eq(bomRecipeItemsTable.id, itemId));
+      await db.transaction(async (tx) => {
+        await moveToTrash(
+          tx,
+          "bom_recipe_items",
+          existing,
+          req.user!.userId,
+          req.user!.username,
+          existing.materialName,
+        );
+        await tx
+          .delete(bomRecipeItemsTable)
+          .where(eq(bomRecipeItemsTable.id, itemId));
+      });
       res.status(204).send();
     } catch (err) {
       next(err);

@@ -132,17 +132,19 @@ router.delete(
         res.status(404).json({ error: { message: "سجل الفحص غير موجود" } });
         return;
       }
-      await moveToTrash(
-        db,
-        "quality_inspections",
-        existing,
-        req.user!.userId,
-        req.user!.username,
-        null,
-      );
-      await db
-        .delete(qualityInspectionsTable)
-        .where(eq(qualityInspectionsTable.id, id));
+      await db.transaction(async (tx) => {
+        await moveToTrash(
+          tx,
+          "quality_inspections",
+          existing,
+          req.user!.userId,
+          req.user!.username,
+          null,
+        );
+        await tx
+          .delete(qualityInspectionsTable)
+          .where(eq(qualityInspectionsTable.id, id));
+      });
       res.status(204).send();
     } catch (err) {
       next(err);

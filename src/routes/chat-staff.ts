@@ -478,27 +478,33 @@ router.post("/chat/conversations/:id/close", ...staffOnly, async (req: Request, 
     const { conv, access } = await loadForStaff(req, parseId(req.params.id));
     requireReply(access);
     if (conv.status === "closed") throw httpError(409, "المحادثة مغلقة بالفعل");
-    await db
-      .update(chatConversationsTable)
-      .set({
-        status: "closed",
-        closedAt: new Date(),
-        awaitingStaffSince: null,
-        escalatedAt: null,
-        staffUnread: 0,
-      })
-      .where(eq(chatConversationsTable.id, conv.id));
-    // visible to the customer → this is the message the rating attaches to
-    const msg = await insertSystemMessage(
-      conv.id,
-      "closed",
-      "تم إغلاق هذه المحادثة. يسعدنا تقييم تجربتك، ويمكنك مراسلتنا في أي وقت.",
-      { bump: true },
-    );
-    await db
-      .update(chatConversationsTable)
-      .set({ customerUnread: sql`${chatConversationsTable.customerUnread} + 1` })
-      .where(eq(chatConversationsTable.id, conv.id));
+    // الإغلاق + رسالة الإغلاق (اللي التقييم بيتعلّق بيها) + عدّاد العميل معاملة واحدة:
+    // انقطاع بينهم كان بيسيب محادثة مغلقة من غير رسالة، فالعميل ما يقدرش يقيّم.
+    const msg = await db.transaction(async (tx) => {
+      await tx
+        .update(chatConversationsTable)
+        .set({
+          status: "closed",
+          closedAt: new Date(),
+          awaitingStaffSince: null,
+          escalatedAt: null,
+          staffUnread: 0,
+        })
+        .where(eq(chatConversationsTable.id, conv.id));
+      // visible to the customer → this is the message the rating attaches to
+      const created = await insertSystemMessage(
+        conv.id,
+        "closed",
+        "تم إغلاق هذه المحادثة. يسعدنا تقييم تجربتك، ويمكنك مراسلتنا في أي وقت.",
+        { bump: true },
+        tx,
+      );
+      await tx
+        .update(chatConversationsTable)
+        .set({ customerUnread: sql`${chatConversationsTable.customerUnread} + 1` })
+        .where(eq(chatConversationsTable.id, conv.id));
+      return created;
+    });
     await notifyPortalCustomer(conv.portalCustomerId, {
       type: "portal_chat_closed",
       title: "تم إغلاق محادثتك",
@@ -517,11 +523,13 @@ router.post("/chat/conversations/:id/reopen", ...staffOnly, async (req: Request,
     const { conv, access } = await loadForStaff(req, parseId(req.params.id));
     requireReply(access);
     if (conv.status !== "closed") throw httpError(409, "المحادثة مفتوحة بالفعل");
-    await db
-      .update(chatConversationsTable)
-      .set({ status: "open", closedAt: null })
-      .where(eq(chatConversationsTable.id, conv.id));
-    await insertSystemMessage(conv.id, "reopened", "أُعيد فتح المحادثة.", { internal: true });
+    await db.transaction(async (tx) => {
+      await tx
+        .update(chatConversationsTable)
+        .set({ status: "open", closedAt: null })
+        .where(eq(chatConversationsTable.id, conv.id));
+      await insertSystemMessage(conv.id, "reopened", "أُعيد فتح المحادثة.", { internal: true }, tx);
+    });
     res.json({ ok: true });
   } catch (err) {
     next(err);

@@ -199,17 +199,19 @@ router.delete(
         res.status(404).json({ error: { message: "أمر الإنتاج غير موجود" } });
         return;
       }
-      await moveToTrash(
-        db,
-        "production_orders",
-        existing,
-        req.user!.userId,
-        req.user!.username,
-        existing.orderNumber,
-      );
-      await db
-        .delete(productionOrdersTable)
-        .where(eq(productionOrdersTable.id, id));
+      await db.transaction(async (tx) => {
+        await moveToTrash(
+          tx,
+          "production_orders",
+          existing,
+          req.user!.userId,
+          req.user!.username,
+          existing.orderNumber,
+        );
+        await tx
+          .delete(productionOrdersTable)
+          .where(eq(productionOrdersTable.id, id));
+      });
       res.status(204).send();
     } catch (err) {
       next(err);

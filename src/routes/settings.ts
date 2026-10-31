@@ -192,7 +192,10 @@ router.patch(
       };
       if (password) updateData.passwordHash = await bcrypt.hash(password, 12);
 
-      const [updated] = await db
+      // تعديل الحساب + قفل جلساته معاملة واحدة: انقطاع بينهم كان بيغيّر الباسورد/الدور
+      // وجلسة قديمة (ممكن تكون مسروقة) تفضل شغالة.
+      const updated = await db.transaction(async (tx) => {
+      const [row] = await tx
         .update(systemUsersTable)
         .set(updateData)
         .where(eq(systemUsersTable.id, id))
@@ -203,17 +206,14 @@ router.patch(
           role: systemUsersTable.role,
           status: systemUsersTable.status,
         });
-      if (!updated) {
-        res.status(404).json({ error: { message: "المستخدم غير موجود" } });
-        return;
-      }
+      if (!row) return null;
 
       // ✅ الإصلاح الجوهري: لو الحساب اتوقف أو الدور اتغيّر أو الباسورد اتغيّر،
       // اقفل كل جلساته النشطة فورًا — كانت الجلسة القديمة بتفضل شغالة لحد 7
       // أيام حتى بعد تغيير الباسورد، يعني لو حد سرّب باسورد موظف والأدمن غيّره،
       // أي جلسة مسروقة من قبل كانت بتفضل صالحة برغم كده.
       if (data.status === "inactive" || data.role !== undefined || password) {
-        await db
+        await tx
           .update(loginSessionsTable)
           .set({
             revokedAt: new Date(),
@@ -229,6 +229,12 @@ router.patch(
               isNull(loginSessionsTable.revokedAt),
             ),
           );
+      }
+      return row;
+      });
+      if (!updated) {
+        res.status(404).json({ error: { message: "المستخدم غير موجود" } });
+        return;
       }
 
       res.json(updated);
@@ -339,15 +345,17 @@ router.delete(
         });
         return;
       }
-      await moveToTrash(
-        db,
-        "system_users",
-        existing,
-        req.user!.userId,
-        req.user!.username,
-        existing.fullName,
-      );
-      await db.delete(systemUsersTable).where(eq(systemUsersTable.id, id));
+      await db.transaction(async (tx) => {
+        await moveToTrash(
+          tx,
+          "system_users",
+          existing,
+          req.user!.userId,
+          req.user!.username,
+          existing.fullName,
+        );
+        await tx.delete(systemUsersTable).where(eq(systemUsersTable.id, id));
+      });
       res.status(204).send();
     } catch (err) {
       next(err);
@@ -454,28 +462,33 @@ router.post(
 
       // ✅ أي استثناء سابق نشط على نفس المستخدم + نفس الإجراء يتقفل تلقائيًا
       // قبل ما نضيف الجديد — عشان مايتراكمش أكتر من استثناء نشط على نفس المفتاح
-      await db
-        .update(permissionOverridesTable)
-        .set({ revokedAt: new Date(), revokedBy: req.user!.userId })
-        .where(
-          and(
-            eq(permissionOverridesTable.userId, data.userId),
-            eq(permissionOverridesTable.actionKey, data.actionKey),
-            isNull(permissionOverridesTable.revokedAt),
-          ),
-        );
+      // قفل القديم + إضافة الجديد معاملة واحدة: انقطاع بينهم كان بيسيب المستخدم من غير أي استثناء
+      // (يرجع للدور الافتراضي بصمت).
+      const created = await db.transaction(async (tx) => {
+        await tx
+          .update(permissionOverridesTable)
+          .set({ revokedAt: new Date(), revokedBy: req.user!.userId })
+          .where(
+            and(
+              eq(permissionOverridesTable.userId, data.userId),
+              eq(permissionOverridesTable.actionKey, data.actionKey),
+              isNull(permissionOverridesTable.revokedAt),
+            ),
+          );
 
-      const [created] = await db
-        .insert(permissionOverridesTable)
-        .values({
-          userId: data.userId,
-          actionKey: data.actionKey,
-          allowed: data.allowed,
-          reason: data.reason ?? null,
-          expiresAt: data.expiresAt ? new Date(data.expiresAt) : null,
-          grantedBy: req.user!.userId,
-        })
-        .returning();
+        const [row] = await tx
+          .insert(permissionOverridesTable)
+          .values({
+            userId: data.userId,
+            actionKey: data.actionKey,
+            allowed: data.allowed,
+            reason: data.reason ?? null,
+            expiresAt: data.expiresAt ? new Date(data.expiresAt) : null,
+            grantedBy: req.user!.userId,
+          })
+          .returning();
+        return row;
+      });
 
       const until =
         data.expiresAt ?

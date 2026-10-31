@@ -19,7 +19,8 @@ type AnyDb = typeof db | Tx;
  * @param label  وصف مختصر يسهل التعرف على السجل في واجهة السلة (اسم/رقم فاتورة...)
  */
 export async function moveToTrash(
-  dbOrTx: AnyDb,
+  // معاملة فقط (مش db العادي): النقل للسلة والحذف لازم يبقوا معاملة واحدة، والنوع نفسه بيمنع الغلط.
+  dbOrTx: Tx,
   tableName: string,
   record: Record<string, unknown>,
   userId: number | null,

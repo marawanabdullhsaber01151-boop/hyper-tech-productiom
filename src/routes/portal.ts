@@ -482,29 +482,32 @@ router.post(
             )
             .limit(1)
         : [];
-      if (openSame) {
-        await db
-          .update(portalActivationRequestsTable)
-          .set({
-            requestCount: sql`${portalActivationRequestsTable.requestCount} + 1`,
-            lastRequestedAt: new Date(),
-          })
-          .where(eq(portalActivationRequestsTable.id, openSame.id));
-        await addActivationEvent(db, openSame.id, { kind: "repeated", actorLabel: "customer" });
-      } else {
-        const [created] = await db
-          .insert(portalActivationRequestsTable)
-          .values({
-            companyNameEntered: companyName,
-            normalizedCompanyName: normalizeCompanyName(companyName),
-            phoneEntered: phone,
-            normalizedPhone: normalizedPhone || null,
-            matchedContactId,
-            status: "pending",
-          })
-          .returning({ id: portalActivationRequestsTable.id });
-        if (created) await addActivationEvent(db, created.id, { kind: "submitted", actorLabel: "customer" });
-      }
+      // الطلب (أو زيادة العدّاد) + حدثه في السجل معاملة واحدة: انقطاع بينهم كان بيسيب طلب من غير أثر في سجل التتبع.
+      await db.transaction(async (tx) => {
+        if (openSame) {
+          await tx
+            .update(portalActivationRequestsTable)
+            .set({
+              requestCount: sql`${portalActivationRequestsTable.requestCount} + 1`,
+              lastRequestedAt: new Date(),
+            })
+            .where(eq(portalActivationRequestsTable.id, openSame.id));
+          await addActivationEvent(tx, openSame.id, { kind: "repeated", actorLabel: "customer" });
+        } else {
+          const [created] = await tx
+            .insert(portalActivationRequestsTable)
+            .values({
+              companyNameEntered: companyName,
+              normalizedCompanyName: normalizeCompanyName(companyName),
+              phoneEntered: phone,
+              normalizedPhone: normalizedPhone || null,
+              matchedContactId,
+              status: "pending",
+            })
+            .returning({ id: portalActivationRequestsTable.id });
+          if (created) await addActivationEvent(tx, created.id, { kind: "submitted", actorLabel: "customer" });
+        }
+      });
 
       res.json({ message: ACTIVATION_REQUEST_MESSAGE });
     } catch (err) {
