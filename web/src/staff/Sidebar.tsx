@@ -1,6 +1,6 @@
 import { t } from "../copy";
 import { Icon } from "../design/components";
-import { House } from "../design/icons";
+import { ClipboardList, House } from "../design/icons";
 import { Link } from "../app/router";
 import { isActiveHref, iconFor, resolveHref, type NavResponse } from "./nav";
 
@@ -15,18 +15,25 @@ interface Props {
 
 /** سايدبار واحد بيتبني من /nav: قسم ← محور ← صفحة. */
 export function Sidebar({ nav, path, collapsed, openDept, onToggleDept, onNavigate }: Props) {
-  const home = (
+  // روابط ثابتة لكل موظف (مش من /nav): الرئيسية ومهامي. المهام ليها صلاحية «شوف مهامك» لكل الأدوار.
+  const fixedLink = (to: string, label: string, icon: typeof House, extra?: string) => (
     <li class="st-dept">
       <Link
-        to="/staff"
-        class="st-dept__btn st-home-link"
-        aria-current={path === "/staff" ? "page" : undefined}
-        aria-label={collapsed ? t("staff.nav.home") : undefined}
+        to={to}
+        class={`st-dept__btn st-home-link${extra ? ` ${extra}` : ""}`}
+        aria-current={path === to ? "page" : undefined}
+        aria-label={collapsed ? label : undefined}
       >
-        <Icon icon={House} size={20} />
-        {collapsed ? null : <span class="st-dept__label">{t("staff.nav.home")}</span>}
+        <Icon icon={icon} size={20} />
+        {collapsed ? null : <span class="st-dept__label">{label}</span>}
       </Link>
     </li>
+  );
+  const home = (
+    <>
+      {fixedLink("/staff", t("staff.nav.home"), House)}
+      {fixedLink("/staff/tasks", t("tasks.title"), ClipboardList)}
+    </>
   );
   if (nav.departments.length === 0) {
     return (
