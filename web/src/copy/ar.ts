@@ -7,13 +7,13 @@ import { portalCopy } from "./portal";
 import { adminCopy } from "./admin";
 import { chatCopy } from "./chat";
 import { staffCopy } from "./staff";
-import { salesCopy } from "./sales";
-import { invCopy } from "./inv";
-import { purchasesCopy } from "./purchases";
-import { contactsCopy } from "./contacts";
-import { operationsCopy } from "./operations";
-import { engineeringCopy } from "./engineering";
-import { productionCopy } from "./production";
+import type { salesCopy } from "./sales";
+import type { invCopy } from "./inv";
+import type { purchasesCopy } from "./purchases";
+import type { contactsCopy } from "./contacts";
+import type { operationsCopy } from "./operations";
+import type { engineeringCopy } from "./engineering";
+import type { productionCopy } from "./production";
 import { tasksCopy } from "./tasks";
 
 export type Plural = { zero?: string; one?: string; two?: string; few?: string; many?: string; other: string };
@@ -136,15 +136,10 @@ export const ar = {
   ...portalCopy,
   ...adminCopy,
   ...staffCopy,
-  ...salesCopy,
-  ...invCopy,
-  ...purchasesCopy,
-  ...contactsCopy,
-  ...operationsCopy,
-  ...productionCopy,
-  ...engineeringCopy,
   ...tasksCopy,
   ...chatCopy,
 } as const satisfies Record<string, Msg>;
 
-export type CopyKey = keyof typeof ar;
+/** مفاتيح الحزمة الرئيسية + نصوص الصفحات المتحمّلة بالكسل (registry.ts). النوع بس، من غير ما الملفات دي تدخل الحزمة. */
+export type LazyCopy = typeof salesCopy & typeof purchasesCopy & typeof contactsCopy & typeof operationsCopy & typeof productionCopy & typeof engineeringCopy & typeof invCopy;
+export type CopyKey = keyof typeof ar | keyof LazyCopy;

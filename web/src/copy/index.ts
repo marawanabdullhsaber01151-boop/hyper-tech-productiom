@@ -1,4 +1,5 @@
 import { ar, type CopyKey, type Msg, type Plural } from "./ar";
+import { lookupLazy } from "./registry";
 
 export type { CopyKey };
 export type Params = Record<string, string | number>;
@@ -24,7 +25,9 @@ function pick(m: Plural, n: number): string {
 export function t(key: CopyKey, params?: Params): string {
   const o = overrides[key];
   if (o) return fill(o, params);
-  const m: Msg = ar[key];
+  const m: Msg | undefined = (ar as Record<string, Msg>)[key] ?? lookupLazy(key);
+  // مفتاح ما اتسجّلش (ملف نسي الـ import): نعرض المفتاح نفسه بدل ما الصفحة تقع. فحص check-copy بيمنع ده قبل النشر.
+  if (m === undefined) return key;
   if (typeof m === "string") return fill(m, params);
   const n = Number(params?.n ?? 0);
   return fill(pick(m, n), { n, ...params });

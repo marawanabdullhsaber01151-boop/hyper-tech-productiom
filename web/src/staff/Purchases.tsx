@@ -1,3 +1,4 @@
+import "../copy/purchases";
 import { useMemo, useState } from "preact/hooks";
 import { api } from "../admin/api";
 import { staffUser } from "../admin/session";

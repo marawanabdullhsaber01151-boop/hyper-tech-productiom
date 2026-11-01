@@ -1,5 +1,3 @@
-/** @format */
-
 import { defineConfig } from "vitest/config";
 import preact from "@preact/preset-vite";
 import path from "node:path";
@@ -19,9 +17,9 @@ export default defineConfig({
     css: false,
     restoreMocks: true,
     // ويندوز + jsdom: تشغيل كذا worker (forks) مع بعض كان بيعدّي مهلة الـ 60 ثانية
-    // ("Timeout waiting for worker to respond"). threads + عدد محدود + مهل أطول بيحلّها.
+    // ("Timeout waiting for worker to respond"). threads + عدد محدود + مهل أطول بيحلّها. (worker واحد: بدء عمّالين مع بعض هو اللي كان بيفشل تحت الحمل.)
     pool: "threads",
-    maxWorkers: 2,
+    maxWorkers: 1,
     testTimeout: 30_000,
     hookTimeout: 60_000,
     teardownTimeout: 20_000,

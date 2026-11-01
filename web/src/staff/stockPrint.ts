@@ -1,3 +1,5 @@
+import "../copy/inv";
+import "../copy/sales";
 import { t, type CopyKey } from "../copy";
 import { formatDateTime, formatNumber } from "../lib/format";
 import { reorderQty, stockValue, type Movement, type StockItem } from "./stockCore";

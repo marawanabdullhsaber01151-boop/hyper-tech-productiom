@@ -18,6 +18,8 @@ export const CONTACT_WRITE_ROLES = ["chairman", "sales_manager", "online_seller"
 export { PRODUCTION_PAGE_ROLES } from "./productionRules";
 
 /** الهندسة: نفس engineeringRoles في السيرفر. */
-export { ENGINEERING_ROLES as ENGINEERING_PAGE_ROLES } from "./engineeringCore";
+import { ENGINEERING_ROLES } from "./engineeringCore";
+import { RECIPE_VIEW_ROLES } from "./recipesCore";
+export const ENGINEERING_PAGE_ROLES = [...new Set([...ENGINEERING_ROLES, ...RECIPE_VIEW_ROLES])] as readonly string[];
 
 export const OPERATIONS_ROLES = ["chairman", "executive_manager", "operations_manager"] as const;

@@ -1,4 +1,6 @@
 /** نصوص صفحة الموردين والعملاء (v2). */
+import { registerCopy } from "./registry";
+
 export const contactsCopy = {
   "con.title": "الموردون والعملاء",
   "con.subtitle": "كل جهات الاتصال في مكان واحد: كلّم، ابعت واتساب، وشوف نشاط كل واحد.",
@@ -93,3 +95,5 @@ export const contactsCopy = {
   "con.del.desc": "هتتنقل لسلة المحذوفات. لو عليها فواتير أو أوامر شراء الحذف مش هيتم.",
   "con.deleted": "تم حذف جهة الاتصال",
 } as const;
+
+registerCopy(contactsCopy);

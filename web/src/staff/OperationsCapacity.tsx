@@ -1,3 +1,4 @@
+import "../copy/operations";
 import { api } from "../admin/api";
 import { useQuery } from "../api/hooks";
 import { t } from "../copy";

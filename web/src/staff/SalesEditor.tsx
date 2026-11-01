@@ -1,3 +1,4 @@
+import "../copy/sales";
 import { useMemo, useState } from "preact/hooks";
 import { api } from "../admin/api";
 import { useAct } from "../admin/act";

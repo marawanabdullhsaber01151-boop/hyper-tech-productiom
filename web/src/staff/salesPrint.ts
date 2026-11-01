@@ -1,3 +1,4 @@
+import "../copy/sales";
 import { t } from "../copy";
 import { formatDate, formatMoney } from "../lib/format";
 import type { SalesOrder } from "./salesCore";

@@ -1,3 +1,4 @@
+import "../copy/production";
 import { useState } from "preact/hooks";
 import { useAct } from "../admin/act";
 import { api } from "../admin/api";

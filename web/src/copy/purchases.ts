@@ -1,4 +1,6 @@
 /** نصوص المشتريات: الاحتياجات وأوامر الشراء والاستلام. */
+import { registerCopy } from "./registry";
+
 export const purchasesCopy = {
   "po.title": "المشتريات",
   "po.subtitle": "الاحتياجات اللي جاية من الإنتاج والتخطيط بتتحول لأمر شراء، وأمين المخزن بيستلمها وتدخل المخزون لوحدها.",
@@ -130,3 +132,5 @@ export const purchasesCopy = {
   "po.print.supplier": "إلى السيد/ة",
   "po.print.sign": "اعتماد",
 } as const;
+
+registerCopy(purchasesCopy);

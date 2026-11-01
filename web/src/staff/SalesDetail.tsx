@@ -1,3 +1,4 @@
+import "../copy/sales";
 import { useState } from "preact/hooks";
 import { api } from "../admin/api";
 import { useQuery } from "../api/hooks";

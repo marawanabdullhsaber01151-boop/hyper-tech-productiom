@@ -1,4 +1,6 @@
 /** نصوص مركز قيادة التشغيل (v2). */
+import { registerCopy } from "./registry";
+
 export const operationsCopy = {
   "opc.title": "مركز قيادة التشغيل",
   "opc.subtitle": "كل حاجة بتعدّي على التشغيل في مكان واحد: الحالات، المهل، الاستلام، والاحتياجات.",
@@ -353,3 +355,5 @@ export const operationsCopy = {
   "opc.pr.v.late": "الموعد هيتأخر",
   "opc.pr.v.none": "من غير موعد محدد",
 } as const;
+
+registerCopy(operationsCopy);

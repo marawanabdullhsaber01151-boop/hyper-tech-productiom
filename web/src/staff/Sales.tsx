@@ -1,3 +1,4 @@
+import "../copy/sales";
 import { useEffect, useMemo, useState } from "preact/hooks";
 import { api } from "../admin/api";
 import { staffUser, SALES_ROLES } from "../admin/session";

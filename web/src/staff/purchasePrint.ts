@@ -1,3 +1,5 @@
+import "../copy/sales";
+import "../copy/purchases";
 import { t } from "../copy";
 import { formatDate, formatMoney, formatNumber } from "../lib/format";
 import type { PoFull } from "./purchasingCore";

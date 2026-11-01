@@ -127,7 +127,7 @@ export const DEPARTMENTS: readonly NavDepartment[] = [
     id: "production",
     label: "الإنتاج",
     icon: "industry",
-    roles: ["chairman", "executive_manager", "operations_manager", "production_manager", "supervisor", "production_controller", "production_quality_controller", "warehouse_manager"],
+    roles: ["chairman", "executive_manager", "operations_manager", "production_manager", "supervisor", "production_controller", "production_quality_controller", "warehouse_manager", "hr", "hr_manager"],
     subFunctions: [
       {
         id: "production-orders",
@@ -155,10 +155,10 @@ export const DEPARTMENTS: readonly NavDepartment[] = [
       },
       {
         id: "engineering",
-        label: "الهندسة وإصدارات المنتج",
-        roles: ["chairman", "production_manager", "production_controller", "production_quality_controller"],
+        label: "الهندسة ووصفات التصنيع",
+        roles: ["chairman", "hr", "hr_manager", "production_manager", "supervisor", "production_controller", "production_quality_controller"],
         pages: [
-          { id: "engineering", label: "الهندسة وإصدارات المنتج", href: "/v2/staff/engineering", roles: ["chairman", "production_manager", "production_controller", "production_quality_controller"] },
+          { id: "engineering", label: "الهندسة ووصفات التصنيع", href: "/v2/staff/engineering", roles: ["chairman", "hr", "hr_manager", "production_manager", "supervisor", "production_controller", "production_quality_controller"] },
         ],
       },
       {
@@ -175,14 +175,6 @@ export const DEPARTMENTS: readonly NavDepartment[] = [
         roles: ["chairman", "production_manager", "production_controller", "warehouse_manager"],
         pages: [
           { id: "planning", label: "التخطيط و MRP", href: "planning.html", roles: ["chairman", "production_manager", "production_controller", "warehouse_manager"] },
-        ],
-      },
-      {
-        id: "bom",
-        label: "وصفات التصنيع",
-        roles: ["chairman", "hr", "hr_manager", "production_manager", "supervisor", "production_controller"],
-        pages: [
-          { id: "bom", label: "وصفات التصنيع", href: "bom.html", roles: ["chairman", "hr", "hr_manager", "production_manager", "supervisor", "production_controller"] },
         ],
       },
     ],

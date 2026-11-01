@@ -86,6 +86,19 @@ export const bomRecipeItemsTable = pgTable("bom_recipe_items", {
   featuredImageData: text("featured_image_data"),
 });
 
+/** كمية موجبة بحد أقصى 3 خانات عشرية (زي عمود numeric(12,3)). نص عشان نتفادى أخطاء الفاصلة العائمة. */
+export const bomQtyString = z
+  .string()
+  .trim()
+  .regex(/^\d{1,9}(\.\d{1,3})?$/, "الكمية لازم تكون رقم موجب بحد أقصى 3 أرقام بعد الفاصلة")
+  .refine((v) => Number(v) > 0, "الكمية لازم تكون أكبر من صفر");
+
+/** مبلغ غير سالب بحد أقصى خانتين عشريتين (زي numeric(12,2)). */
+export const bomMoneyString = z
+  .string()
+  .trim()
+  .regex(/^\d{1,10}(\.\d{1,2})?$/, "المبلغ لازم يكون رقم غير سالب بحد أقصى خانتين بعد الفاصلة");
+
 export const insertBomRecipeSchema = z.object({
   productCode: z.string().optional().nullable(),
   productName: z.string().min(1, "اسم المنتج مطلوب"),
@@ -95,9 +108,9 @@ export const insertBomRecipeSchema = z.object({
   // work); nullable at the schema level for backward compatibility.
   foundationItemId: z.number().int().positive().optional().nullable(),
   description: z.string().optional().nullable(),
-  outputQty: z.string().optional().default("1"),
-  unitCost: z.string().optional().default("0"),
-  referencePrice: z.string().optional().nullable(),
+  outputQty: bomQtyString.optional().default("1"),
+  unitCost: bomMoneyString.optional().default("0"),
+  referencePrice: bomMoneyString.optional().nullable(),
   expectedProductionDays: z.number().int().positive().optional().nullable(),
   isActive: z.boolean().optional().default(true),
 });
@@ -106,9 +119,9 @@ export const insertBomRecipeItemSchema = z.object({
   recipeId: z.number(),
   inventoryItemId: z.number().optional().nullable(),
   materialName: z.string().min(1, "اسم المادة مطلوب"),
-  qty: z.string(),
-  unit: z.string().default("pcs"),
-  unitCost: z.string().optional().default("0"),
+  qty: bomQtyString,
+  unit: z.string().trim().min(1, "الوحدة مطلوبة").default("pcs"),
+  unitCost: bomMoneyString.optional().default("0"),
   // Phase 3: featured-on-portal flag + its optional image (base64 data URL,
   // same storage approach and 2MB cap as product images — see
   // src/db/schema/product-images.ts for why base64-in-Postgres).

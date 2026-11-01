@@ -1,4 +1,6 @@
 /** نصوص صفحة المبيعات (v2). الأسلوب: بسيط ومباشر. */
+import { registerCopy } from "./registry";
+
 export const salesCopy = {
   "sales.title": "المبيعات",
   "sales.title.website": "فواتير الأونلاين",
@@ -157,3 +159,5 @@ export const salesCopy = {
   "sales.print.thanks": "شكرًا لتعاملكم معانا",
   "sales.print.blocked": "المتصفح منع نافذة الطباعة. اسمح بالنوافذ المنبثقة وجرّب تاني.",
 } as const;
+
+registerCopy(salesCopy);

@@ -5,7 +5,7 @@
  */
 
 // دالة تعقيم موحّدة — بتتحط هنا لأن auth.js بيتحمّل أول حاجة في كل صفحة،
-// فبتبقى متاحة لأي ملف تاني (settings.js, bom.js, production.js, enhancements.js...)
+// فبتبقى متاحة لأي ملف تاني (settings.js, production.js, enhancements.js...)
 // من غير ما يتكرر تعريفها. استخدمها حوالين أي قيمة نصية جايه من السيرفر قبل
 // ما تحطها جوه innerHTML.
 function escHtml(str) {

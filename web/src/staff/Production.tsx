@@ -1,3 +1,4 @@
+import "../copy/production";
 import { useState } from "preact/hooks";
 import { staffUser } from "../admin/session";
 import { t } from "../copy";

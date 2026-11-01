@@ -1,18 +1,24 @@
+import "../copy/engineering";
 import { useState } from "preact/hooks";
 import { staffUser } from "../admin/session";
 import { t } from "../copy";
 import { InlineAlert, Tabs } from "../design/components";
 import { EngineeringChanges } from "./EngineeringChanges";
+import { EngineeringRecipes } from "./EngineeringRecipes";
 import { EngineeringVersions } from "./EngineeringVersions";
 import { ENGINEERING_ROLES } from "./engineeringCore";
+import { canViewRecipes } from "./recipesCore";
 import "./Engineering.css";
 
-export type EngineeringTab = "versions" | "changes";
+export type EngineeringTab = "versions" | "changes" | "recipes";
 
 /** التبويبات اللي الدور يشوفها. */
-export const engineeringTabs = (role: string): EngineeringTab[] => ((ENGINEERING_ROLES as readonly string[]).includes(role) ? ["versions", "changes"] : []);
+export const engineeringTabs = (role: string): EngineeringTab[] => [
+  ...((ENGINEERING_ROLES as readonly string[]).includes(role) ? (["versions", "changes"] as const) : []),
+  ...(canViewRecipes(role) ? (["recipes"] as const) : []),
+];
 
-/** صفحة الهندسة: إصدارات المنتج وطلبات التغيير (والوصفات في الخطوة 33ب). */
+/** صفحة الهندسة: إصدارات المنتج وطلبات التغيير ووصفات التصنيع. */
 export function Engineering() {
   const role = staffUser()?.role ?? "";
   const allowed = engineeringTabs(role);
@@ -22,6 +28,7 @@ export function Engineering() {
   const defs = {
     versions: { label: t("eng.tab.versions"), panel: <EngineeringVersions /> },
     changes: { label: t("eng.tab.changes"), panel: <EngineeringChanges /> },
+    recipes: { label: t("eng.tab.recipes"), panel: <EngineeringRecipes /> },
   } as const;
   return (
     <div class="ad-page">

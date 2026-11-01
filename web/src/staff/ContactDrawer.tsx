@@ -1,3 +1,4 @@
+import "../copy/contacts";
 import { useState } from "preact/hooks";
 import { api } from "../admin/api";
 import { useAct } from "../admin/act";

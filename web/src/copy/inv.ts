@@ -1,4 +1,6 @@
 /** نصوص إدارة المخزون والحركات (جوه صفحة المخزون v2). الأسلوب: بسيط ومباشر. */
+import { registerCopy } from "./registry";
+
 export const invCopy = {
   "inv.tab.items": "الأصناف",
   "inv.tab.moves": "الحركات",
@@ -139,3 +141,5 @@ export const invCopy = {
   "inv.ed.supplier.none": "من غير مورّد",
   "inv.ed.lead": "وقت التوريد (أيام)",
 } as const;
+
+registerCopy(invCopy);

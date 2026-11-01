@@ -1,4 +1,6 @@
 /** نصوص صفحة الإنتاج (طلبات الإنتاج + الجودة + تتبع التشغيلة). */
+import { registerCopy } from "./registry";
+
 export const productionCopy = {
   "prd.title": "الإنتاج",
   "prd.subtitle": "طلبات الإنتاج، حالات عدم المطابقة، وتتبع التشغيلات في مكان واحد.",
@@ -555,3 +557,5 @@ export const productionCopy = {
   "prd.tr.reg.save": "تسجيل",
   "prd.tr.reg.done": "تم تسجيل التشغيلة.",
 } as const;
+
+registerCopy(productionCopy);

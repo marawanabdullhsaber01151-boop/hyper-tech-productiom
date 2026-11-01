@@ -48,7 +48,7 @@ async function openVersion(label = "V10") {
 
 describe("صفحة الهندسة", () => {
   it("دور غير مصرّح له ما يشوفش تبويبات", async () => {
-    login("supervisor");
+    login("storekeeper");
     stub();
     mount();
     expect(await screen.findByText(/مفيش تبويب متاح/)).toBeTruthy();
