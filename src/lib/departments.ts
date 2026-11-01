@@ -142,7 +142,7 @@ export const DEPARTMENTS: readonly NavDepartment[] = [
         label: "مركز التحكم بالإنتاج",
         roles: ["chairman", "production_manager", "production_controller", "warehouse_manager", "supervisor", "production_quality_controller"],
         pages: [
-          { id: "production-control", label: "مركز التحكم بالإنتاج", href: "production-control.html", roles: ["chairman", "production_manager", "production_controller", "warehouse_manager", "supervisor", "production_quality_controller"] },
+          { id: "production-control", label: "مركز التحكم بالإنتاج", href: "/v2/staff/production?tab=execution", roles: ["chairman", "production_manager", "production_controller", "warehouse_manager", "supervisor", "production_quality_controller"] },
         ],
       },
       {

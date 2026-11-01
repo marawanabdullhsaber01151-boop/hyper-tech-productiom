@@ -22,7 +22,7 @@ export const PRODUCTION_PAGE_ROLES = [...new Set<string>([...REQUEST_VIEW_ROLES,
 
 const has = (list: readonly string[], role: string) => list.includes(role);
 
-export type ProductionTab = "requests" | "orders" | "inspect" | "quality" | "trace";
+export type ProductionTab = "requests" | "orders" | "inspect" | "execution" | "quality" | "trace";
 
 /** التبويبات اللي الدور يشوفها: كل دور ما يشوفش غير اللي السيرفر هيسمحله بيه. */
 export function availableTabs(role: string): ProductionTab[] {
@@ -30,7 +30,7 @@ export function availableTabs(role: string): ProductionTab[] {
   if (has(REQUEST_VIEW_ROLES, role)) out.push("requests");
   if (has(ORDER_VIEW_ROLES, role)) out.push("orders");
   if (has(QUALITY_DECIDE_ROLES, role) && has(ORDER_VIEW_ROLES, role)) out.push("inspect");
-  if (has(QUALITY_VIEW_ROLES, role)) out.push("quality", "trace");
+  if (has(QUALITY_VIEW_ROLES, role)) out.push("execution", "quality", "trace");
   return out;
 }
 

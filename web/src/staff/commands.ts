@@ -38,7 +38,7 @@ export function pickPage(hrefs: Set<string>, candidates: readonly string[]): str
   return null;
 }
 
-export const ORDER_PAGES = ["/v2/staff/production?tab=orders", "/v2/staff/production?tab=inspect", "production-control.html", "/v2/staff/production?tab=quality", "/v2/staff/operations"] as const;
+export const ORDER_PAGES = ["/v2/staff/production?tab=orders", "/v2/staff/production?tab=inspect", "/v2/staff/production?tab=execution", "/v2/staff/production?tab=quality", "/v2/staff/operations"] as const;
 export const ITEM_PAGES = ["/v2/staff/stock"] as const;
 
 export function recordItems(

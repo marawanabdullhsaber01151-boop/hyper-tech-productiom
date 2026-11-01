@@ -50,16 +50,20 @@ router.patch(
       const id = parseIdParam(req.params.id, res);
       if (id === null) return;
       const data = createOperationConfirmationSchema.parse(req.body);
-      const [batch] = await db
-        .select()
-        .from(productionBatchesTable)
-        .where(eq(productionBatchesTable.id, id))
-        .limit(1);
-      if (!batch) {
-        res.status(404).json({ error: { message: "دفعة الإنتاج غير موجودة" } });
-        return;
-      }
       const confirmation = await db.transaction(async (tx) => {
+        // قفل صف الدفعة: تأكيدان متزامنان كانا بيقروا نفس الأرقام ويكتبوا فوق بعض (lost update).
+        const [batch] = await tx
+          .select()
+          .from(productionBatchesTable)
+          .where(eq(productionBatchesTable.id, id))
+          .limit(1)
+          .for("update");
+        if (!batch) {
+          throw Object.assign(new Error("دفعة الإنتاج غير موجودة"), { status: 404 });
+        }
+        if (batch.status === "completed") {
+          throw Object.assign(new Error("الدفعة مقفولة ولا يمكن تأكيد عمليات عليها"), { status: 409 });
+        }
         const [created] = await tx
           .insert(productionOperationConfirmationsTable)
           .values({
@@ -105,31 +109,37 @@ router.patch(
     try {
       const id = parseIdParam(req.params.id, res);
       if (id === null) return;
-      const [batch] = await db
-        .select()
-        .from(productionBatchesTable)
-        .where(eq(productionBatchesTable.id, id))
-        .limit(1);
-      if (!batch) {
-        res.status(404).json({ error: { message: "دفعة الإنتاج غير موجودة" } });
-        return;
-      }
-      validateBatchQuantities({
-        producedQty: Number(batch.producedQty),
-        acceptedQty: Number(batch.acceptedQty),
-        reworkQty: Number(batch.reworkQty),
-        scrapQty: Number(batch.scrapQty),
-        plannedQty: Number(batch.plannedQty),
-        closing: true,
+      const closed = await db.transaction(async (tx) => {
+        const [batch] = await tx
+          .select()
+          .from(productionBatchesTable)
+          .where(eq(productionBatchesTable.id, id))
+          .limit(1)
+          .for("update");
+        if (!batch) {
+          throw Object.assign(new Error("دفعة الإنتاج غير موجودة"), { status: 404 });
+        }
+        if (batch.status === "completed") {
+          throw Object.assign(new Error("الدفعة مقفولة بالفعل"), { status: 409 });
+        }
+        if (Number(batch.producedQty) <= 0) {
+          throw Object.assign(new Error("لا يمكن قفل دفعة لم يُسجَّل عليها إنتاج"), { status: 400 });
+        }
+        validateBatchQuantities({
+          producedQty: Number(batch.producedQty),
+          acceptedQty: Number(batch.acceptedQty),
+          reworkQty: Number(batch.reworkQty),
+          scrapQty: Number(batch.scrapQty),
+          plannedQty: Number(batch.plannedQty),
+          closing: true,
+        });
+        const [row] = await tx
+          .update(productionBatchesTable)
+          .set({ status: "completed", completedAt: new Date() })
+          .where(eq(productionBatchesTable.id, id))
+          .returning();
+        return row;
       });
-      const [closed] = await db
-        .update(productionBatchesTable)
-        .set({
-          status: "completed",
-          completedAt: new Date(),
-        })
-        .where(eq(productionBatchesTable.id, id))
-        .returning();
       res.json({ data: closed });
     } catch (err) {
       next(err);

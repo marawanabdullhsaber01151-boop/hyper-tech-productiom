@@ -7,6 +7,8 @@ import { t, type CopyKey } from "../copy";
 import { Button, DataTable, Dialog, EmptyState, Field, InlineAlert, Input, Select, Stat, StatusPill, Textarea, type Column } from "../design/components";
 import { Plus, Search } from "../design/icons";
 import { formatNumber, formatRelative } from "../lib/format";
+import { TRACE_TYPES, traceLotError, traceLotPayload } from "./executionCore";
+import { useExecutableOrders, type ExecBatch } from "./ProductionExecution";
 import { NCR_DISPOSITIONS, NCR_QTY_RE, canCloseNcr, defectSuggestions, isPositiveQty, ncrOrderOk } from "./productionRules";
 
 interface NcrRow {
@@ -186,6 +188,7 @@ export function ProductionTrace() {
   const [searched, setSearched] = useState("");
   const [rows, setRows] = useState<TraceRow[] | null>(null);
   const act = useAct();
+  const [registering, setRegistering] = useState(false);
 
   const search = async () => {
     const q = lot.trim();
@@ -211,8 +214,50 @@ export function ProductionTrace() {
       <form class="prd-toolbar" onSubmit={(e) => { e.preventDefault(); void search(); }}>
         <Input aria-label={t("prd.tr.input")} placeholder={t("prd.tr.input")} value={lot} maxLength={100} onInput={(e) => setLot(val(e))} />
         <Button type="submit" icon={Search} loading={act.busy} disabled={!lot.trim()}>{t("prd.tr.search")}</Button>
+        <Button type="button" variant="secondary" icon={Plus} onClick={() => setRegistering(true)}>{t("prd.tr.register")}</Button>
       </form>
+      {registering ? <RegisterLotDialog onClose={() => setRegistering(false)} onDone={() => setRegistering(false)} /> : null}
       {rows === null ? <EmptyState title={t("prd.tr.empty")} compact /> : <DataTable columns={columns} rows={rows} rowKey={(r) => r.id} caption={`${t("prd.tr.caption")} ${searched}`} empty={<EmptyState title={t("prd.tr.none")} compact />} />}
     </>
+  );
+}
+
+function RegisterLotDialog({ onClose, onDone }: { onClose: () => void; onDone: () => void }) {
+  const act = useAct();
+  const { list: orders } = useExecutableOrders();
+  const [orderId, setOrderId] = useState("");
+  const [batchId, setBatchId] = useState("");
+  const [type, setType] = useState<string>("output_lot");
+  const [lot, setLot] = useState("");
+  const [item, setItem] = useState("");
+  const [qty, setQty] = useState("");
+  const batches = useQuery((signal) => (orderId ? api.get<ExecBatch[]>(`/operations/orders/${orderId}/batches`, { signal }) : Promise.resolve([] as ExecBatch[])), [orderId]);
+  const bl = Array.isArray(batches.data) ? batches.data : [];
+  const err = traceLotError({ lotNumber: lot, quantity: qty });
+  const valid = Boolean(orderId && batchId) && err === null;
+  const save = async () => {
+    const ok = await act.run(async () => {
+      await api.post<unknown>("/production-execution/traceability", traceLotPayload({ batchId: Number(batchId), workflowOrderId: Number(orderId), traceType: type, lotNumber: lot, itemCode: item, quantity: qty }));
+      return true;
+    }, t("prd.tr.reg.done"));
+    if (ok) onDone();
+  };
+  return (
+    <Dialog open onClose={onClose} title={t("prd.tr.reg.title")} footer={<><Button variant="ghost" onClick={onClose}>{t("common.cancel")}</Button><Button loading={act.busy} disabled={!valid} onClick={() => void save()}>{t("prd.tr.reg.save")}</Button></>}>
+      <div class="prd-form">
+        <Field label={t("prd.tr.reg.order")} required>
+          <Select value={orderId} options={[{ value: "", label: t("prd.ex.orderPick") }, ...orders.map((o) => ({ value: String(o.id), label: `${o.orderNumber} | ${o.productName}` }))]} onChange={(e) => { setOrderId(val(e)); setBatchId(""); }} />
+        </Field>
+        <Field label={t("prd.tr.reg.batch")} required>
+          <Select value={batchId} options={[{ value: "", label: t("prd.tr.reg.batchPick") }, ...bl.map((b) => ({ value: String(b.id), label: b.batchNumber }))]} onChange={(e) => setBatchId(val(e))} />
+        </Field>
+        <Field label={t("prd.tr.reg.type")}>
+          <Select value={type} options={TRACE_TYPES.map((x) => ({ value: x, label: t(`prd.tr.type.${x}` as CopyKey) }))} onChange={(e) => setType(val(e))} />
+        </Field>
+        <Field label={t("prd.tr.reg.lot")} required error={lot && err === "lot" ? t("prd.tr.reg.lotBad") : undefined}><Input value={lot} maxLength={100} onInput={(e) => setLot(val(e))} /></Field>
+        <Field label={t("prd.tr.reg.item")}><Input value={item} maxLength={100} onInput={(e) => setItem(val(e))} /></Field>
+        <Field label={t("prd.tr.reg.qty")} error={err === "qty" ? t("prd.tr.reg.qtyBad") : undefined}><Input inputMode="decimal" value={qty} onInput={(e) => setQty(val(e))} /></Field>
+      </div>
+    </Dialog>
   );
 }
