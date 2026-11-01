@@ -82,6 +82,7 @@ export const OPERATIONS_REDIRECT_TARGET = "/v2/staff/operations";
 /** صفحات «طلبات الإنتاج» و«أوامر الإنتاج» و«لوحة مدير الإنتاج» و«التنفيذ والجودة والتتبع» القديمة ← صفحة الإنتاج الجديدة (تبويب لكل واحدة). */
 export const PRODUCTION_PAGE_REDIRECTS: Readonly<Record<string, string>> = {
   "/production-requests.html": "/v2/staff/production?tab=requests",
+  "/engineering.html": "/v2/staff/engineering",
   "/production-control.html": "/v2/staff/production?tab=execution",
   "/execution-control.html": "/v2/staff/production?tab=quality",
   "/production.html": "/v2/staff/production?tab=orders",

@@ -158,7 +158,7 @@ export const DEPARTMENTS: readonly NavDepartment[] = [
         label: "الهندسة وإصدارات المنتج",
         roles: ["chairman", "production_manager", "production_controller", "production_quality_controller"],
         pages: [
-          { id: "engineering", label: "الهندسة وإصدارات المنتج", href: "engineering.html", roles: ["chairman", "production_manager", "production_controller", "production_quality_controller"] },
+          { id: "engineering", label: "الهندسة وإصدارات المنتج", href: "/v2/staff/engineering", roles: ["chairman", "production_manager", "production_controller", "production_quality_controller"] },
         ],
       },
       {

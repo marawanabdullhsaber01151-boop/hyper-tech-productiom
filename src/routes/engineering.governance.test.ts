@@ -50,9 +50,10 @@ describe("phase 04 delivery 1 — engineering governance route wiring", () => {
   });
 
   it("adding a routing operation to a non-editable version is still refused before any write", () => {
-    const opIndex = source.indexOf('"/engineering/routings/:versionId/operations"');
+    // مسار الإضافة (POST) بالذات: المسار نفسه عليه كمان GET للقراءة (خطوة 33أ).
+    const opIndex = source.indexOf('router.post("/engineering/routings/:versionId/operations"');
     expect(opIndex).toBeGreaterThan(-1);
-    const opBody = source.slice(opIndex, opIndex + 900);
+    const opBody = source.slice(opIndex, opIndex + 1500);
     const editableCheckIndex = opBody.indexOf("assertEngineeringVersionEditable");
     const insertIndex = opBody.indexOf(".insert(engineeringRoutingsTable)");
     expect(editableCheckIndex).toBeGreaterThan(-1);
@@ -78,5 +79,34 @@ describe("phase 04 delivery 1 — engineering governance route wiring", () => {
     const impactBody = source.slice(impactIndex, impactIndex + 900);
     expect(impactBody).toContain("productionOrderImpact");
     expect(impactBody).not.toMatch(/productionOrderImpact:\s*\[/);
+  });
+
+  it("الخطوة 33أ: طلب التغيير بترقيم تسلسلي جوّه معاملة، والقرار بفصل مهام وقفل صف", () => {
+    expect(source).not.toContain("ECR-${Date.now()}");
+    const create = source.slice(source.indexOf('router.post("/engineering/change-requests"'), source.indexOf('router.patch("/engineering/change-requests/:id/decide"'));
+    expect(create).toContain('nextPhase0Number(tx, "engineering_change_request")');
+    expect(create).toContain("db.transaction");
+    const decide = source.slice(source.indexOf('router.patch("/engineering/change-requests/:id/decide"'), source.indexOf("// Phase 04 (delivery 1): real, computable change-impact"));
+    expect(decide).toContain("requireRole(...engineeringApprovalRoles)");
+    expect(decide).toContain('.for("update")');
+    expect(decide).toContain('cr.status !== "open"');
+    expect(decide).toContain("cr.requestedBy === req.user!.userId");
+    expect(decide).toContain("executor: tx");
+  });
+
+  it("الخطوة 33أ: قايمة الاختيار بتجيب حقول التعريف بس (بدون أسعار أو مخزون)", () => {
+    const at = source.indexOf('"/engineering/lookups"');
+    expect(at).toBeGreaterThan(-1);
+    const body = source.slice(at, source.indexOf('router.get("/engineering/products"'));
+    expect(body).not.toMatch(/price|cost|minStock|supplier|qty/i);
+    expect(body).toContain("requireRole(...engineeringRoles)");
+  });
+
+  it("الخطوة 33أ: انتقالات الحالة بشرط على الحالة الحالية (مفيش انتقال مزدوج)", () => {
+    for (const path of ['"/engineering/product-versions/:id/submit-review"', '"/engineering/bom-versions/:id/approve"', '"/engineering/product-versions/:id/supersede"', '"/engineering/product-versions/:id/retire"']) {
+      const at = source.indexOf(path);
+      expect(at).toBeGreaterThan(-1);
+      expect(source.slice(at, at + 2200)).toContain("engineeringProductVersionsTable.status, version.status");
+    }
   });
 });

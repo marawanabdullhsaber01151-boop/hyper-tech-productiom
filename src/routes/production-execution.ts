@@ -92,6 +92,7 @@ router.patch(
           })
           .where(eq(productionBatchesTable.id, id))
           .returning();
+        await writeAuditEvent({ actorUserId: req.user!.userId, actorName: req.user!.username, actionKey: "production.operation.confirm", resourceType: "production_batch", resourceId: id, beforeData: { producedQty: batch.producedQty, acceptedQty: batch.acceptedQty, reworkQty: batch.reworkQty, scrapQty: batch.scrapQty }, afterData: { operationNo: data.operationNo, goodQty: data.goodQty, scrapQty: data.scrapQty, reworkQty: data.reworkQty }, ipAddress: req.ip, userAgent: req.get("user-agent"), executor: tx });
         return { confirmation: created, batch: updated };
       });
       res.json({ data: confirmation });
@@ -138,6 +139,7 @@ router.patch(
           .set({ status: "completed", completedAt: new Date() })
           .where(eq(productionBatchesTable.id, id))
           .returning();
+        await writeAuditEvent({ actorUserId: req.user!.userId, actorName: req.user!.username, actionKey: "production.batch.close", resourceType: "production_batch", resourceId: id, beforeData: { status: batch.status, producedQty: batch.producedQty, acceptedQty: batch.acceptedQty, reworkQty: batch.reworkQty, scrapQty: batch.scrapQty }, afterData: { status: "completed" }, ipAddress: req.ip, userAgent: req.get("user-agent"), executor: tx });
         return row;
       });
       res.json({ data: closed });

@@ -1,7 +1,7 @@
 /** @format */
 
 import { Router } from "express";
-import { desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq } from "drizzle-orm";
 import { db } from "../db";
 import {
   createChangeRequestSchema,
@@ -10,6 +10,11 @@ import {
   createRoutingSchema,
   createBomComponentSchema,
   supersedeEngineeringVersionSchema,
+  decideChangeRequestSchema,
+  retireEngineeringVersionSchema,
+  foundationItemsTable,
+  foundationMachinesTable,
+  foundationWorkCentersTable,
   engineeringBomComponentsTable,
   engineeringChangeRequestsTable,
   engineeringProductsTable,
@@ -18,6 +23,8 @@ import {
 } from "../db/schema";
 import { requireAuth, requireRole } from "../middleware/auth";
 import { parseIdParam } from "../lib/validate";
+import { nextPhase0Number } from "../lib/phase0";
+import { writeAuditEvent } from "../lib/governance";
 import {
   assertAllowedEngineeringVersionTransition,
   assertEngineeringVersionEditable,
@@ -57,6 +64,25 @@ async function loadVersionOr404(id: number, res: import("express").Response) {
   }
   return version;
 }
+
+// قوائم الاختيار لشاشة الهندسة (أصناف، مراكز عمل، ماكينات، منتجات هندسية). أدوار الهندسة مالهاش
+// صلاحية /foundation/items أصلًا، فبدل ما نوسّع صلاحية الأساس بنقدّم هنا بيانات اختيار فقط:
+// من غير سعر ولا مخزون ولا مورّد.
+router.get("/engineering/lookups", requireAuth, requireRole(...engineeringRoles), async (_req, res, next) => {
+  try {
+    const [items, workCenters, machines, products] = await Promise.all([
+      db.select({ id: foundationItemsTable.id, code: foundationItemsTable.code, name: foundationItemsTable.name, itemType: foundationItemsTable.itemType, baseUnit: foundationItemsTable.baseUnit })
+        .from(foundationItemsTable).where(eq(foundationItemsTable.active, true)).orderBy(asc(foundationItemsTable.code)),
+      db.select({ id: foundationWorkCentersTable.id, code: foundationWorkCentersTable.code, name: foundationWorkCentersTable.name })
+        .from(foundationWorkCentersTable).where(eq(foundationWorkCentersTable.active, true)).orderBy(asc(foundationWorkCentersTable.code)),
+      db.select({ id: foundationMachinesTable.id, code: foundationMachinesTable.code, name: foundationMachinesTable.name, workCenterId: foundationMachinesTable.workCenterId })
+        .from(foundationMachinesTable).where(eq(foundationMachinesTable.active, true)).orderBy(asc(foundationMachinesTable.code)),
+      db.select({ id: engineeringProductsTable.id, code: engineeringProductsTable.code, name: engineeringProductsTable.name })
+        .from(engineeringProductsTable).orderBy(asc(engineeringProductsTable.code)),
+    ]);
+    res.json({ data: { items, workCenters, machines, products } });
+  } catch (err) { next(err); }
+});
 
 router.get("/engineering/products", requireAuth, requireRole(...engineeringRoles), async (_req, res, next) => {
   try {
@@ -197,8 +223,10 @@ router.post("/engineering/product-versions/:id/submit-review", requireAuth, requ
     const version = await loadVersionOr404(id, res);
     if (!version) return;
     assertAllowedEngineeringVersionTransition(version.status, "in_review");
+    // الشرط على الحالة الحالية: ضغطتين متزامنتين ما يعدّوش الانتقال مرتين.
     const [updated] = await db.update(engineeringProductVersionsTable).set({ status: "in_review" })
-      .where(eq(engineeringProductVersionsTable.id, id)).returning();
+      .where(and(eq(engineeringProductVersionsTable.id, id), eq(engineeringProductVersionsTable.status, version.status))).returning();
+    if (!updated) { res.status(409).json({ error: { message: "حالة الإصدار اتغيّرت للتو، حدّث الصفحة وجرّب تاني" } }); return; }
     res.json({ data: updated });
   } catch (err) { next(err); }
 });
@@ -225,7 +253,8 @@ router.post("/engineering/bom-versions/:id/approve", requireAuth, requireRole(..
       status: "approved",
       approvedBy: req.user?.userId,
       approvedAt: new Date(),
-    }).where(eq(engineeringProductVersionsTable.id, id)).returning();
+    }).where(and(eq(engineeringProductVersionsTable.id, id), eq(engineeringProductVersionsTable.status, version.status), eq(engineeringProductVersionsTable.validationStatus, "passed"))).returning();
+    if (!approved) { res.status(409).json({ error: { message: "الإصدار اتعدّل أو اتغيّرت حالته للتو، شغّل فحص القابلية وحدّث الصفحة" } }); return; }
     res.json({ data: approved });
   } catch (err) { next(err); }
 });
@@ -261,8 +290,36 @@ router.post("/engineering/product-versions/:id/supersede", requireAuth, requireR
     }
     const [updated] = await db.update(engineeringProductVersionsTable).set({
       status: "superseded", supersededByVersionId: input.supersededByVersionId,
-    }).where(eq(engineeringProductVersionsTable.id, id)).returning();
+    }).where(and(eq(engineeringProductVersionsTable.id, id), eq(engineeringProductVersionsTable.status, version.status))).returning();
+    if (!updated) { res.status(409).json({ error: { message: "حالة الإصدار اتغيّرت للتو، حدّث الصفحة وجرّب تاني" } }); return; }
+    await writeAuditEvent({ actorUserId: req.user!.userId, actorName: req.user!.username, actionKey: "engineering.version.supersede", resourceType: "engineering_product_version", resourceId: id, afterData: { supersededByVersionId: input.supersededByVersionId, reason: input.reason }, ipAddress: req.ip, userAgent: req.get("user-agent") }).catch(() => undefined);
     res.json({ data: updated });
+  } catch (err) { next(err); }
+});
+
+router.post("/engineering/product-versions/:id/retire", requireAuth, requireRole(...engineeringApprovalRoles), async (req, res, next) => {
+  try {
+    const id = parseIdParam(req.params.id, res);
+    if (id === null) return;
+    const input = retireEngineeringVersionSchema.parse(req.body);
+    const version = await loadVersionOr404(id, res);
+    if (!version) return;
+    assertAllowedEngineeringVersionTransition(version.status, "retired");
+    const [updated] = await db.update(engineeringProductVersionsTable).set({ status: "retired", effectiveTo: new Date().toISOString().slice(0, 10) })
+      .where(and(eq(engineeringProductVersionsTable.id, id), eq(engineeringProductVersionsTable.status, version.status))).returning();
+    if (!updated) { res.status(409).json({ error: { message: "حالة الإصدار اتغيّرت للتو، حدّث الصفحة وجرّب تاني" } }); return; }
+    await writeAuditEvent({ actorUserId: req.user!.userId, actorName: req.user!.username, actionKey: "engineering.version.retire", resourceType: "engineering_product_version", resourceId: id, afterData: { reason: input.reason }, ipAddress: req.ip, userAgent: req.get("user-agent") }).catch(() => undefined);
+    res.json({ data: updated });
+  } catch (err) { next(err); }
+});
+
+router.get("/engineering/routings/:versionId/operations", requireAuth, requireRole(...engineeringRoles), async (req, res, next) => {
+  try {
+    const versionId = parseIdParam(req.params.versionId, res);
+    if (versionId === null) return;
+    res.json({ data: await db.select().from(engineeringRoutingsTable)
+      .where(eq(engineeringRoutingsTable.productVersionId, versionId))
+      .orderBy(engineeringRoutingsTable.operationNo) });
   } catch (err) { next(err); }
 });
 
@@ -305,15 +362,49 @@ router.get("/engineering/change-requests", requireAuth, requireRole(...engineeri
 router.post("/engineering/change-requests", requireAuth, requireRole(...engineeringRoles), async (req, res, next) => {
   try {
     const data = createChangeRequestSchema.parse(req.body);
-    const [changeRequest] = await db.insert(engineeringChangeRequestsTable).values({
-      ...data,
-      requestNumber: `ECR-${Date.now()}`,
-      requestedBy: req.user?.userId,
-    }).returning();
+    const changeRequest = await db.transaction(async (tx) => {
+      const [product] = await tx.select({ id: engineeringProductsTable.id }).from(engineeringProductsTable).where(eq(engineeringProductsTable.id, data.productId)).limit(1);
+      if (!product) throw Object.assign(new Error("المنتج الهندسي غير موجود"), { status: 404 });
+      if (data.productVersionId) {
+        const [v] = await tx.select({ productId: engineeringProductVersionsTable.productId }).from(engineeringProductVersionsTable).where(eq(engineeringProductVersionsTable.id, data.productVersionId)).limit(1);
+        if (!v || v.productId !== data.productId) throw Object.assign(new Error("الإصدار المختار لا يخص هذا المنتج"), { status: 422 });
+      }
+      // الرقم والإدخال معاملة واحدة: انقطاع بينهم ما يحرقش رقم ولا يسيب طلب بدون رقم.
+      const requestNumber = await nextPhase0Number(tx, "engineering_change_request");
+      const [created] = await tx.insert(engineeringChangeRequestsTable).values({
+        ...data,
+        requestNumber,
+        requestedBy: req.user?.userId,
+      }).returning();
+      return created;
+    });
     res.status(201).json({ data: changeRequest });
   } catch (err) {
     next(err);
   }
+});
+
+// قرار على طلب التغيير: اعتماد أو رفض بسبب مكتوب. صاحب الطلب ما يقررش على طلبه (فصل المهام)،
+// والقرار مرة واحدة (الصف مقفول والحالة لازم تكون open).
+router.patch("/engineering/change-requests/:id/decide", requireAuth, requireRole(...engineeringApprovalRoles), async (req, res, next) => {
+  try {
+    const id = parseIdParam(req.params.id, res);
+    if (id === null) return;
+    const input = decideChangeRequestSchema.parse(req.body);
+    const decided = await db.transaction(async (tx) => {
+      const [cr] = await tx.select().from(engineeringChangeRequestsTable).where(eq(engineeringChangeRequestsTable.id, id)).limit(1).for("update");
+      if (!cr) throw Object.assign(new Error("طلب التغيير غير موجود"), { status: 404 });
+      if (cr.status !== "open") throw Object.assign(new Error("تم البت في طلب التغيير ده قبل كده"), { status: 409 });
+      if (cr.requestedBy && cr.requestedBy === req.user!.userId) throw Object.assign(new Error("لا يمكنك البت في طلب تغيير فتحته بنفسك"), { status: 403 });
+      const [row] = await tx.update(engineeringChangeRequestsTable).set({
+        status: input.decision, decidedBy: req.user!.userId, decidedAt: new Date(), decisionReason: input.reason,
+      }).where(eq(engineeringChangeRequestsTable.id, id)).returning();
+      // التدقيق في نفس المعاملة: ما يتسجلش قرار ناجح لو الكتابة فشلت، ولا قرار بدون أثر تدقيق.
+      await writeAuditEvent({ actorUserId: req.user!.userId, actorName: req.user!.username, actionKey: `engineering.change.${input.decision}`, resourceType: "engineering_change_request", resourceId: id, afterData: { decision: input.decision, reason: input.reason }, ipAddress: req.ip, userAgent: req.get("user-agent"), executor: tx });
+      return row;
+    });
+    res.json({ data: decided });
+  } catch (err) { next(err); }
 });
 
 // Phase 04 (delivery 1): real, computable change-impact — other engineering

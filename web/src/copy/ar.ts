@@ -12,6 +12,7 @@ import { invCopy } from "./inv";
 import { purchasesCopy } from "./purchases";
 import { contactsCopy } from "./contacts";
 import { operationsCopy } from "./operations";
+import { engineeringCopy } from "./engineering";
 import { productionCopy } from "./production";
 import { tasksCopy } from "./tasks";
 
@@ -141,6 +142,7 @@ export const ar = {
   ...contactsCopy,
   ...operationsCopy,
   ...productionCopy,
+  ...engineeringCopy,
   ...tasksCopy,
   ...chatCopy,
 } as const satisfies Record<string, Msg>;

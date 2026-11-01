@@ -20,7 +20,7 @@ describe("صفحة الإنتاج الموحّدة", () => {
   });
 
   it("الروابط القديمة بتتحوّل لتبويبها، والتحويل قبل الملفات الثابتة", () => {
-    expect([...LEGACY_PRODUCTION_PATHS].sort()).toEqual(["/execution-control.html", "/factory-intake.html", "/factory-production-manager.html", "/factory-quality-controller.html", "/factory-supervisor.html", "/factory-warehouse-manager.html", "/production-control.html", "/production-requests.html", "/production.html"]);
+    expect([...LEGACY_PRODUCTION_PATHS].sort()).toEqual(["/engineering.html", "/execution-control.html", "/factory-intake.html", "/factory-production-manager.html", "/factory-quality-controller.html", "/factory-supervisor.html", "/factory-warehouse-manager.html", "/production-control.html", "/production-requests.html", "/production.html"]);
     expect(PRODUCTION_PAGE_REDIRECTS["/production-requests.html"]).toBe("/v2/staff/production?tab=requests");
     expect(PRODUCTION_PAGE_REDIRECTS["/execution-control.html"]).toBe("/v2/staff/production?tab=quality");
     const main = read("src/main.ts");
@@ -50,6 +50,17 @@ describe("صفحة الإنتاج الموحّدة", () => {
     expect(src).toContain('actionKey: "production.ncr.close"');
     expect(src).toContain('.for("update")');
     expect(src).toContain("requireRole(...NCR_CLOSE_ROLES)");
+  });
+
+  it("تأكيد العملية وقفل الدفعة بيتسجّلوا في سجل التدقيق جوّه نفس المعاملة وبقفل صف", () => {
+    const src = read("src/routes/production-execution.ts");
+    for (const key of ["production.operation.confirm", "production.batch.close"]) {
+      const at = src.indexOf(`actionKey: "${key}"`);
+      expect(at).toBeGreaterThan(0);
+      expect(src.slice(at, at + 700)).toContain("executor: tx");
+    }
+    const confirm = src.slice(src.indexOf('"/production-execution/batches/:id/confirm"'), src.indexOf('"/production-execution/batches/:id/close"'));
+    expect(confirm).toContain('.for("update")');
   });
 
   it("الراوتر الجديد في الويب محمي بأدوار الصفحة", () => {

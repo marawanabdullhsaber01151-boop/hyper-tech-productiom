@@ -17,4 +17,7 @@ export const CONTACT_WRITE_ROLES = ["chairman", "sales_manager", "online_seller"
 /** الإنتاج: اتحاد أدوار طلبات الإنتاج والجودة (التفاصيل في productionRules). */
 export { PRODUCTION_PAGE_ROLES } from "./productionRules";
 
+/** الهندسة: نفس engineeringRoles في السيرفر. */
+export { ENGINEERING_ROLES as ENGINEERING_PAGE_ROLES } from "./engineeringCore";
+
 export const OPERATIONS_ROLES = ["chairman", "executive_manager", "operations_manager"] as const;

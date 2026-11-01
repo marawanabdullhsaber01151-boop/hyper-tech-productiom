@@ -180,6 +180,7 @@ export const engineeringChangeRequestsTable = pgTable(
     requestedBy: integer("requested_by").references(() => systemUsersTable.id),
     decidedBy: integer("decided_by").references(() => systemUsersTable.id),
     decidedAt: timestamp("decided_at", { withTimezone: true }),
+    decisionReason: text("decision_reason"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => ({
@@ -263,4 +264,13 @@ export const createChangeRequestSchema = z.object({
   title: z.string().trim().min(1).max(180),
   reason: z.string().trim().min(1).max(2000),
   impactSummary: z.string().trim().max(4000).optional().nullable(),
+});
+
+export const decideChangeRequestSchema = z.object({
+  decision: z.enum(["approved", "rejected"]),
+  reason: z.string().trim().min(3, "سبب القرار مطلوب (3 حروف على الأقل)").max(1000),
+});
+
+export const retireEngineeringVersionSchema = z.object({
+  reason: z.string().trim().min(3, "سبب الإيقاف مطلوب (3 حروف على الأقل)").max(1000),
 });
