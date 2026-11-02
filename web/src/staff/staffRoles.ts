@@ -20,6 +20,10 @@ export { PRODUCTION_PAGE_ROLES } from "./productionRules";
 /** الهندسة: نفس engineeringRoles في السيرفر. */
 import { ENGINEERING_ROLES } from "./engineeringCore";
 import { RECIPE_VIEW_ROLES } from "./recipesCore";
+/** التخطيط: نفس planningRoles في السيرفر. */
+import { PLANNING_ROLES } from "./planningCore";
+export const PLANNING_PAGE_ROLES: readonly string[] = PLANNING_ROLES;
+
 export const ENGINEERING_PAGE_ROLES = [...new Set([...ENGINEERING_ROLES, ...RECIPE_VIEW_ROLES])] as readonly string[];
 
 export const OPERATIONS_ROLES = ["chairman", "executive_manager", "operations_manager"] as const;

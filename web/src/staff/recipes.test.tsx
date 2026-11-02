@@ -88,7 +88,7 @@ describe("تبويب وصفات التصنيع", () => {
     const dialog = within(await screen.findByRole("dialog"));
     const save = dialog.getByRole("button", { name: "احفظ" }) as HTMLButtonElement;
     expect(save.disabled).toBe(true);
-    fireEvent.change(dialog.getByLabelText(/المنتج التام/), { target: { value: "6" } });
+    fireEvent.change(await dialog.findByLabelText(/المنتج التام/), { target: { value: "6" } });
     fireEvent.input(dialog.getByLabelText(/الناتج للدفعة/), { target: { value: "١٢" } });
     await waitFor(() => expect((dialog.getByRole("button", { name: "احفظ" }) as HTMLButtonElement).disabled).toBe(false));
     fireEvent.click(dialog.getByRole("button", { name: "احفظ" }));

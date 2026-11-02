@@ -192,3 +192,13 @@ export const createPlanningRunSchema = z.object({
 });
 
 export type CreatePlanningRun = z.infer<typeof createPlanningRunSchema>;
+
+/** فرد وصفات لاحتياجات خامات (معاينة بدون حفظ): كل سطر = وصفة + كمية تُنتج + تاريخ الاحتياج. */
+export const explodePlanningSchema = z.object({
+  lines: z.array(z.object({
+    bomRecipeId: z.number().int().positive(),
+    qty: z.string().trim().regex(/^\d{1,9}(\.\d{1,3})?$/, "الكمية لازم تكون رقم موجب بحد أقصى 3 أرقام بعد الفاصلة").refine((v) => Number(v) > 0, "الكمية لازم تكون أكبر من صفر"),
+    requiredBy: planningDate,
+  })).min(1, "ضيف سطر واحد على الأقل").max(50, "الحد الأقصى 50 سطر"),
+});
+export type ExplodePlanning = z.infer<typeof explodePlanningSchema>;

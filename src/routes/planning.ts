@@ -1,11 +1,16 @@
 /** @format */
 
 import { Router } from "express";
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, notInArray } from "drizzle-orm";
 import { db } from "../db";
 import {
+  bomRecipeItemsTable,
+  bomRecipesTable,
+  explodePlanningSchema,
+  purchaseOrderItemsTable,
+  purchaseOrdersTable,
+  purchaseRequisitionsTable,
   createPlanningRunSchema,
-  createMrpSchema,
   createRequisitionSchema,
   inventoryItemsTable,
   materialRequirementsTable,
@@ -20,16 +25,114 @@ import {
 } from "../db/schema";
 import { requireAuth, requireRole } from "../middleware/auth";
 import { nextPhase0Number } from "../lib/phase0";
+import { parseIdParam } from "../lib/validate";
+import { writeAuditEvent } from "../lib/governance";
+import { addDecimalQuantities, maxZeroDecimalQuantity, subtractDecimalQuantities } from "../lib/decimal-quantity";
 import {
   buildPlanningRunKey,
   buildReleaseImpact,
   calculatePlanningRequirement,
   evaluateCapacity,
+  explodeBomLines,
   mergeCapacityLoads,
 } from "../domain/planning";
 
 const router = Router();
 const planningRoles = ["chairman", "production_manager", "production_controller", "warehouse_manager"];
+
+type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+/** تسجيل أثر تخطيط في نفس معاملة العملية (E9). */
+const audit = (req: import("express").Request, tx: Tx, actionKey: string, resourceId: number, afterData: unknown, beforeData?: unknown) =>
+  writeAuditEvent({ actorUserId: req.user!.userId, actorName: req.user!.username, actionKey, resourceType: "planning_run", resourceId, beforeData, afterData, ipAddress: req.ip, userAgent: req.get("user-agent"), executor: tx });
+
+/**
+ * التوريد المفتوح لكل صنف: اللي في الطريق ومحسوب قبل ما نقترح شراء تاني.
+ * أوامر شراء غير مستلمة بالكامل أو ملغية (الباقي = الكمية − المستلم) + احتياجات تخطيط لسه مسودة + احتياجات تشغيل أُكّدت للمشتريات.
+ */
+async function loadOpenSupply(itemIds: number[]) {
+  const out = new Map<number, { purchaseOrders: string; requisitions: string; total: string }>();
+  if (!itemIds.length) return out;
+  const [poRows, planRows, opsRows] = await Promise.all([
+    db.select({ itemId: purchaseOrderItemsTable.inventoryItemId, qty: purchaseOrderItemsTable.qty, received: purchaseOrderItemsTable.receivedQty })
+      .from(purchaseOrderItemsTable)
+      .innerJoin(purchaseOrdersTable, eq(purchaseOrdersTable.id, purchaseOrderItemsTable.poId))
+      .where(and(inArray(purchaseOrderItemsTable.inventoryItemId, itemIds), notInArray(purchaseOrdersTable.status, ["received", "cancelled"]))),
+    db.select({ itemId: planningPurchaseRequisitionsTable.inventoryItemId, qty: planningPurchaseRequisitionsTable.requestedQty })
+      .from(planningPurchaseRequisitionsTable)
+      .where(and(inArray(planningPurchaseRequisitionsTable.inventoryItemId, itemIds), eq(planningPurchaseRequisitionsTable.status, "draft"))),
+    db.select({ itemId: purchaseRequisitionsTable.inventoryItemId, qty: purchaseRequisitionsTable.shortageQty })
+      .from(purchaseRequisitionsTable)
+      .where(and(inArray(purchaseRequisitionsTable.inventoryItemId, itemIds), eq(purchaseRequisitionsTable.status, "confirmed_to_procurement"))),
+  ]);
+  const slot = (id: number) => out.get(id) ?? out.set(id, { purchaseOrders: "0", requisitions: "0", total: "0" }).get(id)!;
+  for (const r of poRows) {
+    const s = slot(r.itemId);
+    s.purchaseOrders = addDecimalQuantities(s.purchaseOrders, maxZeroDecimalQuantity(subtractDecimalQuantities(r.qty, r.received)));
+  }
+  for (const r of [...planRows, ...opsRows]) {
+    if (r.itemId == null) continue;
+    const s = slot(r.itemId);
+    s.requisitions = addDecimalQuantities(s.requisitions, r.qty);
+  }
+  for (const s of out.values()) s.total = addDecimalQuantities(s.purchaseOrders, s.requisitions);
+  return out;
+}
+
+// GET /planning/lookups — الوصفات المفعّلة لاختيارها في سيناريو جديد (من غير أسعار)
+router.get("/planning/lookups", requireAuth, requireRole(...planningRoles), async (_req, res, next) => {
+  try {
+    const recipes = await db
+      .select({ id: bomRecipesTable.id, productName: bomRecipesTable.productName, productCode: bomRecipesTable.productCode, outputQty: bomRecipesTable.outputQty })
+      .from(bomRecipesTable)
+      .where(eq(bomRecipesTable.isActive, true))
+      .orderBy(asc(bomRecipesTable.productName));
+    res.json({ data: { recipes } });
+  } catch (err) { next(err); }
+});
+
+// POST /planning/explode — معاينة بدون حفظ: وصفات + كميات ← احتياج كل خامة، المتاح الحر، التوريد المفتوح، العجز، و«ليه».
+router.post("/planning/explode", requireAuth, requireRole(...planningRoles), async (req, res, next) => {
+  try {
+    const { lines } = explodePlanningSchema.parse(req.body);
+    const ids = [...new Set(lines.map((l) => l.bomRecipeId))];
+    const [recipeRows, itemRows] = await Promise.all([
+      db.select().from(bomRecipesTable).where(inArray(bomRecipesTable.id, ids)),
+      db.select().from(bomRecipeItemsTable).where(inArray(bomRecipeItemsTable.recipeId, ids)),
+    ]);
+    const { demands, blockers } = explodeBomLines(lines, recipeRows.map((r) => ({
+      id: r.id, productName: r.productName, productCode: r.productCode, outputQty: r.outputQty, isActive: r.isActive,
+      items: itemRows.filter((i) => i.recipeId === r.id).map((i) => ({ id: i.id, inventoryItemId: i.inventoryItemId, materialName: i.materialName, qty: i.qty, unit: i.unit })),
+    })));
+    const itemIds = demands.map((d) => d.inventoryItemId);
+    const [inventory, supply] = await Promise.all([
+      itemIds.length ? db.select().from(inventoryItemsTable).where(inArray(inventoryItemsTable.id, itemIds)) : Promise.resolve([]),
+      loadOpenSupply(itemIds),
+    ]);
+    const stock = new Map(inventory.map((i) => [i.id, i]));
+    const rows = demands.map((d) => {
+      const item = stock.get(d.inventoryItemId);
+      if (!item) {
+        blockers.push({ code: "item_unlinked", recipeId: d.sources[0]?.recipeId ?? 0, productName: d.sources[0]?.productName ?? null, materialName: d.materialName, message: `صنف المخزون الخاص بـ«${d.materialName}» مش موجود. راجع ربط المكوّن.` });
+        return null;
+      }
+      const open = supply.get(d.inventoryItemId) ?? { purchaseOrders: "0", requisitions: "0", total: "0" };
+      const result = calculatePlanningRequirement({
+        grossQty: d.grossQty, availableQty: String(item.qty), reservedQty: String(item.reservedQty), quarantineQty: String(item.quarantineQty),
+        openSupplyQty: open.total, leadDays: 0, requiredBy: d.requiredBy,
+      });
+      return {
+        ...d,
+        code: item.code,
+        name: item.name,
+        stock: { onHand: String(item.qty), reserved: String(item.reservedQty), quarantine: String(item.quarantineQty) },
+        openSupply: open,
+        result,
+      };
+    }).filter((r): r is NonNullable<typeof r> => r !== null);
+    res.json({ data: { demands: rows, blockers, summary: { demandCount: rows.length, shortageCount: rows.filter((r) => r.result.status === "shortage").length, blockerCount: blockers.length } } });
+  } catch (err) { next(err); }
+});
 
 /**
  * Phase 05 cockpit.
@@ -180,6 +283,7 @@ router.post("/planning/runs", requireAuth, requireRole(...planningRoles), async 
         };
       });
       if (capacityRows.length) await tx.insert(planningCapacityLoadsTable).values(capacityRows);
+      await audit(req, tx, "planning.run.create", run.id, { scenarioCode: data.scenarioCode, horizonStart: data.horizonStart, horizonEnd: data.horizonEnd, demands: inputs.length, shortages: shortages.length });
       return { run, created: true };
     });
 
@@ -198,12 +302,18 @@ async function loadPlanningRun(id: number) {
     db.select().from(planningShortageMessagesTable).where(eq(planningShortageMessagesTable.runId, id)),
     db.select().from(planningPeggingLinksTable).where(eq(planningPeggingLinksTable.runId, id)),
   ]);
+  const reqIds = peggingLinks.map((p) => p.materialRequirementId);
+  const requisitions = reqIds.length
+    ? await db.select({ id: planningPurchaseRequisitionsTable.id, number: planningPurchaseRequisitionsTable.requisitionNumber, materialRequirementId: planningPurchaseRequisitionsTable.materialRequirementId, requestedQty: planningPurchaseRequisitionsTable.requestedQty, status: planningPurchaseRequisitionsTable.status })
+      .from(planningPurchaseRequisitionsTable).where(inArray(planningPurchaseRequisitionsTable.materialRequirementId, reqIds))
+    : [];
   return {
     ...run,
     inputs,
     capacityLoads,
     shortageMessages,
     peggingLinks,
+    requisitions,
     summary: {
       demandCount: inputs.length,
       shortageCount: shortageMessages.length,
@@ -243,7 +353,9 @@ router.get("/planning/runs", requireAuth, requireRole(...planningRoles), async (
 
 router.get("/planning/runs/:id", requireAuth, requireRole(...planningRoles), async (req, res, next) => {
   try {
-    const run = await loadPlanningRun(Number(req.params.id));
+    const id = parseIdParam(req.params.id, res);
+    if (id === null) return;
+    const run = await loadPlanningRun(id);
     if (!run) {
       res.status(404).json({ error: { message: "تشغيل التخطيط غير موجود" } });
       return;
@@ -256,12 +368,17 @@ router.get("/planning/runs/:id", requireAuth, requireRole(...planningRoles), asy
 
 router.post("/planning/runs/:id/approve", requireAuth, requireRole("chairman", "production_manager"), async (req, res, next) => {
   try {
-    const id = Number(req.params.id);
-    const [run] = await db.update(planningRunsTable).set({
-      status: "approved",
-      approvedBy: req.user!.userId,
-      approvedAt: new Date(),
-    }).where(and(eq(planningRunsTable.id, id), eq(planningRunsTable.status, "draft"))).returning();
+    const id = parseIdParam(req.params.id, res);
+    if (id === null) return;
+    const run = await db.transaction(async (tx) => {
+      const [row] = await tx.update(planningRunsTable).set({
+        status: "approved",
+        approvedBy: req.user!.userId,
+        approvedAt: new Date(),
+      }).where(and(eq(planningRunsTable.id, id), eq(planningRunsTable.status, "draft"))).returning();
+      if (row) await audit(req, tx, "planning.run.approve", id, { status: "approved" }, { status: "draft" });
+      return row;
+    });
     if (!run) {
       res.status(409).json({ error: { message: "الخطة ليست في حالة مسودة أو تم اعتمادها مسبقًا" } });
       return;
@@ -274,7 +391,9 @@ router.post("/planning/runs/:id/approve", requireAuth, requireRole("chairman", "
 
 router.post("/planning/runs/:id/release/preview", requireAuth, requireRole(...planningRoles), async (req, res, next) => {
   try {
-    const run = await loadPlanningRun(Number(req.params.id));
+    const previewId = parseIdParam(req.params.id, res);
+    if (previewId === null) return;
+    const run = await loadPlanningRun(previewId);
     if (!run) {
       res.status(404).json({ error: { message: "تشغيل التخطيط غير موجود" } });
       return;
@@ -291,7 +410,8 @@ router.post("/planning/runs/:id/release/preview", requireAuth, requireRole(...pl
 
 router.post("/planning/runs/:id/release", requireAuth, requireRole("chairman", "production_manager"), async (req, res, next) => {
   try {
-    const id = Number(req.params.id);
+    const id = parseIdParam(req.params.id, res);
+    if (id === null) return;
     const released = await db.transaction(async (tx) => {
       const [run] = await tx.update(planningRunsTable).set({
         status: "released",
@@ -315,6 +435,7 @@ router.post("/planning/runs/:id/release", requireAuth, requireRole("chairman", "
         decidedBy: req.user!.userId,
         impactSnapshot: impact,
       });
+      await audit(req, tx, "planning.run.release", id, { status: "released", impact }, { status: "approved" });
       return run;
     });
     if (!released) {
@@ -327,67 +448,21 @@ router.post("/planning/runs/:id/release", requireAuth, requireRole("chairman", "
   }
 });
 
-router.post("/planning/mrp", requireAuth, requireRole(...planningRoles), async (req, res, next) => {
-  try {
-    const data = createMrpSchema.parse(req.body);
-    const plan = await db.transaction(async (tx) => {
-      const planNumber = await nextPhase0Number(tx, "production_plan");
-      const [createdPlan] = await tx.insert(productionPlansTable).values({
-        planNumber,
-        dueDate: data.dueDate,
-        demandSource: data.demandSource,
-        createdBy: req.user!.userId,
-      }).returning();
-      const items = await Promise.all(data.requirements.map(async (requirement) => {
-        const [item] = await tx.select().from(inventoryItemsTable)
-          .where(eq(inventoryItemsTable.id, requirement.inventoryItemId)).limit(1);
-        if (!item) throw Object.assign(new Error("صنف خامة غير موجود"), { status: 404 });
-        const available = Math.max(0, Number(item.qty) - Number(item.reservedQty) - Number(item.quarantineQty));
-        const gross = Number(requirement.grossQty);
-        const net = Math.max(0, gross - available);
-        const [created] = await tx.insert(materialRequirementsTable).values({
-          planId: createdPlan.id,
-          inventoryItemId: item.id,
-          workflowOrderId: data.workflowOrderId,
-          grossQty: requirement.grossQty,
-          availableQty: String(available),
-          netQty: String(net),
-          requiredBy: requirement.requiredBy,
-          status: net > 0 ? "shortage" : "covered",
-        }).returning();
-        return created;
-      }));
-      return { ...createdPlan, requirements: items };
-    });
-    res.status(201).json({ data: plan });
-  } catch (err) {
-    next(err);
-  }
-});
-
-router.get("/planning/mrp", requireAuth, requireRole(...planningRoles), async (_req, res, next) => {
-  try {
-    const plans = await db.select().from(productionPlansTable).orderBy(desc(productionPlansTable.createdAt));
-    const requirements = await db.select().from(materialRequirementsTable);
-    res.json({ data: plans.map((plan) => ({
-      ...plan,
-      requirements: requirements.filter((requirement) => requirement.planId === plan.id),
-    })) });
-  } catch (err) {
-    next(err);
-  }
-});
-
+// إنشاء طلب شراء لاحتياج واحد. الاحتياج بيتقفل (FOR UPDATE) وبيتفحص إنه ما اتطلبش قبل كده، فمفيش تكرار حتى لو ضغطتين مع بعض.
 router.post("/planning/requisitions", requireAuth, requireRole(...planningRoles), async (req, res, next) => {
   try {
     const { materialRequirementId } = createRequisitionSchema.parse(req.body);
-    const [requirement] = await db.select().from(materialRequirementsTable)
-      .where(eq(materialRequirementsTable.id, materialRequirementId)).limit(1);
-    if (!requirement || Number(requirement.netQty) <= 0) {
-      res.status(400).json({ error: { message: "لا يوجد عجز صالح لإنشاء طلب شراء" } });
-      return;
-    }
     const created = await db.transaction(async (tx) => {
+      const [requirement] = await tx.select().from(materialRequirementsTable)
+        .where(eq(materialRequirementsTable.id, materialRequirementId)).for("update").limit(1);
+      if (!requirement || Number(requirement.netQty) <= 0) {
+        throw Object.assign(new Error("لا يوجد عجز صالح لإنشاء طلب شراء"), { status: 400 });
+      }
+      const [existing] = await tx.select({ number: planningPurchaseRequisitionsTable.requisitionNumber }).from(planningPurchaseRequisitionsTable)
+        .where(eq(planningPurchaseRequisitionsTable.materialRequirementId, requirement.id)).limit(1);
+      if (existing) {
+        throw Object.assign(new Error(`تم إنشاء طلب شراء لهذا الاحتياج من قبل (${existing.number}).`), { status: 409 });
+      }
       const requisitionNumber = await nextPhase0Number(tx, "purchase_requisition");
       const [record] = await tx.insert(planningPurchaseRequisitionsTable).values({
         requisitionNumber,
@@ -397,9 +472,52 @@ router.post("/planning/requisitions", requireAuth, requireRole(...planningRoles)
         requestedQty: requirement.netQty,
         createdBy: req.user!.userId,
       }).returning();
-      return record;
+      await writeAuditEvent({ actorUserId: req.user!.userId, actorName: req.user!.username, actionKey: "planning.requisition.create", resourceType: "planning_purchase_requisition", resourceId: record!.id, afterData: { requisitionNumber, inventoryItemId: requirement.inventoryItemId, requestedQty: requirement.netQty }, ipAddress: req.ip, userAgent: req.get("user-agent"), executor: tx });
+      return record!;
     });
     res.status(201).json({ data: created });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /planning/runs/:id/requisitions — طلبات شراء لكل عجز في السيناريو المعتمد بمعاملة واحدة، من غير تكرار.
+router.post("/planning/runs/:id/requisitions", requireAuth, requireRole(...planningRoles), async (req, res, next) => {
+  try {
+    const id = parseIdParam(req.params.id, res);
+    if (id === null) return;
+    const result = await db.transaction(async (tx) => {
+      const [run] = await tx.select().from(planningRunsTable).where(eq(planningRunsTable.id, id)).for("update").limit(1);
+      if (!run) throw Object.assign(new Error("تشغيل التخطيط غير موجود"), { status: 404 });
+      if (run.status !== "approved" && run.status !== "released") {
+        throw Object.assign(new Error("اعتمد السيناريو الأول، وبعدين اعمل طلبات الشراء."), { status: 409 });
+      }
+      const links = await tx.select({ requirementId: planningPeggingLinksTable.materialRequirementId }).from(planningPeggingLinksTable).where(eq(planningPeggingLinksTable.runId, id));
+      const reqIds = [...new Set(links.map((l) => l.requirementId))];
+      if (!reqIds.length) return { created: [] as Array<{ id: number; number: string; inventoryItemId: number; qty: string }>, skipped: 0 };
+      const requirements = await tx.select().from(materialRequirementsTable).where(inArray(materialRequirementsTable.id, reqIds)).for("update");
+      const shortages = requirements.filter((r) => Number(r.netQty) > 0);
+      const already = await tx.select({ requirementId: planningPurchaseRequisitionsTable.materialRequirementId }).from(planningPurchaseRequisitionsTable)
+        .where(inArray(planningPurchaseRequisitionsTable.materialRequirementId, reqIds));
+      const done = new Set(already.map((a) => a.requirementId));
+      const created: Array<{ id: number; number: string; inventoryItemId: number; qty: string }> = [];
+      for (const requirement of shortages) {
+        if (done.has(requirement.id)) continue;
+        const requisitionNumber = await nextPhase0Number(tx, "purchase_requisition");
+        const [record] = await tx.insert(planningPurchaseRequisitionsTable).values({
+          requisitionNumber,
+          planId: requirement.planId,
+          materialRequirementId: requirement.id,
+          inventoryItemId: requirement.inventoryItemId,
+          requestedQty: requirement.netQty,
+          createdBy: req.user!.userId,
+        }).returning();
+        created.push({ id: record!.id, number: requisitionNumber, inventoryItemId: requirement.inventoryItemId, qty: String(requirement.netQty) });
+      }
+      await audit(req, tx, "planning.run.requisitions", id, { created: created.map((c) => c.number), skippedExisting: shortages.length - created.length });
+      return { created, skipped: shortages.length - created.length };
+    });
+    res.status(result.created.length ? 201 : 200).json({ data: result });
   } catch (err) {
     next(err);
   }

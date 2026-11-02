@@ -191,3 +191,8 @@
 - تبويب الوصفات (`/v2/staff/engineering?tab=recipes`) + `GET /bom/lookups` + `PATCH /bom/:id/items/:itemId`؛ مسح الوصفة المستخدمة 409؛ تدقيق `bom.*`؛ حذف `bom.html`.
 - الاختبارات: `src/routes/bom.hardening.test.ts`، `web/src/staff/recipesCore.test.ts`، `web/src/staff/recipes.test.tsx` (ما اتشغلوش في بيئة الشغل: tsc/vitest مش متاحين؛ المرجع `npm run check:all` عندك).
 - قرار مفتوح: ربط الوصفات بالإصدارات الهندسية (ADR 0012).
+
+## الخطوة 34 — التخطيط (MRP)
+- صفحة `/v2/staff/planning`؛ `POST /planning/explode` و`GET /planning/lookups` و`POST /planning/runs/:id/requisitions` جداد؛ طلب الشراء المفرد بمعاملة وقفل و409؛ تدقيق `planning.*`؛ حذف `/planning/mrp` و`planning.html`. بدون هجرة جديدة.
+- الاختبارات: `src/domain/planning.test.ts` و`src/routes/planning.hardening.test.ts` و`web/src/staff/planningCore.test.ts` و`planning.test.tsx` (tsc/vitest ما اتشغلوش في بيئة الشغل).
+

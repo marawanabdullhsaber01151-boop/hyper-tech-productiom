@@ -9,6 +9,7 @@ import { operationsCopy } from "./operations";
 import { productionCopy } from "./production";
 import { engineeringCopy } from "./engineering";
 import { invCopy } from "./inv";
+import { planningCopy } from "./planning";
 
 export const lazyCopies = {
   sales: salesCopy,
@@ -18,4 +19,5 @@ export const lazyCopies = {
   production: productionCopy,
   engineering: engineeringCopy,
   inv: invCopy,
+  planning: planningCopy,
 } as const;

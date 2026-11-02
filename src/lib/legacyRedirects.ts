@@ -84,6 +84,7 @@ export const PRODUCTION_PAGE_REDIRECTS: Readonly<Record<string, string>> = {
   "/production-requests.html": "/v2/staff/production?tab=requests",
   "/engineering.html": "/v2/staff/engineering",
   "/bom.html": "/v2/staff/engineering?tab=recipes",
+  "/planning.html": "/v2/staff/planning",
   "/production-control.html": "/v2/staff/production?tab=execution",
   "/execution-control.html": "/v2/staff/production?tab=quality",
   "/production.html": "/v2/staff/production?tab=orders",

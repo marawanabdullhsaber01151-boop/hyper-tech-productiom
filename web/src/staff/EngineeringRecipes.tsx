@@ -13,7 +13,7 @@ import {
   type RecipeFilter, type RecipeImage, type RecipeItemRow, type RecipeRow,
 } from "./recipesCore";
 
-interface RecipeLookups { products: { id: number; code: string; name: string }[]; inventory: { id: number; code: string | null; name: string; unit: string | null }[] }
+interface RecipeLookups { products: { id: number; code: string; name: string }[]; inventory: { id: number; code: string | null; name: string; unit: string | null }[]; loading?: boolean }
 interface RecipeDetail extends RecipeRow { items: RecipeItemRow[]; images: RecipeImage[] }
 
 const val = (e: Event) => (e.target as HTMLInputElement).value;
@@ -34,7 +34,7 @@ export function EngineeringRecipes() {
   const canEdit = canEditRecipes(role);
   const list = useQuery((signal) => api.get<RecipeRow[]>("/bom", { signal }), []);
   const lookupsQ = useQuery((signal) => api.get<RecipeLookups>("/bom/lookups", { signal }), []);
-  const lookups: RecipeLookups = { products: lookupsQ.data?.products ?? [], inventory: lookupsQ.data?.inventory ?? [] };
+  const lookups: RecipeLookups = { products: lookupsQ.data?.products ?? [], inventory: lookupsQ.data?.inventory ?? [], loading: lookupsQ.loading };
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<RecipeFilter>("all");
   const [openId, setOpenId] = useState<number | null>(null);
@@ -242,7 +242,7 @@ function RecipeDialog({ recipe, lookups, onClose, onDone }: { recipe?: RecipeDet
       <div class="eng-form">
         {canPickProduct ? (
           <Field label={t("rcp.f.product")} required={!editing} hint={lookups.products.length ? t("rcp.f.productHint") : undefined}>
-            {lookups.products.length ? <Select value={f.foundationItemId} options={[{ value: "", label: t("rcp.f.productPick") }, ...lookups.products.map((p) => ({ value: String(p.id), label: `${p.code} | ${p.name}` }))]} onChange={set("foundationItemId")} /> : <InlineAlert tone="warn">{t("rcp.f.noProducts")}</InlineAlert>}
+            {lookups.products.length ? <Select value={f.foundationItemId} options={[{ value: "", label: t("rcp.f.productPick") }, ...lookups.products.map((p) => ({ value: String(p.id), label: `${p.code} | ${p.name}` }))]} onChange={set("foundationItemId")} /> : lookups.loading ? <p class="eng-muted">{t("common.loading")}</p> : <InlineAlert tone="warn">{t("rcp.f.noProducts")}</InlineAlert>}
           </Field>
         ) : <p class="eng-muted">{t("rcp.f.productFixed", { name: recipe?.productName ?? "" })}</p>}
         <Field label={t("rcp.f.out")} required error={err === "outputQty" ? t("rcp.f.err.out") : undefined} hint={t("rcp.f.outHint")}><Input inputMode="decimal" value={f.outputQty} onInput={set("outputQty")} /></Field>

@@ -174,7 +174,7 @@ export const DEPARTMENTS: readonly NavDepartment[] = [
         label: "التخطيط و MRP",
         roles: ["chairman", "production_manager", "production_controller", "warehouse_manager"],
         pages: [
-          { id: "planning", label: "التخطيط و MRP", href: "planning.html", roles: ["chairman", "production_manager", "production_controller", "warehouse_manager"] },
+          { id: "planning", label: "التخطيط و MRP", href: "/v2/staff/planning", roles: ["chairman", "production_manager", "production_controller", "warehouse_manager"] },
         ],
       },
     ],
