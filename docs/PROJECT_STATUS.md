@@ -196,3 +196,7 @@
 - صفحة `/v2/staff/planning`؛ `POST /planning/explode` و`GET /planning/lookups` و`POST /planning/runs/:id/requisitions` جداد؛ طلب الشراء المفرد بمعاملة وقفل و409؛ تدقيق `planning.*`؛ حذف `/planning/mrp` و`planning.html`. بدون هجرة جديدة.
 - الاختبارات: `src/domain/planning.test.ts` و`src/routes/planning.hardening.test.ts` و`web/src/staff/planningCore.test.ts` و`planning.test.tsx` (tsc/vitest ما اتشغلوش في بيئة الشغل).
 
+## الخطوة 35أ — البيانات الأساسية
+- صفحة `/v2/staff/foundation` + `GET /foundation/impact/:kind/:id` (محاكي الأثر)؛ معاملات وتدقيق لكل تعديل؛ `active` للماكينة والوردية؛ العدّاد لا ينقص. بدون هجرة. `foundation.html` باقية للأصناف لحد 35ب.
+- الاختبارات: `src/routes/foundation.hardening.test.ts` و`foundation.inactivation.test.ts` (اتحدّث) و`web/src/staff/foundationCore.test.ts` و`foundation.test.tsx` (tsc/vitest ما اتشغلوش في بيئة الشغل).
+

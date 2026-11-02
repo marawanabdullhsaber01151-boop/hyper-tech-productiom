@@ -45,11 +45,8 @@ import {
   findDuplicateFoundationItemGroups,
   findDuplicateFoundationItemCodeGroups,
 } from "../lib/foundation-governance";
-import {
-  checkItemInactivationImpact,
-  checkLocationInactivationImpact,
-  checkWorkCenterInactivationImpact,
-} from "../lib/foundation-inactivation";
+import { checkItemInactivationImpact } from "../lib/foundation-inactivation";
+import { foundationImpact, hasBlockers, IMPACT_KINDS, type ImpactKind } from "../lib/foundation-impact";
 
 const router = Router();
 const FOUNDATION_ROLES = [
@@ -83,9 +80,10 @@ async function recordAudit(
   afterData: unknown,
   beforeData: unknown = null,
   reason: string | null = null,
+  executor: Pick<typeof db, "insert"> = db,
 ) {
   const user = actor(req);
-  await db.insert(foundationAuditTable).values({
+  await executor.insert(foundationAuditTable).values({
     entityType,
     entityId,
     action,
@@ -458,6 +456,40 @@ router.post("/foundation/items/:id/conversions", requireRole(...FOUNDATION_ROLES
   } catch (err) { forward(err, next); }
 });
 
+// خطوة 35: كل تعديل + سطر التدقيق بتاعه في معاملة واحدة (ADR 0008)، والإيقاف بيعدّي على محاكي الأثر.
+const fail = (status: number, message: string) => Object.assign(new Error(message), { status });
+type Tx = Pick<typeof db, "select" | "insert" | "update">;
+
+async function requireLocation(tx: Pick<typeof db, "select">, id: number | null | undefined) {
+  if (!id) return;
+  const [row] = await tx.select({ id: foundationLocationsTable.id }).from(foundationLocationsTable).where(eq(foundationLocationsTable.id, id));
+  if (!row) throw fail(422, "الموقع غير موجود");
+}
+
+async function requireWorkCenter(tx: Pick<typeof db, "select">, id: number | null | undefined) {
+  if (!id) return;
+  const [row] = await tx.select({ id: foundationWorkCentersTable.id }).from(foundationWorkCentersTable).where(eq(foundationWorkCentersTable.id, id));
+  if (!row) throw fail(422, "مركز العمل غير موجود");
+}
+
+/** بيمنع الإيقاف لو فيه مراجع حيّة إلا بسبب صريح (3 حروف على الأقل). */
+async function guardInactivation(tx: Pick<typeof db, "select">, kind: ImpactKind, id: number, overrideReason: string | null) {
+  const impact = await foundationImpact(tx, kind, id);
+  if (impact) assertInactivationAllowed({ entityType: kind, entityId: id, blockers: impact.blockers }, overrideReason);
+}
+
+router.get("/foundation/impact/:kind/:id", requireRole(...FOUNDATION_ROLES), async (req, res, next) => {
+  try {
+    const kind = String(req.params.kind) as ImpactKind;
+    if (!(IMPACT_KINDS as readonly string[]).includes(kind)) { res.status(404).json({ error: { message: "نوع غير معروف" } }); return; }
+    const id = parseIdParam(req.params.id, res);
+    if (id === null) return;
+    const impact = await foundationImpact(db, kind, id);
+    if (!impact) { res.status(404).json({ error: { message: "السجل غير موجود" } }); return; }
+    res.json({ ...impact, blocked: hasBlockers(impact) });
+  } catch (err) { next(err); }
+});
+
 router.get("/foundation/locations", requireRole(...FOUNDATION_ROLES), async (_req, res, next) => {
   try { res.json(await db.select().from(foundationLocationsTable).orderBy(asc(foundationLocationsTable.code))); }
   catch (err) { next(err); }
@@ -466,13 +498,15 @@ router.get("/foundation/locations", requireRole(...FOUNDATION_ROLES), async (_re
 router.post("/foundation/locations", requireRole(...FOUNDATION_ROLES), async (req, res, next) => {
   try {
     const data = foundationLocationSchema.parse(req.body);
-    if (data.parentId) {
-      const [parent] = await db.select({ id: foundationLocationsTable.id }).from(foundationLocationsTable)
-        .where(eq(foundationLocationsTable.id, data.parentId));
-      if (!parent) { res.status(422).json({ error: { message: "الموقع الأب غير موجود" } }); return; }
-    }
-    const [created] = await db.insert(foundationLocationsTable).values(data).returning();
-    await recordAudit(req, "location", created.id, "created", created);
+    const created = await db.transaction(async (tx) => {
+      if (data.parentId) {
+        const [parent] = await tx.select({ id: foundationLocationsTable.id }).from(foundationLocationsTable).where(eq(foundationLocationsTable.id, data.parentId));
+        if (!parent) throw fail(422, "الموقع الأب غير موجود");
+      }
+      const [row] = await tx.insert(foundationLocationsTable).values(data).returning();
+      await recordAudit(req, "location", row.id, "created", row, null, null, tx);
+      return row;
+    });
     res.status(201).json(created);
   } catch (err) { forward(err, next); }
 });
@@ -481,37 +515,28 @@ router.patch("/foundation/locations/:id", requireRole(...FOUNDATION_ROLES), asyn
   try {
     const id = parseIdParam(req.params.id, res);
     if (id === null) return;
-    const [before] = await db.select().from(foundationLocationsTable).where(eq(foundationLocationsTable.id, id));
-    if (!before) { res.status(404).json({ error: { message: "الموقع غير موجود" } }); return; }
     const data = foundationLocationSchema.partial().parse(req.body);
-    if (data.parentId === id) { res.status(422).json({ error: { message: "الموقع لا يمكن أن يكون أبًا لنفسه" } }); return; }
-    if (data.parentId) {
-      let ancestorId: number | null = data.parentId;
-      const visited = new Set<number>([id]);
-      while (ancestorId !== null) {
-        if (visited.has(ancestorId)) {
-          res.status(422).json({ error: { message: "لا يمكن إنشاء دورة في شجرة المواقع" } });
-          return;
+    const overrideReason = readOverrideReason(req);
+    const updated = await db.transaction(async (tx) => {
+      const [before] = await tx.select().from(foundationLocationsTable).where(eq(foundationLocationsTable.id, id)).for("update");
+      if (!before) throw fail(404, "الموقع غير موجود");
+      if (data.parentId === id) throw fail(422, "الموقع لا يمكن أن يكون أبًا لنفسه");
+      if (data.parentId) {
+        let ancestorId: number | null = data.parentId;
+        const visited = new Set<number>([id]);
+        while (ancestorId !== null) {
+          if (visited.has(ancestorId)) throw fail(422, "لا يمكن إنشاء دورة في شجرة المواقع");
+          visited.add(ancestorId);
+          const [ancestor] = await tx.select({ parentId: foundationLocationsTable.parentId }).from(foundationLocationsTable).where(eq(foundationLocationsTable.id, ancestorId));
+          if (!ancestor) throw fail(422, "الموقع الأب غير موجود");
+          ancestorId = ancestor.parentId;
         }
-        visited.add(ancestorId);
-        const [ancestor] = await db.select({ parentId: foundationLocationsTable.parentId })
-          .from(foundationLocationsTable)
-          .where(eq(foundationLocationsTable.id, ancestorId));
-        if (!ancestor) {
-          res.status(422).json({ error: { message: "الموقع الأب غير موجود" } });
-          return;
-        }
-        ancestorId = ancestor.parentId;
       }
-    }
-    if (before.active && data.active === false) {
-      const overrideReason = readOverrideReason(req);
-      const impact = await checkLocationInactivationImpact(db, id);
-      assertInactivationAllowed(impact, overrideReason);
-    }
-    const [updated] = await db.update(foundationLocationsTable).set({ ...data, updatedAt: new Date() })
-      .where(eq(foundationLocationsTable.id, id)).returning();
-    await recordAudit(req, "location", id, "updated", updated, before, readOverrideReason(req));
+      if (before.active && data.active === false) await guardInactivation(tx, "location", id, overrideReason);
+      const [row] = await tx.update(foundationLocationsTable).set({ ...data, updatedAt: new Date() }).where(eq(foundationLocationsTable.id, id)).returning();
+      await recordAudit(req, "location", id, "updated", row, before, overrideReason, tx);
+      return row;
+    });
     res.json(updated);
   } catch (err) { forward(err, next); }
 });
@@ -524,13 +549,12 @@ router.get("/foundation/work-centers", requireRole(...FOUNDATION_ROLES), async (
 router.post("/foundation/work-centers", requireRole(...FOUNDATION_ROLES), async (req, res, next) => {
   try {
     const data = foundationWorkCenterSchema.parse(req.body);
-    if (data.locationId) {
-      const [location] = await db.select({ id: foundationLocationsTable.id }).from(foundationLocationsTable)
-        .where(eq(foundationLocationsTable.id, data.locationId));
-      if (!location) { res.status(422).json({ error: { message: "الموقع غير موجود" } }); return; }
-    }
-    const [created] = await db.insert(foundationWorkCentersTable).values(data).returning();
-    await recordAudit(req, "work_center", created.id, "created", created);
+    const created = await db.transaction(async (tx) => {
+      await requireLocation(tx, data.locationId);
+      const [row] = await tx.insert(foundationWorkCentersTable).values(data).returning();
+      await recordAudit(req, "work_center", row.id, "created", row, null, null, tx);
+      return row;
+    });
     res.status(201).json(created);
   } catch (err) { forward(err, next); }
 });
@@ -539,22 +563,17 @@ router.patch("/foundation/work-centers/:id", requireRole(...FOUNDATION_ROLES), a
   try {
     const id = parseIdParam(req.params.id, res);
     if (id === null) return;
-    const [before] = await db.select().from(foundationWorkCentersTable).where(eq(foundationWorkCentersTable.id, id));
-    if (!before) { res.status(404).json({ error: { message: "مركز العمل غير موجود" } }); return; }
     const data = foundationWorkCenterSchema.partial().parse(req.body);
-    if (data.locationId) {
-      const [location] = await db.select({ id: foundationLocationsTable.id }).from(foundationLocationsTable)
-        .where(eq(foundationLocationsTable.id, data.locationId));
-      if (!location) { res.status(422).json({ error: { message: "الموقع غير موجود" } }); return; }
-    }
-    if (before.active && data.active === false) {
-      const overrideReason = readOverrideReason(req);
-      const impact = await checkWorkCenterInactivationImpact(db, id);
-      assertInactivationAllowed(impact, overrideReason);
-    }
-    const [updated] = await db.update(foundationWorkCentersTable).set({ ...data, updatedAt: new Date() })
-      .where(eq(foundationWorkCentersTable.id, id)).returning();
-    await recordAudit(req, "work_center", id, "updated", updated, before, readOverrideReason(req));
+    const overrideReason = readOverrideReason(req);
+    const updated = await db.transaction(async (tx) => {
+      const [before] = await tx.select().from(foundationWorkCentersTable).where(eq(foundationWorkCentersTable.id, id)).for("update");
+      if (!before) throw fail(404, "مركز العمل غير موجود");
+      await requireLocation(tx, data.locationId);
+      if (before.active && data.active === false) await guardInactivation(tx, "work-center", id, overrideReason);
+      const [row] = await tx.update(foundationWorkCentersTable).set({ ...data, updatedAt: new Date() }).where(eq(foundationWorkCentersTable.id, id)).returning();
+      await recordAudit(req, "work_center", id, "updated", row, before, overrideReason, tx);
+      return row;
+    });
     res.json(updated);
   } catch (err) { forward(err, next); }
 });
@@ -572,11 +591,12 @@ router.get("/foundation/machines", requireRole(...FOUNDATION_ROLES), async (req,
 router.post("/foundation/machines", requireRole(...FOUNDATION_ROLES), async (req, res, next) => {
   try {
     const data = foundationMachineSchema.parse(req.body);
-    const [center] = await db.select({ id: foundationWorkCentersTable.id }).from(foundationWorkCentersTable)
-      .where(eq(foundationWorkCentersTable.id, data.workCenterId));
-    if (!center) { res.status(422).json({ error: { message: "مركز العمل غير موجود" } }); return; }
-    const [created] = await db.insert(foundationMachinesTable).values(data).returning();
-    await recordAudit(req, "machine", created.id, "created", created);
+    const created = await db.transaction(async (tx) => {
+      await requireWorkCenter(tx, data.workCenterId);
+      const [row] = await tx.insert(foundationMachinesTable).values(data).returning();
+      await recordAudit(req, "machine", row.id, "created", row, null, null, tx);
+      return row;
+    });
     res.status(201).json(created);
   } catch (err) { forward(err, next); }
 });
@@ -585,17 +605,17 @@ router.patch("/foundation/machines/:id", requireRole(...FOUNDATION_ROLES), async
   try {
     const id = parseIdParam(req.params.id, res);
     if (id === null) return;
-    const [before] = await db.select().from(foundationMachinesTable).where(eq(foundationMachinesTable.id, id));
-    if (!before) { res.status(404).json({ error: { message: "الماكينة غير موجودة" } }); return; }
     const data = foundationMachineSchema.partial().parse(req.body);
-    if (data.workCenterId) {
-      const [center] = await db.select({ id: foundationWorkCentersTable.id }).from(foundationWorkCentersTable)
-        .where(eq(foundationWorkCentersTable.id, data.workCenterId));
-      if (!center) { res.status(422).json({ error: { message: "مركز العمل غير موجود" } }); return; }
-    }
-    const [updated] = await db.update(foundationMachinesTable).set({ ...data, updatedAt: new Date() })
-      .where(eq(foundationMachinesTable.id, id)).returning();
-    await recordAudit(req, "machine", id, "updated", updated, before);
+    const overrideReason = readOverrideReason(req);
+    const updated = await db.transaction(async (tx) => {
+      const [before] = await tx.select().from(foundationMachinesTable).where(eq(foundationMachinesTable.id, id)).for("update");
+      if (!before) throw fail(404, "الماكينة غير موجودة");
+      await requireWorkCenter(tx, data.workCenterId);
+      if (before.active && data.active === false) await guardInactivation(tx, "machine", id, overrideReason);
+      const [row] = await tx.update(foundationMachinesTable).set({ ...data, updatedAt: new Date() }).where(eq(foundationMachinesTable.id, id)).returning();
+      await recordAudit(req, "machine", id, "updated", row, before, overrideReason, tx);
+      return row;
+    });
     res.json(updated);
   } catch (err) { forward(err, next); }
 });
@@ -605,11 +625,17 @@ router.patch("/foundation/machines/:id/status", requireRole(...FOUNDATION_ROLES)
     const id = parseIdParam(req.params.id, res);
     if (id === null) return;
     const status = foundationMachineSchema.shape.status.parse(req.body.status);
-    const [before] = await db.select().from(foundationMachinesTable).where(eq(foundationMachinesTable.id, id));
-    if (!before) { res.status(404).json({ error: { message: "الماكينة غير موجودة" } }); return; }
-    const [updated] = await db.update(foundationMachinesTable).set({ status, updatedAt: new Date() })
-      .where(eq(foundationMachinesTable.id, id)).returning();
-    await recordAudit(req, "machine", id, "status_changed", updated, before, req.body.reason ?? null);
+    const reason = typeof req.body.reason === "string" && req.body.reason.trim() ? req.body.reason.trim() : null;
+    const overrideReason = readOverrideReason(req);
+    const updated = await db.transaction(async (tx) => {
+      const [before] = await tx.select().from(foundationMachinesTable).where(eq(foundationMachinesTable.id, id)).for("update");
+      if (!before) throw fail(404, "الماكينة غير موجودة");
+      // الإحالة للتقاعد بتتعامل زي الإيقاف: لو متربطة بمسار تشغيل مُصدر لازم سبب صريح.
+      if (status === "retired" && before.status !== "retired") await guardInactivation(tx, "machine", id, overrideReason);
+      const [row] = await tx.update(foundationMachinesTable).set({ status, updatedAt: new Date() }).where(eq(foundationMachinesTable.id, id)).returning();
+      await recordAudit(req, "machine", id, "status_changed", row, before, reason ?? overrideReason, tx);
+      return row;
+    });
     res.json(updated);
   } catch (err) { forward(err, next); }
 });
@@ -622,8 +648,11 @@ router.get("/foundation/shifts", requireRole(...FOUNDATION_ROLES), async (_req, 
 router.post("/foundation/shifts", requireRole(...FOUNDATION_ROLES), async (req, res, next) => {
   try {
     const data = foundationShiftSchema.parse(req.body);
-    const [created] = await db.insert(foundationShiftsTable).values(data).returning();
-    await recordAudit(req, "shift", created.id, "created", created);
+    const created = await db.transaction(async (tx) => {
+      const [row] = await tx.insert(foundationShiftsTable).values(data).returning();
+      await recordAudit(req, "shift", row.id, "created", row, null, null, tx);
+      return row;
+    });
     res.status(201).json(created);
   } catch (err) { forward(err, next); }
 });
@@ -632,12 +661,16 @@ router.patch("/foundation/shifts/:id", requireRole(...FOUNDATION_ROLES), async (
   try {
     const id = parseIdParam(req.params.id, res);
     if (id === null) return;
-    const [before] = await db.select().from(foundationShiftsTable).where(eq(foundationShiftsTable.id, id));
-    if (!before) { res.status(404).json({ error: { message: "الوردية غير موجودة" } }); return; }
     const data = foundationShiftSchema.partial().parse(req.body);
-    const [updated] = await db.update(foundationShiftsTable).set({ ...data, updatedAt: new Date() })
-      .where(eq(foundationShiftsTable.id, id)).returning();
-    await recordAudit(req, "shift", id, "updated", updated, before);
+    const overrideReason = readOverrideReason(req);
+    const updated = await db.transaction(async (tx) => {
+      const [before] = await tx.select().from(foundationShiftsTable).where(eq(foundationShiftsTable.id, id)).for("update");
+      if (!before) throw fail(404, "الوردية غير موجودة");
+      if (before.active && data.active === false) await guardInactivation(tx, "shift", id, overrideReason);
+      const [row] = await tx.update(foundationShiftsTable).set({ ...data, updatedAt: new Date() }).where(eq(foundationShiftsTable.id, id)).returning();
+      await recordAudit(req, "shift", id, "updated", row, before, overrideReason, tx);
+      return row;
+    });
     res.json(updated);
   } catch (err) { forward(err, next); }
 });
@@ -680,8 +713,11 @@ router.get("/foundation/number-sequences", requireRole(...FOUNDATION_ROLES), asy
 router.post("/foundation/number-sequences", requireRole("chairman"), async (req, res, next) => {
   try {
     const data = phase0NumberSequenceSchema.parse(req.body);
-    const [created] = await db.insert(phase0NumberSequencesTable).values(data).returning();
-    await recordAudit(req, "number_sequence", created.id, "created", created);
+    const created = await db.transaction(async (tx) => {
+      const [row] = await tx.insert(phase0NumberSequencesTable).values(data).returning();
+      await recordAudit(req, "number_sequence", row.id, "created", row, null, null, tx);
+      return row;
+    });
     res.status(201).json(created);
   } catch (err) { forward(err, next); }
 });
@@ -691,12 +727,17 @@ router.patch("/foundation/number-sequences/:id", requireRole("chairman"), async 
     const id = parseIdParam(req.params.id, res);
     if (id === null) return;
     const data = phase0NumberSequenceSchema.partial().parse(req.body);
-    const [before] = await db.select().from(phase0NumberSequencesTable)
-      .where(eq(phase0NumberSequencesTable.id, id));
-    if (!before) { res.status(404).json({ error: { message: "عداد الترقيم غير موجود" } }); return; }
-    const [updated] = await db.update(phase0NumberSequencesTable).set({ ...data, updatedAt: new Date() })
-      .where(eq(phase0NumberSequencesTable.id, id)).returning();
-    await recordAudit(req, "number_sequence", id, "updated", updated, before);
+    const updated = await db.transaction(async (tx) => {
+      const [before] = await tx.select().from(phase0NumberSequencesTable).where(eq(phase0NumberSequencesTable.id, id)).for("update");
+      if (!before) throw fail(404, "عداد الترقيم غير موجود");
+      // تقليل العدّاد معناه إعادة أرقام اتصرفت قبل كده (تكرار مستندات)، فمتاح الزيادة بس.
+      if (data.nextValue !== undefined && data.nextValue < Number(before.nextValue)) {
+        throw fail(409, `مينفعش تقلّل العدّاد (الحالي ${before.nextValue}). التقليل بيكرّر أرقام مستندات اتصرفت.`);
+      }
+      const [row] = await tx.update(phase0NumberSequencesTable).set({ ...data, updatedAt: new Date() }).where(eq(phase0NumberSequencesTable.id, id)).returning();
+      await recordAudit(req, "number_sequence", id, "updated", row, before, null, tx);
+      return row;
+    });
     res.json(updated);
   } catch (err) { forward(err, next); }
 });

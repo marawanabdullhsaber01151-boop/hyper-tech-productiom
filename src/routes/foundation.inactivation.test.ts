@@ -15,12 +15,13 @@ const source = readFileSync(
 );
 
 describe("phase 03 delivery 1 — foundation inactivation guard wiring", () => {
-  it.each([
-    ["item", "checkItemInactivationImpact"],
-    ["location", "checkLocationInactivationImpact"],
-    ["work center", "checkWorkCenterInactivationImpact"],
-  ])("the %s PATCH handler still calls %s", (_label, fnName) => {
-    expect(source).toContain(fnName);
+  it("the item PATCH handler still calls checkItemInactivationImpact", () => {
+    expect(source).toContain("checkItemInactivationImpact");
+  });
+
+  // خطوة 35: المواقع ومراكز العمل والماكينات والورديات كلها بتعدّي على محاكي الأثر.
+  it.each(["location", "work-center", "machine", "shift"])("the %s PATCH handler guards inactivation via the impact simulator", (kind) => {
+    expect(source).toContain(`guardInactivation(tx, "${kind}", id, overrideReason)`);
   });
 
   it("never spreads overrideReason into a persisted row", () => {

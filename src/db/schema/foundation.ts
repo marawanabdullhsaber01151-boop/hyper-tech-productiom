@@ -465,6 +465,7 @@ export const foundationMachineSchema = z.object({
     .optional()
     .nullable(),
   notes: z.string().max(1000).optional().nullable(),
+  active: z.boolean().optional(),
 });
 
 export const foundationShiftSchema = z.object({
@@ -473,6 +474,7 @@ export const foundationShiftSchema = z.object({
   startTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "وقت غير صحيح"),
   endTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "وقت غير صحيح"),
   breakMinutes: z.number().int().min(0).max(720).default(0),
+  active: z.boolean().optional(),
 });
 
 export const foundationTransitionSchema = z.object({

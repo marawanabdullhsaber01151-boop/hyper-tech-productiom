@@ -77,7 +77,7 @@ export const DEPARTMENTS: readonly NavDepartment[] = [
         label: "البيانات الأساسية",
         roles: ["chairman", "executive_manager", "operations_manager", "production_manager", "warehouse_manager"],
         pages: [
-          { id: "foundation", label: "البيانات الأساسية", href: "foundation.html", roles: ["chairman", "executive_manager", "operations_manager", "production_manager", "warehouse_manager"] },
+          { id: "foundation", label: "البيانات الأساسية", href: "/v2/staff/foundation", roles: ["chairman", "executive_manager", "operations_manager", "production_manager", "warehouse_manager"] },
         ],
       },
     ],

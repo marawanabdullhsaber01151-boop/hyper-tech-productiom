@@ -20,6 +20,10 @@ export { PRODUCTION_PAGE_ROLES } from "./productionRules";
 /** الهندسة: نفس engineeringRoles في السيرفر. */
 import { ENGINEERING_ROLES } from "./engineeringCore";
 import { RECIPE_VIEW_ROLES } from "./recipesCore";
+/** البيانات الأساسية: نفس FOUNDATION_ROLES في السيرفر. */
+import { FOUNDATION_ROLES } from "./foundationCore";
+export const FOUNDATION_PAGE_ROLES: readonly string[] = FOUNDATION_ROLES;
+
 /** التخطيط: نفس planningRoles في السيرفر. */
 import { PLANNING_ROLES } from "./planningCore";
 export const PLANNING_PAGE_ROLES: readonly string[] = PLANNING_ROLES;
