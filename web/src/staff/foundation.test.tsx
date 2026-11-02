@@ -9,6 +9,8 @@ const CENTERS = [{ id: 2, code: "WC-1", name: "خط التعبئة", centerType:
 const MACHINES = [{ id: 3, code: "M-1", name: "ماكينة لحام", workCenterId: 2, status: "available", serialNumber: null, calibrationDueDate: "2000-01-01", maintenanceDueDate: null, active: true, notes: null }];
 const SHIFTS = [{ id: 4, code: "S-1", name: "ليلي", startTime: "22:00", endTime: "06:00", breakMinutes: 60, active: true }];
 const SEQUENCES = [{ id: 5, sequenceKey: "production_order", prefix: "PO-", nextValue: 42, padding: 6, active: true }];
+const ITEM = { id: 7, code: "RM-1", name: "رصاص", itemType: "raw_material", baseUnit: "kg", active: true, lotTracked: true, serialTracked: false, shelfLifeDays: null, minStock: "10.000", notes: null, status: "active", version: 1, pendingChangePayload: null, pendingChangeReason: null, pendingChangeRequestedByName: null, pendingChangeRequestedAt: null };
+const PENDING = { ...ITEM, id: 8, code: "RM-2", name: "حمض", status: "pending_approval", pendingChangePayload: { baseUnit: "طن" }, pendingChangeReason: "الشراء بالطن", pendingChangeRequestedByName: "أحمد" };
 let impact: unknown;
 let calls: Array<{ key: string; body: unknown }> = [];
 
@@ -23,6 +25,7 @@ function stub() {
     if (key === "GET /foundation/shifts") return json(SHIFTS);
     if (key === "GET /foundation/number-sequences") return json(SEQUENCES);
     if (key === "GET /foundation/audit") return json([]);
+    if (key === "GET /foundation/items") return json([ITEM, PENDING]);
     if (key.startsWith("GET /foundation/impact/")) return json(impact);
     return json({});
   }));
@@ -96,5 +99,54 @@ describe("صفحة البيانات الأساسية", () => {
     fireEvent.click(dialog.getByRole("button", { name: "أوقف رغم كده" }));
     await waitFor(() => expect(calls.some((c) => c.key === "PATCH /foundation/work-centers/2")).toBe(true));
     expect(calls.find((c) => c.key === "PATCH /foundation/work-centers/2")!.body).toEqual({ active: false, overrideReason: "نقل الخط لمصنع تاني" });
+  });
+
+  it("الأصناف: تعديل الاسم مباشر، وتغيير الوحدة على صنف نشط بيبعت طلب تغيير بسبب", async () => {
+    login("warehouse_manager");
+    stub();
+    mount();
+    fireEvent.click(await screen.findByRole("tab", { name: "الأصناف" }));
+    await screen.findByText("رصاص");
+    fireEvent.click(screen.getAllByRole("button", { name: "تعديل" })[0]!);
+    let dialog = within(await screen.findByRole("dialog"));
+    fireEvent.input(dialog.getByLabelText(/اسم الصنف/), { target: { value: "رصاص نقي" } });
+    fireEvent.click(dialog.getByRole("button", { name: "احفظ" }));
+    await waitFor(() => expect(calls.some((c) => c.key === "PATCH /foundation/items/7")).toBe(true));
+    expect(calls.find((c) => c.key === "PATCH /foundation/items/7")!.body).toEqual({ name: "رصاص نقي" });
+    cleanup();
+    calls = [];
+    mount();
+    fireEvent.click(await screen.findByRole("tab", { name: "الأصناف" }));
+    await screen.findByText("رصاص");
+    fireEvent.click(screen.getAllByRole("button", { name: "تعديل" })[0]!);
+    dialog = within(await screen.findByRole("dialog"));
+    fireEvent.input(dialog.getByLabelText(/وحدة القياس الأساسية/), { target: { value: "طن" } });
+    const send = await dialog.findByRole("button", { name: "ابعت طلب التغيير" });
+    expect((send as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.input(dialog.getByLabelText(/سبب التغيير/), { target: { value: "الشراء بالطن" } });
+    await waitFor(() => expect((dialog.getByRole("button", { name: "ابعت طلب التغيير" }) as HTMLButtonElement).disabled).toBe(false));
+    fireEvent.click(dialog.getByRole("button", { name: "ابعت طلب التغيير" }));
+    await waitFor(() => expect(calls.some((c) => c.key === "POST /foundation/items/7/request-change")).toBe(true));
+    expect(calls.find((c) => c.key === "POST /foundation/items/7/request-change")!.body).toEqual({ changes: { baseUnit: "طن" }, reason: "الشراء بالطن" });
+  });
+
+  it("الأصناف: مدير الإنتاج مايشوفش زر المراجعة، والمدير التنفيذي يعتمد", async () => {
+    login("production_manager");
+    stub();
+    mount();
+    fireEvent.click(await screen.findByRole("tab", { name: "الأصناف" }));
+    await screen.findByText("حمض");
+    expect(screen.queryByRole("button", { name: "راجع الطلب" })).toBeNull();
+    expect(screen.getByText("مستني قرار المعتمِد")).toBeTruthy();
+    cleanup();
+    login("executive_manager");
+    mount();
+    fireEvent.click(await screen.findByRole("tab", { name: "الأصناف" }));
+    await screen.findByText("حمض");
+    fireEvent.click(screen.getByRole("button", { name: "راجع الطلب" }));
+    const dialog = within(await screen.findByRole("dialog"));
+    expect(await dialog.findByText(/الشراء بالطن/)).toBeTruthy();
+    fireEvent.click(dialog.getByRole("button", { name: "اعتمد" }));
+    await waitFor(() => expect(calls.some((c) => c.key === "POST /foundation/items/8/approve")).toBe(true));
   });
 });

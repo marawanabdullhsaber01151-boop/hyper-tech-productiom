@@ -15,7 +15,7 @@ import { db } from "../db";
 import { inventoryItemsTable } from "../db/schema/inventory";
 import type { InactivationImpact } from "../domain/foundation-inactivation";
 
-type Executor = typeof db;
+type Executor = Pick<typeof db, "select">;
 
 export async function checkItemInactivationImpact(
   executor: Executor,

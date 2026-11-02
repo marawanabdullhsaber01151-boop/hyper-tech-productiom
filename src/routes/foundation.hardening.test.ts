@@ -65,3 +65,37 @@ describe("خطوة 35 — محاكي الأثر والعدّادات", () => {
     expect(impactSource).toContain("live_routing");
   });
 });
+
+describe("خطوة 35ب — الأصناف في معاملة واحدة مع التدقيق", () => {
+  it.each([
+    'router.post("/foundation/items"',
+    'router.patch("/foundation/items/:id"',
+    'router.post("/foundation/items/:id/aliases"',
+    'router.delete("/foundation/items/:id/aliases/:aliasId"',
+    'router.post("/foundation/items/:id/conversions"',
+    'router.post("/foundation/items/:id/request-change"',
+    'router.post("/foundation/items/:id/approve"',
+    'router.post("/foundation/items/:id/reject"',
+  ])("%s", (start) => {
+    const h = handler(start, 2600);
+    expect(h).toContain("db.transaction");
+    expect(h).toMatch(/recordAudit\(req, [^)]*\btx\)/);
+  });
+
+  it("التعديل والاعتماد والرفض بيقفلوا الصف قبل القرار", () => {
+    for (const start of ['router.patch("/foundation/items/:id"', 'router.post("/foundation/items/:id/approve"', 'router.post("/foundation/items/:id/reject"', 'router.post("/foundation/items/:id/request-change"']) {
+      expect(handler(start, 2600)).toContain('.for("update")');
+    }
+  });
+
+  it("طلب التغيير بيتفحص بمخطط الصنف قبل ما يتخزّن", () => {
+    expect(handler('router.post("/foundation/items/:id/request-change"')).toContain("foundationItemSchema.partial()");
+  });
+
+  it("الاستيراد: بيرفض تغيير حقل حرج على صنف نشط، ومعاملة واحدة للتنفيذ", () => {
+    const h = handler('router.post("/foundation/items/import"', 6000);
+    expect(h).toContain("CRITICAL_FOUNDATION_ITEM_FIELDS");
+    expect(h).toContain("db.transaction");
+    expect(h).toContain('.for("update")');
+  });
+});

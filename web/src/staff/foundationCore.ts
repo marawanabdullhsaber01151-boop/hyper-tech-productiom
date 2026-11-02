@@ -10,9 +10,9 @@ export const FOUNDATION_CHAIRMAN_ROLES = ["chairman"] as const;
 export const canManageFoundation = (role: string) => (FOUNDATION_ROLES as readonly string[]).includes(role);
 export const isChairman = (role: string) => role === "chairman";
 
-export type FoundationTab = "locations" | "centers" | "machines" | "shifts" | "sequences" | "audit";
+export type FoundationTab = "locations" | "centers" | "machines" | "shifts" | "items" | "sequences" | "audit";
 export const foundationTabs = (role: string): FoundationTab[] =>
-  canManageFoundation(role) ? (["locations", "centers", "machines", "shifts", "sequences", ...(isChairman(role) ? (["audit"] as const) : [])] as FoundationTab[]) : [];
+  canManageFoundation(role) ? (["locations", "centers", "machines", "shifts", "items", "sequences", ...(isChairman(role) ? (["audit"] as const) : [])] as FoundationTab[]) : [];
 
 /* ───────────── أنواع (مرآة رد السيرفر) ───────────── */
 export interface LocationRow { id: number; code: string; name: string; locationType: string; parentId: number | null; active: boolean; allowsInventory: boolean; allowsProduction: boolean; requiresQuarantine: boolean; notes: string | null }
@@ -21,8 +21,9 @@ export interface MachineRow { id: number; code: string; name: string; workCenter
 export interface ShiftRow { id: number; code: string; name: string; startTime: string; endTime: string; breakMinutes: number; active: boolean }
 export interface SequenceRow { id: number; sequenceKey: string; prefix: string; nextValue: number; padding: number; active: boolean }
 export interface AuditRow { id: number; entityType: string; entityId: number | null; action: string; actorId: string; actorRole: string; reason: string | null; createdAt: string }
-export interface ImpactLine { type: string; count: number; label: string; examples: string[] }
-export interface Impact { kind: string; id: number; name: string; active: boolean; blockers: ImpactLine[]; references: ImpactLine[]; blocked: boolean }
+export interface ImpactLine { type: string; count: number; label: string; examples?: string[] }
+/** رد محاكي الأثر. الأصناف بترد بالقديم (blockers بس) فباقي الحقول اختيارية. */
+export interface Impact { kind?: string; id?: number; name?: string; active?: boolean; blockers: ImpactLine[]; references?: ImpactLine[]; blocked?: boolean }
 
 export const LOCATION_TYPES = ["warehouse", "quarantine", "wip", "production", "finished_goods", "scrap"] as const;
 export const MACHINE_STATUSES = ["available", "running", "down", "maintenance", "calibration", "retired"] as const;
@@ -138,7 +139,7 @@ export const sequencePayload = (f: SequenceForm) => ({ prefix: f.prefix.trim(), 
 export const REASON_MIN = 3;
 export const reasonOk = (s: string) => s.trim().length >= REASON_MIN;
 export const activeBlockers = (i: Pick<Impact, "blockers">) => i.blockers.filter((b) => b.count > 0);
-export const activeReferences = (i: Pick<Impact, "references">) => i.references.filter((b) => b.count > 0);
+export const activeReferences = (i: Pick<Impact, "references">) => (i.references ?? []).filter((b) => b.count > 0);
 /** الإيقاف مسموح من غير سبب؟ مسموح لو مفيش مراجع حيّة. */
 export const canDeactivateWithout = (i: Impact) => activeBlockers(i).length === 0;
 /** زر التأكيد: من غير blockers يتفتح علطول، ومعاها لازم سبب صريح. */

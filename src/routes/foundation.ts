@@ -1,6 +1,6 @@
 /** @format */
 import { Router, type Request, type Response, type NextFunction } from "express";
-import { and, asc, desc, eq, ilike, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
 import { db } from "../db";
 import {
   foundationAuditTable,
@@ -14,6 +14,7 @@ import {
   foundationItemVersionsTable,
   foundationItemAliasesTable,
   foundationItemSchema,
+  CRITICAL_FOUNDATION_ITEM_FIELDS,
   foundationConversionSchema,
   foundationLocationSchema,
   foundationMachineSchema,
@@ -37,6 +38,7 @@ import {
   preValidateImportRow,
   summarizeImportRows,
   type ImportRow,
+  type ImportRowResult,
 } from "../domain/foundation-governance";
 import {
   recordFoundationItemVersion,
@@ -171,8 +173,11 @@ router.get(
 router.post("/foundation/items", requireRole(...FOUNDATION_ROLES), async (req, res, next) => {
   try {
     const data = foundationItemSchema.parse(req.body);
-    const [created] = await db.insert(foundationItemsTable).values(data).returning();
-    await recordAudit(req, "item", created.id, "created", created);
+    const created = await db.transaction(async (tx) => {
+      const [row] = await tx.insert(foundationItemsTable).values(data).returning();
+      await recordAudit(req, "item", row.id, "created", row, null, null, tx);
+      return row;
+    });
     res.status(201).json(created);
   } catch (err) { forward(err, next); }
 });
@@ -181,45 +186,30 @@ router.patch("/foundation/items/:id", requireRole(...FOUNDATION_ROLES), async (r
   try {
     const id = parseIdParam(req.params.id, res);
     if (id === null) return;
-    const [before] = await db.select().from(foundationItemsTable).where(eq(foundationItemsTable.id, id));
-    if (!before) { res.status(404).json({ error: { message: "الصنف غير موجود" } }); return; }
     const data = foundationItemSchema.partial().parse(req.body);
-    // Phase 03 (delivery 3): baseUnit/itemType/minStock are "critical" —
-    // once an item is live (status "active"), they must go through
-    // request-change -> approve/reject rather than a direct PATCH. A draft
-    // item has not affected live operations yet, so it can still be edited
-    // freely here. This mirrors the USE_DEDICATED_CANCEL_ENDPOINT pattern
-    // from phase 02 delivery 3: refuse before any write, point at the
-    // correct endpoint, rather than silently applying a critical change.
-    if (before.status === "active" && isCriticalFoundationItemChange(data as Record<string, unknown>)) {
-      throw Object.assign(
-        new Error(
-          "تغيير حقل حرج (وحدة القياس/نوع الصنف/الحد الأدنى) على صنف نشط يتطلب طلب تغيير واعتماد — استخدم POST /foundation/items/:id/request-change",
-        ),
-        { status: 409, code: "USE_REQUEST_CHANGE_ENDPOINT" },
-      );
-    }
-    // Phase 02 (delivery 1): "Inactivation cannot silently break open work."
-    // Only the true -> false edge is checked; re-saving an already-inactive
-    // item, or activating one, never needs the impact query.
-    if (before.active && data.active === false) {
-      const overrideReason = readOverrideReason(req);
-      const impact = await checkItemInactivationImpact(db, id);
-      assertInactivationAllowed(impact, overrideReason);
-    }
     const overrideReason = readOverrideReason(req);
-    const nextStatus =
-      data.active === false ? "retired" : data.active === true ? "active" : before.status;
     const updated = await db.transaction(async (tx) => {
+      const [before] = await tx.select().from(foundationItemsTable).where(eq(foundationItemsTable.id, id)).for("update");
+      if (!before) throw fail(404, "الصنف غير موجود");
+      // Phase 03 (delivery 3): baseUnit/itemType/minStock حقول حرجة؛ على صنف نشط لازم طلب تغيير واعتماد، مش تعديل مباشر.
+      if (before.status === "active" && isCriticalFoundationItemChange(data as Record<string, unknown>)) {
+        throw Object.assign(
+          new Error("تغيير حقل حرج (وحدة القياس/نوع الصنف/الحد الأدنى) على صنف نشط يتطلب طلب تغيير واعتماد"),
+          { status: 409, code: "USE_REQUEST_CHANGE_ENDPOINT" },
+        );
+      }
+      // الإيقاف (true -> false) بيعدّي على فحص الأثر؛ التفعيل أو إعادة حفظ موقوف لأ.
+      if (before.active && data.active === false) {
+        assertInactivationAllowed(await checkItemInactivationImpact(tx, id), overrideReason);
+      }
+      const nextStatus = data.active === false ? "retired" : data.active === true ? "active" : before.status;
       await recordFoundationItemVersion(tx, before, actor(req).actorId, req.user?.username ?? null, overrideReason);
-      const [row] = await tx
-        .update(foundationItemsTable)
+      const [row] = await tx.update(foundationItemsTable)
         .set({ ...data, status: nextStatus, version: before.version + 1, updatedAt: new Date() })
-        .where(eq(foundationItemsTable.id, id))
-        .returning();
+        .where(eq(foundationItemsTable.id, id)).returning();
+      await recordAudit(req, "item", id, "updated", row, before, overrideReason, tx);
       return row;
     });
-    await recordAudit(req, "item", id, "updated", updated, before, overrideReason);
     res.json(updated);
   } catch (err) { forward(err, next); }
 });
@@ -266,14 +256,17 @@ router.post("/foundation/items/:id/aliases", requireRole(...FOUNDATION_ROLES), a
   try {
     const id = parseIdParam(req.params.id, res);
     if (id === null) return;
-    const [item] = await db.select({ id: foundationItemsTable.id }).from(foundationItemsTable).where(eq(foundationItemsTable.id, id));
-    if (!item) { res.status(404).json({ error: { message: "الصنف غير موجود" } }); return; }
     const data = createFoundationItemAliasSchema.parse(req.body);
     const user = actor(req);
-    const [alias] = await db.insert(foundationItemAliasesTable).values({
-      itemId: id, alias: data.alias, createdById: user.actorId, createdByName: req.user?.username ?? null,
-    }).returning();
-    await recordAudit(req, "item_alias", alias.id, "created", alias, null, null);
+    const alias = await db.transaction(async (tx) => {
+      const [item] = await tx.select({ id: foundationItemsTable.id }).from(foundationItemsTable).where(eq(foundationItemsTable.id, id));
+      if (!item) throw fail(404, "الصنف غير موجود");
+      const [row] = await tx.insert(foundationItemAliasesTable).values({
+        itemId: id, alias: data.alias, createdById: user.actorId, createdByName: req.user?.username ?? null,
+      }).returning();
+      await recordAudit(req, "item_alias", row.id, "created", row, null, null, tx);
+      return row;
+    });
     res.status(201).json(alias);
   } catch (err) { forward(err, next); }
 });
@@ -283,11 +276,13 @@ router.delete("/foundation/items/:id/aliases/:aliasId", requireRole(...FOUNDATIO
     const id = parseIdParam(req.params.id, res);
     const aliasId = parseIdParam(req.params.aliasId, res);
     if (id === null || aliasId === null) return;
-    const [deleted] = await db.delete(foundationItemAliasesTable)
-      .where(and(eq(foundationItemAliasesTable.id, aliasId), eq(foundationItemAliasesTable.itemId, id)))
-      .returning();
-    if (!deleted) { res.status(404).json({ error: { message: "الاسم البديل غير موجود" } }); return; }
-    await recordAudit(req, "item_alias", aliasId, "deleted", null, deleted, null);
+    await db.transaction(async (tx) => {
+      const [deleted] = await tx.delete(foundationItemAliasesTable)
+        .where(and(eq(foundationItemAliasesTable.id, aliasId), eq(foundationItemAliasesTable.itemId, id)))
+        .returning();
+      if (!deleted) throw fail(404, "الاسم البديل غير موجود");
+      await recordAudit(req, "item_alias", aliasId, "deleted", null, deleted, null, tx);
+    });
     res.json({ deleted: true });
   } catch (err) { next(err); }
 });
@@ -300,21 +295,27 @@ router.post("/foundation/items/:id/request-change", requireRole(...FOUNDATION_RO
   try {
     const id = parseIdParam(req.params.id, res);
     if (id === null) return;
-    const [before] = await db.select().from(foundationItemsTable).where(eq(foundationItemsTable.id, id));
-    if (!before) { res.status(404).json({ error: { message: "الصنف غير موجود" } }); return; }
-    assertAllowedFoundationItemTransition(before.status, "pending_approval");
     const input = requestFoundationItemChangeSchema.parse(req.body);
+    // الاعتماد بيكتب الـpayload ده في الصنف زي ما هو، فنفحصه بنفس مخطط الصنف (نوع صالح، رقم صحيح...) قبل ما يتخزّن.
+    const checked = foundationItemSchema.partial().omit({ active: true }).parse(input.changes);
+    const changes = { ...input.changes, ...checked };
     const user = actor(req);
-    const [updated] = await db.update(foundationItemsTable).set({
-      status: "pending_approval",
-      pendingChangePayload: input.changes,
-      pendingChangeReason: input.reason,
-      pendingChangeRequestedById: user.actorId,
-      pendingChangeRequestedByName: req.user?.username ?? null,
-      pendingChangeRequestedAt: new Date(),
-      updatedAt: new Date(),
-    }).where(eq(foundationItemsTable.id, id)).returning();
-    await recordAudit(req, "item", id, "change_requested", updated, before, input.reason);
+    const updated = await db.transaction(async (tx) => {
+      const [before] = await tx.select().from(foundationItemsTable).where(eq(foundationItemsTable.id, id)).for("update");
+      if (!before) throw fail(404, "الصنف غير موجود");
+      assertAllowedFoundationItemTransition(before.status, "pending_approval");
+      const [row] = await tx.update(foundationItemsTable).set({
+        status: "pending_approval",
+        pendingChangePayload: changes,
+        pendingChangeReason: input.reason,
+        pendingChangeRequestedById: user.actorId,
+        pendingChangeRequestedByName: req.user?.username ?? null,
+        pendingChangeRequestedAt: new Date(),
+        updatedAt: new Date(),
+      }).where(eq(foundationItemsTable.id, id)).returning();
+      await recordAudit(req, "item", id, "change_requested", row, before, input.reason, tx);
+      return row;
+    });
     res.json(updated);
   } catch (err) { forward(err, next); }
 });
@@ -323,15 +324,14 @@ router.post("/foundation/items/:id/approve", requireRole(...APPROVAL_ROLES), asy
   try {
     const id = parseIdParam(req.params.id, res);
     if (id === null) return;
-    const [before] = await db.select().from(foundationItemsTable).where(eq(foundationItemsTable.id, id));
-    if (!before) { res.status(404).json({ error: { message: "الصنف غير موجود" } }); return; }
-    if (before.status !== "pending_approval" || !before.pendingChangePayload) {
-      throw Object.assign(new Error("لا يوجد تغيير معلّق لهذا الصنف"), { status: 409, code: "NO_PENDING_CHANGE" });
-    }
-    assertAllowedFoundationItemTransition(before.status, "active");
     const decision = decideFoundationItemChangeSchema.parse(req.body ?? {});
-    const user = actor(req);
     const updated = await db.transaction(async (tx) => {
+      const [before] = await tx.select().from(foundationItemsTable).where(eq(foundationItemsTable.id, id)).for("update");
+      if (!before) throw fail(404, "الصنف غير موجود");
+      if (before.status !== "pending_approval" || !before.pendingChangePayload) {
+        throw Object.assign(new Error("لا يوجد تغيير معلّق لهذا الصنف"), { status: 409, code: "NO_PENDING_CHANGE" });
+      }
+      assertAllowedFoundationItemTransition(before.status, "active");
       await recordFoundationItemVersion(tx, before, before.pendingChangeRequestedById, before.pendingChangeRequestedByName, before.pendingChangeReason);
       const [row] = await tx.update(foundationItemsTable).set({
         ...(before.pendingChangePayload as Record<string, unknown>),
@@ -344,9 +344,9 @@ router.post("/foundation/items/:id/approve", requireRole(...APPROVAL_ROLES), asy
         pendingChangeRequestedAt: null,
         updatedAt: new Date(),
       }).where(eq(foundationItemsTable.id, id)).returning();
+      await recordAudit(req, "item", id, "change_approved", row, before, decision.reason ?? null, tx);
       return row;
     });
-    await recordAudit(req, "item", id, "change_approved", updated, before, decision.reason ?? null);
     res.json(updated);
   } catch (err) { forward(err, next); }
 });
@@ -355,23 +355,26 @@ router.post("/foundation/items/:id/reject", requireRole(...APPROVAL_ROLES), asyn
   try {
     const id = parseIdParam(req.params.id, res);
     if (id === null) return;
-    const [before] = await db.select().from(foundationItemsTable).where(eq(foundationItemsTable.id, id));
-    if (!before) { res.status(404).json({ error: { message: "الصنف غير موجود" } }); return; }
-    if (before.status !== "pending_approval") {
-      throw Object.assign(new Error("لا يوجد تغيير معلّق لهذا الصنف"), { status: 409, code: "NO_PENDING_CHANGE" });
-    }
-    assertAllowedFoundationItemTransition(before.status, "active");
     const decision = decideFoundationItemChangeSchema.parse(req.body ?? {});
-    const [updated] = await db.update(foundationItemsTable).set({
-      status: "active",
-      pendingChangePayload: null,
-      pendingChangeReason: null,
-      pendingChangeRequestedById: null,
-      pendingChangeRequestedByName: null,
-      pendingChangeRequestedAt: null,
-      updatedAt: new Date(),
-    }).where(eq(foundationItemsTable.id, id)).returning();
-    await recordAudit(req, "item", id, "change_rejected", updated, before, decision.reason ?? null);
+    const updated = await db.transaction(async (tx) => {
+      const [before] = await tx.select().from(foundationItemsTable).where(eq(foundationItemsTable.id, id)).for("update");
+      if (!before) throw fail(404, "الصنف غير موجود");
+      if (before.status !== "pending_approval") {
+        throw Object.assign(new Error("لا يوجد تغيير معلّق لهذا الصنف"), { status: 409, code: "NO_PENDING_CHANGE" });
+      }
+      assertAllowedFoundationItemTransition(before.status, "active");
+      const [row] = await tx.update(foundationItemsTable).set({
+        status: "active",
+        pendingChangePayload: null,
+        pendingChangeReason: null,
+        pendingChangeRequestedById: null,
+        pendingChangeRequestedByName: null,
+        pendingChangeRequestedAt: null,
+        updatedAt: new Date(),
+      }).where(eq(foundationItemsTable.id, id)).returning();
+      await recordAudit(req, "item", id, "change_rejected", row, before, decision.reason ?? null, tx);
+      return row;
+    });
     res.json(updated);
   } catch (err) { forward(err, next); }
 });
@@ -392,23 +395,33 @@ router.post("/foundation/items/import", requireRole(...FOUNDATION_ROLES), async 
       return;
     }
     const dryRun = body.dryRun !== false;
-    const preChecked = rows.map((row, i) => preValidateImportRow(row, i));
-    const summary = summarizeImportRows(preChecked);
+    const preChecked: ImportRowResult[] = rows.map((row, i) => preValidateImportRow(row, i));
+    // صنف نشط موجود بالكود: الاستيراد مينفعش يغيّر حقل حرج فيه (وحدة/نوع/حد أدنى) من غير اعتماد، فنرفض الصف من المعاينة.
+    const codes = [...new Set(rows.map((r) => (typeof r.code === "string" ? r.code.trim().toLowerCase() : "")).filter(Boolean))];
+    const existingRows = codes.length ? await db.select().from(foundationItemsTable).where(inArray(sql`lower(${foundationItemsTable.code})`, codes)) : [];
+    const existingByCode = new Map(existingRows.map((r) => [r.code.toLowerCase(), r]));
+    const checked: ImportRowResult[] = preChecked.map((result, i) => {
+      if (!result.ok) return result;
+      const existing = existingByCode.get(result.code.toLowerCase());
+      const row = rows[i] as ImportRow;
+      if (existing && existing.status === "active" && isCriticalFoundationItemChange(Object.fromEntries(CRITICAL_FOUNDATION_ITEM_FIELDS.filter((f) => row[f] !== undefined && String(row[f]) !== String(existing[f])).map((f) => [f, row[f]])))) {
+        return { row: result.row, ok: false as const, errors: ["الصنف نشط وتغيير الوحدة/النوع/الحد الأدنى يحتاج طلب تغيير واعتماد (مش استيراد)"] };
+      }
+      return result;
+    });
+    const summary = summarizeImportRows(checked);
     if (dryRun || !summary.canApply) {
-      res.json({ ...summary, dryRun: true, results: preChecked });
+      res.json({ ...summary, dryRun: true, results: checked });
       return;
     }
-    // Re-parse every row through the real schema (defaults, enum checks,
-    // etc.) now that the cheap pre-check says every row is well-formed
-    // enough to attempt; a schema failure here still aborts the whole
-    // batch before any write, inside the same request.
+    // كل صف يعدّي على المخطط الحقيقي (قيم افتراضية، enum...) قبل أي كتابة، والباتش كله في معاملة واحدة مع التدقيق.
     const parsedRows = rows.map((row) => foundationItemSchema.parse(row));
     const user = actor(req);
     const applied = await db.transaction(async (tx) => {
       const results: Array<{ code: string; action: "created" | "updated" }> = [];
       for (const parsed of parsedRows) {
         const [existing] = await tx.select().from(foundationItemsTable)
-          .where(sql`lower(${foundationItemsTable.code}) = lower(${parsed.code})`);
+          .where(sql`lower(${foundationItemsTable.code}) = lower(${parsed.code})`).for("update");
         if (existing) {
           await recordFoundationItemVersion(tx, existing, user.actorId, req.user?.username ?? null, "استيراد دفعي");
           await tx.update(foundationItemsTable).set({
@@ -420,9 +433,9 @@ router.post("/foundation/items/import", requireRole(...FOUNDATION_ROLES), async 
           results.push({ code: parsed.code, action: "created" });
         }
       }
+      await recordAudit(req, "item", null, "imported", { count: results.length }, null, `استيراد دفعي: ${results.length} صف`, tx);
       return results;
     });
-    await recordAudit(req, "item", null, "imported", { count: applied.length }, null, `استيراد دفعي: ${applied.length} صف`);
     res.json({ ...summary, dryRun: false, applied });
   } catch (err) { forward(err, next); }
 });
@@ -447,11 +460,13 @@ router.post("/foundation/items/:id/conversions", requireRole(...FOUNDATION_ROLES
     const itemId = parseIdParam(req.params.id, res);
     if (itemId === null) return;
     const data = foundationConversionSchema.parse({ ...req.body, itemId });
-    const [item] = await db.select({ id: foundationItemsTable.id }).from(foundationItemsTable)
-      .where(eq(foundationItemsTable.id, itemId));
-    if (!item) { res.status(404).json({ error: { message: "الصنف غير موجود" } }); return; }
-    const [created] = await db.insert(foundationUnitConversionsTable).values(data).returning();
-    await recordAudit(req, "unit_conversion", created.id, "created", created);
+    const created = await db.transaction(async (tx) => {
+      const [item] = await tx.select({ id: foundationItemsTable.id }).from(foundationItemsTable).where(eq(foundationItemsTable.id, itemId));
+      if (!item) throw fail(404, "الصنف غير موجود");
+      const [row] = await tx.insert(foundationUnitConversionsTable).values(data).returning();
+      await recordAudit(req, "unit_conversion", row.id, "created", row, null, null, tx);
+      return row;
+    });
     res.status(201).json(created);
   } catch (err) { forward(err, next); }
 });

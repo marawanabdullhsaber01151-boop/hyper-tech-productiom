@@ -14,6 +14,7 @@ import {
   foundationTabs, impactBody, isChairman, locationPath, locationPayload, machineError, machinePayload, machineStats, machineTone, parentCandidates, sequenceError, sequencePayload, shiftError, shiftNetMinutes, shiftPayload,
   todayISO, type AuditRow, type CenterRow, type FoundationTab, type Impact, type LocationRow, type MachineRow, type SequenceRow, type ShiftRow,
 } from "./foundationCore";
+import { Items } from "./FoundationItems";
 import { joinNames } from "./recipesCore";
 import "./Engineering.css";
 import "./Planning.css";
@@ -23,7 +24,17 @@ const chk = (e: Event) => (e.target as HTMLInputElement).checked;
 const list = <T,>(d: T[] | undefined): T[] => (Array.isArray(d) ? d : []);
 const k = (key: string) => key as CopyKey;
 type Kind = "location" | "work-center" | "machine" | "shift";
-const ENDPOINT: Record<Kind, string> = { location: "/foundation/locations", "work-center": "/foundation/work-centers", machine: "/foundation/machines", shift: "/foundation/shifts" };
+/** مسارات حرفية (مش ENDPOINT[kind]) عشان فاحص مستهلكي الـAPI يشوفها. */
+const itemPath = (kind: Kind, id: number): string => {
+  switch (kind) {
+    case "location": return `/foundation/locations/${id}`;
+    case "work-center": return `/foundation/work-centers/${id}`;
+    case "machine": return `/foundation/machines/${id}`;
+    case "shift": return `/foundation/shifts/${id}`;
+  }
+};
+/** الإيقاف النهائي (retired) للماكينات بس. */
+const machineStatusPath = (id: number): string => `/foundation/machines/${id}/status`;
 
 /** البيانات الأساسية: مواقع، مراكز عمل، ماكينات، ورديات، عدادات، سجل. */
 export function Foundation() {
@@ -35,7 +46,7 @@ export function Foundation() {
   });
   if (!canManageFoundation(role)) return <div class="ad-page"><InlineAlert tone="warn">{t("fnd.noAccess")}</InlineAlert></div>;
   const panels: Record<FoundationTab, ComponentChildren> = {
-    locations: <Locations />, centers: <Centers />, machines: <Machines />, shifts: <Shifts />, sequences: <Sequences chairman={isChairman(role)} />, audit: <Audit />,
+    locations: <Locations />, centers: <Centers />, machines: <Machines />, shifts: <Shifts />, items: <Items role={role} />, sequences: <Sequences chairman={isChairman(role)} />, audit: <Audit />,
   };
   return (
     <div class="ad-page">
@@ -43,7 +54,6 @@ export function Foundation() {
         <h1 class="ad-title">{t("fnd.title")}</h1>
         <p class="st-login__sub">{t("fnd.subtitle")}</p>
       </div>
-      <InlineAlert tone="info" action={<a class="ht-btn ht-btn--secondary ht-btn--sm" href="/foundation.html">{t("fnd.items.open")}</a>}>{t("fnd.items.link")}</InlineAlert>
       <Tabs value={tab} onChange={(v) => setTab(v as FoundationTab)} tabs={allowed.map((id) => ({ id, label: t(k(`fnd.tab.${id}`)), panel: panels[id] }))} />
     </div>
   );
@@ -76,7 +86,7 @@ function ActiveActions({ kind, row, onEdit, onChanged, extra }: { kind: Kind; ro
       {extra}
       {row.active
         ? <Button size="sm" variant="ghost" onClick={() => setSimulating(true)}>{t("fnd.deactivate")}</Button>
-        : <Button size="sm" variant="ghost" disabled={act.busy} onClick={() => void act.run(async () => { await api.patch<unknown>(`${ENDPOINT[kind]}/${row.id}`, { active: true }); onChanged(); }, t("fnd.activated"))}>{t("fnd.activate")}</Button>}
+        : <Button size="sm" variant="ghost" disabled={act.busy} onClick={() => void act.run(async () => { await api.patch<unknown>(itemPath(kind, row.id), { active: true }); onChanged(); }, t("fnd.activated"))}>{t("fnd.activate")}</Button>}
       {simulating ? <ImpactDialog kind={kind} id={row.id} name={row.name} onClose={() => setSimulating(false)} onDone={() => { setSimulating(false); onChanged(); }} /> : null}
     </div>
   );
@@ -94,14 +104,14 @@ function ImpactDialog({ kind, id, name, onClose, onDone, retire }: { kind: Kind;
     if (!impact) return;
     const body = impactBody(reason, blockers.length > 0);
     const ok = await act.run(async () => {
-      if (retire) await api.patch<unknown>(`${ENDPOINT[kind]}/${id}/status`, { status: "retired", ...(blockers.length ? { overrideReason: body.overrideReason } : {}) });
-      else await api.patch<unknown>(`${ENDPOINT[kind]}/${id}`, body);
+      if (retire) await api.patch<unknown>(machineStatusPath(id), { status: "retired", ...(blockers.length ? { overrideReason: body.overrideReason } : {}) });
+      else await api.patch<unknown>(itemPath(kind, id), body);
       return true;
     }, t("fnd.deactivated"));
     if (ok) onDone();
   };
-  const row = (b: { type: string; count: number; label: string; examples: string[] }) => (
-    <li key={b.type}><strong>{formatNumber(b.count)}</strong> {b.label}{b.examples.length ? <span class="eng-muted"> - {t("fnd.i.examples", { names: joinNames(b.examples) })}</span> : null}</li>
+  const row = (b: { type: string; count: number; label: string; examples?: string[] }) => (
+    <li key={b.type}><strong>{formatNumber(b.count)}</strong> {b.label}{b.examples?.length ? <span class="eng-muted"> - {t("fnd.i.examples", { names: joinNames(b.examples) })}</span> : null}</li>
   );
   return (
     <Dialog open onClose={onClose} title={t("fnd.i.title", { name })} footer={<><Button variant="ghost" onClick={onClose}>{t("common.cancel")}</Button><Button variant={blockers.length ? "danger" : "primary"} loading={act.busy} disabled={!confirmEnabled(impact, reason)} onClick={() => void confirm()}>{blockers.length ? t("fnd.i.confirmAnyway") : t("fnd.i.confirm")}</Button></>}>

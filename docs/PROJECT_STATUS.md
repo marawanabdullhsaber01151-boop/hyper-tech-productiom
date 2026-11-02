@@ -200,3 +200,6 @@
 - صفحة `/v2/staff/foundation` + `GET /foundation/impact/:kind/:id` (محاكي الأثر)؛ معاملات وتدقيق لكل تعديل؛ `active` للماكينة والوردية؛ العدّاد لا ينقص. بدون هجرة. `foundation.html` باقية للأصناف لحد 35ب.
 - الاختبارات: `src/routes/foundation.hardening.test.ts` و`foundation.inactivation.test.ts` (اتحدّث) و`web/src/staff/foundationCore.test.ts` و`foundation.test.tsx` (tsc/vitest ما اتشغلوش في بيئة الشغل).
 
+## الخطوة 35ب — الأصناف وحوكمتها
+- تبويب «الأصناف» في `/v2/staff/foundation`؛ كل كتابات الصنف بمعاملة وتدقيق وقفل صف؛ فحص `changes` في طلب التغيير؛ الاستيراد بيرفض تغيير حقل حرج لصنف نشط؛ حذف `foundation.html` (+JS/CSS) وتحويلها لـ`?tab=items`. بدون هجرة. تصنيف مسارات الانتقالات backlog.
+- الاختبارات: `src/routes/foundation.hardening.test.ts` (اتوسّع) و`web/src/staff/itemsCore.test.ts` و`foundation.test.tsx` (tsc/vitest ما اتشغلوش في بيئة الشغل).
