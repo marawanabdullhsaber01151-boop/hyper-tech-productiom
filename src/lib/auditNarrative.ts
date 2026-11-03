@@ -10,6 +10,8 @@ export interface AuditRowLike {
   resourceType: string;
   resourceId: number | null;
   actorName: string | null;
+  /** اسم الدور بالعربي (اختياري): لو موجود بيظهر جنب الاسم «أحمد (مدير المبيعات)». */
+  actorRoleLabel?: string | null;
   decision?: string | null;
   reason?: string | null;
   beforeData?: unknown;
@@ -84,9 +86,84 @@ function pick(o: unknown, ...path: string[]): unknown {
   return cur;
 }
 
+
+/** أحداث الأقسام اللي اتضافت بعد البوابة والمبيعات: إنتاج، مشتريات، هندسة، وصفات، تخطيط، إعدادات. */
+function moreExact(who: string): Record<string, string> {
+  return {
+    "contacts.edit": `${who} عدّل جهة اتصال`,
+    "contacts.delete": `${who} مسح جهة اتصال`,
+    "production.batch.close": `${who} قفل دفعة إنتاج`,
+    "production.ncr.open": `${who} فتح حالة عدم مطابقة`,
+    "production.ncr.close": `${who} قفل حالة عدم مطابقة`,
+    "production.note.create": `${who} كتب ملاحظة على أمر إنتاج`,
+    "production.operation.confirm": `${who} أكّد عملية تشغيل على دفعة`,
+    "production.quality.decision": `${who} اتخذ قرار جودة على أمر إنتاج`,
+    "production.stoppage.start": `${who} سجّل توقف ماكينة`,
+    "production.stoppage.end": `${who} أنهى توقف ماكينة`,
+    "production.lifecycle.split.create": `${who} قسّم أمر إنتاج`,
+    "production.lifecycle.partial_completion": `${who} سجّل تسليم جزئي لأمر إنتاج`,
+    "production.operations_case.convert": `${who} حوّل حالة تشغيل لأمر إنتاج`,
+    "production.operations_case.split.create": `${who} قسّم حالة تشغيل`,
+    "productionWorkflow.batch.create": `${who} فتح دفعة إنتاج`,
+    "productionWorkflow.cost.record": `${who} سجّل تكلفة على أمر إنتاج`,
+    "production_workflow.claimed_by_operations_manager": `${who} استلم أمر إنتاج من التشغيل`,
+    "production_workflow.claimed_by_portal_sales": `${who} استلم أمر إنتاج من مبيعات البوابة`,
+    "purchases.create": `${who} أنشأ أمر شراء`,
+    "purchases.edit": `${who} عدّل أمر شراء`,
+    "purchases.receive": `${who} سجّل استلام بضاعة على أمر شراء`,
+    "purchases.inspect": `${who} فحص بضاعة مستلمة (قبول أو رفض)`,
+    "purchases.approved": `${who} اعتمد أمر شراء`,
+    "purchases.sent": `${who} علّم أمر شراء إنه اتبعت للمورّد`,
+    "purchases.cancelled": `${who} ألغى أمر شراء`,
+    "engineering.version.supersede": `${who} استبدل إصدار هندسي بإصدار أحدث`,
+    "engineering.version.retire": `${who} سحب إصدار هندسي من الاستخدام`,
+    "engineering.change.approved": `${who} وافق على طلب تغيير هندسي`,
+    "engineering.change.rejected": `${who} رفض طلب تغيير هندسي`,
+    "bom.recipe.create": `${who} أنشأ وصفة تصنيع`,
+    "bom.recipe.update": `${who} عدّل وصفة تصنيع`,
+    "bom.recipe.delete": `${who} مسح وصفة تصنيع`,
+    "bom.item.add": `${who} أضاف مكوّن لوصفة`,
+    "bom.item.update": `${who} عدّل مكوّن في وصفة`,
+    "bom.item.delete": `${who} شال مكوّن من وصفة`,
+    "bom.image.primary": `${who} اختار الصورة الأساسية لمنتج`,
+    "bom.image.secondary": `${who} أضاف صورة تانية لمنتج`,
+    "bom.image.delete": `${who} مسح صورة منتج`,
+    "planning.requisition.create": `${who} أنشأ طلب شراء من التخطيط`,
+    "operations.plan.create": `${who} حفظ خطة تشغيل`,
+    "operations.plan.releaseReservations": `${who} فكّ حجز خامات خطة تشغيل`,
+    "operations.case.converted": `${who} حوّل حالة تشغيل لأمر إنتاج`,
+    "operations.case.detailsUpdated": `${who} عدّل تفاصيل حالة تشغيل`,
+    "operations.case.rejectedInconsistentStock": `${who} رفض حالة تشغيل بسبب مخزون غير مطابق`,
+    "operations.case.validationResumed": `${who} كمّل مراجعة حالة تشغيل`,
+    "setting.changed": `${who} غيّر إعداد`,
+    "setting.reverted": `${who} رجّع إعداد لقيمته القديمة`,
+    "role.created": `${who} أنشأ دور جديد`,
+    "role.updated": `${who} عدّل دور`,
+    "role.deleted": `${who} مسح دور`,
+  };
+}
+
+/** جملة بديلة لمفاتيح ليها بادئة معروفة (من غير ما نعرض المفتاح التقني). */
+const PREFIX_TEXT: Array<[string, (who: string) => string]> = [
+  ["production.lifecycle.", (w) => `${w} غيّر مرحلة أمر إنتاج`],
+  ["purchases.", (w) => `${w} غيّر حالة أمر شراء`],
+  ["company.", (w) => `${w} عدّل بيانات شركة في البوابة`],
+  ["member.", (w) => `${w} عدّل موظف شركة في البوابة`],
+  ["join.", (w) => `${w} راجع طلب انضمام`],
+  ["portal.recovery.", (w) => `${w} بدأ استعادة حساب في البوابة`],
+  ["portal.", (w) => `${w} نفّذ إجراء في البوابة`],
+  ["production.", (w) => `${w} نفّذ إجراء في الإنتاج`],
+  ["operations.", (w) => `${w} نفّذ إجراء في التشغيل`],
+  ["engineering.", (w) => `${w} نفّذ إجراء في الهندسة`],
+  ["bom.", (w) => `${w} نفّذ إجراء في وصفات التصنيع`],
+  ["chat.", (w) => `${w} نفّذ إجراء في المحادثات`],
+  ["auth.", (w) => `${w} نفّذ إجراء على حسابه`],
+];
+
 /** جملة قصيرة بالعربي لحدث واحد. */
 export function describeAudit(row: AuditRowLike, names: AuditNames = {}): string {
-  const who = str(row.actorName) ?? "النظام";
+  const roleText = str(row.actorRoleLabel);
+  const who = str(row.actorName) ? (roleText ? `${str(row.actorName)} (${roleText})` : str(row.actorName)!) : "النظام";
   const id = row.resourceId;
   const company = id != null ? names.companies?.get(id) : undefined;
   const companyText = company ? `شركة «${company}»` : id != null ? `الشركة رقم ${id}` : "الشركة";
@@ -97,6 +174,7 @@ export function describeAudit(row: AuditRowLike, names: AuditNames = {}): string
   const key = row.actionKey;
 
   const exact: Record<string, string> = {
+    ...moreExact(who),
     "portal.application.approved": `${who} وافق على ${appText}`,
     "portal.application.rejected": withReason(`${who} رفض ${appText}`),
     "portal.application.needs_info": withReason(`${who} طلب معلومات إضافية في ${appText}`),
@@ -167,7 +245,8 @@ export function describeAudit(row: AuditRowLike, names: AuditNames = {}): string
       text = describePath(method, path, who, companyText, appText);
     }
   }
-  if (!text) text = `${who} نفّذ «${key}»`;
+  if (!text) text = PREFIX_TEXT.find(([p]) => key.startsWith(p))?.[1](who);
+  if (!text) text = `${who} نفّذ إجراء في النظام`;
   if (row.decision === "rejected" || /^HTTP \d+/.test(reason ?? "")) text += " — ماتنفّذش";
   return text;
 }

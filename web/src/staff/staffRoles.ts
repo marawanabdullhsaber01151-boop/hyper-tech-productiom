@@ -34,3 +34,6 @@ export const OPERATIONS_ROLES = ["chairman", "executive_manager", "operations_ma
 
 /** فحص استلام الخامات: نفس RECEIPT_READ_ROLES في السيرفر (src/lib/receiving.ts). */
 export const RECEIVING_PAGE_ROLES = ["chairman", "executive_manager", "purchasing_manager", "buyer", "warehouse_manager", "storekeeper", "raw_material_quality_controller"] as const;
+
+/** سجل النشاط: نفس ACTIVITY_ROLES في السيرفر (src/routes/activity.ts). */
+export { ACTIVITY_ROLES as ACTIVITY_PAGE_ROLES } from "./activityCore";

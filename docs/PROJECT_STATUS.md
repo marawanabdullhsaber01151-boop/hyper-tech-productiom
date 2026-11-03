@@ -215,3 +215,7 @@
 ## الخطوة 37ب — سجل التوقف بالماكينة وOEE
 - هجرة 0091 (`production_downtimes.machine_id` + توقف مفتوح واحد لكل ماكينة)؛ `GET /production-oee/machines|stoppages|report` و`POST /production-oee/stoppages` و`.../:id/end`؛ تبويب «التوقفات والكفاءة»؛ زرار «ملاحظة» في صف الأمر. لازم `npm run db:migrate`.
 - الاختبارات: `src/domain/oee.test.ts` و`src/productionOee.regression.test.ts` و`web/src/staff/oeeCore.test.ts` و`productionRules.test.ts` (اتعدّل) (tsc/vitest ما اتشغلوش في بيئة الشغل).
+
+## الخطوة 38أ — سجل النشاط السردي
+- `GET /activity` و`GET /activity/meta` (الرئيس والمدير التنفيذي)، صفحة `/v2/staff/activity`، مولّد الجمل اتوسّع. من غير هجرة.
+- الاختبارات: `src/domain/activity-feed.test.ts` و`src/activity.regression.test.ts` و`src/lib/auditNarrative.test.ts` (اتوسّع) و`web/src/staff/activityCore.test.ts` (tsc/vitest ما اتشغلوش في بيئة الشغل).
