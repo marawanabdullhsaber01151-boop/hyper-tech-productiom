@@ -43,6 +43,8 @@ export interface PoItem {
   unit: string | null;
   qty: string;
   receivedQty: string;
+  /** مستلم ومستني فحص الجودة (لسه ماداخلش المخزون). */
+  pendingQty?: string;
   unitPrice?: string;
   requisitionSource: string | null;
   requisitionId: number | null;
@@ -100,7 +102,8 @@ export function primaryMove(status: string, role: string): PoStatus | null {
 export const canEditOrder = (status: string, role: string) => status === "draft" && canBuy(role);
 export const canReceiveOrder = (status: string, role: string) => canReceive(role) && (status === "approved" || status === "sent" || status === "partially_received");
 
-export const remaining = (i: Pick<PoItem, "qty" | "receivedQty">): number => Math.max(0, Math.round((Number(i.qty) - Number(i.receivedQty)) * 1000) / 1000);
+/** المتبقي القابل للاستلام = المطلوب − المقبول − المستني فحص. */
+export const remaining = (i: Pick<PoItem, "qty" | "receivedQty" | "pendingQty">): number => Math.max(0, Math.round((Number(i.qty) - Number(i.receivedQty) - Number(i.pendingQty ?? 0)) * 1000) / 1000);
 
 const todayStr = () => new Date().toISOString().slice(0, 10);
 const OPEN = ["draft", "pending_approval", "approved", "sent", "partially_received"];
@@ -206,7 +209,7 @@ export function draftTotal(lines: DraftLine[]): number {
 
 export type ReceiptError = "qty" | "over" | "none";
 /** تحقق من استلام: كل بند فاضي بيتجاهل، والكمية مش أكتر من المتبقي، ولازم بند واحد على الأقل. */
-export function receiptCheck(items: Array<Pick<PoItem, "id" | "qty" | "receivedQty">>, input: Record<number, string>): { errors: Record<number, ReceiptError>; none: boolean; lines: Array<{ itemId: number; qty: string }> } {
+export function receiptCheck(items: Array<Pick<PoItem, "id" | "qty" | "receivedQty" | "pendingQty">>, input: Record<number, string>): { errors: Record<number, ReceiptError>; none: boolean; lines: Array<{ itemId: number; qty: string }> } {
   const errors: Record<number, ReceiptError> = {};
   const lines: Array<{ itemId: number; qty: string }> = [];
   for (const i of items) {

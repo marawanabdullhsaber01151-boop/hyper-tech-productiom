@@ -31,3 +31,6 @@ export const PLANNING_PAGE_ROLES: readonly string[] = PLANNING_ROLES;
 export const ENGINEERING_PAGE_ROLES = [...new Set([...ENGINEERING_ROLES, ...RECIPE_VIEW_ROLES])] as readonly string[];
 
 export const OPERATIONS_ROLES = ["chairman", "executive_manager", "operations_manager"] as const;
+
+/** فحص استلام الخامات: نفس RECEIPT_READ_ROLES في السيرفر (src/lib/receiving.ts). */
+export const RECEIVING_PAGE_ROLES = ["chairman", "executive_manager", "purchasing_manager", "buyer", "warehouse_manager", "storekeeper", "raw_material_quality_controller"] as const;

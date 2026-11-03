@@ -12,7 +12,7 @@ const impact = (blockers: Array<[string, number]>): Impact => ({ kind: "machine"
 describe("foundationCore: الصلاحيات والتبويبات", () => {
   it("التبويبات حسب الدور", () => {
     expect(foundationTabs("sales_manager")).toEqual([]);
-    expect(foundationTabs("warehouse_manager")).toEqual(["locations", "centers", "machines", "shifts", "sequences"]);
+    expect(foundationTabs("warehouse_manager")).toEqual(["locations", "centers", "machines", "shifts", "items", "sequences"]);
     expect(foundationTabs("chairman")).toContain("audit");
     expect(canManageFoundation("production_manager")).toBe(true);
   });

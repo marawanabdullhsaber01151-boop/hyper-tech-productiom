@@ -15,6 +15,7 @@ import type { operationsCopy } from "./operations";
 import type { engineeringCopy } from "./engineering";
 import type { planningCopy } from "./planning";
 import type { foundationCopy } from "./foundation";
+import type { receivingCopy } from "./receiving";
 import type { productionCopy } from "./production";
 import { tasksCopy } from "./tasks";
 
@@ -143,5 +144,5 @@ export const ar = {
 } as const satisfies Record<string, Msg>;
 
 /** مفاتيح الحزمة الرئيسية + نصوص الصفحات المتحمّلة بالكسل (registry.ts). النوع بس، من غير ما الملفات دي تدخل الحزمة. */
-export type LazyCopy = typeof salesCopy & typeof purchasesCopy & typeof contactsCopy & typeof operationsCopy & typeof productionCopy & typeof engineeringCopy & typeof invCopy & typeof planningCopy & typeof foundationCopy;
+export type LazyCopy = typeof salesCopy & typeof purchasesCopy & typeof contactsCopy & typeof operationsCopy & typeof productionCopy & typeof engineeringCopy & typeof invCopy & typeof planningCopy & typeof foundationCopy & typeof receivingCopy;
 export type CopyKey = keyof typeof ar | keyof LazyCopy;

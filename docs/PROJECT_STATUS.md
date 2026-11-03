@@ -203,3 +203,8 @@
 ## الخطوة 35ب — الأصناف وحوكمتها
 - تبويب «الأصناف» في `/v2/staff/foundation`؛ كل كتابات الصنف بمعاملة وتدقيق وقفل صف؛ فحص `changes` في طلب التغيير؛ الاستيراد بيرفض تغيير حقل حرج لصنف نشط؛ حذف `foundation.html` (+JS/CSS) وتحويلها لـ`?tab=items`. بدون هجرة. تصنيف مسارات الانتقالات backlog.
 - الاختبارات: `src/routes/foundation.hardening.test.ts` (اتوسّع) و`web/src/staff/itemsCore.test.ts` و`foundation.test.tsx` (tsc/vitest ما اتشغلوش في بيئة الشغل).
+
+## الخطوة 36 — فحص استلام الخامات
+- هجرة 0089 (`purchase_receipts`/`purchase_receipt_lines`، تسلسل `GRN-`)؛ `/purchases/:id/receive` بقى يسجّل إيصال مستني فحص؛ `POST /purchases/receipts/:id/inspect` و`GET /purchases/receipts`؛ صفحة `/v2/staff/receiving`. لازم `npm run db:migrate` على Neon.
+- الاختبارات: `src/lib/receiving.test.ts` و`src/receiving.regression.test.ts` و`web/src/staff/receivingCore.test.ts` و`receiving.test.tsx` (tsc/vitest ما اتشغلوش في بيئة الشغل).
+

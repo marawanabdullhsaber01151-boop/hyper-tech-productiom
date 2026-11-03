@@ -47,5 +47,57 @@ export const purchaseOrderItemsTable = pgTable(
   }),
 );
 
+export const purchaseReceiptsTable = pgTable(
+  "purchase_receipts",
+  {
+    id: serial("id").primaryKey(),
+    receiptNumber: text("receipt_number").notNull().unique(),
+    poId: integer("po_id")
+      .notNull()
+      .references(() => purchaseOrdersTable.id),
+    status: text("status").notNull().default("pending_inspection"),
+    notes: text("notes"),
+    receivedBy: integer("received_by").notNull(),
+    receivedByName: text("received_by_name"),
+    receivedAt: timestamp("received_at", { withTimezone: true }).notNull().defaultNow(),
+    inspectedBy: integer("inspected_by"),
+    inspectedByName: text("inspected_by_name"),
+    inspectedAt: timestamp("inspected_at", { withTimezone: true }),
+    inspectionNotes: text("inspection_notes"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    statusIdx: index("purchase_receipts_status_idx").on(t.status, t.createdAt),
+    poIdx: index("purchase_receipts_po_idx").on(t.poId),
+  }),
+);
+
+export const purchaseReceiptLinesTable = pgTable(
+  "purchase_receipt_lines",
+  {
+    id: serial("id").primaryKey(),
+    receiptId: integer("receipt_id")
+      .notNull()
+      .references(() => purchaseReceiptsTable.id, { onDelete: "cascade" }),
+    poItemId: integer("po_item_id")
+      .notNull()
+      .references(() => purchaseOrderItemsTable.id),
+    inventoryItemId: integer("inventory_item_id").notNull(),
+    description: text("description").notNull(),
+    unit: text("unit"),
+    qtyReceived: numeric("qty_received", { precision: 14, scale: 3 }).notNull(),
+    qtyAccepted: numeric("qty_accepted", { precision: 14, scale: 3 }),
+    qtyRejected: numeric("qty_rejected", { precision: 14, scale: 3 }),
+    rejectReason: text("reject_reason"),
+  },
+  (t) => ({
+    receiptIdx: index("purchase_receipt_lines_receipt_idx").on(t.receiptId),
+    poItemIdx: index("purchase_receipt_lines_po_item_idx").on(t.poItemId),
+  }),
+);
+
+export type PurchaseReceipt = typeof purchaseReceiptsTable.$inferSelect;
+export type PurchaseReceiptLine = typeof purchaseReceiptLinesTable.$inferSelect;
 export type PurchaseOrder = typeof purchaseOrdersTable.$inferSelect;
 export type PurchaseOrderItem = typeof purchaseOrderItemsTable.$inferSelect;

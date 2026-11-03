@@ -1,15 +1,16 @@
 /** @format */
 
 import { Router } from "express";
-import { and, asc, desc, eq, inArray, or } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, or, type SQL } from "drizzle-orm";
 import { z } from "zod";
 import { db, contactsTable, inventoryItemsTable } from "../db";
-import { planningPurchaseRequisitionsTable, purchaseOrderItemsTable, purchaseOrdersTable, purchaseRequisitionsTable, type PurchaseOrder, type PurchaseOrderItem } from "../db/schema";
+import { planningPurchaseRequisitionsTable, purchaseOrderItemsTable, purchaseOrdersTable, purchaseReceiptLinesTable, purchaseReceiptsTable, purchaseRequisitionsTable, type PurchaseOrder, type PurchaseOrderItem } from "../db/schema";
 import { requireAuth, requirePermission, requireRole } from "../middleware/auth";
 import { parseIdParam } from "../lib/validate";
 import { applyStockMovement } from "../lib/stock";
 import { writeAuditEvent } from "../lib/governance";
 import { nextPhase0Number } from "../lib/phase0";
+import { INSPECT_ROLES, RECEIPT_READ_ROLES, isReceiptStatus, planInspection, violatesSeparation } from "../lib/receiving";
 import { PO_READ_ROLES, PoError, allowedPoMoves, canEditPo, canReceiveIn, canSeePoPrices, isPoApprover, isPoStatus, orderTotal, planReceipt, type PoStatus } from "../lib/purchasing";
 
 const router = Router();
@@ -69,7 +70,7 @@ async function checkSupplier(tx: Tx, supplierId: number) {
   if (!s || (s.type !== "supplier" && s.type !== "both")) throw err("المورد مش موجود أو مش متسجّل كمورّد", 400);
 }
 
-function shape(po: PurchaseOrder, items: PurchaseOrderItem[], supplierName: string | null, role: string) {
+function shape(po: PurchaseOrder, items: PurchaseOrderItem[], supplierName: string | null, role: string, pending: Map<number, number> = new Map()) {
   const prices = canSeePoPrices(role);
   return {
     id: po.id,
@@ -93,18 +94,30 @@ function shape(po: PurchaseOrder, items: PurchaseOrderItem[], supplierName: stri
       unit: i.unit,
       qty: i.qty,
       receivedQty: i.receivedQty,
+      pendingQty: String(pending.get(i.id) ?? 0),
       ...(prices ? { unitPrice: i.unitPrice } : {}),
       requisitionSource: i.requisitionSource,
       requisitionId: i.requisitionId,
     })),
   };
 }
+/** الكميات المستلمة ومستنية فحص لكل بند (لسه ماداخلتش المخزون). */
+async function pendingByItem(ex: Pick<typeof db, "select">, poId: number): Promise<Map<number, number>> {
+  const rows = await ex
+    .select({ poItemId: purchaseReceiptLinesTable.poItemId, qty: purchaseReceiptLinesTable.qtyReceived })
+    .from(purchaseReceiptLinesTable)
+    .innerJoin(purchaseReceiptsTable, eq(purchaseReceiptsTable.id, purchaseReceiptLinesTable.receiptId))
+    .where(and(eq(purchaseReceiptsTable.poId, poId), eq(purchaseReceiptsTable.status, "pending_inspection")));
+  const m = new Map<number, number>();
+  for (const r of rows) m.set(r.poItemId, Math.round(((m.get(r.poItemId) ?? 0) + Number(r.qty)) * 1000) / 1000);
+  return m;
+}
 async function load(id: number, role: string) {
   const [po] = await db.select().from(purchaseOrdersTable).where(eq(purchaseOrdersTable.id, id)).limit(1);
   if (!po) return null;
   const items = await db.select().from(purchaseOrderItemsTable).where(eq(purchaseOrderItemsTable.poId, id)).orderBy(purchaseOrderItemsTable.id);
   const [sup] = await db.select({ name: contactsTable.name }).from(contactsTable).where(eq(contactsTable.id, po.supplierId)).limit(1);
-  return shape(po, items, sup?.name ?? null, role);
+  return shape(po, items, sup?.name ?? null, role, await pendingByItem(db, id));
 }
 
 function handle(res: import("express").Response, next: import("express").NextFunction, e: unknown) {
@@ -175,6 +188,49 @@ router.get("/purchases", requireAuth, requireRole(...PO_READ_ROLES), async (req,
         return { id: p.id, poNumber: p.poNumber, supplierId: p.supplierId, supplierName: supName.get(p.supplierId) ?? null, status: p.status, expectedDate: p.expectedDate, createdAt: p.createdAt, itemsCount: its.length, orderedQty: String(ordered), receivedQty: String(received), ...(prices ? { total: p.total } : {}) };
       }),
     );
+  } catch (e) {
+    next(e);
+  }
+});
+
+async function loadReceipts(where: SQL | undefined, limit = 200) {
+  const rows = await db
+    .select({ r: purchaseReceiptsTable, poNumber: purchaseOrdersTable.poNumber, supplierId: purchaseOrdersTable.supplierId })
+    .from(purchaseReceiptsTable)
+    .innerJoin(purchaseOrdersTable, eq(purchaseOrdersTable.id, purchaseReceiptsTable.poId))
+    .where(where)
+    .orderBy(desc(purchaseReceiptsTable.createdAt))
+    .limit(limit);
+  const ids = rows.map((x) => x.r.id);
+  const lines = ids.length ? await db.select().from(purchaseReceiptLinesTable).where(inArray(purchaseReceiptLinesTable.receiptId, ids)).orderBy(purchaseReceiptLinesTable.id) : [];
+  const supIds = [...new Set(rows.map((x) => x.supplierId))];
+  const sups = supIds.length ? await db.select({ id: contactsTable.id, name: contactsTable.name }).from(contactsTable).where(inArray(contactsTable.id, supIds)) : [];
+  const supName = new Map(sups.map((s) => [s.id, s.name]));
+  return rows.map(({ r, poNumber, supplierId }) => ({
+    id: r.id,
+    receiptNumber: r.receiptNumber,
+    poId: r.poId,
+    poNumber,
+    supplierName: supName.get(supplierId) ?? null,
+    status: r.status,
+    notes: r.notes,
+    receivedByName: r.receivedByName,
+    receivedAt: r.receivedAt,
+    inspectedByName: r.inspectedByName,
+    inspectedAt: r.inspectedAt,
+    inspectionNotes: r.inspectionNotes,
+    lines: lines.filter((l) => l.receiptId === r.id).map((l) => ({ id: l.id, description: l.description, unit: l.unit, qtyReceived: l.qtyReceived, qtyAccepted: l.qtyAccepted, qtyRejected: l.qtyRejected, rejectReason: l.rejectReason })),
+  }));
+}
+async function loadReceipt(id: number) {
+  return (await loadReceipts(eq(purchaseReceiptsTable.id, id), 1))[0] ?? null;
+}
+
+// GET /api/v1/purchases/receipts — إيصالات الاستلام (من غير أسعار). ?status=pending_inspection لقايمة الفحص
+router.get("/purchases/receipts", requireAuth, requireRole(...RECEIPT_READ_ROLES), async (req, res, next) => {
+  try {
+    const { status } = req.query as { status?: string };
+    res.json(await loadReceipts(status && isReceiptStatus(status) ? eq(purchaseReceiptsTable.status, status) : undefined));
   } catch (e) {
     next(e);
   }
@@ -264,6 +320,7 @@ router.post("/purchases/:id/status", requireAuth, requirePermission("purchases.c
       if ((to === "pending_approval" || to === "approved") && items.some((i) => !(Number(i.unitPrice) > 0))) throw err("حدد سعر لكل البنود قبل الإرسال للاعتماد");
       if (to === "cancelled") {
         if (!reason?.trim()) throw err("اكتب سبب الإلغاء");
+        if ((await pendingByItem(tx, id)).size) throw err("فيه استلام مستني فحص الجودة على الأمر ده، خلّص فحصه الأول", 409);
         await release(tx, items);
       }
       const set: Partial<typeof purchaseOrdersTable.$inferInsert> = { status: to as PoStatus, updatedAt: new Date() };
@@ -279,7 +336,7 @@ router.post("/purchases/:id/status", requireAuth, requirePermission("purchases.c
   }
 });
 
-// POST /api/v1/purchases/:id/receive — استلام (كلّي أو جزئي) بيدخّل المخزون بحركة وارد مرتبطة بالأمر
+// POST /api/v1/purchases/:id/receive — استلام (كلّي أو جزئي) بيسجّل إيصال «مستني فحص» ومابيدخّلش المخزون (الفحص يقرر)
 const receiveSchema = z.object({
   lines: z.array(z.object({ itemId: z.number().int().positive(), qty: z.string() })).min(1),
   notes: z.string().max(300).optional().nullable(),
@@ -294,17 +351,83 @@ router.post("/purchases/:id/receive", requireAuth, requirePermission("inventory.
       if (!po || !isPoStatus(po.status)) throw err("أمر الشراء غير موجود", 404);
       if (!canReceiveIn(po.status)) throw err("الأمر لازم يكون معتمد قبل الاستلام", 409);
       const items = await tx.select().from(purchaseOrderItemsTable).where(eq(purchaseOrderItemsTable.poId, id));
-      const plan = planReceipt(items.map((i) => ({ id: i.id, qty: i.qty, receivedQty: i.receivedQty })), data.lines);
+      const pending = await pendingByItem(tx, id);
+      // المقبول + المستني فحص لازم مايعدّوش المطلوب (المرفوض بيرجع متبقي)
+      planReceipt(items.map((i) => ({ id: i.id, qty: i.qty, receivedQty: String(Math.round((Number(i.receivedQty) + (pending.get(i.id) ?? 0)) * 1000) / 1000) })), data.lines);
       const by = new Map(items.map((i) => [i.id, i]));
-      for (const l of data.lines) {
-        const it = by.get(l.itemId)!;
-        await applyStockMovement(tx, { inventoryItemId: it.inventoryItemId, movementType: "in", qty: l.qty, referenceType: "purchase", referenceId: po.id, unitPrice: it.unitPrice, notes: [`استلام ${po.poNumber}`, data.notes?.trim()].filter(Boolean).join(" — ") });
-      }
-      for (const n of plan.next) await tx.update(purchaseOrderItemsTable).set({ receivedQty: n.receivedQty }).where(eq(purchaseOrderItemsTable.id, n.id));
-      await tx.update(purchaseOrdersTable).set({ status: plan.status, updatedAt: new Date() }).where(eq(purchaseOrdersTable.id, id));
-      await writeAuditEvent({ actorUserId: req.user!.userId, actorName: req.user!.username, actionKey: "purchases.receive", resourceType: "purchase_order", resourceId: id, beforeData: { status: po.status }, afterData: { status: plan.status, lines: data.lines }, ipAddress: req.ip, userAgent: req.get("user-agent"), executor: tx });
+      const merged = new Map<number, number>();
+      for (const l of data.lines) merged.set(l.itemId, Math.round(((merged.get(l.itemId) ?? 0) + Number(l.qty)) * 1000) / 1000);
+      const receiptNumber = await nextPhase0Number(tx, "purchase_receipt");
+      const [receipt] = await tx
+        .insert(purchaseReceiptsTable)
+        .values({ receiptNumber, poId: id, notes: data.notes?.trim() || null, receivedBy: req.user!.userId, receivedByName: req.user!.username })
+        .returning();
+      await tx.insert(purchaseReceiptLinesTable).values(
+        [...merged.entries()].map(([itemId, qty]) => {
+          const it = by.get(itemId)!;
+          return { receiptId: receipt!.id, poItemId: it.id, inventoryItemId: it.inventoryItemId, description: it.description, unit: it.unit, qtyReceived: String(qty) };
+        }),
+      );
+      await writeAuditEvent({ actorUserId: req.user!.userId, actorName: req.user!.username, actionKey: "purchases.receive", resourceType: "purchase_receipt", resourceId: receipt!.id, beforeData: null, afterData: { receiptNumber, poId: id, status: "pending_inspection", lines: [...merged.entries()].map(([itemId, qty]) => ({ itemId, qty })) }, ipAddress: req.ip, userAgent: req.get("user-agent"), executor: tx });
     });
     res.json(await load(id, req.user!.role));
+  } catch (e) {
+    if (e instanceof Error && "status" in e && !(e instanceof PoError)) {
+      res.status((e as Error & { status: number }).status).json({ error: { message: e.message } });
+      return;
+    }
+    handle(res, next, e);
+  }
+});
+
+// POST /api/v1/purchases/receipts/:id/inspect — قرار الفحص: المقبول يدخل المخزون بحركة وارد، والمرفوض بسبب يرجع متبقي على الأمر
+const inspectSchema = z.object({
+  decisions: z.array(z.object({ lineId: z.number().int().positive(), acceptedQty: z.string(), rejectReason: z.string().max(300).optional().nullable() })).min(1),
+  notes: z.string().max(500).optional().nullable(),
+});
+router.post("/purchases/receipts/:id/inspect", requireAuth, requireRole(...INSPECT_ROLES), async (req, res, next) => {
+  try {
+    const id = parseIdParam(req.params.id, res);
+    if (id === null) return;
+    const data = inspectSchema.parse(req.body);
+    const role = req.user!.role;
+    await db.transaction(async (tx) => {
+      const [receipt] = await tx.select().from(purchaseReceiptsTable).where(eq(purchaseReceiptsTable.id, id)).for("update");
+      if (!receipt) throw err("الإيصال غير موجود", 404);
+      if (receipt.status !== "pending_inspection") throw err("الإيصال ده اتفحص قبل كده", 409);
+      if (violatesSeparation(role, req.user!.userId, receipt.receivedBy)) throw err("مينفعش تفحص استلام إنت سجلته بنفسك", 403);
+      const [po] = await tx.select().from(purchaseOrdersTable).where(eq(purchaseOrdersTable.id, receipt.poId)).for("update");
+      if (!po || !isPoStatus(po.status)) throw err("أمر الشراء غير موجود", 404);
+      const lines = await tx.select().from(purchaseReceiptLinesTable).where(eq(purchaseReceiptLinesTable.receiptId, id)).orderBy(purchaseReceiptLinesTable.id);
+      const plan = planInspection(lines.map((l) => ({ id: l.id, qtyReceived: l.qtyReceived })), data.decisions);
+      const byLine = new Map(lines.map((l) => [l.id, l]));
+      const items = await tx.select().from(purchaseOrderItemsTable).where(eq(purchaseOrderItemsTable.poId, po.id)).for("update");
+      const priceOf = new Map(items.map((i) => [i.id, i.unitPrice]));
+      for (const l of plan.lines) {
+        const line = byLine.get(l.id)!;
+        if (l.accepted > 0) {
+          await applyStockMovement(tx, { inventoryItemId: line.inventoryItemId, movementType: "in", qty: String(l.accepted), referenceType: "purchase", referenceId: po.id, unitPrice: priceOf.get(line.poItemId) ?? "0", notes: [`استلام ${po.poNumber} (${receipt.receiptNumber})`, data.notes?.trim()].filter(Boolean).join(" — ") });
+        }
+        await tx.update(purchaseReceiptLinesTable).set({ qtyAccepted: String(l.accepted), qtyRejected: String(l.rejected), rejectReason: l.rejectReason }).where(eq(purchaseReceiptLinesTable.id, l.id));
+      }
+      // المقبول بس بيزوّد المستلم على الأمر، وحالة الأمر بتتحسب منه
+      const add = new Map<number, number>();
+      for (const l of plan.lines) {
+        if (l.accepted <= 0) continue;
+        const poItemId = byLine.get(l.id)!.poItemId;
+        add.set(poItemId, Math.round(((add.get(poItemId) ?? 0) + l.accepted) * 1000) / 1000);
+      }
+      let poStatus = po.status;
+      if (add.size) {
+        const next = items.map((i) => ({ id: i.id, qty: i.qty, receivedQty: String(Math.round((Number(i.receivedQty) + (add.get(i.id) ?? 0)) * 1000) / 1000) }));
+        for (const n of next) if (add.has(n.id)) await tx.update(purchaseOrderItemsTable).set({ receivedQty: n.receivedQty }).where(eq(purchaseOrderItemsTable.id, n.id));
+        poStatus = next.every((n) => Number(n.receivedQty) >= Number(n.qty) - 1e-9) ? "received" : "partially_received";
+        await tx.update(purchaseOrdersTable).set({ status: poStatus, updatedAt: new Date() }).where(eq(purchaseOrdersTable.id, po.id));
+      }
+      await tx.update(purchaseReceiptsTable).set({ status: plan.status, inspectedBy: req.user!.userId, inspectedByName: req.user!.username, inspectedAt: new Date(), inspectionNotes: data.notes?.trim() || null, updatedAt: new Date() }).where(eq(purchaseReceiptsTable.id, id));
+      await writeAuditEvent({ actorUserId: req.user!.userId, actorName: req.user!.username, actionKey: "purchases.inspect", resourceType: "purchase_receipt", resourceId: id, beforeData: { status: receipt.status }, afterData: { status: plan.status, acceptedTotal: plan.acceptedTotal, rejectedTotal: plan.rejectedTotal, poStatus, lines: plan.lines }, ipAddress: req.ip, userAgent: req.get("user-agent"), executor: tx });
+    });
+    res.json(await loadReceipt(id));
   } catch (e) {
     if (e instanceof Error && "status" in e && !(e instanceof PoError)) {
       res.status((e as Error & { status: number }).status).json({ error: { message: e.message } });
