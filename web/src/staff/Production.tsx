@@ -5,6 +5,7 @@ import { t } from "../copy";
 import { InlineAlert, Tabs } from "../design/components";
 import { ProductionExecution } from "./ProductionExecution";
 import { ProductionInspect } from "./ProductionInspect";
+import { ProductionOee } from "./ProductionOee";
 import { ProductionOrders } from "./ProductionOrders";
 import { ProductionQuality, ProductionTrace } from "./ProductionQuality";
 import { ProductionRequests } from "./ProductionRequests";
@@ -29,6 +30,7 @@ export function Production() {
     execution: { label: t("prd.tab.execution"), panel: <ProductionExecution /> },
     quality: { label: t("prd.tab.quality"), panel: <ProductionQuality /> },
     trace: { label: t("prd.tab.trace"), panel: <ProductionTrace /> },
+    oee: { label: t("prd.tab.oee"), panel: <ProductionOee /> },
   } as const;
 
   return (

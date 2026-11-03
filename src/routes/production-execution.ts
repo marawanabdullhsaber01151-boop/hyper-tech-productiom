@@ -175,7 +175,8 @@ router.post(
           workflowOrderId: batch.workflowOrderId,
           recordedBy: req.user!.userId,
           startedAt: data.startedAt ? new Date(data.startedAt) : null,
-          endedAt: data.endedAt ? new Date(data.endedAt) : null,
+          // التسجيل اليدوي دايمًا مقفول: لو اتحدد البداية بس، النهاية = البداية + الدقايق (مفيش توقف مفتوح بالغلط)
+          endedAt: data.endedAt ? new Date(data.endedAt) : data.startedAt ? new Date(new Date(data.startedAt).getTime() + data.minutes * 60000) : null,
         })
         .returning();
       res.status(201).json({ data: created });

@@ -19,6 +19,8 @@ function stub() {
     if (key === "GET /production-workflow") return json({ data: ORDERS, stats: {} });
     if (key === "GET /production-workflow/team-options") return json({ supervisors: [{ id: 11, fullName: "أحمد", activeCount: 4 }, { id: 12, fullName: "منى", activeCount: 1 }], qualityControllers: [{ id: 21, fullName: "هدى", activeCount: 2 }] });
     if (key === "GET /production-workflow/recipes") return json({ data: [{ id: 4, productName: "بطارية 12 فولت", productCode: "B12" }] });
+    if (key === "GET /production-oversight/stalled") return json({ data: [{ id: 2, orderNumber: "PO-2", workflowStatus: "in_production", idleHours: 30.5, thresholdHours: 24, ratio: 1.3 }] });
+    if (key === "GET /production-oversight/orders/2/notes") return json({ data: [{ id: 1, kind: "issue", body: "الماكينة بتسخن", createdByName: "منى", createdAt: "2026-11-02T08:00:00Z" }] });
     if (key.endsWith("/lifecycle")) return json(LIFE);
     return json({ data: {} });
   }));
@@ -172,5 +174,42 @@ describe("تبويب أوامر الإنتاج", () => {
     fireEvent.change(screen.getByRole("combobox", { name: "الحالة" }), { target: { value: "mine" } });
     expect(screen.getAllByText("PO-1").length).toBeGreaterThan(0);
     expect(screen.queryByText("PO-2")).toBeNull();
+  });
+});
+
+describe("متابعة الإنتاج: الواقف وملاحظات المشرف", () => {
+  it("المشرف يشوف شارة «واقف» على الأمر وفلتر الواقفة، والمبيعات ماتشوفهمش", async () => {
+    login("supervisor");
+    stub();
+    mount();
+    await screen.findAllByText("PO-2");
+    expect(await within(rowOf("PO-2")).findByText("واقف 30 ساعة")).toBeTruthy();
+    expect(within(rowOf("PO-1")).queryByText(/واقف/)).toBeNull();
+    expect(screen.getByRole("option", { name: /الأوامر الواقفة/ })).toBeTruthy();
+    cleanup();
+    login("hr");
+    stub();
+    mount();
+    await screen.findAllByText("PO-2");
+    expect(screen.queryByText("واقف 30 ساعة")).toBeNull();
+    expect(calls.some((c) => c.key === "GET /production-oversight/stalled")).toBe(false);
+  });
+
+  it("المشرف يفتح الأمر الواقف، يشوف الملاحظات ويضيف ملاحظة جديدة", async () => {
+    login("supervisor");
+    stub();
+    mount();
+    await screen.findAllByText("PO-2");
+    fireEvent.click(within(rowOf("PO-2")).getByRole("button", { name: "التفاصيل" }));
+    const dlg = within(await screen.findByRole("dialog"));
+    expect(await dlg.findByText(/الماكينة بتسخن/)).toBeTruthy();
+    expect(dlg.getByText(/ما حصلش عليه أي نشاط من 30 ساعة/)).toBeTruthy();
+    const add = dlg.getByRole("button", { name: "أضف الملاحظة" }) as HTMLButtonElement;
+    expect(add.disabled).toBe(true);
+    fireEvent.change(dlg.getByLabelText("نوع الملاحظة"), { target: { value: "handover" } });
+    fireEvent.input(dlg.getByLabelText(/نص الملاحظة/), { target: { value: "الوردية الليلية كملت 200 قطعة" } });
+    fireEvent.click(dlg.getByRole("button", { name: "أضف الملاحظة" }));
+    await waitFor(() => expect(calls.some((c) => c.key === "POST /production-oversight/orders/2/notes")).toBe(true));
+    expect(calls.find((c) => c.key === "POST /production-oversight/orders/2/notes")!.body).toEqual({ kind: "handover", body: "الوردية الليلية كملت 200 قطعة" });
   });
 });

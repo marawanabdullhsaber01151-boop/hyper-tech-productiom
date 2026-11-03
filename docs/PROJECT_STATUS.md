@@ -208,3 +208,10 @@
 - هجرة 0089 (`purchase_receipts`/`purchase_receipt_lines`، تسلسل `GRN-`)؛ `/purchases/:id/receive` بقى يسجّل إيصال مستني فحص؛ `POST /purchases/receipts/:id/inspect` و`GET /purchases/receipts`؛ صفحة `/v2/staff/receiving`. لازم `npm run db:migrate` على Neon.
 - الاختبارات: `src/lib/receiving.test.ts` و`src/receiving.regression.test.ts` و`web/src/staff/receivingCore.test.ts` و`receiving.test.tsx` (tsc/vitest ما اتشغلوش في بيئة الشغل).
 
+## الخطوة 37أ — ملاحظات المشرف والمرحلة الواقفة
+- هجرة 0090 (`production_order_notes`)؛ `GET/POST /production-oversight/orders/:id/notes` و`GET /production-oversight/stalled`؛ مهمة تلقائية لكل أمر واقف من `/cron/outbox-drain`؛ قسم الملاحظات وشارة «واقف» في تبويب الأوامر. لازم `npm run db:migrate`.
+- الاختبارات: `src/domain/production-stall.test.ts` و`src/productionOversight.regression.test.ts` و`web/src/staff/oversightCore.test.ts` و`productionOrders.test.tsx` (اتوسّع) (tsc/vitest ما اتشغلوش في بيئة الشغل).
+
+## الخطوة 37ب — سجل التوقف بالماكينة وOEE
+- هجرة 0091 (`production_downtimes.machine_id` + توقف مفتوح واحد لكل ماكينة)؛ `GET /production-oee/machines|stoppages|report` و`POST /production-oee/stoppages` و`.../:id/end`؛ تبويب «التوقفات والكفاءة»؛ زرار «ملاحظة» في صف الأمر. لازم `npm run db:migrate`.
+- الاختبارات: `src/domain/oee.test.ts` و`src/productionOee.regression.test.ts` و`web/src/staff/oeeCore.test.ts` و`productionRules.test.ts` (اتعدّل) (tsc/vitest ما اتشغلوش في بيئة الشغل).

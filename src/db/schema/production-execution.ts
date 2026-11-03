@@ -11,8 +11,10 @@ export const productionDowntimesTable = pgTable(
   "production_downtimes",
   {
     id: serial("id").primaryKey(),
-    batchId: integer("batch_id").notNull().references(() => productionBatchesTable.id),
-    workflowOrderId: integer("workflow_order_id").notNull().references(() => productionWorkflowOrdersTable.id),
+    // الدفعة والأمر اختياريين من 0091: ماكينة ممكن تعطل وهي مش شغالة على دفعة (لازم دفعة أو ماكينة)
+    batchId: integer("batch_id").references(() => productionBatchesTable.id),
+    workflowOrderId: integer("workflow_order_id").references(() => productionWorkflowOrdersTable.id),
+    machineId: integer("machine_id").references(() => foundationMachinesTable.id, { onDelete: "set null" }),
     reasonCode: text("reason_code").notNull(),
     minutes: integer("minutes").notNull(),
     notes: text("notes"),
@@ -26,6 +28,30 @@ export const productionDowntimesTable = pgTable(
     reasonIdx: index("production_downtimes_reason_idx").on(table.reasonCode),
   }),
 );
+
+export const productionOrderNotesTable = pgTable(
+  "production_order_notes",
+  {
+    id: serial("id").primaryKey(),
+    workflowOrderId: integer("workflow_order_id").notNull().references(() => productionWorkflowOrdersTable.id),
+    batchId: integer("batch_id").references(() => productionBatchesTable.id),
+    kind: text("kind").notNull().default("observation"),
+    body: text("body").notNull(),
+    createdBy: integer("created_by").notNull().references(() => systemUsersTable.id),
+    createdByName: text("created_by_name"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    orderIdx: index("production_order_notes_order_idx").on(table.workflowOrderId, table.createdAt),
+  }),
+);
+
+export const NOTE_KINDS = ["observation", "issue", "instruction", "handover"] as const;
+export const createOrderNoteSchema = z.object({
+  kind: z.enum(NOTE_KINDS).default("observation"),
+  body: z.string().trim().min(3, "اكتب الملاحظة (3 حروف على الأقل)").max(1000),
+  batchId: z.number().int().positive().optional().nullable(),
+});
 
 export const productionOperationConfirmationsTable = pgTable(
   "production_operation_confirmations",
@@ -106,6 +132,18 @@ export const createDowntimeSchema = z.object({
   notes: z.string().trim().max(1000).optional().nullable(),
   startedAt: z.string().datetime().optional().nullable(),
   endedAt: z.string().datetime().optional().nullable(),
+  machineId: z.number().int().positive().optional().nullable(),
+});
+
+/** بدء توقف ماكينة (مفتوح لحد ما حد يقفله). */
+export const startStoppageSchema = z.object({
+  machineId: z.number().int().positive(),
+  reasonCode: z.string().trim().min(1).max(80),
+  batchId: z.number().int().positive().optional().nullable(),
+  notes: z.string().trim().max(1000).optional().nullable(),
+});
+export const endStoppageSchema = z.object({
+  notes: z.string().trim().max(1000).optional().nullable(),
 });
 
 export const createOperationConfirmationSchema = z.object({

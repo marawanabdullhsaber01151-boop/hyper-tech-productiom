@@ -12,6 +12,7 @@ import { sendOperationsDigest } from "../lib/operationsDigest";
 import { escalateOperationsSla } from "../lib/operationsSla";
 import { drainOutbox, purgeDoneOutbox } from "../lib/outbox";
 import { runEscalations } from "../lib/humanTasks";
+import { scanStalledOrders } from "../lib/productionOversight";
 import { drainSagas } from "../lib/sagas";
 
 const router = Router();
@@ -287,7 +288,9 @@ router.get("/cron/outbox-drain", async (req, res, next) => {
     // تصعيد المهام المتأخرة وتقديم العمليات الطويلة: فشلهم ما بيوقفش تصريف الصندوق
     const escalations = await runEscalations({ limit: 100 }).catch(() => null);
     const sagas = await drainSagas({ limit: 50, deadlineMs: 10_000 }).catch(() => null);
-    res.json({ ...drained, purged, escalations, sagas });
+    // أوامر الإنتاج الواقفة بتتحوّل لمهام (من غير تكرار)؛ فشلها ما بيوقفش الباقي
+    const stalled = await scanStalledOrders().catch(() => null);
+    res.json({ ...drained, purged, escalations, sagas, stalled });
   } catch (error) {
     next(error);
   }

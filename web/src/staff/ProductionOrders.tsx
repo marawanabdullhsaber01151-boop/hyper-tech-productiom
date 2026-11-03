@@ -9,6 +9,8 @@ import { Button, DataTable, Dialog, EmptyState, Field, InlineAlert, Input, Selec
 import { Plus, RefreshCw } from "../design/icons";
 import { formatDate, formatDateTime, formatNumber } from "../lib/format";
 import { MaterialsDialog } from "./ProductionMaterials";
+import { OrderNotes } from "./ProductionNotes";
+import { canReadNotes, hoursLabel, stalledMap, type StalledRow } from "./oversightCore";
 import {
   ORDER_PRIORITIES,
   canCreateOrder,
@@ -82,15 +84,19 @@ export function ProductionOrders() {
   const [filter, setFilter] = useState(() => (role === "supervisor" || role === "warehouse_manager" || role === "storekeeper" ? "mine" : ""));
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState<OrderRow | null>(null);
+  const [noteFor, setNoteFor] = useState<OrderRow | null>(null);
   const [creating, setCreating] = useState<OrderRow | boolean>(false);
   const [dialog, setDialog] = useState<{ row: OrderRow; kind: OrderAction | "due" } | null>(null);
   const list = useQuery((signal) => api.get<OrderRow[]>("/production-workflow", { signal }), []);
+  const seeStalled = canReadNotes(role);
+  const stalledQ = useQuery((signal) => (seeStalled ? api.get<StalledRow[]>("/production-oversight/stalled", { signal }) : Promise.resolve([] as StalledRow[])), [seeStalled]);
+  const stalled = stalledMap(Array.isArray(stalledQ.data) ? stalledQ.data : undefined);
   const all = Array.isArray(list.data) ? list.data : [];
   const counts = countByStatus(all);
   const d = today();
   const q = search.trim();
   const rows = all.filter((r) => {
-    if (filter === "mine" ? !isWaitingForRole(role, r.workflowStatus) : filter && r.workflowStatus !== filter) return false;
+    if (filter === "stalled" ? !stalled.has(r.id) : filter === "mine" ? !isWaitingForRole(role, r.workflowStatus) : filter && r.workflowStatus !== filter) return false;
     if (!q) return true;
     return [r.orderNumber, r.productName, r.customerName ?? ""].some((x) => x.includes(q));
   });
@@ -113,6 +119,7 @@ export function ProductionOrders() {
       <div class="prd-status">
         <StatusPill tone={TONE[groupOf(r.workflowStatus)] ?? "neutral"}>{statusLabel(r.workflowStatus)}</StatusPill>
         <small class="prd-muted">{t(`prd.ord.why.${r.workflowStatus}` as CopyKey)}</small>
+        {stalled.has(r.id) ? <StatusPill tone="danger">{t("prd.stall.badge", { h: hoursLabel(stalled.get(r.id)!.idleHours) })}</StatusPill> : null}
         {r.workflowStatus === "in_production" ? <small class="prd-muted">{t("prd.ord.stage.of", { n: stageIndex(r.currentStage) + 1, total: STAGES.length, name: stageLabel(STAGES[stageIndex(r.currentStage)]!) })}</small> : null}
       </div>
     ) },
@@ -126,6 +133,7 @@ export function ProductionOrders() {
     { key: "act", header: t("prd.ord.col.action"), cell: (r) => (
       <div class="prd-actions">
         <Button size="sm" variant="secondary" onClick={() => setOpen(r)}>{t("prd.ord.open")}</Button>
+        {seeStalled ? <Button size="sm" variant="ghost" onClick={() => setNoteFor(r)}>{t("prd.note.quick")}</Button> : null}
         {orderActions(role, r.workflowStatus).filter((k) => ROW_ACTIONS.includes(k)).map((k) => (
           <Button key={k} size="sm" onClick={() => setDialog({ row: r, kind: k })}>{t(`prd.ord.act.${k}` as CopyKey)}</Button>
         ))}
@@ -143,6 +151,7 @@ export function ProductionOrders() {
         <Stat label={t("prd.ord.stat.done")} value={formatNumber(groups.done)} tone="success" />
         <Stat label={t("prd.ord.stat.late")} value={formatNumber(late)} tone="danger" />
         <Stat label={t("prd.ord.stat.mine")} value={formatNumber(mine)} tone="brand" />
+        {seeStalled ? <Stat label={t("prd.stall.stat")} value={formatNumber(stalled.size)} tone="danger" /> : null}
       </div>
       <p class="prd-muted">{t("prd.ord.cycle", { active: formatNumber(groups.waiting + groups.inProgress), done: formatNumber(groups.done), late: formatNumber(late) })}</p>
       <div class="prd-toolbar">
@@ -152,6 +161,7 @@ export function ProductionOrders() {
           options={[
             { value: "", label: t("prd.ord.filter.all") },
             { value: "mine", label: `${t("prd.ord.filter.mine")} (${formatNumber(mine)})` },
+            ...(seeStalled ? [{ value: "stalled", label: `${t("prd.stall.filter")} (${formatNumber(stalled.size)})` }] : []),
             ...Object.keys(counts).map((s) => ({ value: s, label: `${statusLabel(s)} (${formatNumber(counts[s] ?? 0)})` })),
           ]}
           onChange={(e) => setFilter(val(e))}
@@ -162,8 +172,9 @@ export function ProductionOrders() {
       </div>
       {list.error ? <InlineAlert tone="danger" title={t("prd.err")} action={<Button size="sm" variant="secondary" onClick={() => void refresh()}>{t("common.retry")}</Button>}>{list.error.message}</InlineAlert> : null}
       <DataTable columns={columns} rows={rows} rowKey={(r) => r.id} caption={t("prd.ord.caption")} loading={list.loading} empty={<EmptyState title={t("prd.ord.empty")} compact />} />
-      {open ? <OrderDetail row={open} role={role} userId={user?.id} onClose={() => setOpen(null)} onDuplicate={canCreateOrder(role) ? () => { const row = open; setOpen(null); setCreating(row); } : undefined} onAction={(kind) => { const row = open; setOpen(null); setDialog({ row, kind }); }} /> : null}
+      {open ? <OrderDetail row={open} role={role} stalledRow={stalled.get(open.id)} userId={user?.id} onClose={() => setOpen(null)} onDuplicate={canCreateOrder(role) ? () => { const row = open; setOpen(null); setCreating(row); } : undefined} onAction={(kind) => { const row = open; setOpen(null); setDialog({ row, kind }); }} /> : null}
       {creating ? <NewOrderDialog initial={typeof creating === "object" ? creating : undefined} known={all} onClose={() => setCreating(false)} onDone={async () => { setCreating(false); await refresh(); }} /> : null}
+      {noteFor ? <Dialog open onClose={() => setNoteFor(null)} title={t("prd.note.quickTitle", { no: noteFor.orderNumber })} footer={<Button variant="ghost" onClick={() => setNoteFor(null)}>{t("common.close")}</Button>}><OrderNotes orderId={noteFor.id} role={role} /></Dialog> : null}
       {dialog?.kind === "decide" ? <MaterialsDialog row={dialog.row} role={role} onClose={() => setDialog(null)} onDone={async () => { setDialog(null); await refresh(); }} /> : null}
       {dialog && dialog.kind !== "decide" ? <OrderDialog row={dialog.row} kind={dialog.kind} onClose={() => setDialog(null)} onDone={async () => { setDialog(null); await refresh(); }} /> : null}
     </>
@@ -174,7 +185,7 @@ function Row({ label, value }: { label: string; value: string | null | undefined
   return <div class="prd-kv"><span class="prd-muted">{label}</span><span>{value || "—"}</span></div>;
 }
 
-function OrderDetail({ row, role, userId, onClose, onAction, onDuplicate }: { row: OrderRow; role: string; userId: number | undefined; onClose: () => void; onAction: (k: OrderAction | "due") => void; onDuplicate?: () => void }) {
+function OrderDetail({ row, role, stalledRow, userId, onClose, onAction, onDuplicate }: { row: OrderRow; role: string; stalledRow?: StalledRow; userId: number | undefined; onClose: () => void; onAction: (k: OrderAction | "due") => void; onDuplicate?: () => void }) {
   const life = useQuery((signal) => api.get<Lifecycle>(`/production-workflow/${row.id}/lifecycle`, { signal }), [row.id]);
   const acts = orderActions(role, row.workflowStatus);
   const timeline = life.data?.timeline ?? [];
@@ -184,6 +195,7 @@ function OrderDetail({ row, role, userId, onClose, onAction, onDuplicate }: { ro
     <Dialog open onClose={onClose} title={t("prd.ord.d.title", { no: row.orderNumber })} footer={<Button variant="ghost" onClick={onClose}>{t("common.close")}</Button>}>
       <div class="prd-form">
         <StatusPill tone={TONE[groupOf(row.workflowStatus)] ?? "neutral"}>{statusLabel(row.workflowStatus)}</StatusPill>
+        {stalledRow ? <InlineAlert tone="danger">{t("prd.stall.detail", { h: hoursLabel(stalledRow.idleHours), limit: String(stalledRow.thresholdHours) })}</InlineAlert> : null}
         <p class="prd-muted">{t(`prd.ord.why.${row.workflowStatus}` as CopyKey)} {t(`prd.ord.owner.${ownerRoleKey(row.workflowStatus)}` as CopyKey)}</p>
         {row.workflowStatus === "in_production" ? (
           <ol class="prd-stages" aria-label={t("prd.ord.stage.title")}>
@@ -209,6 +221,7 @@ function OrderDetail({ row, role, userId, onClose, onAction, onDuplicate }: { ro
           {onDuplicate ? <Button size="sm" variant="secondary" onClick={onDuplicate}>{t("prd.ord.act.duplicate")}</Button> : null}
           {canEditNeededBy(userId, row) ? <Button size="sm" variant="secondary" onClick={() => onAction("due")}>{t("prd.ord.act.due")}</Button> : null}
         </div>
+        <OrderNotes orderId={row.id} role={role} />
         <p class="prd-muted">{t("prd.ord.d.otherBoards")}</p>
         {life.error ? <InlineAlert tone="warn">{t("prd.ord.d.lifecycleFail")}</InlineAlert> : null}
         {life.data ? (
