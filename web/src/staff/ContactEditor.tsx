@@ -13,6 +13,7 @@ interface Match {
   name: string;
   company: string | null;
   phone: string | null;
+  reason?: "phone" | "company" | "similar";
 }
 
 /** إضافة/تعديل جهة اتصال. بيحذّر من التكرار (نفس التليفون بأي صيغة أو نفس الشركة) قبل الحفظ. */
@@ -31,14 +32,15 @@ export function ContactEditor({ contact, startTab, onClose, onSaved }: { contact
     setAck(false);
     const phone = d.phone.trim();
     const company = d.company.trim();
-    if (!phone && !company) {
+    const name = d.name.trim();
+    if (!phone && !company && name.length < 3) {
       setMatches([]);
       return;
     }
     const ctrl = new AbortController();
     const timer = setTimeout(() => {
       api
-        .get<{ matches: Match[] }>("/contacts/duplicate-check", { signal: ctrl.signal, query: { phone, company, excludeId: contact?.id } })
+        .get<{ matches: Match[] }>("/contacts/duplicate-check", { signal: ctrl.signal, query: { phone, company, name: name.length >= 3 ? name : undefined, excludeId: contact?.id } })
         .then((r) => setMatches(Array.isArray(r.matches) ? r.matches : []))
         .catch(() => undefined); // التحذير مساعد بس، فشله ما يمنعش الحفظ.
     }, 350);
@@ -46,7 +48,7 @@ export function ContactEditor({ contact, startTab, onClose, onSaved }: { contact
       clearTimeout(timer);
       ctrl.abort();
     };
-  }, [d.phone, d.company, contact?.id]);
+  }, [d.phone, d.company, d.name, contact?.id]);
 
   const save = async () => {
     setTried(true);
@@ -98,7 +100,7 @@ export function ContactEditor({ contact, startTab, onClose, onSaved }: { contact
         </div>
         {matches.length ? (
           <InlineAlert tone="warn" title={t("con.dup.title")}>
-            {t("con.dup.body", { names: matches.map((m) => m.name || m.company || m.phone || "").join(" | ") })}
+            {t("con.dup.body", { names: matches.map((m) => `${m.name || m.company || m.phone || ""}${m.reason ? ` (${t(`con.dup.why.${m.reason}`)})` : ""}`).join(" | ") })}
           </InlineAlert>
         ) : null}
         <div class="con-grid2">

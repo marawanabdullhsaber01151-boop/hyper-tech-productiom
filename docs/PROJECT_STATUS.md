@@ -219,3 +219,7 @@
 ## الخطوة 38أ — سجل النشاط السردي
 - `GET /activity` و`GET /activity/meta` (الرئيس والمدير التنفيذي)، صفحة `/v2/staff/activity`، مولّد الجمل اتوسّع. من غير هجرة.
 - الاختبارات: `src/domain/activity-feed.test.ts` و`src/activity.regression.test.ts` و`src/lib/auditNarrative.test.ts` (اتوسّع) و`web/src/staff/activityCore.test.ts` (tsc/vitest ما اتشغلوش في بيئة الشغل).
+
+## الخطوة 38ب — النشطين الآن وتشابه الأسماء
+- هجرة 0092 (`pg_trgm`)؛ `GET /activity/online` وقسم «النشطين الآن» في صفحة النشاط؛ `/contacts/duplicate-check` بالتشابه وسبب التطابق. لازم `npm run db:migrate`.
+- الاختبارات: `src/domain/presence.test.ts` و`src/domain/duplicate-match.test.ts` و`src/duplicateMatch.regression.test.ts` و`src/activity.regression.test.ts` (اتوسّع) و`web/src/staff/activityCore.test.ts` (اتوسّع) (tsc/vitest ما اتشغلوش في بيئة الشغل).

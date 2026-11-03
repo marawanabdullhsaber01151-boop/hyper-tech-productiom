@@ -77,7 +77,10 @@ export const contactsCopy = {
   "con.ed.err.phone": "رقم التليفون مش صحيح",
   "con.ed.err.email": "الإيميل مش صحيح",
   "con.dup.title": "ممكن تكون مكررة",
-  "con.dup.body": "فيه جهات اتصال بنفس التليفون أو الشركة: {names}",
+  "con.dup.body": "فيه جهات اتصال بنفس التليفون أو الشركة أو باسم مشابه: {names}",
+  "con.dup.why.phone": "نفس التليفون",
+  "con.dup.why.company": "نفس الشركة",
+  "con.dup.why.similar": "اسم مشابه",
   "con.dup.confirm": "فهمت، اضيفها برضه",
 
   "con.dr.info": "البيانات",

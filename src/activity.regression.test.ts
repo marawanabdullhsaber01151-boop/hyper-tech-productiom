@@ -8,7 +8,7 @@ const route = read("./routes/activity.ts");
 describe("خطوة 38أ — سجل النشاط السردي", () => {
   it("للإدارة العليا بس، على كل المسارات", () => {
     expect(route).toContain('export const ACTIVITY_ROLES = ["chairman", "executive_manager"]');
-    expect((route.match(/requireRole\(\.\.\.ACTIVITY_ROLES\)/g) ?? []).length).toBe(2);
+    expect((route.match(/requireRole\(\.\.\.ACTIVITY_ROLES\)/g) ?? []).length).toBe(3);
     expect(route).not.toContain("router.post");
     expect(route).not.toContain("router.delete");
     expect(route).not.toContain("router.patch");
@@ -37,5 +37,16 @@ describe("خطوة 38أ — سجل النشاط السردي", () => {
     expect(main).toContain("apiRouter.use(activityRouter)");
     const dep = read("./lib/departments.ts");
     expect(dep).toContain('href: "/v2/staff/activity", roles: TOP_MGMT');
+  });
+
+  it("النشطين الآن: للإدارة العليا، من الجلسات غير المقفولة، ومن غير IP أو جهاز", () => {
+    const i = route.indexOf('router.get("/activity/online"');
+    expect(i).toBeGreaterThan(-1);
+    const h = route.slice(i, i + 1900);
+    expect(h).toContain("isNull(loginSessionsTable.revokedAt)");
+    expect(h).toContain("collapseOnline");
+    expect(h).not.toContain("ipAddress");
+    expect(h).not.toContain("deviceInfo");
+    expect(h).toContain("eq(systemUsersTable.status, \"active\")");
   });
 });

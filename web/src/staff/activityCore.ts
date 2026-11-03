@@ -46,3 +46,9 @@ export function mergeRows(prev: readonly ActivityRow[], next: readonly ActivityR
   const seen = new Set(prev.map((r) => r.id));
   return [...prev, ...next.filter((r) => !seen.has(r.id))];
 }
+
+export interface OnlineUser { userId: number; name: string; roleLabel: string; minutesAgo: number }
+/** صياغة «آخر نشاط»: أقل من دقيقة = «دلوقتي»، غير كده «منذ N دقيقة». */
+export const onlineKind = (minutesAgo: number): "now" | "ago" => (minutesAgo < 1 ? "now" : "ago");
+/** تحديث القايمة كل دقيقة (نفس دقة تحديث آخر نشاط للجلسة في السيرفر). */
+export const ONLINE_REFRESH_MS = 60_000;

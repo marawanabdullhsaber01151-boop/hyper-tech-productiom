@@ -12,6 +12,7 @@ import {
 } from "../db";
 import { purchaseOrdersTable } from "../db/schema";
 import { deleteBlocker, isSellerRole, phoneKey } from "../lib/contactsCore";
+import { SIMILAR_MIN, containsPattern, rankMatches } from "../domain/duplicate-match";
 import {
   requireAuth,
   requireRole,
@@ -85,34 +86,52 @@ router.get(
     try {
       const phone = typeof req.query.phone === "string" ? req.query.phone.trim() : "";
       const company = typeof req.query.company === "string" ? req.query.company.trim() : "";
+      const name = typeof req.query.name === "string" ? req.query.name.trim() : "";
       const excludeId = typeof req.query.excludeId === "string" ? Number(req.query.excludeId) : null;
-      if (!phoneKey(phone) && !company) {
+      const key = phoneKey(phone);
+      if (!key && !company && !name) {
         res.json({ matches: [] });
         return;
       }
 
-      const filters = [];
-      const key = phoneKey(phone);
-      if (key) {
-        filters.push(
-          key.length === 10
-            ? sql`right(regexp_replace(coalesce(${contactsTable.phone}, ''), '[^0-9]', '', 'g'), 10) = ${key}`
-            : sql`regexp_replace(coalesce(${contactsTable.phone}, ''), '[^0-9]', '', 'g') = ${key}`,
-        );
-      }
-      if (company) filters.push(ilike(contactsTable.company, company));
+      // أي مدخل بيتحسب: تليفون مطابق، شركة مطابقة/محتوية (بيشتغل حتى لو pg_trgm ماقراش العربي)، وتشابه pg_trgm على الاسم والشركة.
+      const phoneHit = key
+        ? key.length === 10
+          ? sql<boolean>`right(regexp_replace(coalesce(${contactsTable.phone}, ''), '[^0-9]', '', 'g'), 10) = ${key}`
+          : sql<boolean>`regexp_replace(coalesce(${contactsTable.phone}, ''), '[^0-9]', '', 'g') = ${key}`
+        : sql<boolean>`false`;
+      const companyPattern = containsPattern(company);
+      const companyHit = company
+        ? companyPattern
+          ? sql<boolean>`(lower(coalesce(${contactsTable.company}, '')) = lower(${company}) OR coalesce(${contactsTable.company}, '') ILIKE ${companyPattern})`
+          : sql<boolean>`lower(coalesce(${contactsTable.company}, '')) = lower(${company})`
+        : sql<boolean>`false`;
+      const probes = [company, name].filter(Boolean);
+      const score = probes.length
+        ? sql<number>`GREATEST(${sql.join(
+            probes.flatMap((p) => [sql`similarity(lower(coalesce(${contactsTable.company}, '')), lower(${p}))`, sql`similarity(lower(coalesce(${contactsTable.name}, '')), lower(${p}))`]),
+            sql`, `,
+          )})::float8`
+        : sql<number>`0::float8`;
       const exclude = excludeId && Number.isInteger(excludeId) ? ne(contactsTable.id, excludeId) : undefined;
+      const candidate = sql`(${phoneHit} OR ${companyHit} OR ${score} >= ${SIMILAR_MIN})`;
 
-      const matches = await db
+      const rows = await db
         .select({
           id: contactsTable.id,
           name: contactsTable.name,
           company: contactsTable.company,
           phone: contactsTable.phone,
+          phoneHit: sql<boolean>`${phoneHit}`,
+          companyHit: sql<boolean>`${companyHit}`,
+          score,
         })
         .from(contactsTable)
-        .where(exclude ? and(or(...filters), exclude) : or(...filters))
-        .limit(5);
+        .where(exclude ? and(candidate, exclude) : candidate)
+        .limit(25);
+      const matches = rankMatches(rows)
+        .slice(0, 5)
+        .map(({ id, name: n, company: c, phone: p, reason }) => ({ id, name: n, company: c, phone: p, reason }));
       res.json({ matches });
     } catch (err) {
       next(err);

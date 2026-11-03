@@ -5,7 +5,7 @@ import { api } from "../admin/api";
 import { useQuery } from "../api/hooks";
 import { t } from "../copy";
 import { Button, Checkbox, EmptyState, InlineAlert, Input, Select, StatusPill } from "../design/components";
-import { EMPTY_FILTERS, activityQuery, filtersError, groupByDay, mergeRows, type ActivityFilters, type ActivityMeta, type ActivityPage, type ActivityRow } from "./activityCore";
+import { EMPTY_FILTERS, ONLINE_REFRESH_MS, activityQuery, filtersError, groupByDay, mergeRows, onlineKind, type ActivityFilters, type ActivityMeta, type ActivityPage, type ActivityRow, type OnlineUser } from "./activityCore";
 import { presetRange } from "./oeeCore";
 import "./Activity.css";
 
@@ -18,6 +18,11 @@ export function Activity() {
   const meta = useQuery((signal) => api.get<ActivityMeta>("/activity/meta", { signal }), []);
   const sig = activityQuery(f);
   const first = useQuery((signal) => (bad ? Promise.resolve(undefined) : api.get<ActivityPage>(`/activity${sig}`, { signal })), [sig, bad]);
+  const online = useQuery((signal) => api.get<OnlineUser[]>("/activity/online", { signal }), []);
+  useEffect(() => {
+    const id = setInterval(() => void online.refetch(), ONLINE_REFRESH_MS);
+    return () => clearInterval(id);
+  }, []);
   const [extra, setExtra] = useState<ActivityRow[]>([]);
   const [next, setNext] = useState<number | null>(null);
   const act = useAct();
@@ -42,6 +47,20 @@ export function Activity() {
         <h1 class="ad-title">{t("act.title")}</h1>
         <p class="st-login__sub">{t("act.subtitle")}</p>
       </div>
+      <section aria-label={t("act.online.title", { n: online.data?.length ?? 0 })}>
+        <h2 class="act-day">{t("act.online.title", { n: online.data?.length ?? 0 })}</h2>
+        {online.error ? <InlineAlert tone="warn">{t("act.online.fail")}</InlineAlert> : null}
+        {!online.loading && !online.error && !(online.data?.length) ? <p class="act-muted">{t("act.online.none")}</p> : null}
+        <ul class="act-list">
+          {(online.data ?? []).map((u) => (
+            <li key={u.userId} class="act-item">
+              <span class="act-time">{onlineKind(u.minutesAgo) === "now" ? t("act.online.now") : t("act.online.ago", { n: u.minutesAgo })}</span>
+              <span>{u.name} <StatusPill tone="neutral">{u.roleLabel}</StatusPill></span>
+            </li>
+          ))}
+        </ul>
+        <p class="act-muted">{t("act.online.privacy")}</p>
+      </section>
       {meta.error ? <InlineAlert tone="warn">{t("act.metaFail")}</InlineAlert> : null}
       <div class="act-toolbar">
         <Select aria-label={t("act.actor")} value={f.actorId} onChange={(e) => set({ actorId: val(e) })} options={[{ value: "", label: t("act.actorAll") }, ...(metaOk?.actors ?? []).map((a) => ({ value: String(a.id), label: `${a.name} (${a.roleLabel})` }))]} />

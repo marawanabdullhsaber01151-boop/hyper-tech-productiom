@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { EMPTY_FILTERS, activityQuery, canSeeActivity, filtersError, groupByDay, mergeRows, type ActivityRow } from "./activityCore";
+import { onlineKind, EMPTY_FILTERS, activityQuery, canSeeActivity, filtersError, groupByDay, mergeRows, type ActivityRow } from "./activityCore";
 
 const row = (id: number, whenText: string): ActivityRow => ({ id, sentence: `s${id}`, whenText, createdAt: "2026-11-03T10:00:00Z", actorUserId: 1, section: "sales", sectionLabel: "المبيعات", rejected: false });
 
@@ -28,5 +28,10 @@ describe("سجل النشاط", () => {
   });
   it("الدمج من غير تكرار", () => {
     expect(mergeRows([row(3, "a"), row(2, "b")], [row(2, "b"), row(1, "c")]).map((r) => r.id)).toEqual([3, 2, 1]);
+  });
+  it("صياغة النشطين الآن", () => {
+    expect(onlineKind(0)).toBe("now");
+    expect(onlineKind(1)).toBe("ago");
+    expect(onlineKind(4)).toBe("ago");
   });
 });

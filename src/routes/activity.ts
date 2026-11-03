@@ -1,12 +1,13 @@
 /** @format */
 // سجل النشاط السردي (الخطوة 38أ): «أحمد (مدير المبيعات) اعتمد أمر بيع» على جدول audit_events الموجود، من غير جدول جديد.
 import { Router } from "express";
-import { and, desc, eq, gte, inArray, lt, or, sql, type SQL } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNull, lt, or, sql, type SQL } from "drizzle-orm";
 import { db } from "../db";
-import { auditEventsTable, systemUsersTable } from "../db/schema";
+import { auditEventsTable, loginSessionsTable, systemUsersTable } from "../db/schema";
 import { requireAuth, requireRole } from "../middleware/auth";
 import { ACTIVITY_SECTIONS, dropShadowedRows, isSectionId, isViewKey, pathRegex, sectionOf } from "../domain/activity-feed";
 import { isIsoDate, reportRange } from "../domain/oee";
+import { collapseOnline, onlineCutoff } from "../domain/presence";
 import { enrichAuditRows } from "../lib/auditEnrich";
 import { roleLabel } from "../lib/roleLabels";
 
@@ -23,6 +24,27 @@ router.get("/activity/meta", requireAuth, requireRole(...ACTIVITY_ROLES), async 
   try {
     const users = await db.select({ id: systemUsersTable.id, name: systemUsersTable.fullName, username: systemUsersTable.username, role: systemUsersTable.role }).from(systemUsersTable).where(eq(systemUsersTable.status, "active")).orderBy(systemUsersTable.fullName);
     res.json({ data: { sections: ACTIVITY_SECTIONS.map((s) => ({ id: s.id, label: s.label })), actors: users.map((u) => ({ id: u.id, name: u.name || u.username, roleLabel: roleLabel(u.role) })) } });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/v1/activity/online — النشطين الآن. خصوصية: للإدارة العليا بس، اسم ودور وكام دقيقة، من غير صفحة ولا IP ولا جهاز.
+router.get("/activity/online", requireAuth, requireRole(...ACTIVITY_ROLES), async (_req, res, next) => {
+  try {
+    const now = new Date();
+    const pulses = await db
+      .select({ userId: loginSessionsTable.userId, lastActiveAt: loginSessionsTable.lastActiveAt })
+      .from(loginSessionsTable)
+      .where(and(isNull(loginSessionsTable.revokedAt), gte(loginSessionsTable.lastActiveAt, onlineCutoff(now))));
+    const online = collapseOnline(pulses, now);
+    const users = online.length ? await db.select({ id: systemUsersTable.id, name: systemUsersTable.fullName, username: systemUsersTable.username, role: systemUsersTable.role }).from(systemUsersTable).where(and(inArray(systemUsersTable.id, online.map((o) => o.userId)), eq(systemUsersTable.status, "active"))) : [];
+    const byId = new Map(users.map((u) => [u.id, u]));
+    const data = online.flatMap((o) => {
+      const u = byId.get(o.userId);
+      return u ? [{ userId: u.id, name: u.name || u.username, roleLabel: roleLabel(u.role), minutesAgo: o.minutesAgo }] : [];
+    });
+    res.json({ data });
   } catch (err) {
     next(err);
   }
