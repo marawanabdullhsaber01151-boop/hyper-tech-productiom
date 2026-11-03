@@ -184,6 +184,8 @@ describe("متابعة الإنتاج: الواقف وملاحظات المشر�
     mount();
     await screen.findAllByText("PO-2");
     expect(await within(rowOf("PO-2")).findByText("واقف 30 ساعة")).toBeTruthy();
+    // المشرف بيبدأ على فلتر «ينتظر إجراءك»، فنفتح كل الحالات عشان نشوف PO-1
+    fireEvent.change(screen.getByRole("combobox", { name: "الحالة" }), { target: { value: "" } });
     expect(within(rowOf("PO-1")).queryByText(/واقف/)).toBeNull();
     expect(screen.getByRole("option", { name: /الأوامر الواقفة/ })).toBeTruthy();
     cleanup();

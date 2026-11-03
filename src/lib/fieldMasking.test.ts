@@ -84,5 +84,6 @@ describe("حارس: الراوتات الحساسة لازم تمرّ على ق�
     const { FIELD_VISIBILITY } = await import("./fieldMasking");
     const allowed = FIELD_VISIBILITY.inventory_items!.unitPrice!;
     for (const role of PERMISSIONS.movements.view) expect(allowed).toContain(role);
-  });
+    // أول استيراد لـpermissions بيحمّل شجرة كبيرة؛ على جهاز مشغول بيعدّي 5 ثواني الافتراضية
+  }, 30_000);
 });
