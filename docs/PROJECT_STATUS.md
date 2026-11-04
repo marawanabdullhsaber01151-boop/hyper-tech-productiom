@@ -223,3 +223,7 @@
 ## الخطوة 38ب — النشطين الآن وتشابه الأسماء
 - هجرة 0092 (`pg_trgm`)؛ `GET /activity/online` وقسم «النشطين الآن» في صفحة النشاط؛ `/contacts/duplicate-check` بالتشابه وسبب التطابق. لازم `npm run db:migrate`.
 - الاختبارات: `src/domain/presence.test.ts` و`src/domain/duplicate-match.test.ts` و`src/duplicateMatch.regression.test.ts` و`src/activity.regression.test.ts` (اتوسّع) و`web/src/staff/activityCore.test.ts` (اتوسّع) (tsc/vitest ما اتشغلوش في بيئة الشغل).
+
+## الخطوة 39أ — صندوق الاعتمادات
+- صفحة `/v2/staff/approvals` و`GET /approvals/inbox`؛ `PATCH /governance/approval-requests/:id/decide` اتقوّت (منع اعتماد النفس، رفض بسبب، تدقيق بمعاملة)؛ مهمة SLA تلقائية من `/cron/outbox-drain`. بدون هجرة. `governance.html` باقية للنواب والسياسات لحد 39ب.
+- الاختبارات: `src/domain/approvals-inbox.test.ts` و`src/approvalsInbox.regression.test.ts` و`web/src/staff/approvalsCore.test.ts` و`departments.nav.test.ts` (اتعدّل) (tsc/vitest ما اتشغلوش في بيئة الشغل).

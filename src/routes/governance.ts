@@ -1,6 +1,6 @@
 import { enrichAuditRows } from "../lib/auditEnrich";
 import { Router } from "express";
-import { and, asc, desc, eq, gt, isNull, or } from "drizzle-orm";
+import { and, asc, desc, eq, gt, inArray, isNull, or } from "drizzle-orm";
 import { db, delegationsTable, approvalPoliciesTable, approvalRequestsTable, auditEventsTable, systemUsersTable, salesOrdersTable, salesOrderItemsTable, productionCostEntriesTable, permissionOverridesTable } from "../db";
 import { releaseStockReservation, applyStockMovement } from "../lib/stock";
 import { requireAuth, requireRole, requirePermission } from "../middleware/auth";
@@ -12,6 +12,7 @@ import { checkSoDViolation } from "../lib/approvals";
 import { getEffectiveRoles } from "../lib/delegation";
 import { emptyChainState, verifyAuditBatch } from "../lib/auditChain";
 import { USER_ROLES } from "../lib/roles";
+import { decideVerdict, rejectNoteError } from "../domain/approvals-inbox";
 
 const router = Router();
 router.use("/governance", requireAuth);
@@ -230,6 +231,17 @@ router.patch("/governance/approval-requests/:id/decide", requireRole("chairman",
     if (!policy[0] || !(policy[0].approverRoles as string[]).some((role) => effectiveRoles.includes(role))) {
       res.status(403).json({ error: { message: "ليس لديك دور معتمد لهذه الخطوة من طلب الاعتماد" } }); return;
     }
+    // من أنشأ الطلب ما يعتمدوش (بيقدر يسحبه برفضه)، إلا لو هو الوحيد النشط المعتمد للخطوة؛ والرفض لازم سبب.
+    const stepRoles = policy[0].approverRoles as string[];
+    const stepApprovers = await db.select({ id: systemUsersTable.id }).from(systemUsersTable).where(and(eq(systemUsersTable.status, "active"), inArray(systemUsersTable.role, stepRoles)));
+    const verdict = decideVerdict({ userId: req.user!.userId, requestedBy: request.requestedBy, roles: effectiveRoles, stepRoles, requesterIsSoleApprover: !stepApprovers.some((a) => a.id !== request.requestedBy) });
+    if (approved && !verdict.canApprove) {
+      await writeAuditEvent({ actorUserId: req.user!.userId, actorName: req.user!.username, actionKey: request.actionKey, resourceType: request.resourceType, resourceId: request.resourceId, decision: "rejected_self_approval", reason: "المنشئ لا يعتمد طلبه بنفسه" });
+      res.status(403).json({ error: { message: "أنت اللي أنشأت الطلب ده، لازم موظف تاني معتمد يقرر فيه" } }); return;
+    }
+    if (!approved && rejectNoteError(decision.note)) {
+      res.status(400).json({ error: { message: "اكتب سبب الرفض" } }); return;
+    }
     if (approved && await checkSoDViolation(req.user!.userId, request.actionKey, request.resourceType, request.resourceId)) {
       await writeAuditEvent({ actorUserId: req.user!.userId, actorName: req.user!.username, actionKey: request.actionKey, resourceType: request.resourceType, resourceId: request.resourceId, decision: "rejected_sod", reason: "لا يمكن لمنشئ المورد اعتماده" });
       res.status(403).json({ error: { message: "لا يمكن اعتماد المورد بواسطة نفس المستخدم الذي أنشأه" } }); return;
@@ -297,19 +309,21 @@ router.patch("/governance/approval-requests/:id/decide", requireRole("chairman",
             .where(eq(productionCostEntriesTable.id, request.resourceId));
         }
       }
+      // التدقيق في نفس المعاملة: مفيش قرار من غير أثره في السجل (ADR 0008).
+      await writeAuditEvent({
+        actorUserId: req.user!.userId,
+        actorName: req.user!.username,
+        actionKey: request.actionKey,
+        resourceType: request.resourceType,
+        resourceId: request.resourceId,
+        decision: approved ? "approved" : "rejected",
+        reason: [decision.note, verdict.selfException && approved ? "استثناء: المنشئ هو الوحيد المعتمد النشط للخطوة" : null].filter(Boolean).join(" — ") || null,
+        afterData: updatedRequest,
+        ipAddress: req.ip,
+        userAgent: req.get("user-agent"),
+        executor: tx,
+      });
       return updatedRequest;
-    });
-    await writeAuditEvent({
-      actorUserId: req.user!.userId,
-      actorName: req.user!.username,
-      actionKey: request.actionKey,
-      resourceType: request.resourceType,
-      resourceId: request.resourceId,
-         decision: approved ? "approved" : "rejected",
-      reason: decision.note,
-      afterData: result,
-      ipAddress: req.ip,
-      userAgent: req.get("user-agent"),
     });
     res.json(result);
   } catch (err) { next(err); }

@@ -45,6 +45,8 @@ export interface NavDepartment {
 }
 
 const TOP_MGMT: readonly UserRole[] = ["chairman", "executive_manager"];
+/** نفس APPROVER_ROLES في src/lib/approvalsInbox.ts. */
+const APPROVERS: readonly UserRole[] = ["chairman", "executive_manager", "sales_manager", "purchasing_manager", "hr_manager", "production_manager", "operations_manager"];
 
 export const DEPARTMENTS: readonly NavDepartment[] = [
   {
@@ -64,6 +66,20 @@ export const DEPARTMENTS: readonly NavDepartment[] = [
           { id: "system-health", label: "صحة النظام", href: "/v2/staff/system-health", roles: TOP_MGMT },
           { id: "activity", label: "سجل النشاط", href: "/v2/staff/activity", roles: TOP_MGMT },
         ],
+      },
+    ],
+  },
+  {
+    id: "approvals",
+    label: "الاعتمادات",
+    icon: "shield-halved",
+    roles: APPROVERS,
+    subFunctions: [
+      {
+        id: "approvals-inbox",
+        label: "صندوق الاعتمادات",
+        roles: APPROVERS,
+        pages: [{ id: "approvals", label: "صندوق الاعتمادات", href: "/v2/staff/approvals", roles: APPROVERS }],
       },
     ],
   },

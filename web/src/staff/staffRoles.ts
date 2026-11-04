@@ -37,3 +37,6 @@ export const RECEIVING_PAGE_ROLES = ["chairman", "executive_manager", "purchasin
 
 /** سجل النشاط: نفس ACTIVITY_ROLES في السيرفر (src/routes/activity.ts). */
 export { ACTIVITY_ROLES as ACTIVITY_PAGE_ROLES } from "./activityCore";
+
+/** صندوق الاعتمادات: نفس APPROVER_ROLES في السيرفر (src/lib/approvalsInbox.ts). */
+export { APPROVER_ROLES as APPROVALS_PAGE_ROLES } from "./approvalsCore";
