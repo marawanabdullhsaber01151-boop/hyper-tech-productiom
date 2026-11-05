@@ -1,19 +1,24 @@
+import "../copy/approvalsAdmin";
 import "../copy/approvals";
 import { useState } from "preact/hooks";
 import { useAct } from "../admin/act";
+import { staffUser } from "../admin/session";
 import { api } from "../admin/api";
 import { useQuery } from "../api/hooks";
 import { t, type CopyKey } from "../copy";
 import { Button, DataTable, Dialog, EmptyState, Field, InlineAlert, Stat, StatusPill, Tabs, Textarea, type Column } from "../design/components";
 import { formatDateTime, formatMoney, formatNumber } from "../lib/format";
 import { approveBlock, decidePayload, decisionError, slaTone, sortInbox, summarize, waitParts, type Decision, type InboxRow } from "./approvalsCore";
+import { DelegationsPanel, PermissionsPanel, PoliciesPanel, SecurityPanel } from "./ApprovalsAdmin";
+import { canEditGovernance, canManageDelegations } from "./approvalsAdminCore";
 import "./Activity.css";
 
 const val = (e: Event) => (e.target as HTMLInputElement).value;
 
 /** صندوق الاعتمادات: طلبات مستنية قراري، بمهلة ساعات العمل ومحاكي الأثر (إيه اللي هيحصل لو اعتمدت أو رفضت). */
 export function Approvals() {
-  const [tab, setTab] = useState<"pending" | "history">("pending");
+  const [tab, setTab] = useState<string>("pending");
+  const role = staffUser()?.role;
   const pending = useQuery((signal) => api.get<{ data: InboxRow[] }>("/approvals/inbox?mode=pending", { signal }), []);
   const history = useQuery((signal) => api.get<{ data: InboxRow[] }>("/approvals/inbox?mode=history", { signal }), []);
   const [open, setOpen] = useState<InboxRow | null>(null);
@@ -64,7 +69,16 @@ export function Approvals() {
         <h1 class="ad-title">{t("apv.title")}</h1>
         <p class="st-login__sub">{t("apv.subtitle")}</p>
       </div>
-      <Tabs value={tab} onChange={(v) => setTab(v as "pending" | "history")} tabs={[{ id: "pending", label: t("apv.tab.pending"), panel: pendingPanel }, { id: "history", label: t("apv.tab.history"), panel: historyPanel }]} />
+      <Tabs value={tab} onChange={setTab} tabs={[
+        { id: "pending", label: t("apv.tab.pending"), panel: pendingPanel },
+        { id: "history", label: t("apv.tab.history"), panel: historyPanel },
+        ...(canManageDelegations(role) ? [
+          { id: "delegations", label: t("apa.tab.delegations"), panel: <DelegationsPanel /> },
+          { id: "policies", label: t("apa.tab.policies"), panel: <PoliciesPanel canEdit={canEditGovernance(role)} /> },
+        ] : []),
+        ...(canEditGovernance(role) ? [{ id: "permissions", label: t("apa.tab.permissions"), panel: <PermissionsPanel /> }] : []),
+        { id: "security", label: t("apa.tab.security"), panel: <SecurityPanel canVerify={canEditGovernance(role)} /> },
+      ]} />
       {open ? <ReviewDialog row={open} onClose={() => setOpen(null)} onDone={async () => { setOpen(null); await refresh(); }} /> : null}
     </div>
   );

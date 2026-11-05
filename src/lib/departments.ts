@@ -57,10 +57,10 @@ export const DEPARTMENTS: readonly NavDepartment[] = [
     subFunctions: [
       {
         id: "governance",
-        label: "الحوكمة والاعتمادات",
+        label: "الإدارة والمتابعة",
         roles: TOP_MGMT,
         pages: [
-          { id: "governance", label: "الحوكمة والاعتمادات", href: "governance.html", roles: TOP_MGMT },
+          // الحوكمة والاعتمادات بقت في /v2/staff/approvals (قسم «الاعتمادات») بعد 39ب.
           { id: "settings", label: "الإعدادات", href: "settings.html", roles: ["chairman"] },
           // واجهة /v2 بدل صفحة الصحة القديمة (اتمسحت): نفس الفحوصات + فحوصات حقيقية بشرح بسيط.
           { id: "system-health", label: "صحة النظام", href: "/v2/staff/system-health", roles: TOP_MGMT },

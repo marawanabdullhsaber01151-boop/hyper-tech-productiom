@@ -97,6 +97,10 @@ export const PRODUCTION_PAGE_REDIRECTS: Readonly<Record<string, string>> = {
 };
 export const LEGACY_PRODUCTION_PATHS = Object.keys(PRODUCTION_PAGE_REDIRECTS);
 
+/** صفحة الحوكمة القديمة ← صفحة الاعتمادات (النواب والسياسات والصلاحيات بقوا تبويبات فيها). */
+export const LEGACY_GOVERNANCE_PATH = "/governance.html";
+export const GOVERNANCE_REDIRECT_TARGET = "/v2/staff/approvals";
+
 /** صفحة المبيعات القديمة (`/sales.html?channel=website`) ← `/v2/staff/sales`. بننقل `channel` و`status` بس من قايمة معروفة. */
 export const LEGACY_SALES_PATH = "/sales.html";
 const SALES_STATUS_PARAMS = ["draft", "pending_approval", "confirmed", "shipped", "paid", "cancelled"];

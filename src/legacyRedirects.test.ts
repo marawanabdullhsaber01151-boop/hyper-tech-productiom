@@ -93,3 +93,11 @@ describe("صفحتا التشغيل القديمتان", () => {
     expect(OPERATIONS_REDIRECT_TARGET).toBe("/v2/staff/operations");
   });
 });
+
+describe("صفحة الحوكمة القديمة", () => {
+  it("بتروح لصفحة الاعتمادات الجديدة", async () => {
+    const m = await import("./lib/legacyRedirects");
+    expect(m.LEGACY_GOVERNANCE_PATH).toBe("/governance.html");
+    expect(m.GOVERNANCE_REDIRECT_TARGET).toBe("/v2/staff/approvals");
+  });
+});

@@ -227,3 +227,7 @@
 ## الخطوة 39أ — صندوق الاعتمادات
 - صفحة `/v2/staff/approvals` و`GET /approvals/inbox`؛ `PATCH /governance/approval-requests/:id/decide` اتقوّت (منع اعتماد النفس، رفض بسبب، تدقيق بمعاملة)؛ مهمة SLA تلقائية من `/cron/outbox-drain`. بدون هجرة. `governance.html` باقية للنواب والسياسات لحد 39ب.
 - الاختبارات: `src/domain/approvals-inbox.test.ts` و`src/approvalsInbox.regression.test.ts` و`web/src/staff/approvalsCore.test.ts` و`departments.nav.test.ts` (اتعدّل) (tsc/vitest ما اتشغلوش في بيئة الشغل).
+
+## الخطوة 39ب — تبويبات الحوكمة وحذف الصفحة القديمة
+- تبويبات «النواب» و«سياسات الاعتماد» و«الصلاحيات» (استثناءات + محاكاة) و«الأمان» (فحص السلسلة + جلساتي) في `/v2/staff/approvals`؛ `GET /governance/roles` و`/governance/actions`؛ معاملات وتدقيق لتفويضات وسياسات؛ حذف `governance.html` (+JS/CSS) وتحويلها. بدون هجرة.
+- الاختبارات: `web/src/staff/approvalsAdminCore.test.ts` و`src/governanceUi.regression.test.ts` و`src/legacyRedirects.test.ts` (اتوسّع) (tsc/vitest ما اتشغلوش في بيئة الشغل).

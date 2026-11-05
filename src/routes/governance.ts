@@ -1,6 +1,7 @@
 import { enrichAuditRows } from "../lib/auditEnrich";
 import { Router } from "express";
 import { and, asc, desc, eq, gt, inArray, isNull, or } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import { db, delegationsTable, approvalPoliciesTable, approvalRequestsTable, auditEventsTable, systemUsersTable, salesOrdersTable, salesOrderItemsTable, productionCostEntriesTable, permissionOverridesTable } from "../db";
 import { releaseStockReservation, applyStockMovement } from "../lib/stock";
 import { requireAuth, requireRole, requirePermission } from "../middleware/auth";
@@ -12,6 +13,7 @@ import { checkSoDViolation } from "../lib/approvals";
 import { getEffectiveRoles } from "../lib/delegation";
 import { emptyChainState, verifyAuditBatch } from "../lib/auditChain";
 import { USER_ROLES } from "../lib/roles";
+import { roleLabel } from "../lib/roleLabels";
 import { decideVerdict, rejectNoteError } from "../domain/approvals-inbox";
 
 const router = Router();
@@ -30,17 +32,29 @@ router.get("/governance/users", requireRole("chairman", "executive_manager"), as
       role: systemUsersTable.role,
       status: systemUsersTable.status,
     }).from(systemUsersTable).orderBy(systemUsersTable.fullName);
-    res.json(users);
+    res.json(users.map((u) => ({ ...u, roleLabel: roleLabel(u.role) })));
   } catch (err) { next(err); }
+});
+
+// قوايم الاختيار لتبويبات النواب والسياسات (أدوار بأسمائها العربي، وإجراءات السجل) — متاحة لنفس أدوار الحوكمة
+// بدل /action-registry المقصور على صلاحية settings.managePermissions.
+router.get("/governance/roles", requireRole("chairman", "executive_manager"), (_req, res) => {
+  res.json(USER_ROLES.map((value) => ({ value, label: roleLabel(value) })));
+});
+router.get("/governance/actions", requireRole("chairman", "executive_manager"), (_req, res) => {
+  res.json(ACTION_REGISTRY.map((a) => ({ key: a.key, label: a.label, group: a.group })));
 });
 
 router.get("/governance/delegations", requireRole("chairman", "executive_manager"), async (req, res, next) => {
   try {
+    const delegateUser = alias(systemUsersTable, "delegate_user");
     const rows = await db.select({
       delegation: delegationsTable,
       grantorName: systemUsersTable.fullName,
+      delegateName: delegateUser.fullName,
     }).from(delegationsTable)
       .innerJoin(systemUsersTable, eq(delegationsTable.grantorUserId, systemUsersTable.id))
+      .leftJoin(delegateUser, eq(delegationsTable.delegateUserId, delegateUser.id))
       .orderBy(desc(delegationsTable.createdAt));
     res.json(rows);
   } catch (err) { next(err); }
@@ -64,20 +78,25 @@ router.post("/governance/delegations", requireRole("chairman", "executive_manage
     const [delegate] = await db.select({ id: systemUsersTable.id }).from(systemUsersTable)
       .where(eq(systemUsersTable.id, data.delegateUserId)).limit(1);
     if (!delegate) { res.status(404).json({ error: { message: "المستخدم المفوض إليه غير موجود" } }); return; }
-    const [created] = await db.insert(delegationsTable).values({
-      ...data, maxAmount: data.maxAmount ?? null, scopeId: data.scopeId ?? null,
-      startsAt: new Date(data.startsAt), endsAt: new Date(data.endsAt),
-    }).returning();
-    await writeAuditEvent({
-      actorUserId: req.user!.userId,
-      actorName: req.user!.username,
-      actionKey: "governance.manageDelegations",
-      resourceType: "delegation",
-      resourceId: created.id,
-      afterData: created,
-      reason: data.reason,
-      ipAddress: req.ip,
-      userAgent: req.get("user-agent"),
+    // الإدخال + التدقيق معاملة واحدة (ADR 0008): ما يبقاش تفويض فعّال من غير أثر في السجل.
+    const created = await db.transaction(async (tx) => {
+      const [row] = await tx.insert(delegationsTable).values({
+        ...data, maxAmount: data.maxAmount ?? null, scopeId: data.scopeId ?? null,
+        startsAt: new Date(data.startsAt), endsAt: new Date(data.endsAt),
+      }).returning();
+      await writeAuditEvent({
+        actorUserId: req.user!.userId,
+        actorName: req.user!.username,
+        actionKey: "governance.manageDelegations",
+        resourceType: "delegation",
+        resourceId: row.id,
+        afterData: row,
+        reason: data.reason,
+        ipAddress: req.ip,
+        userAgent: req.get("user-agent"),
+        executor: tx,
+      });
+      return row;
     });
     res.status(201).json(created);
   } catch (err) { next(err); }
@@ -95,22 +114,27 @@ router.patch("/governance/delegations/:id/revoke", requireRole("chairman", "exec
     if (req.user!.role !== "chairman" && before.grantorUserId !== req.user!.userId) {
       res.status(403).json({ error: { message: "لا يمكنك إلغاء تفويض لا تملكه" } }); return;
     }
-    const [updated] = await db.update(delegationsTable).set({
-      status: "revoked", revokedAt: new Date(), revokedBy: req.user!.userId,
-    }).where(and(eq(delegationsTable.id, id), isNull(delegationsTable.revokedAt))).returning();
-    if (!updated) { res.status(404).json({ error: { message: "التفويض غير موجود أو ملغي" } }); return; }
-    await writeAuditEvent({
-      actorUserId: req.user!.userId,
-      actorName: req.user!.username,
-      actionKey: "governance.manageDelegations",
-      resourceType: "delegation",
-      resourceId: id,
-      beforeData: before,
-      afterData: updated,
-      decision: "revoked",
-      ipAddress: req.ip,
-      userAgent: req.get("user-agent"),
+    const updated = await db.transaction(async (tx) => {
+      const [row] = await tx.update(delegationsTable).set({
+        status: "revoked", revokedAt: new Date(), revokedBy: req.user!.userId,
+      }).where(and(eq(delegationsTable.id, id), isNull(delegationsTable.revokedAt))).returning();
+      if (!row) return null;
+      await writeAuditEvent({
+        actorUserId: req.user!.userId,
+        actorName: req.user!.username,
+        actionKey: "governance.manageDelegations",
+        resourceType: "delegation",
+        resourceId: id,
+        beforeData: before,
+        afterData: row,
+        decision: "revoked",
+        ipAddress: req.ip,
+        userAgent: req.get("user-agent"),
+        executor: tx,
+      });
+      return row;
     });
+    if (!updated) { res.status(404).json({ error: { message: "التفويض غير موجود أو ملغي" } }); return; }
     res.status(204).send();
   } catch (err) { next(err); }
 });
@@ -160,16 +184,19 @@ router.post("/governance/approval-policies", requirePermission("governance.manag
       res.status(400).json({ error: { message: "الإجراء غير موجود في سجل الإجراءات" } });
       return;
     }
-    const [created] = await db.insert(approvalPoliciesTable).values({
-      actionKey: data.actionKey, minAmount: data.minAmount,
-      approverRoles: data.approverRoles, sequence: data.sequence ?? 1,
-      requiredApprovals: data.requiredApprovals ?? 1, active: data.active ?? true,
-    }).returning();
-    await writeAuditEvent({
-      actorUserId: req.user!.userId, actorName: req.user!.username,
-      actionKey: "governance.managePolicies", resourceType: "approval_policy",
-      resourceId: created.id, afterData: created, ipAddress: req.ip,
-      userAgent: req.get("user-agent"),
+    const created = await db.transaction(async (tx) => {
+      const [row] = await tx.insert(approvalPoliciesTable).values({
+        actionKey: data.actionKey, minAmount: data.minAmount,
+        approverRoles: data.approverRoles, sequence: data.sequence ?? 1,
+        requiredApprovals: data.requiredApprovals ?? 1, active: data.active ?? true,
+      }).returning();
+      await writeAuditEvent({
+        actorUserId: req.user!.userId, actorName: req.user!.username,
+        actionKey: "governance.managePolicies", resourceType: "approval_policy",
+        resourceId: row.id, afterData: row, ipAddress: req.ip,
+        userAgent: req.get("user-agent"), executor: tx,
+      });
+      return row;
     });
     res.status(201).json(created);
   } catch (err) { next(err); }
@@ -187,13 +214,16 @@ router.patch("/governance/approval-policies/:id", requirePermission("governance.
     }
     const [before] = await db.select().from(approvalPoliciesTable).where(eq(approvalPoliciesTable.id, id)).limit(1);
     if (!before) { res.status(404).json({ error: { message: "سياسة الاعتماد غير موجودة" } }); return; }
-    const [updated] = await db.update(approvalPoliciesTable).set(data)
-      .where(eq(approvalPoliciesTable.id, id)).returning();
-    await writeAuditEvent({
-      actorUserId: req.user!.userId, actorName: req.user!.username,
-      actionKey: "governance.managePolicies", resourceType: "approval_policy",
-      resourceId: id, beforeData: before, afterData: updated,
-      ipAddress: req.ip, userAgent: req.get("user-agent"),
+    const updated = await db.transaction(async (tx) => {
+      const [row] = await tx.update(approvalPoliciesTable).set(data)
+        .where(eq(approvalPoliciesTable.id, id)).returning();
+      await writeAuditEvent({
+        actorUserId: req.user!.userId, actorName: req.user!.username,
+        actionKey: "governance.managePolicies", resourceType: "approval_policy",
+        resourceId: id, beforeData: before, afterData: row,
+        ipAddress: req.ip, userAgent: req.get("user-agent"), executor: tx,
+      });
+      return row;
     });
     res.json(updated);
   } catch (err) { next(err); }
