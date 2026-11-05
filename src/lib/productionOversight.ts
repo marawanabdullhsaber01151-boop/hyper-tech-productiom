@@ -2,6 +2,7 @@
 // متابعة الأوامر الواقفة (الخطوة 37أ): بتجيب آخر نشاط لكل أمر مفتوح، وتحسب السكون، وتفتح مهمة بشرية بتصعيد لكل أمر واقف.
 import { sql } from "drizzle-orm";
 import { db } from "../db";
+import { loadOperationalConfig } from "./settingsStore";
 import { createTask } from "./humanTasks";
 import { STALL_OWNER, STALL_STATUSES, stallDedupeKey, stallInfo, stallPriority, type StallInfo } from "../domain/production-stall";
 
@@ -20,6 +21,7 @@ export interface StalledOrder extends StallInfo {
 
 /** كل الأوامر المفتوحة مع آخر نشاط (الأمر نفسه، ملاحظة، تأكيد عملية، توقف) وحالة السكون. */
 export async function listOrderActivity(now = new Date(), executor: Pick<typeof db, "execute"> = db): Promise<Array<StalledOrder & { stalled: boolean }>> {
+  const factor = (await loadOperationalConfig()).stallFactor;
   const statuses = sql.join(STALL_STATUSES.map((s) => sql`${s}`), sql`, `);
   const res = await executor.execute(sql`
     SELECT o.id, o.order_number, o.product_name, o.workflow_status,
@@ -34,7 +36,7 @@ export async function listOrderActivity(now = new Date(), executor: Pick<typeof 
     ORDER BY o.id`);
   return (res.rows as Array<Record<string, unknown>>).map((r) => {
     const last = new Date(r.last_activity as string);
-    return { id: Number(r.id), orderNumber: String(r.order_number), productName: String(r.product_name), workflowStatus: String(r.workflow_status), lastActivityAt: last.toISOString(), ...stallInfo(String(r.workflow_status), last, now) };
+    return { id: Number(r.id), orderNumber: String(r.order_number), productName: String(r.product_name), workflowStatus: String(r.workflow_status), lastActivityAt: last.toISOString(), ...stallInfo(String(r.workflow_status), last, now, factor) };
   });
 }
 

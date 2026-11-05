@@ -7,7 +7,8 @@ import { ACTION_REGISTRY } from "./actionRegistry";
 import { getEffectiveRoles } from "./delegation";
 import { createTask } from "./humanTasks";
 import { roleLabel } from "./roleLabels";
-import { SLA_WORKING_MINUTES, decideVerdict, describeImpact, slaState, workingMinutesBetween, type DecideVerdict, type Impact, type SlaState } from "../domain/approvals-inbox";
+import { loadOperationalConfig } from "./settingsStore";
+import { decideVerdict, describeImpact, slaState, workingMinutesBetween, type DecideVerdict, type Impact, type SlaState } from "../domain/approvals-inbox";
 
 /** مين يشوف الصندوق ويقرر (نفس أدوار /governance/approval-requests). */
 export const APPROVER_ROLES = ["chairman", "executive_manager", "sales_manager", "purchasing_manager", "hr_manager", "production_manager", "operations_manager"] as const;
@@ -47,6 +48,7 @@ export function requestTitle(r: { actionKey: string; resourceType: string; resou
 }
 
 export async function loadInbox(user: { userId: number; role: string }, mode: "pending" | "history", now: Date = new Date()): Promise<InboxRow[]> {
+  const cfg = await loadOperationalConfig();
   let roles: string[] = [user.role];
   try { roles = await getEffectiveRoles(user.userId); } catch { /* fallback للدور الأساسي */ }
   const policies = await db.select().from(approvalPoliciesTable).where(eq(approvalPoliciesTable.active, true));
@@ -84,7 +86,7 @@ export async function loadInbox(user: { userId: number; role: string }, mode: "p
   return visible.map((r) => {
     const sr = stepRoles(r.actionKey, r.currentStep);
     const requester = userById.get(r.requestedBy);
-    const waited = r.status === "pending" ? workingMinutesBetween(stepStartedAt(r), now) : 0;
+    const waited = r.status === "pending" ? workingMinutesBetween(stepStartedAt(r), now, cfg.work) : 0;
     const soleApprover = !approvers.some((a) => a.id !== r.requestedBy && sr.includes(a.role));
     return {
       id: r.id,
@@ -98,7 +100,7 @@ export async function loadInbox(user: { userId: number; role: string }, mode: "p
       requesterRoleLabel: requester ? roleLabel(requester.role) : "",
       createdAt: r.createdAt,
       waitedMinutes: waited,
-      sla: slaState(waited),
+      sla: slaState(waited, cfg.slaMinutes),
       stepRoleLabels: sr.map(roleLabel),
       mine: r.requestedBy === user.userId,
       verdict: decideVerdict({ userId: user.userId, requestedBy: r.requestedBy, roles, stepRoles: sr, requesterIsSoleApprover: soleApprover }),
@@ -117,6 +119,7 @@ export const slaDedupeKey = (id: number, step: number, startedAt: Date) => `appr
  * للإدارة العليا (للرئيس، وللمدير التنفيذي لو الرئيس هو صاحب الطلب)، وأي مهمة لطلب اتقفل بتتقفل لوحدها.
  */
 export async function scanApprovalSla(now: Date = new Date()): Promise<{ created: number; closed: number }> {
+  const cfg = await loadOperationalConfig();
   const pending = await db.select().from(approvalRequestsTable).where(eq(approvalRequestsTable.status, "pending")).orderBy(approvalRequestsTable.createdAt).limit(200);
   let created = 0;
   if (pending.length) {
@@ -124,13 +127,13 @@ export async function scanApprovalSla(now: Date = new Date()): Promise<{ created
     const roleOf = new Map(reqUsers.map((u) => [u.id, u.role]));
     for (const r of pending) {
       const start = stepStartedAt(r);
-      const waited = workingMinutesBetween(start, now);
-      if (waited < SLA_WORKING_MINUTES) continue;
+      const waited = workingMinutesBetween(start, now, cfg.work);
+      if (waited < cfg.slaMinutes) continue;
       const { duplicate } = await createTask(
         {
           kind: "approval_sla",
           title: `اعتماد متأخر: ${requestTitle(r)}`,
-          description: `الطلب مستني الاعتماد بقاله ${Math.floor(waited / 60)} ساعة عمل (المهلة ${SLA_WORKING_MINUTES / 60} ساعات عمل). افتح صندوق الاعتمادات وقرر، أو وجّه صاحب الدور المعتمد.`,
+          description: `الطلب مستني الاعتماد بقاله ${Math.floor(waited / 60)} ساعة عمل (المهلة ${cfg.slaMinutes / 60} ساعات عمل). افتح صندوق الاعتمادات وقرر، أو وجّه صاحب الدور المعتمد.`,
           priority: "high",
           assigneeRole: roleOf.get(r.requestedBy) === "chairman" ? "executive_manager" : "chairman",
           escalateToRole: "chairman",

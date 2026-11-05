@@ -1,0 +1,39 @@
+/** نصوص مركز الإعدادات (الخطوة 40أ). */
+import { registerCopy } from "./registry";
+
+export const settingsCopy = {
+  "set.title": "مركز الإعدادات",
+  "set.subtitle": "أي تغيير بيشتغل فورًا، وبيتسجّل مين غيّره وإمتى.",
+  "set.loadFail": "تعذّر تحميل الإعدادات.",
+  "set.tab.company": "بيانات الشركة",
+  "set.tab.operations": "التشغيل والمواعيد",
+  "set.tab.history": "سجل التغييرات",
+  "set.company.intro": "بيانات الشركة والعملة.",
+  "set.ops.intro": "ساعات العمل ومهلة الاعتماد وحساسية الأوامر الواقفة. بتأثر على صندوق الاعتمادات وتنبيهات الإنتاج.",
+  "set.reason": "سبب التغيير (اختياري)",
+  "set.save": "حفظ التغييرات",
+  "set.reset": "تراجع",
+  "set.nothing": "مفيش تغييرات للحفظ.",
+  "set.saved": "تم الحفظ ({n} تغيير).",
+  "set.err.required": "الحقل ده لازم يتكتب.",
+  "set.err.number": "اكتب رقم صحيح.",
+  "set.err.range": "القيمة خارج الحدود المسموحة.",
+  "set.err.email": "الإيميل غير صالح.",
+  "set.err.length": "النص أطول من المسموح.",
+  "set.err.hours": "نهاية الدوام لازم تكون بعد البداية.",
+  "set.range": "من {min} إلى {max}",
+  "set.default": "الافتراضي: {value}",
+  "set.hist.empty": "لسه ما حصلش تغيير.",
+  "set.hist.caption": "آخر التغييرات",
+  "set.hist.when": "إمتى",
+  "set.hist.who": "مين",
+  "set.hist.what": "إيه",
+  "set.hist.change": "من ← إلى",
+  "set.hist.reason": "السبب",
+  "set.hist.arrow": "{before} ← {after}",
+  "set.legacy.title": "المستخدمون وكلمة السر وقواعد التوصيل",
+  "set.legacy.body": "لسه في الصفحة القديمة لحد الخطوة الجاية.",
+  "set.legacy.open": "افتح الصفحة القديمة",
+} as const;
+
+registerCopy(settingsCopy);

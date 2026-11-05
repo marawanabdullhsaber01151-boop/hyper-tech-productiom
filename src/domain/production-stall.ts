@@ -51,8 +51,9 @@ export interface StallInfo {
 
 const r1 = (n: number) => Math.round(n * 10) / 10;
 
-export function stallInfo(status: string, lastActivity: Date, now: Date): StallInfo {
-  const threshold = STALL_HOURS[status];
+export function stallInfo(status: string, lastActivity: Date, now: Date, factor = 1): StallInfo {
+  const base = STALL_HOURS[status];
+  const threshold = base ? Math.max(1, Math.round(base * factor * 10) / 10) : 0;
   if (!threshold) return { stalled: false, idleHours: 0, thresholdHours: 0, ratio: 0 };
   const idle = Math.max(0, (now.getTime() - lastActivity.getTime()) / 3_600_000);
   return { stalled: idle >= threshold, idleHours: r1(idle), thresholdHours: threshold, ratio: r1(idle / threshold) };

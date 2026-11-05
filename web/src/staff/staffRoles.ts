@@ -40,3 +40,6 @@ export { ACTIVITY_ROLES as ACTIVITY_PAGE_ROLES } from "./activityCore";
 
 /** صندوق الاعتمادات: نفس APPROVER_ROLES في السيرفر (src/lib/approvalsInbox.ts). */
 export { APPROVER_ROLES as APPROVALS_PAGE_ROLES } from "./approvalsCore";
+
+/** مركز الإعدادات: نفس صلاحية settings.manageUsers في السيرفر (رئيس المجلس). */
+export { SETTINGS_ROLES as SETTINGS_PAGE_ROLES } from "./settingsCore";

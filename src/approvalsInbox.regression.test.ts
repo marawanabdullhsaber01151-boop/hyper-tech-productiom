@@ -34,7 +34,7 @@ describe("خطوة 39أ — صندوق الاعتمادات", () => {
     const h = read("./routes/health.ts");
     expect(h).toContain("scanApprovalSla().catch(() => null)");
     expect(lib).toContain("dedupeKey: slaDedupeKey(");
-    expect(lib).toContain("SLA_WORKING_MINUTES");
+    expect(lib).toContain("cfg.slaMinutes");
     expect(lib).toContain("a.status <> 'pending'");
     expect(lib).toContain('assigneeRole: roleOf.get(r.requestedBy) === "chairman" ? "executive_manager" : "chairman"');
   });

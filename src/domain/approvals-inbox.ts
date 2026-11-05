@@ -1,7 +1,7 @@
 /** @format */
 // صندوق الاعتمادات (الخطوة 39أ): ساعات العمل، مهلة الرد (SLA)، قاعدة «من أنشأ لا يعتمد نفسه»، ومحاكي الأثر. نقي من غير قاعدة بيانات.
 
-/** ساعات العمل الافتراضية بتوقيت القاهرة: 9 ص – 5 م، الجمعة إجازة. (هتتعدّل من مركز الإعدادات في الخطوة 40.) */
+/** ساعات العمل الافتراضية بتوقيت القاهرة: 9 ص – 5 م، الجمعة إجازة. (القيم الفعلية بتيجي من مركز الإعدادات، وده الافتراضي.) */
 export const BUSINESS_HOURS = { startHour: 9, endHour: 17, offDay: 5 } as const;
 /** المهلة: 4 ساعات عمل = 240 دقيقة. وبنقول «قرب ينتهي» عند 75%. */
 export const SLA_WORKING_MINUTES = 240;
@@ -28,7 +28,7 @@ export function cairoInstant(y: number, m: number, d: number, hour: number): Dat
 }
 
 /** دقايق العمل الفعلية بين لحظتين (من غير الجمعة وخارج 9–5). بيرجّع 0 لو الترتيب معكوس. */
-export function workingMinutesBetween(from: Date, to: Date): number {
+export function workingMinutesBetween(from: Date, to: Date, work: { startHour: number; endHour: number; offDay: number } = BUSINESS_HOURS): number {
   if (!(to.getTime() > from.getTime())) return 0;
   const a = cairoParts(from);
   const b = cairoParts(to);
@@ -38,19 +38,19 @@ export function workingMinutesBetween(from: Date, to: Date): number {
   let total = 0;
   for (; day <= last; day += 86400000) {
     const dt = new Date(day);
-    if (dt.getUTCDay() === BUSINESS_HOURS.offDay) continue;
+    if (dt.getUTCDay() === work.offDay) continue;
     const y = dt.getUTCFullYear(), m = dt.getUTCMonth() + 1, d = dt.getUTCDate();
-    const start = Math.max(cairoInstant(y, m, d, BUSINESS_HOURS.startHour).getTime(), from.getTime());
-    const end = Math.min(cairoInstant(y, m, d, BUSINESS_HOURS.endHour).getTime(), to.getTime());
+    const start = Math.max(cairoInstant(y, m, d, work.startHour).getTime(), from.getTime());
+    const end = Math.min(cairoInstant(y, m, d, work.endHour).getTime(), to.getTime());
     if (end > start) total += (end - start) / 60000;
   }
   return Math.floor(total);
 }
 
 export type SlaState = "ok" | "due_soon" | "overdue";
-export function slaState(waitedWorkingMinutes: number): SlaState {
-  if (waitedWorkingMinutes >= SLA_WORKING_MINUTES) return "overdue";
-  return waitedWorkingMinutes >= SLA_WORKING_MINUTES * SLA_SOON_AT ? "due_soon" : "ok";
+export function slaState(waitedWorkingMinutes: number, slaMinutes: number = SLA_WORKING_MINUTES): SlaState {
+  if (waitedWorkingMinutes >= slaMinutes) return "overdue";
+  return waitedWorkingMinutes >= slaMinutes * SLA_SOON_AT ? "due_soon" : "ok";
 }
 
 export interface DecideInput {

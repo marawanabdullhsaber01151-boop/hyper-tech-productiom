@@ -231,3 +231,7 @@
 ## الخطوة 39ب — تبويبات الحوكمة وحذف الصفحة القديمة
 - تبويبات «النواب» و«سياسات الاعتماد» و«الصلاحيات» (استثناءات + محاكاة) و«الأمان» (فحص السلسلة + جلساتي) في `/v2/staff/approvals`؛ `GET /governance/roles` و`/governance/actions`؛ معاملات وتدقيق لتفويضات وسياسات؛ حذف `governance.html` (+JS/CSS) وتحويلها. بدون هجرة.
 - الاختبارات: `web/src/staff/approvalsAdminCore.test.ts` و`src/governanceUi.regression.test.ts` و`src/legacyRedirects.test.ts` (اتوسّع) (tsc/vitest ما اتشغلوش في بيئة الشغل).
+
+## الخطوة 40أ — مركز الإعدادات
+- `src/domain/settings-registry.ts` + `src/lib/settingsStore.ts` + `src/routes/settings-center.ts`؛ صفحة `/v2/staff/settings`؛ إعدادات التشغيل (ساعات الدوام، يوم الإجازة، مهلة الاعتماد، حساسية الوقوف) بتتقرا من القاعدة مباشرة؛ `PUT /settings` القديم بقى بمعاملة وتدقيق. بدون هجرة. `settings.html` باقية لـ40ب.
+- الاختبارات: `src/domain/settings-registry.test.ts` و`src/settingsCenter.regression.test.ts` و`web/src/staff/settingsCore.test.ts` و`approvalsInbox.regression.test.ts` (اتعدّل) (tsc/vitest ما اتشغلوش في بيئة الشغل).

@@ -8,7 +8,7 @@ import { systemSettingsTable, systemUsersTable } from "./db/schema";
 /**
  * ✅ تهيئة أولية فقط — بدون أي بيانات تجريبية تجارية.
  * يضبط الحد الأدنى اللازم لتشغيل النظام: إعدادات الشركة الافتراضية + أول حساب مدير كامل.
- * مفاتيح الإعدادات هنا مطابقة تمامًا لِـ ALLOWED_SETTING_KEYS في src/routes/settings.ts —
+ * مفاتيح الإعدادات هنا مطابقة تمامًا لِـ SETTING_DEFS و LEGACY_SETTING_KEYS في src/domain/settings-registry.ts —
  * أي تعديل في القائمة هناك لازم ينعكس هنا كمان لتفادي تضارب الأسماء.
  */
 async function seed() {

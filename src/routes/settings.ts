@@ -23,30 +23,14 @@ import { strongPasswordSchema } from "./auth";
 import { USER_ROLES } from "../lib/roles";
 import { ACTION_REGISTRY } from "../lib/actionRegistry";
 import { notifyUser } from "../lib/notifications";
+import { saveSettings } from "../lib/settingsStore";
 import { z } from "zod";
 
 const router = Router();
 const requireSettings = requirePermission("settings.manageUsers");
 const requirePermissions = requirePermission("settings.managePermissions");
 
-// ✅ القائمة البيضاء للمفاتيح المسموح بها — أي مفتاح خارجها يُرفض
-const ALLOWED_SETTING_KEYS = new Set([
-  "company_name",
-  "company_logo",
-  "company_address",
-  "company_phone",
-  "company_email",
-  "currency",
-  "currency_symbol",
-  "fiscal_year_start",
-  "language",
-  "timezone",
-  "low_stock_alert_enabled",
-  "default_payment_terms",
-  "invoice_footer_note",
-  "vat_rate",
-  "vat_enabled",
-]);
+// قائمة المفاتيح المسموحة وتحقق قيمها بقت في src/domain/settings-registry.ts (السجل المنظّم لمركز الإعدادات).
 
 // GET /api/v1/settings
 // الإعدادات بيانات إدارية حساسة وليست جزءًا من التشغيل اليومي؛
@@ -72,27 +56,16 @@ router.put(
     try {
       const data = z.record(z.string()).parse(req.body);
 
-      const unknownKeys = Object.keys(data).filter(
-        (k) => !ALLOWED_SETTING_KEYS.has(k),
-      );
-      if (unknownKeys.length > 0) {
+      // نفس محرك مركز الإعدادات: تحقق + معاملة واحدة + تدقيق لكل تغيير (بدل كتابات منفصلة من غير أثر).
+      const result = await saveSettings(data, { userId: req.user!.userId, username: req.user!.username, ip: req.ip, userAgent: req.get("user-agent") });
+      if (!result.ok) {
         res.status(400).json({
           error: {
-            code: "UNKNOWN_SETTING_KEYS",
-            message: `المفاتيح التالية غير مسموح بها: ${unknownKeys.join(", ")}`,
+            code: "INVALID_SETTINGS",
+            message: `إعدادات غير صالحة: ${result.issues.map((i) => i.key).join(", ")}`,
           },
         });
         return;
-      }
-
-      for (const [key, value] of Object.entries(data)) {
-        await db
-          .insert(systemSettingsTable)
-          .values({ key, value })
-          .onConflictDoUpdate({
-            target: systemSettingsTable.key,
-            set: { value, updatedAt: new Date() },
-          });
       }
 
       const settings = await db.select().from(systemSettingsTable);
