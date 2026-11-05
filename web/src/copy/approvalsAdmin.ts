@@ -122,6 +122,7 @@ export const approvalsAdminCopy = {
   "apa.sec.verify.hint": "بيراجع إن مفيش حدث في السجل اتعدّل أو اتمسح بعد تسجيله.",
   "apa.sec.verify.run": "افحص السجل",
   "apa.sec.verify.ok": "السجل سليم ({count} حدث).",
+  "apa.sec.verify.forks": "فيه {count} سجل قديم متفرّع (رقم {ids}) من كتابة متزامنة قبل إضافة القفل، ومفيش فيه تلاعب.",
   "apa.sec.verify.bad": "السجل فيه تعديل عند الحدث رقم {id}.",
   "apa.sec.sessions.title": "جلساتي",
   "apa.sec.sessions.hint": "الأجهزة اللي داخل منها بحسابك. اقفل أي جلسة مش بتاعتك.",

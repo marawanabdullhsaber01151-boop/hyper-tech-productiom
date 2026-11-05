@@ -128,8 +128,8 @@ export function backupHealth(runs: readonly LastRun[], now: Date): CheckOutcome 
   if (!backups.length) {
     return {
       status: "warn",
-      message: "مفيش أي نسخة احتياطية مسجّلة لحد دلوقتي. لو حصل عطل في قاعدة البيانات مفيش نسخة تتسترجع منها.",
-      action: "فعّل النسخ الاحتياطي اليومي حسب دليل docs/runbooks/backup-restore.md (يتشغّل من GitHub Actions).",
+      message: "مفيش أي نسخة احتياطية مسجّلة لحد دلوقتي. النظام نفسه مش هيعمل نسخة لوحده: الجدولة موجودة في GitHub Actions بس محتاجة تجهيز لمرة واحدة منك، ولحد ما أول نسخة تشتغل هيفضل التنبيه ده.",
+      action: "الخطوات: ١) شغّل هجرات قاعدة البيانات (db:migrate). ٢) ولّد مفتاح التشفير بـ age-keygen. ٣) ضيف الأسرار (رابط قاعدة البيانات والمفتاح العام ومفتاح التخزين) في GitHub ← Settings ← Secrets. ٤) من تبويب Actions شغّل «backup» يدويًا مرة، وبعدها «restore-test». التفاصيل في docs/runbooks/backup-restore.md.",
     };
   }
   const failed = backups.filter((r) => r.status === "failed");

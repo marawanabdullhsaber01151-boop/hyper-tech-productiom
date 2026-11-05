@@ -38,6 +38,7 @@ export function Settings() {
       {c ? (
         <Tabs value={tab} onChange={setTab} tabs={[
           { id: "company", label: t("set.tab.company"), panel: <SettingsForm intro={t("set.company.intro")} defs={defsOf(c.defs, "company")} values={c.values} onSaved={saved} /> },
+          { id: "security", label: t("set.tab.security"), panel: <SettingsForm intro={t("set.sec.intro")} defs={defsOf(c.defs, "security")} values={c.values} onSaved={saved} /> },
           { id: "operations", label: t("set.tab.operations"), panel: <SettingsForm intro={t("set.ops.intro")} defs={defsOf(c.defs, "operations")} values={c.values} onSaved={saved} /> },
           { id: "history", label: t("set.tab.history"), panel: <DataTable columns={histCols} rows={hist} rowKey={(r) => r.id} caption={t("set.hist.caption")} loading={history.loading} empty={<EmptyState title={t("set.hist.empty")} compact />} /> },
         ]} />

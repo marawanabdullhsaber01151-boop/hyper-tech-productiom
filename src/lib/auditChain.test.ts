@@ -3,6 +3,7 @@
 import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import {
+  AUDIT_FORK_TOLERATED_BEFORE,
   AuditHashRow,
   computeAuditRecordHash,
   emptyChainState,
@@ -69,6 +70,59 @@ describe("verifyAuditBatch — فحص سلسلة التدقيق على دفعا�
     fork.recordHash = computeAuditRecordHash(fork.prevHash, fork);
     const result = verifyAuditBatch(emptyChainState(), [...rows.slice(0, 4), fork, ...rows.slice(4)]);
     expect(result.verdict.valid).toBe(false);
+  });
+
+  describe("تسامح التفرّع القديم (اختياري)", () => {
+    const opts = { forkToleratedBefore: AUDIT_FORK_TOLERATED_BEFORE };
+    const mkFork = (rows: AuditHashRow[], at: number): AuditHashRow => {
+      const f: AuditHashRow = { ...rows[at], id: rows[at].id + 100, actionKey: "concurrent write", createdAt: new Date(rows[at].createdAt.getTime() + 5) };
+      f.recordHash = computeAuditRecordHash(f.prevHash, f);
+      return f;
+    };
+
+    it("تفرّع قديم بتوقيع الكتابة المتزامنة بيتقبل ويتسجّل، والصف اللي بعده مربوط بالأحدث", () => {
+      const rows = chain(6);
+      const fork = mkFork(rows, 3);
+      const next = { ...rows[4], prevHash: fork.recordHash };
+      next.recordHash = computeAuditRecordHash(next.prevHash, next);
+      const r = verifyAuditBatch(emptyChainState(), [...rows.slice(0, 4), fork, next], opts);
+      expect(r.verdict.valid).toBe(true);
+      expect(r.state.forks).toEqual([fork.id]);
+    });
+
+    it("الصف اللي بعد التفرّع ممكن يكون مربوط بالشقيق الأقدم", () => {
+      const rows = chain(6);
+      const fork = mkFork(rows, 3);
+      const r = verifyAuditBatch(emptyChainState(), [...rows.slice(0, 4), fork, ...rows.slice(4)], opts);
+      expect(r.verdict.valid).toBe(true);
+    });
+
+    it("من غير الخيار الفحص يفضل صارم", () => {
+      const rows = chain(6);
+      const fork = mkFork(rows, 3);
+      expect(verifyAuditBatch(emptyChainState(), [...rows.slice(0, 4), fork, ...rows.slice(4)]).verdict.valid).toBe(false);
+    });
+
+    it("تفرّع بعد الحد (بعد تركيب القفل) يفضل خطأ", () => {
+      const rows = chain(6);
+      const fork = mkFork(rows, 3);
+      const r = verifyAuditBatch(emptyChainState(), [...rows.slice(0, 4), fork, ...rows.slice(4)], { forkToleratedBefore: new Date("2000-01-01T00:00:00Z") });
+      expect(r.verdict.valid).toBe(false);
+    });
+
+    it("حذف صف من النص مش بيتقبل حتى مع التسامح", () => {
+      const rows = chain(6);
+      const r = verifyAuditBatch(emptyChainState(), [rows[0], rows[1], rows[3], rows[4]], opts);
+      expect(r.verdict.valid).toBe(false);
+    });
+
+    it("تعديل محتوى صف متفرّع بيتكشف (hash مش مطابق)", () => {
+      const rows = chain(6);
+      const fork = mkFork(rows, 3);
+      fork.actionKey = "tampered";
+      const r = verifyAuditBatch(emptyChainState(), [...rows.slice(0, 4), fork, ...rows.slice(4)], opts);
+      expect(r.verdict.valid).toBe(false);
+    });
   });
 
   it("صف بدون hash بعد صفوف موقّعة = مخالفة (مش قديم)", () => {

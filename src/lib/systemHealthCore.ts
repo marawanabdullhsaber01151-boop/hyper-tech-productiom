@@ -20,6 +20,8 @@ export interface CheckOutcome {
   examples?: string[];
   /** رابط لصفحة المعالجة. */
   href?: string;
+  /** الفحص مش مطلوب أصلًا (مقفول من الإعدادات): ما يظهرش في التقرير خالص. */
+  skip?: boolean;
 }
 
 export interface HealthCheck extends CheckOutcome {
@@ -122,7 +124,8 @@ export async function runCheck(def: CheckDef, timeoutMs: number = CHECK_TIMEOUT_
 }
 
 export async function runAll(defs: readonly CheckDef[], timeoutMs: number = CHECK_TIMEOUT_MS): Promise<HealthCheck[]> {
-  return Promise.all(defs.map((d) => runCheck(d, timeoutMs)));
+  const all = await Promise.all(defs.map((d) => runCheck(d, timeoutMs)));
+  return all.filter((c) => !c.skip);
 }
 
 export interface HealthReport {

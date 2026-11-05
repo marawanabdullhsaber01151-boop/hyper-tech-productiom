@@ -3,7 +3,7 @@ export const SETTINGS_ROLES = ["chairman"] as const;
 
 export interface SettingOption { value: string; label: string }
 export interface SettingDef {
-  key: string; group: "company" | "operations"; type: "text" | "email" | "int" | "select";
+  key: string; group: "company" | "operations" | "security"; type: "text" | "email" | "int" | "select";
   label: string; hint?: string; unit?: string; default: string; min?: number; max?: number; maxLength?: number; options?: SettingOption[];
 }
 export type SettingValues = Record<string, string>;

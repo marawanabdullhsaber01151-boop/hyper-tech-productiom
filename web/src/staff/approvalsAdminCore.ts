@@ -83,4 +83,4 @@ export const overridePayload = (f: OverrideForm) => ({
 
 export interface SimRow { key: string; label: string; allowed: boolean }
 export const simulateSummary = (rows: readonly SimRow[]) => ({ allowed: rows.filter((r) => r.allowed).length, total: rows.length });
-export interface VerifyResult { valid: boolean; count?: number; firstInvalidId?: number | null }
+export interface VerifyResult { valid: boolean; count?: number; firstInvalidId?: number | null; forks?: number[] }

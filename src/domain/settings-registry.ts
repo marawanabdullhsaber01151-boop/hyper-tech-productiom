@@ -1,7 +1,7 @@
 /** @format */
 // مركز الإعدادات (الخطوة 40أ): سجل منظّم لكل إعداد (نوعه، حدوده، قيمته الافتراضية) + تحقق + حساب التغييرات. نقي من غير قاعدة بيانات.
 
-export type SettingGroup = "company" | "operations";
+export type SettingGroup = "company" | "operations" | "security";
 export type SettingType = "text" | "email" | "int" | "select";
 export interface SettingOption { value: string; label: string }
 export interface SettingDef {
@@ -35,6 +35,7 @@ export const SETTING_DEFS: readonly SettingDef[] = [
   { key: "work.off_day", group: "operations", type: "select", label: "يوم الإجازة الأسبوعية", default: "5", options: WEEKDAYS },
   { key: "approval.sla_hours", group: "operations", type: "int", label: "مهلة الرد على طلب الاعتماد", hint: "بساعات العمل. بعدها بيتفتح تنبيه للإدارة العليا.", unit: "ساعة عمل", default: "4", min: 1, max: 48 },
   { key: "stall.percent", group: "operations", type: "int", label: "حساسية «أمر واقف»", hint: "100 = الحدود الأصلية لكل مرحلة. أقل = تنبيه أبكر، وأكتر = تنبيه أبطأ.", unit: "%", default: "100", min: 25, max: 300 },
+  { key: "security.require_2fa_top", group: "security", type: "select", label: "طلب التحقق بخطوتين للإدارة العليا", hint: "مقفول = صحة النظام ما بتذكرش الموضوع خالص. مفعّل = لو حساب رئيس مجلس الإدارة أو المدير التنفيذي من غير تحقق بخطوتين بتظهر ملاحظة.", default: "off", options: [{ value: "off", label: "مقفول" }, { value: "on", label: "مفعّل" }] },
 ];
 
 /** مفاتيح قديمة مسموحة في السيرفر للتوافق، من غير شاشة (مفيش كود بيقراها). */

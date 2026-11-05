@@ -4,7 +4,8 @@ import path from "node:path";
 import { asc, gt } from "drizzle-orm";
 import { sql } from "drizzle-orm";
 import { auditEventsTable, db } from "../db";
-import { emptyChainState, verifyAuditBatch } from "./auditChain";
+import { AUDIT_FORK_TOLERATED_BEFORE, emptyChainState, verifyAuditBatch } from "./auditChain";
+import { loadSettingValues } from "./settingsStore";
 import { backupHealth, type LastRun } from "./backupCore";
 import { outboxHealth } from "./outboxCore";
 import { taskHealth } from "./humanTaskCore";
@@ -181,7 +182,7 @@ const DEFS: CheckDef[] = [
           .orderBy(asc(auditEventsTable.id))
           .limit(AUDIT_BATCH);
         if (batch.length === 0) break;
-        const step = verifyAuditBatch(state, batch);
+        const step = verifyAuditBatch(state, batch, { forkToleratedBefore: AUDIT_FORK_TOLERATED_BEFORE });
         state = step.state;
         total += batch.length;
         if (!step.verdict.valid) {
@@ -196,7 +197,8 @@ const DEFS: CheckDef[] = [
         if (batch.length < AUDIT_BATCH) break;
         if (total >= AUDIT_MAX_ROWS) return { status: "ok", message: `فحصنا أحدث ${total} سجل وكلهم سليمين (فحص جزئي لأن السجل كبير).` };
       }
-      return { status: "ok", message: total ? `${total} سجل تدقيق، كلهم سليمين ومترابطين.` : "لسه مفيش سجلات تدقيق." };
+      const forkNote = state.forks.length ? ` (في ${state.forks.length === 1 ? "سجل قديم متفرّع" : "سجلات قديمة متفرّعة"} رقم ${state.forks.slice(0, 5).join("، ")} من كتابة متزامنة قبل إضافة القفل، ومفيش فيه تلاعب)` : "";
+      return { status: "ok", message: total ? `${total} سجل تدقيق، كلهم سليمين ومترابطين${forkNote}.` : "لسه مفيش سجلات تدقيق." };
     },
   },
   {
@@ -221,12 +223,15 @@ const DEFS: CheckDef[] = [
     group: "security",
     title: "التحقق بخطوتين للإدارة العليا",
     run: async () => {
+      // اختياري: لو مش مفعّل من الإعدادات الفحص ده ما بيظهرش خالص.
+      const settings = await loadSettingValues();
+      if (settings["security.require_2fa_top"] !== "on") return { status: "ok", message: "", skip: true };
       const r = await rows<{ username: string }>(sql`SELECT username FROM system_users WHERE status = 'active' AND role IN ('chairman','executive_manager') AND COALESCE(totp_enabled,false) = false ORDER BY username`);
       if (!r.length) return { status: "ok", message: "كل حسابات الإدارة العليا مفعّل عليها التحقق بخطوتين." };
       return {
         status: "warn",
         message: `${countWord(r.length, { one: "حساب إدارة عليا", two: "حسابين إدارة عليا", few: "حسابات إدارة عليا", many: "حساب إدارة عليا" })} من غير تحقق بخطوتين. لو كلمة السر اتسرقت، مفيش حاجة تانية بتحمي الحساب.`,
-        action: "فعّل التحقق بخطوتين من «حسابي» لكل حساب منهم.",
+        action: "فعّل التحقق بخطوتين من «حسابي» لكل حساب منهم. (الملاحظة دي ظاهرة لأنك مفعّل الخيار من الإعدادات ← الأمان.)",
         count: r.length,
         examples: r.map((x) => x.username),
       };

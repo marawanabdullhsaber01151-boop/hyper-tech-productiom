@@ -11,7 +11,7 @@ import { z } from "zod";
 import { writeAuditEvent } from "../lib/governance";
 import { checkSoDViolation } from "../lib/approvals";
 import { getEffectiveRoles } from "../lib/delegation";
-import { emptyChainState, verifyAuditBatch } from "../lib/auditChain";
+import { AUDIT_FORK_TOLERATED_BEFORE, emptyChainState, verifyAuditBatch } from "../lib/auditChain";
 import { USER_ROLES } from "../lib/roles";
 import { roleLabel } from "../lib/roleLabels";
 import { decideVerdict, rejectNoteError } from "../domain/approvals-inbox";
@@ -408,7 +408,7 @@ router.get("/governance/audit-events/verify", requireRole("chairman"), async (_r
         .orderBy(asc(auditEventsTable.id))
         .limit(BATCH);
       if (rows.length === 0) break;
-      const step = verifyAuditBatch(state, rows);
+      const step = verifyAuditBatch(state, rows, { forkToleratedBefore: AUDIT_FORK_TOLERATED_BEFORE });
       state = step.state;
       total += rows.length;
       if (!step.verdict.valid) {
@@ -419,7 +419,7 @@ router.get("/governance/audit-events/verify", requireRole("chairman"), async (_r
       if (rows.length < BATCH) break;
     }
     // count = كل الصفوف، checked = الموقّعة فقط، legacyUnsealed = قديمة قبل هجرة 0016 (بتتخطى)
-    res.json({ valid: true, count: total, checked: state.checked, legacyUnsealed: state.legacyUnsealed });
+    res.json({ valid: true, count: total, checked: state.checked, legacyUnsealed: state.legacyUnsealed, forks: state.forks });
   } catch (err) { next(err); }
 });
 
