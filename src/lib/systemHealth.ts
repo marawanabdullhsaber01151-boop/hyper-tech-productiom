@@ -188,8 +188,8 @@ const DEFS: CheckDef[] = [
         if (!step.verdict.valid) {
           return {
             status: "bad",
-            message: `سجل التدقيق فيه تعديل مش طبيعي عند السجل رقم ${step.verdict.firstInvalidId}. ده معناه إن حد غيّر أو شال سجل قديم.`,
-            action: "ده مؤشر أمان خطير. ما تمسحش حاجة، وكلّم الدعم الفني فورًا واحتفظ بنسخة من قاعدة البيانات.",
+            message: `سلسلة سجل التدقيق انكسرت عند السجل رقم ${step.verdict.firstInvalidId} (${step.verdict.reason === "prev_mismatch" ? "سجل مش مربوط بالسجل اللي قبله: إما سجل اتحذف أو كتابتين حصلوا في نفس اللحظة" : step.verdict.reason === "hash_mismatch" ? "محتوى السجل مش مطابق لبصمته: حد عدّل فيه" : "سجل من غير بصمة بعد سجلات موقّعة"}).`,
+            action: "ابعت رقم السجل ونوع الخطأ للدعم الفني. ما تمسحش حاجة، واحتفظ بنسخة من قاعدة البيانات.",
             count: 1,
           };
         }
@@ -316,6 +316,59 @@ const DEFS: CheckDef[] = [
         count: bad.length,
         examples: bad.map((b) => `${b.order_number}: الإجمالي ${b.total} والأصناف ${b.items}`),
         href: "/v2/staff/sales",
+      };
+    },
+  },
+  {
+    id: "orphan_approvals",
+    group: "sales",
+    title: "فواتير منتظرة الاعتماد وعالقة",
+    run: async () => {
+      // 1) فاتورة «منتظرة الاعتماد» من غير طلب اعتماد معلّق (محدش هيشوفها في الصندوق).
+      const orphans = await rows<{ order_number: string }>(sql`
+        SELECT so.order_number FROM sales_orders so
+        WHERE so.status = 'pending_approval'
+          AND NOT EXISTS (SELECT 1 FROM approval_requests ar WHERE ar.resource_type = 'sales_order' AND ar.resource_id = so.id AND ar.status = 'pending')
+        ORDER BY so.id DESC LIMIT 20`);
+      // 2) طلب معلّق خطوته الحالية من غير سياسة نشطة أو من غير موظف نشط بدور معتمد (مستحيل يتقفل).
+      const stuck = await rows<{ id: number; action_key: string; why: string }>(sql`
+        SELECT ar.id, ar.action_key,
+          CASE WHEN p.id IS NULL THEN 'مفيش سياسة اعتماد نشطة للخطوة' ELSE 'مفيش موظف نشط بدور معتمد للخطوة' END AS why
+        FROM approval_requests ar
+        LEFT JOIN approval_policies p ON p.action_key = ar.action_key AND p.sequence = ar.current_step AND p.active
+        WHERE ar.status = 'pending'
+          AND (p.id IS NULL OR NOT EXISTS (
+            SELECT 1 FROM system_users u WHERE u.status = 'active' AND p.approver_roles ? u.role))
+        ORDER BY ar.id DESC LIMIT 20`);
+      const n = orphans.length + stuck.length;
+      if (!n) return { status: "ok", message: "كل فاتورة منتظرة الاعتماد ليها طلب معلّق وفي حد يقدر يعتمده." };
+      return {
+        status: "bad",
+        message: `${countWord(n, { one: "حالة", two: "حالتين", few: "حالات", many: "حالة" })} فيها اعتماد عالق: فاتورة منتظرة من غير طلب معلّق، أو طلب مفيش حد يقدر يعتمده. الفاتورة هتفضل واقفة.`,
+        action: "للطلب العالق راجع «سياسات الاعتماد» في صندوق الاعتمادات. للفاتورة من غير طلب ابعت رقمها للدعم الفني.",
+        count: n,
+        examples: [...orphans.map((o) => `${o.order_number}: من غير طلب اعتماد معلّق`), ...stuck.map((s) => `طلب رقم ${s.id}: ${s.why}`)],
+        href: "/v2/staff/approvals",
+      };
+    },
+  },
+  {
+    id: "invoice_audit_gap",
+    group: "sales",
+    title: "فواتير جديدة من غير سجل تدقيق",
+    run: async () => {
+      const gap = await rows<{ order_number: string }>(sql`
+        SELECT so.order_number FROM sales_orders so
+        WHERE so.created_at > now() - interval '7 days' AND so.channel <> 'website'
+          AND NOT EXISTS (SELECT 1 FROM audit_events ae WHERE ae.resource_type = 'sales_order' AND ae.resource_id = so.id AND ae.action_key = 'sales.create')
+        ORDER BY so.id DESC LIMIT 20`);
+      if (!gap.length) return { status: "ok", message: "كل فاتورة اتعملت آخر ٧ أيام ليها سجل تدقيق." };
+      return {
+        status: "bad",
+        message: `${countWord(gap.length, { one: "فاتورة", two: "فاتورتين", few: "فواتير", many: "فاتورة" })} اتعملت من غير ما تتسجّل في سجل التدقيق. يعني التسجيل بيفشل أو بيتوقف.`,
+        action: "ابعت أرقام الفواتير دي للدعم الفني مع وقت إنشائها.",
+        count: gap.length,
+        examples: gap.map((g) => g.order_number),
       };
     },
   },

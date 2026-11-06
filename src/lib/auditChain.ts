@@ -39,10 +39,10 @@ export function computeAuditRecordHash(
 
 /**
  * تفرّعات السلسلة القديمة: قبل إضافة القفل الاستشاري على writeAuditEvent كانت كتابتين متزامنتين بتقروا نفس «آخر hash»
- * وبتكتبوا صفين بنفس prev_hash (ده سبب «السجل #289»). القفل اتركّب قبل الحد ده بكتير، فأي تفرّع بعده = تكرار
+ * وبتكتبوا صفين بنفس prev_hash (ده سبب «السجل #289»). القفل (والإصلاح التاني: الكتابة من غير معاملة كانت من غير حماية) اتركّبوا قبل الحد ده، فأي تفرّع بعده = تكرار
  * للمشكلة أو تلاعب، ولازم يفضل أحمر. التفرّع المقبول ليه توقيع محدد (شرحه في verifyAuditBatch).
  */
-export const AUDIT_FORK_TOLERATED_BEFORE = new Date("2026-11-01T00:00:00Z");
+export const AUDIT_FORK_TOLERATED_BEFORE = new Date("2026-11-07T00:00:00Z");
 const FORK_WINDOW_MS = 60_000;
 
 export type VerifyOptions = {

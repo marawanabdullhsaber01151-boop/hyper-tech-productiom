@@ -6,10 +6,17 @@ cd "$(dirname "$0")/../.."
 source scripts/backup/common.sh
 
 DB_URL="$(db_url)"
-[ -n "$DB_URL" ] || die "مفيش رابط قاعدة بيانات (BACKUP_DATABASE_URL أو DATABASE_URL)."
-case "${BACKUP_AGE_PUBLIC_KEY:-}" in age1*) ;; *) die "BACKUP_AGE_PUBLIC_KEY ناقص أو شكله غلط (لازم يبدأ بـ age1).";; esac
+# فحص مسبق: بنجمع كل الأسرار الناقصة مرة واحدة (بدل ما نوقف عند أول واحدة وتتكرر المحاولات).
+missing=()
+[ -n "$DB_URL" ] || missing+=("BACKUP_DATABASE_URL  ← رابط قاعدة البيانات (Neon ← Connect ← Direct connection)")
+case "${BACKUP_AGE_PUBLIC_KEY:-}" in age1*) ;; *) missing+=("BACKUP_AGE_PUBLIC_KEY  ← المفتاح العام من age-keygen (بيبدأ بـ age1)");; esac
 mapfile -t STORES < <(configured_stores | grep -v '^$' || true)
-[ "${#STORES[@]}" -gt 0 ] || die "مفيش مخزن واحد إعداداته كاملة (R2_* أو B2_*)."
+[ "${#STORES[@]}" -gt 0 ] || missing+=("R2_ACCESS_KEY_ID و R2_SECRET_ACCESS_KEY و R2_ENDPOINT و R2_BUCKET  (أو نفس الأربعة بـ B2_)")
+if [ "${#missing[@]}" -gt 0 ]; then
+  log "✖ أسرار GitHub الناقصة (Settings ← Secrets and variables ← Actions ← New repository secret):"
+  for m in "${missing[@]}"; do log "   • $m"; done
+  die "ضيف الأسرار دي كلها وشغّل «backup» تاني."
+fi
 
 work="$(mktemp -d)"; trap 'rm -rf "$work"' EXIT
 started="$(date -u +%Y-%m-%dT%H:%M:%SZ)"

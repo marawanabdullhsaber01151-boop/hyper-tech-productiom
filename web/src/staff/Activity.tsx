@@ -74,7 +74,7 @@ export function Activity() {
       </div>
       {bad ? <InlineAlert tone="warn">{t("act.rangeBad")}</InlineAlert> : null}
       {first.error ? <InlineAlert tone="warn">{t("act.loadFail")}</InlineAlert> : null}
-      {!first.loading && !first.error && !bad && !rows.length ? <EmptyState title={t("act.empty")} compact /> : null}
+      {!first.loading && !first.error && !bad && !rows.length ? <EmptyState title={t("act.empty")} description={(first.data?.hidden ?? 0) > 0 ? t("act.emptyHidden", { n: String(first.data?.hidden) }) : first.data?.scanned === 0 ? t("act.emptyNone") : undefined} compact /> : null}
       {groups.map((g) => (
         <section key={g.day}>
           <h2 class="act-day">{g.day}</h2>

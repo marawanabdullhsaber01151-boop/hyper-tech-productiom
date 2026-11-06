@@ -46,8 +46,9 @@ export async function writeAuditEvent(input: {
 }) {
   // تمرير tx هنا مهم للعمليات المركبة: لا نسجل تدقيقًا ناجحًا إذا فشل
   // إنشاء الحساب أو أي خطوة أخرى داخل نفس العملية.
-  if (!input.executor) {
+  if (!input.executor || (input.executor as unknown) === db) {
     // من غير tx جاهزة بنفتح واحدة، عشان القفل والقراءة والإضافة يبقوا ذرّة واحدة.
+    // لو اتبعت `db` نفسه (مش معاملة) فالقفل الاستشاري كان بيتحرر فورًا ومفيش حماية: ده كان مصدر تفرّع تاني للسلسلة.
     await db.transaction((tx) => writeAuditEvent({ ...input, executor: tx }));
     return;
   }

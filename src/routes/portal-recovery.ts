@@ -335,7 +335,6 @@ router.post("/portal-customers/:id/admin-code", ...staffWrite, async (req, res, 
     const ttl = await resolveSetting<number>("auth.admin_code.ttl_minutes", {});
     const issued = await issueAuthToken(db, { userId, purpose: "password_reset", ttlMinutes: ttl, withCode: true, createdByStaffId: req.user!.userId, meta: { kind: "admin_code" } });
     await writeAuditEvent({
-      executor: db,
       actorUserId: req.user!.userId,
       actorName: req.user!.username,
       actionKey: "portal.admin_code.issued",

@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { writeAuditEvent } from "../lib/governance";
+import { logger } from "../lib/logger";
 
 /**
  * Safety net for the audit requirement: every authenticated state-changing
@@ -21,8 +22,9 @@ export function mutationAudit(req: Request, res: Response, next: NextFunction) {
       reason: res.statusCode >= 400 ? `HTTP ${res.statusCode}` : null,
       ipAddress: req.ip,
       userAgent: req.get("user-agent") ?? null,
-    }).catch(() => {
-      // Auditing must never turn a completed business operation into a 500.
+    }).catch((error: unknown) => {
+      // Auditing must never turn a completed business operation into a 500، بس الفشل لازم يبان في اللوج مش يتبلع ساكت.
+      logger.error("فشل تسجيل حدث التدقيق", { path: req.path, method: req.method, error: error instanceof Error ? error.message : String(error) });
     });
   });
   next();

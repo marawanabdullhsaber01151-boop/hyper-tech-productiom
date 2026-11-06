@@ -8,7 +8,7 @@ import { getEffectiveRoles } from "./delegation";
 import { createTask } from "./humanTasks";
 import { roleLabel } from "./roleLabels";
 import { loadOperationalConfig } from "./settingsStore";
-import { decideVerdict, describeImpact, slaState, workingMinutesBetween, type DecideVerdict, type Impact, type SlaState } from "../domain/approvals-inbox";
+import { SELF_APPROVAL_EXEMPT, decideVerdict, describeImpact, slaState, workingMinutesBetween, type DecideVerdict, type Impact, type SlaState } from "../domain/approvals-inbox";
 
 /** مين يشوف الصندوق ويقرر (نفس أدوار /governance/approval-requests). */
 export const APPROVER_ROLES = ["chairman", "executive_manager", "sales_manager", "purchasing_manager", "hr_manager", "production_manager", "operations_manager"] as const;
@@ -62,9 +62,11 @@ export async function loadInbox(user: { userId: number; role: string }, mode: "p
     return next ? (next.approverRoles as string[]) : null;
   };
   // الظاهر: الطلب اللي دوري يعتمد خطوته الحالية. السجل: أي طلب لنوع أنا معتمد عليه في أي خطوة، أو أنا اللي أنشأته.
+  // الإدارة العليا بتشوف كل الطلبات المعلّقة (حتى لو الخطوة لدور تاني أو من غير سياسة): مفيش طلب يفضل مستخبي عن اللي بيصعّد له.
+  const topManagement = roles.some((x) => (SELF_APPROVAL_EXEMPT as readonly string[]).includes(x));
   const visible = rows.filter((r) =>
     mode === "pending"
-      ? stepRoles(r.actionKey, r.currentStep).some((x) => roles.includes(x))
+      ? topManagement || stepRoles(r.actionKey, r.currentStep).some((x) => roles.includes(x))
       : r.requestedBy === user.userId || policies.some((p) => p.actionKey === r.actionKey && (p.approverRoles as string[]).some((x) => roles.includes(x))),
   );
   if (!visible.length) return [];

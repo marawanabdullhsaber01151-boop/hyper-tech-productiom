@@ -1,4 +1,5 @@
 .act-toolbar { display: flex; flex-wrap: wrap; gap: var(--sp-2); align-items: center; }
+.act-toolbar > * { width: auto; flex: 0 1 190px; }
 .act-day { margin: var(--sp-4) 0 var(--sp-2); font-size: var(--fs-sm); font-weight: 700; }
 .act-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--sp-1); }
 .act-item { display: grid; grid-template-columns: auto 1fr; gap: var(--sp-3); align-items: baseline; padding-block: var(--sp-2); border-block-end: 1px solid var(--c-border-1); font-size: var(--fs-sm); }
