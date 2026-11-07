@@ -43,7 +43,9 @@ export function computeAuditRecordHash(
  * للمشكلة أو تلاعب، ولازم يفضل أحمر. التفرّع المقبول ليه توقيع محدد (شرحه في verifyAuditBatch).
  */
 export const AUDIT_FORK_TOLERATED_BEFORE = new Date("2026-11-07T00:00:00Z");
-const FORK_WINDOW_MS = 60_000;
+// الكتابة المتأخرة القديمة (قبل القفل) كانت ممكن تكتب بعد آخر سجل بدقيقة أو أكتر وتفضل ماسكة hash أقدم (حالة #412: بعد 29 ثانية ومربوطة بسجل قبل اتنين).
+const FORK_WINDOW_MS = 10 * 60_000;
+const RECENT_HASHES = 10;
 
 export type VerifyOptions = {
   /** لو اتحددت: تفرّع «كتابة متزامنة» قبل التاريخ ده بيتقبل ويتسجّل في forks بدل ما يكسر الفحص. من غيرها الفحص صارم. */
@@ -51,14 +53,12 @@ export type VerifyOptions = {
 };
 
 export type ChainState = {
-  /** parent الصف الأخير المقبول (prev_hash بتاعه): الصف اللي يشاركه نفس الـparent = شقيق متزامن. */
-  parentHash: string | null;
+  /** hash آخر ١٠ صفوف مقبولة (الأحدث في الآخر): الصف المتفرّع القديم بيكون مربوط بواحد منهم مش بالأحدث. */
+  recent: string[];
   /** وقت إنشاء الصف الأخير المقبول (ms). */
   lastCreatedAtMs: number | null;
   /** أرقام الصفوف المتفرّعة المقبولة (كتابة متزامنة قديمة). */
   forks: number[];
-  /** hash الشقيق الأقدم بعد تفرّع مقبول: الصف اللي بعده ممكن يكون مربوط بيه هو بدل الأحدث (null = مفيش تفرّع لسه). */
-  altPrevHash: string | null;
   /** آخر hash مؤكَّد (null = لسه ما بدأناش أو أول صف موقّع) */
   prevHash: string | null;
   /** عدد الصفوف الموقّعة اللي اتفحصت */
@@ -74,10 +74,9 @@ export type ChainVerdict =
   | { valid: false; firstInvalidId: number; reason: "prev_mismatch" | "hash_mismatch" | "unsealed_after_sealed" };
 
 export const emptyChainState = (): ChainState => ({
-  parentHash: null,
+  recent: [],
   lastCreatedAtMs: null,
   forks: [],
-  altPrevHash: null,
   prevHash: null,
   checked: 0,
   legacyUnsealed: 0,
@@ -90,7 +89,7 @@ export function verifyAuditBatch(
   rows: ReadonlyArray<AuditHashRow>,
   opts: VerifyOptions = {},
 ): { state: ChainState; verdict: ChainVerdict } {
-  const next: ChainState = { ...state, forks: [...state.forks] };
+  const next: ChainState = { ...state, forks: [...state.forks], recent: [...state.recent] };
   for (const row of rows) {
     if (row.recordHash === "") {
       if (next.sealedStarted) {
@@ -103,25 +102,22 @@ export function verifyAuditBatch(
     const tolerant = !!opts.forkToleratedBefore && row.createdAt.getTime() < opts.forkToleratedBefore.getTime();
     const ownHashOk = row.recordHash === computeAuditRecordHash(row.prevHash, row);
     const nearLast = next.lastCreatedAtMs !== null && Math.abs(row.createdAt.getTime() - next.lastCreatedAtMs) <= FORK_WINDOW_MS;
-    let forkRow = false;
-    let nextAlt: string | null = null;
     if (row.prevHash === next.prevHash) {
       if (!ownHashOk) {
         return { state: next, verdict: { valid: false, firstInvalidId: row.id, reason: "hash_mismatch" } };
       }
-    } else if (tolerant && next.altPrevHash !== null && row.prevHash === next.altPrevHash && ownHashOk && nearLast) {
-      // الصف اللي بعد التفرّع اتربط بالشقيق الأقدم بدل الأحدث: مقبول (قراءة متزامنة قديمة).
-    } else if (tolerant && next.checked > 0 && row.prevHash === next.parentHash && ownHashOk && nearLast) {
-      // شقيق متزامن (توقيع التفرّع): نفس parent الصف السابق + hash سليم + نفس اللحظة تقريبًا + قبل تركيب القفل.
-      // حذف صف أو تلاعب بيدّي توقيع مختلف (prev بيشاور على صف مش موجود) فبيفضل كسر.
-      forkRow = true;
-      nextAlt = next.prevHash;
+    } else if (tolerant && next.checked > 0 && row.prevHash !== null && next.recent.includes(row.prevHash)) {
+      // تفرّع قديم (كتابة متزامنة قبل القفل): السجل مربوط بسجل من آخر ١٠ سجلات مقبولة مش بالأحدث، وفي نفس الفترة.
+      // حذف صف أو تلاعب بيدّي توقيع مختلف (prev بيشاور على صف مش موجود)، وتعديل المحتوى بيكسر البصمة، فالاتنين بيفضلوا أحمر.
+      if (!ownHashOk || !nearLast) {
+        return { state: next, verdict: { valid: false, firstInvalidId: row.id, reason: ownHashOk ? "prev_mismatch" : "hash_mismatch" } };
+      }
       next.forks.push(row.id);
     } else {
       return { state: next, verdict: { valid: false, firstInvalidId: row.id, reason: "prev_mismatch" } };
     }
-    next.altPrevHash = forkRow ? nextAlt : null;
-    next.parentHash = row.prevHash;
+    next.recent.push(row.recordHash);
+    if (next.recent.length > RECENT_HASHES) next.recent.shift();
     next.lastCreatedAtMs = row.createdAt.getTime();
     next.prevHash = row.recordHash;
     next.checked += 1;

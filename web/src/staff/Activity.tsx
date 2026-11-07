@@ -30,13 +30,13 @@ export function Activity() {
   // أي تغيير في الفلاتر أو أول صفحة جديدة بيصفّر الصفحات الإضافية
   useEffect(() => { setExtra([]); setNext(first.data ? first.data.nextBefore : null); }, [first.data]);
 
-  const base = first.data?.data ?? [];
+  const base = first.data?.rows ?? [];
   const rows = mergeRows(base, extra);
   const groups = groupByDay(rows);
   const more = async () => {
     if (!next) return;
     const page = await act.run(() => api.get<ActivityPage>(`/activity${activityQuery(f, next)}`), undefined);
-    if (page) { setExtra((p) => mergeRows(p, page.data)); setNext(page.nextBefore); }
+    if (page) { setExtra((p) => mergeRows(p, page.rows)); setNext(page.nextBefore); }
   };
   const set = (patch: Partial<ActivityFilters>) => setF((p) => ({ ...p, ...patch }));
   const metaOk = meta.data;

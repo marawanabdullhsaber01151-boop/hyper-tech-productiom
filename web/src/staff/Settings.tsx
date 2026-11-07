@@ -15,10 +15,10 @@ interface Center { defs: SettingDef[]; values: SettingValues }
 /** مركز الإعدادات: بيانات الشركة + التشغيل والمواعيد + سجل «مين غيّر إيه». الشاشة بتتبني من تعريف الإعدادات اللي جاي من السيرفر. */
 export function Settings() {
   const [tab, setTab] = useState("company");
-  const center = useQuery((signal) => api.get<{ data: Center }>("/settings/center", { signal }), []);
-  const history = useQuery((signal) => api.get<{ data: HistoryRow[] }>("/settings/center/history?limit=100", { signal }), []);
-  const c = center.data?.data;
-  const hist = Array.isArray(history.data?.data) ? history.data!.data : [];
+  const center = useQuery((signal) => api.get<Center>("/settings/center", { signal }), []);
+  const history = useQuery((signal) => api.get<HistoryRow[]>("/settings/center/history?limit=100", { signal }), []);
+  const c = center.data;
+  const hist = Array.isArray(history.data) ? history.data : [];
   const saved = async () => { await center.refetch(); await history.refetch(); };
 
   const histCols: Column<HistoryRow>[] = [

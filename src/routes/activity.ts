@@ -105,7 +105,8 @@ router.get("/activity", requireAuth, requireRole(...ACTIVITY_ROLES), async (req,
       const section = sectionOf(r.actionKey);
       return { id: r.id, sentence: r.sentence, whenText: r.whenText, createdAt: r.createdAt, actorUserId: r.actorUserId, section, sectionLabel: LABEL.get(section) ?? null, rejected: r.decision === "rejected" };
     });
-    res.json({ data, nextBefore, scanned: page.length, hidden: page.length - visible.length });
+    // بنرجّع الحقول من غير مفتاح data: الـclient بيفك data مرة واحدة فكان بيضيّع nextBefore (والغلاف بيلفّها لوحده).
+    res.json({ rows: data, nextBefore, scanned: page.length, hidden: page.length - visible.length });
   } catch (err) {
     if (err instanceof Error && "status" in err) {
       res.status((err as Error & { status: number }).status).json({ error: { message: err.message } });

@@ -19,11 +19,11 @@ const val = (e: Event) => (e.target as HTMLInputElement).value;
 export function Approvals() {
   const [tab, setTab] = useState<string>("pending");
   const role = staffUser()?.role;
-  const pending = useQuery((signal) => api.get<{ data: InboxRow[] }>("/approvals/inbox?mode=pending", { signal }), []);
-  const history = useQuery((signal) => api.get<{ data: InboxRow[] }>("/approvals/inbox?mode=history", { signal }), []);
+  const pending = useQuery((signal) => api.get<InboxRow[]>("/approvals/inbox?mode=pending", { signal }), []);
+  const history = useQuery((signal) => api.get<InboxRow[]>("/approvals/inbox?mode=history", { signal }), []);
   const [open, setOpen] = useState<InboxRow | null>(null);
-  const rows = sortInbox(Array.isArray(pending.data?.data) ? pending.data!.data : []);
-  const hist = Array.isArray(history.data?.data) ? history.data!.data : [];
+  const rows = sortInbox(Array.isArray(pending.data) ? pending.data : []);
+  const hist = Array.isArray(history.data) ? history.data : [];
   const sum = summarize(rows);
   const refresh = async () => { await pending.refetch(); await history.refetch(); };
 

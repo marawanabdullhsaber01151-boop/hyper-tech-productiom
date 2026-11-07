@@ -97,6 +97,17 @@ describe("verifyAuditBatch — فحص سلسلة التدقيق على دفعا�
       expect(r.verdict.valid).toBe(true);
     });
 
+    it("نمط #412: شقيق مربوط بسجل قبل اتنين وبعد دقيقة تقريبًا، والصف اللي بعده مربوط بيه", () => {
+      const rows = chain(8);
+      const fork: AuditHashRow = { ...rows[4], id: rows[4].id + 100, prevHash: rows[2].recordHash, actionKey: "late write", createdAt: new Date(rows[4].createdAt.getTime() + 30_000) };
+      fork.recordHash = computeAuditRecordHash(fork.prevHash, fork);
+      const after: AuditHashRow = { ...rows[5], prevHash: fork.recordHash };
+      after.recordHash = computeAuditRecordHash(after.prevHash, after);
+      const r = verifyAuditBatch(emptyChainState(), [...rows.slice(0, 5), fork, after], opts);
+      expect(r.verdict.valid).toBe(true);
+      expect(r.state.forks).toEqual([fork.id]);
+    });
+
     it("من غير الخيار الفحص يفضل صارم", () => {
       const rows = chain(6);
       const fork = mkFork(rows, 3);

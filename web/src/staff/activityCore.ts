@@ -3,7 +3,7 @@ export const ACTIVITY_ROLES = ["chairman", "executive_manager"] as const;
 export const canSeeActivity = (role: string | undefined) => !!role && (ACTIVITY_ROLES as readonly string[]).includes(role);
 
 export interface ActivityRow { id: number; sentence: string; whenText: string; createdAt: string; actorUserId: number | null; section: string; sectionLabel: string | null; rejected: boolean }
-export interface ActivityPage { data: ActivityRow[]; nextBefore: number | null; scanned?: number; hidden?: number }
+export interface ActivityPage { rows: ActivityRow[]; nextBefore: number | null; scanned?: number; hidden?: number }
 export interface ActivityMeta { sections: Array<{ id: string; label: string }>; actors: Array<{ id: number; name: string; roleLabel: string }> }
 export interface ActivityFilters { actorId: string; section: string; from: string; to: string; includeViews: boolean }
 
