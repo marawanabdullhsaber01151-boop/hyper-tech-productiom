@@ -33,3 +33,11 @@ describe("إصلاحات صحة النظام (الجولة 3)", () => {
     expect(src("./routes/activity.ts").includes("hidden: page.length - visible.length")).toBe(true);
   });
 });
+
+describe("الإدارة العليا تقرر في أي خطوة اعتماد", () => {
+  it("مسار القرار بيتخطى فحص دور الخطوة وفصل المهام للرئيس والمدير التنفيذي", () => {
+    const s = readFileSync(new URL("./routes/governance.ts", import.meta.url), "utf8");
+    expect(/!topManagement && \(!policy\[0\]/.test(s)).toBe(true);
+    expect(/approved && !topManagement && await checkSoDViolation/.test(s)).toBe(true);
+  });
+});

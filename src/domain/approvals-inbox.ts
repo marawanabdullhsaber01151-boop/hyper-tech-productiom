@@ -73,6 +73,8 @@ export interface DecideVerdict { canApprove: boolean; canReject: boolean; block:
 export const SELF_APPROVAL_EXEMPT: readonly string[] = ["chairman", "executive_manager"];
 
 export function decideVerdict(i: DecideInput): DecideVerdict {
+  // الرئيس والمدير التنفيذي (قرار المالك): يعتمدوا أي طلب في أي خطوة حتى لو دورهم مش مكتوب في السياسة، وحتى لو هما اللي أنشأوه.
+  if (i.roles.some((r) => SELF_APPROVAL_EXEMPT.includes(r))) return { canApprove: true, canReject: true, block: null, selfException: false };
   const hasRole = i.stepRoles.some((r) => i.roles.includes(r));
   if (!hasRole) return { canApprove: false, canReject: false, block: "role", selfException: false };
   if (i.userId === i.requestedBy) {

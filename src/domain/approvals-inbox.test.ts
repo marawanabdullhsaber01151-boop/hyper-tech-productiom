@@ -49,6 +49,10 @@ describe("صلاحية القرار", () => {
     expect(decideVerdict({ ...base, userId: 1, requesterIsSoleApprover: true })).toEqual({ canApprove: true, canReject: true, block: null, selfException: true });
   });
   it("الرئيس والمدير التنفيذي يعتمدوا طلباتهم عادي (من غير استثناء معلّم)", () => {
+    // الإدارة العليا تعتمد حتى لو دورها مش في خطوة السياسة (مثلاً الخطوة لمدير المبيعات أو مدير الإنتاج)
+    for (const role of ["chairman", "executive_manager"]) {
+      expect(decideVerdict({ ...base, userId: 9, roles: [role], stepRoles: ["production_manager"] })).toEqual({ canApprove: true, canReject: true, block: null, selfException: false });
+    }
     for (const role of ["chairman", "executive_manager"]) {
       expect(decideVerdict({ ...base, userId: 1, roles: [role], stepRoles: [role] })).toEqual({ canApprove: true, canReject: true, block: null, selfException: false });
     }

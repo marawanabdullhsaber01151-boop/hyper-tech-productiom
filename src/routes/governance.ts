@@ -14,7 +14,7 @@ import { getEffectiveRoles } from "../lib/delegation";
 import { AUDIT_FORK_TOLERATED_BEFORE, emptyChainState, verifyAuditBatch } from "../lib/auditChain";
 import { USER_ROLES } from "../lib/roles";
 import { roleLabel } from "../lib/roleLabels";
-import { decideVerdict, rejectNoteError } from "../domain/approvals-inbox";
+import { SELF_APPROVAL_EXEMPT, decideVerdict, rejectNoteError } from "../domain/approvals-inbox";
 
 const router = Router();
 router.use("/governance", requireAuth);
@@ -258,12 +258,14 @@ router.patch("/governance/approval-requests/:id/decide", requireRole("chairman",
       )).orderBy(approvalPoliciesTable.sequence).limit(1);
     let effectiveRoles = [req.user!.role];
     try { effectiveRoles = await getEffectiveRoles(req.user!.userId); } catch { /* safe fallback */ }
-    if (!policy[0] || !(policy[0].approverRoles as string[]).some((role) => effectiveRoles.includes(role))) {
+    // الإدارة العليا (الرئيس والمدير التنفيذي) تقرر في أي خطوة؛ باقي الأدوار لازم تكون في سياسة الخطوة.
+    const topManagement = effectiveRoles.some((role) => (SELF_APPROVAL_EXEMPT as readonly string[]).includes(role));
+    if (!topManagement && (!policy[0] || !(policy[0].approverRoles as string[]).some((role) => effectiveRoles.includes(role)))) {
       res.status(403).json({ error: { message: "ليس لديك دور معتمد لهذه الخطوة من طلب الاعتماد" } }); return;
     }
     // من أنشأ الطلب ما يعتمدوش (بيقدر يسحبه برفضه)، إلا لو هو الوحيد النشط المعتمد للخطوة؛ والرفض لازم سبب.
-    const stepRoles = policy[0].approverRoles as string[];
-    const stepApprovers = await db.select({ id: systemUsersTable.id }).from(systemUsersTable).where(and(eq(systemUsersTable.status, "active"), inArray(systemUsersTable.role, stepRoles)));
+    const stepRoles = (policy[0]?.approverRoles as string[] | undefined) ?? [];
+    const stepApprovers = stepRoles.length ? await db.select({ id: systemUsersTable.id }).from(systemUsersTable).where(and(eq(systemUsersTable.status, "active"), inArray(systemUsersTable.role, stepRoles))) : [];
     const verdict = decideVerdict({ userId: req.user!.userId, requestedBy: request.requestedBy, roles: effectiveRoles, stepRoles, requesterIsSoleApprover: !stepApprovers.some((a) => a.id !== request.requestedBy) });
     if (approved && !verdict.canApprove) {
       await writeAuditEvent({ actorUserId: req.user!.userId, actorName: req.user!.username, actionKey: request.actionKey, resourceType: request.resourceType, resourceId: request.resourceId, decision: "rejected_self_approval", reason: "المنشئ لا يعتمد طلبه بنفسه" });
@@ -272,7 +274,8 @@ router.patch("/governance/approval-requests/:id/decide", requireRole("chairman",
     if (!approved && rejectNoteError(decision.note)) {
       res.status(400).json({ error: { message: "اكتب سبب الرفض" } }); return;
     }
-    if (approved && await checkSoDViolation(req.user!.userId, request.actionKey, request.resourceType, request.resourceId)) {
+    // فصل المهام (منشئ المورد ما يعتمدوش) ما بينطبقش على الإدارة العليا.
+    if (approved && !topManagement && await checkSoDViolation(req.user!.userId, request.actionKey, request.resourceType, request.resourceId)) {
       await writeAuditEvent({ actorUserId: req.user!.userId, actorName: req.user!.username, actionKey: request.actionKey, resourceType: request.resourceType, resourceId: request.resourceId, decision: "rejected_sod", reason: "لا يمكن لمنشئ المورد اعتماده" });
       res.status(403).json({ error: { message: "لا يمكن اعتماد المورد بواسطة نفس المستخدم الذي أنشأه" } }); return;
     }
