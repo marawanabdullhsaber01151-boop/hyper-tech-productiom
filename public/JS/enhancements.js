@@ -109,8 +109,8 @@ class UserMenu {
     menu.className = "user-menu";
     menu.id = "user-menu";
     menu.innerHTML = `
-      <a href="settings.html" class="user-menu-item"><i class="fa-solid fa-user"></i> الملف الشخصي</a>
-      <a href="settings.html" class="user-menu-item"><i class="fa-solid fa-sliders"></i> الإعدادات</a>
+      <a href="/v2/staff/account" class="user-menu-item"><i class="fa-solid fa-user"></i> الملف الشخصي</a>
+      <a href="/v2/staff/settings" class="user-menu-item"><i class="fa-solid fa-sliders"></i> الإعدادات</a>
       <a href="#" id="menu-change-password" class="user-menu-item"><i class="fa-solid fa-key"></i> تغيير كلمة المرور</a>
       <a href="#" id="menu-logout" class="user-menu-item danger"><i class="fa-solid fa-sign-out-alt"></i> تسجيل الخروج</a>
     `;

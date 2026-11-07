@@ -1,4 +1,5 @@
 {
+  "GET /action-registry": "backlog: كان بيخدم نافذة الصلاحيات في الصفحة القديمة؛ الصلاحيات الحالية في صفحة الاعتمادات (/governance/actions)",
   "GET /chat/cron/maintenance": "cron: Vercel يناديه يوميًا من vercel.json (مش من الواجهة)",
   "GET /admin/audit/findings": "ops: أداة تشخيص للمسؤول (curl/لوحة صحة النظام مستقبلًا)",
   "GET /admin/diagnostics/availability": "ops: أداة تشخيص للمسؤول",

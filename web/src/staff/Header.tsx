@@ -41,6 +41,7 @@ export function Header({ title, nav, name, roleLabel, collapsed, onOpenDrawer, o
     onSelect: () => void applyTheme({ mode: m }),
   });
   const items: MenuItem[] = [
+    { label: t("staff.header.account"), icon: UserRound, onSelect: () => navigate("/staff/account") },
     themeItem("light", t("staff.header.theme.light"), Sun),
     themeItem("dark", t("staff.header.theme.dark"), Moon),
     themeItem("system", t("staff.header.theme.system"), Monitor),

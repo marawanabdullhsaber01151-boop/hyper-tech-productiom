@@ -7,14 +7,18 @@ import { t, type CopyKey } from "../copy";
 import { Button, DataTable, EmptyState, Field, InlineAlert, Input, Select, Tabs, type Column } from "../design/components";
 import { formatDateTime, formatNumber } from "../lib/format";
 import { changedPayload, defsOf, dirtyKeys, displayValue, validateDraft, type HistoryRow, type SettingDef, type SettingValues } from "./settingsCore";
+import { AboutPanel, DeliveryPanel, UsersPanel } from "./SettingsAdmin";
 import "./Activity.css";
 
 const val = (e: Event) => (e.target as HTMLInputElement).value;
+const TABS = ["company", "security", "operations", "users", "delivery", "about", "history"];
+/** ?tab=users مثلًا بيفتح التبويب ده (روابط صحة النظام). */
+const initialTab = (search: string) => { const v = new URLSearchParams(search).get("tab") ?? ""; return TABS.includes(v) ? v : "company"; };
 interface Center { defs: SettingDef[]; values: SettingValues }
 
 /** مركز الإعدادات: بيانات الشركة + التشغيل والمواعيد + سجل «مين غيّر إيه». الشاشة بتتبني من تعريف الإعدادات اللي جاي من السيرفر. */
 export function Settings() {
-  const [tab, setTab] = useState("company");
+  const [tab, setTab] = useState(() => initialTab(location.search));
   const center = useQuery((signal) => api.get<Center>("/settings/center", { signal }), []);
   const history = useQuery((signal) => api.get<HistoryRow[]>("/settings/center/history?limit=100", { signal }), []);
   const c = center.data;
@@ -40,12 +44,12 @@ export function Settings() {
           { id: "company", label: t("set.tab.company"), panel: <SettingsForm intro={t("set.company.intro")} defs={defsOf(c.defs, "company")} values={c.values} onSaved={saved} /> },
           { id: "security", label: t("set.tab.security"), panel: <SettingsForm intro={t("set.sec.intro")} defs={defsOf(c.defs, "security")} values={c.values} onSaved={saved} /> },
           { id: "operations", label: t("set.tab.operations"), panel: <SettingsForm intro={t("set.ops.intro")} defs={defsOf(c.defs, "operations")} values={c.values} onSaved={saved} /> },
+          { id: "users", label: t("set.tab.users"), panel: <UsersPanel /> },
+          { id: "delivery", label: t("set.tab.delivery"), panel: <DeliveryPanel /> },
+          { id: "about", label: t("set.tab.about"), panel: <AboutPanel /> },
           { id: "history", label: t("set.tab.history"), panel: <DataTable columns={histCols} rows={hist} rowKey={(r) => r.id} caption={t("set.hist.caption")} loading={history.loading} empty={<EmptyState title={t("set.hist.empty")} compact />} /> },
         ]} />
       ) : null}
-      <InlineAlert tone="info">
-        <strong>{t("set.legacy.title")}</strong> — {t("set.legacy.body")} <a href="/settings.html">{t("set.legacy.open")}</a>
-      </InlineAlert>
     </div>
   );
 }

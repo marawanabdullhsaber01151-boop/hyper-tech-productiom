@@ -40,6 +40,7 @@ export const staffCopy = {
   "staff.header.theme.light": "فاتح",
   "staff.header.theme.dark": "داكن",
   "staff.header.theme.system": "زي الجهاز",
+  "staff.header.account": "حسابي",
   "staff.header.logout": "خروج",
   "staff.header.menu": "قائمة المستخدم",
 

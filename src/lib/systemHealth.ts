@@ -214,7 +214,7 @@ const DEFS: CheckDef[] = [
         action: "اسأل الموظف لو هو. لو مش هو، غيّر كلمة سر الحساب من الإعدادات.",
         count: r.length,
         examples: r.map((x) => x.username),
-        href: "/settings.html",
+        href: "/v2/staff/settings?tab=users",
       };
     },
   },
@@ -253,7 +253,7 @@ const DEFS: CheckDef[] = [
         action: "افتح الإعدادات ← المستخدمين وغيّر دور كل واحد منهم لدور صحيح.",
         count: bad.length,
         examples: bad.map((u) => `${u.username} (${u.role})`),
-        href: "/settings.html",
+        href: "/v2/staff/settings?tab=users",
       };
     },
   },

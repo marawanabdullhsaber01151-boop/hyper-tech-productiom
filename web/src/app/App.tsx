@@ -21,6 +21,7 @@ const loadOperations = () => import("../staff/Operations").then((m) => m.Operati
 const loadProduction = () => import("../staff/Production").then((m) => m.Production as ComponentType<{ key?: string }>);
 const loadFoundation = () => import("../staff/Foundation").then((m) => m.Foundation as ComponentType<{ key?: string }>);
 const loadSettings = () => import("../staff/Settings").then((m) => m.Settings as ComponentType<Record<string, never>>);
+const loadAccount = () => import("../staff/Account").then((m) => m.Account as ComponentType<Record<string, never>>);
 const loadApprovals = () => import("../staff/Approvals").then((m) => m.Approvals as ComponentType<Record<string, never>>);
 const loadActivity = () => import("../staff/Activity").then((m) => m.Activity as ComponentType<Record<string, never>>);
 const loadReceiving = () => import("../staff/Receiving").then((m) => m.Receiving as ComponentType<{ key?: string }>);
@@ -39,6 +40,7 @@ export const staffRoutes: RouteDef[] = [
   { path: "/staff/operations", render: () => <RoleGuard roles={OPERATIONS_ROLES}><LazyPage key={location.search} load={loadOperations} props={{}} /></RoleGuard> },
   { path: "/staff/production", render: () => <RoleGuard roles={PRODUCTION_PAGE_ROLES}><LazyPage key={location.search} load={loadProduction} props={{}} /></RoleGuard> },
   { path: "/staff/settings", render: () => <RoleGuard roles={SETTINGS_PAGE_ROLES}><LazyPage load={loadSettings} props={{}} /></RoleGuard> },
+  { path: "/staff/account", render: () => <LazyPage load={loadAccount} props={{}} /> },
   { path: "/staff/approvals", render: () => <RoleGuard roles={APPROVALS_PAGE_ROLES}><LazyPage load={loadApprovals} props={{}} /></RoleGuard> },
   { path: "/staff/activity", render: () => <RoleGuard roles={ACTIVITY_PAGE_ROLES}><LazyPage load={loadActivity} props={{}} /></RoleGuard> },
   { path: "/staff/receiving", render: () => <RoleGuard roles={RECEIVING_PAGE_ROLES}><LazyPage key={location.search} load={loadReceiving} props={{}} /></RoleGuard> },

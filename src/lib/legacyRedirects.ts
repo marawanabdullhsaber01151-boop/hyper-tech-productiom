@@ -114,3 +114,7 @@ export function salesRedirectTarget(rawQuery: string): string {
   const qs = out.toString();
   return qs ? `/v2/staff/sales?${qs}` : "/v2/staff/sales";
 }
+
+/** صفحة الإعدادات القديمة ← مركز الإعدادات الجديد (المستخدمون وقواعد التوصيل وعن النظام بقوا تبويبات، وكلمة السر والتحقق بخطوتين في «حسابي»). */
+export const LEGACY_SETTINGS_PATH = "/settings.html";
+export const SETTINGS_REDIRECT_TARGET = "/v2/staff/settings";
