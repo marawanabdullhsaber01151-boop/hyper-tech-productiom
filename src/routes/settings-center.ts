@@ -4,12 +4,15 @@ import { Router } from "express";
 import { and, desc, eq } from "drizzle-orm";
 import { z } from "zod";
 import { auditEventsTable, db, systemUsersTable } from "../db";
-import { requirePermission } from "../middleware/auth";
+import { requireAuth, requirePermission } from "../middleware/auth";
 import { SETTING_DEFS, defOf } from "../domain/settings-registry";
 import { loadSettingValues, saveSettings } from "../lib/settingsStore";
 
 const router = Router();
 const requireSettings = requirePermission("settings.manageUsers");
+
+// بدون requireAuth الـreq.user بيبقى فاضي فكل طلب بيرجع 401 والواجهة تخرّج المستخدم (ده كان سبب «الإعدادات بتخرّجني»).
+router.use("/settings/center", requireAuth);
 
 const ISSUE_TEXT: Record<string, string> = {
   unknown: "إعداد غير معروف", type: "قيمة غير صالحة", range: "القيمة خارج الحدود المسموحة", length: "النص أطول من المسموح",
