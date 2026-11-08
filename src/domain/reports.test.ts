@@ -3,8 +3,8 @@ import { columnsOf, csvRows, exportFileName, inventoryReport, isReportId, needsR
 
 describe("الأدوار والتعريفات", () => {
   it("كل دور بيشوف تقارير قسمه والإدارة العليا بتشوف الكل", () => {
-    expect(reportsFor("chairman")).toEqual(["sales", "inventory", "purchases"]);
-    expect(reportsFor("executive_manager")).toEqual(["sales", "inventory", "purchases"]);
+    expect(reportsFor("chairman")).toEqual(["sales", "inventory", "purchases", "production"]);
+    expect(reportsFor("executive_manager")).toEqual(["sales", "inventory", "purchases", "production"]);
     expect(reportsFor("sales_manager")).toEqual(["sales"]);
     expect(reportsFor("warehouse_manager")).toEqual(["inventory"]);
     expect(reportsFor("purchasing_manager")).toEqual(["purchases"]);
@@ -109,5 +109,34 @@ describe("تقرير المشتريات (بيانات معروفة)", () => {
     const rows = csvRows(r);
     expect(rows).toHaveLength(2);
     expect(rows[0]![0]).toBe("رقم الأمر");
+  });
+});
+
+import { PRODUCTION_COST_ROLES, productionReport } from "./reports";
+describe("تقرير الإنتاج (41ب)", () => {
+  const raw = [
+    { orderNumber: "P-1", date: "2026-11-01", productName: "كيس", status: "completed", orderQty: "1000", planned: "1000", produced: "950", accepted: "900", scrap: "50", cost: "1500.10" },
+    { orderNumber: "P-2", date: "2026-11-02", productName: "علبة", status: "in_production", orderQty: "500", planned: "0", produced: "0", accepted: "0", scrap: "0", cost: "0.20" },
+  ];
+  it("الكفاءة والهالك والإجماليات بالأرقام الصحيحة", () => {
+    const r = productionReport(raw, true);
+    expect(r.rows[0]).toEqual(["P-1", "2026-11-01", "كيس", "مكتمل", 1000, 1000, 950, 900, 50, 5, 90, "1500.10"]);
+    expect(r.totals.slice(4)).toEqual([1500, 1000, 950, 900, 50, 5, 90, "1500.30"]);
+  });
+  it("صفر المخطط والمنتج = نسب صفر مش NaN", () => {
+    const r = productionReport(raw, true);
+    expect(r.rows[1]?.slice(9, 11)).toEqual([0, 0]);
+  });
+  it("من غير صلاحية التكلفة العمود والإجمالي مش موجودين", () => {
+    const r = productionReport(raw, false);
+    expect(r.columns.some((c) => c.key === "cost")).toBe(false);
+    expect(r.rows[0]?.length).toBe(r.columns.length);
+    expect(r.totals.length).toBe(r.columns.length);
+  });
+  it("الأدوار: الإنتاج والعمليات بيشوفوه والتكلفة للإدارة العليا بس", () => {
+    expect(reportsFor("production_manager")).toEqual(["production"]);
+    expect(reportsFor("operations_manager")).toEqual(["production"]);
+    expect(reportsFor("storekeeper")).toEqual([]);
+    expect([...PRODUCTION_COST_ROLES]).toEqual(["chairman", "executive_manager"]);
   });
 });

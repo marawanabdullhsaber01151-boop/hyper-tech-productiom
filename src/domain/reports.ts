@@ -5,7 +5,7 @@
  */
 import { centsToString, lineTotalCents, toCents } from "../lib/money";
 
-export type ReportId = "sales" | "inventory" | "purchases";
+export type ReportId = "sales" | "inventory" | "purchases" | "production";
 export type ColumnKind = "text" | "int" | "qty" | "money";
 export interface ReportColumn { key: string; label: string; kind: ColumnKind }
 export type Cell = string | number | null;
@@ -20,7 +20,10 @@ export const REPORT_ROLES: Readonly<Record<ReportId, readonly string[]>> = {
   sales: ["chairman", "executive_manager", "sales_manager"],
   inventory: ["chairman", "executive_manager", "warehouse_manager"],
   purchases: ["chairman", "executive_manager", "purchasing_manager"],
+  production: ["chairman", "executive_manager", "production_manager", "operations_manager"],
 };
+/** التكلفة في تقرير الإنتاج للإدارة العليا بس؛ مدير الإنتاج والعمليات بيشوفوا الكميات والكفاءة من غير أعمدة التكلفة. */
+export const PRODUCTION_COST_ROLES: readonly string[] = ["chairman", "executive_manager"];
 export const REPORT_IDS = Object.keys(REPORT_ROLES) as ReportId[];
 export const isReportId = (v: unknown): v is ReportId => typeof v === "string" && (REPORT_IDS as string[]).includes(v);
 export const reportsFor = (role: string): ReportId[] => REPORT_IDS.filter((id) => REPORT_ROLES[id].includes(role));
@@ -32,9 +35,26 @@ export const REPORT_TITLES: Readonly<Record<ReportId, string>> = {
   sales: "تقرير المبيعات",
   inventory: "تقرير المخزون",
   purchases: "تقرير المشتريات",
+  production: "تقرير الإنتاج",
 };
 
+const PRODUCTION_COLUMNS: ReportColumn[] = [
+  { key: "orderNumber", label: "رقم الأمر", kind: "text" },
+  { key: "date", label: "التاريخ", kind: "text" },
+  { key: "product", label: "المنتج", kind: "text" },
+  { key: "status", label: "الحالة", kind: "text" },
+  { key: "orderQty", label: "الكمية المطلوبة", kind: "qty" },
+  { key: "planned", label: "المخطط", kind: "qty" },
+  { key: "produced", label: "المنتج فعليًا", kind: "qty" },
+  { key: "accepted", label: "المقبول", kind: "qty" },
+  { key: "scrap", label: "الهالك", kind: "qty" },
+  { key: "scrapPct", label: "نسبة الهالك %", kind: "int" },
+  { key: "efficiency", label: "الكفاءة %", kind: "int" },
+];
+const PRODUCTION_COST_COLUMN: ReportColumn = { key: "cost", label: "التكلفة المعتمدة", kind: "money" };
+
 const COLUMNS: Readonly<Record<ReportId, ReportColumn[]>> = {
+  production: PRODUCTION_COLUMNS,
   sales: [
     { key: "orderNumber", label: "رقم الفاتورة", kind: "text" },
     { key: "date", label: "التاريخ", kind: "text" },
@@ -67,10 +87,15 @@ const COLUMNS: Readonly<Record<ReportId, ReportColumn[]>> = {
     { key: "total", label: "الإجمالي", kind: "money" },
   ],
 };
-export const columnsOf = (id: ReportId): ReportColumn[] => COLUMNS[id];
+export const columnsOf = (id: ReportId, withCost = false): ReportColumn[] => (id === "production" && withCost ? [...PRODUCTION_COLUMNS, PRODUCTION_COST_COLUMN] : COLUMNS[id]);
 
 export const CHANNEL_LABEL: Readonly<Record<string, string>> = { direct: "مباشر", website: "الموقع" };
 export const SALES_STATUS_LABEL: Readonly<Record<string, string>> = { draft: "مسودة", pending_approval: "في انتظار الاعتماد", confirmed: "مؤكدة", shipped: "تم الشحن", paid: "مدفوعة", cancelled: "ملغاة" };
+export const PRODUCTION_STATUS_LABEL: Readonly<Record<string, string>> = {
+  new: "جديد", pending_supervisor: "مستني المشرف", materials_requested: "مستني المخازن", materials_approved: "المواد معتمدة", materials_partial: "اعتماد جزئي",
+  materials_rejected: "مرفوض", in_production: "قيد التنفيذ", quality_check: "فحص الجودة", delivery_pending_customer: "مستني تسليم العميل",
+  delivery_pending_warehouse: "مستني تسليم المخزن", completed: "مكتمل", delivered_customer: "تم التسليم للعميل", delivered_warehouse: "تم التسليم للمخزن", cancelled: "ملغي",
+};
 export const PO_STATUS_LABEL: Readonly<Record<string, string>> = { draft: "مسودة", pending_approval: "في انتظار الاعتماد", approved: "معتمد", sent: "مُرسل", partially_received: "استلام جزئي", received: "تم الاستلام", cancelled: "ملغي" };
 export const CATEGORY_LABEL: Readonly<Record<string, string>> = { raw_material: "مواد خام", wip: "تحت التصنيع", finished_good: "منتج تام" };
 const label = (map: Readonly<Record<string, string>>, v: string) => map[v] ?? v;
@@ -131,6 +156,30 @@ export function purchasesReport(raw: readonly PurchasesRaw[], truncated = false)
   });
   return { id: "purchases", title: REPORT_TITLES.purchases, columns: columnsOf("purchases"), rows, totals: [totalLabel(rows.length), null, null, null, milliNum(ord), milliNum(rec), pct(rec, ord), money(tot)], truncated };
 }
+export interface ProductionRaw {
+  orderNumber: string; date: string; productName: string; status: string; orderQty: string | null;
+  planned: string | null; produced: string | null; accepted: string | null; scrap: string | null; cost: string | null;
+}
+/**
+ * تقرير الإنتاج: صف لكل أمر إنتاج في الفترة. الكميات بالألف (عدد صحيح) والتكلفة بالقروش، فمفيش جمع عائم.
+ * الكفاءة = المقبول ÷ المخطط. نسبة الهالك = الهالك ÷ المنتج فعليًا. النسبتان محدودتان بـ100 وصفر المقام = 0.
+ * التكلفة بتتحسب من القيود المعتمدة بس، وبتظهر فقط لو withCost.
+ */
+export function productionReport(raw: readonly ProductionRaw[], withCost: boolean, truncated = false): ReportResult {
+  let oq = 0n; let pl = 0n; let pr = 0n; let ac = 0n; let sc = 0n; let cost = 0n;
+  const rows: Cell[][] = raw.map((r) => {
+    const o = milli(r.orderQty); const p = milli(r.planned); const d = milli(r.produced); const a = milli(r.accepted); const x = milli(r.scrap);
+    const c = cents(r.cost);
+    oq += o; pl += p; pr += d; ac += a; sc += x; cost += c;
+    const row: Cell[] = [r.orderNumber, r.date, r.productName, label(PRODUCTION_STATUS_LABEL, r.status), milliNum(o), milliNum(p), milliNum(d), milliNum(a), milliNum(x), pct(x, d), pct(a, p)];
+    if (withCost) row.push(money(c));
+    return row;
+  });
+  const totals: Cell[] = [totalLabel(rows.length), null, null, null, milliNum(oq), milliNum(pl), milliNum(pr), milliNum(ac), milliNum(sc), pct(sc, pr), pct(ac, pl)];
+  if (withCost) totals.push(money(cost));
+  return { id: "production", title: REPORT_TITLES.production, columns: columnsOf("production", withCost), rows, totals, truncated };
+}
+
 /** نسبة الاستلام: صحيح مقرّب، ومحدود بـ100 (استلام زيادة ما يطلعش 130%). صفر مطلوب = 0. */
 export function pct(received: bigint, ordered: bigint): number {
   if (ordered <= 0n) return 0;

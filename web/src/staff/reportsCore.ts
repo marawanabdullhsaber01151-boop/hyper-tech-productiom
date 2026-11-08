@@ -1,7 +1,7 @@
 /** منطق نقي لصفحة التقارير (الخطوة 41أ). الحسابات نفسها بتتم في السيرفر؛ هنا الفترة وتنسيق العرض ومسار التصدير بس. */
 import { presetRange } from "./oeeCore";
 
-export type ReportId = "sales" | "inventory" | "purchases";
+export type ReportId = "sales" | "inventory" | "purchases" | "production";
 export type ColumnKind = "text" | "int" | "qty" | "money";
 export interface ReportColumn { key: string; label: string; kind: ColumnKind }
 export type Cell = string | number | null;
@@ -10,7 +10,7 @@ export interface ReportMeta { id: ReportId; title: string; needsRange: boolean }
 export type ExportFormat = "xlsx" | "csv";
 
 /** كل من ممكن يشوف تقرير (السيرفر بيحدد المتاح لكل دور). */
-export const REPORT_PAGE_ROLES = ["chairman", "executive_manager", "sales_manager", "warehouse_manager", "purchasing_manager"] as const;
+export const REPORT_PAGE_ROLES = ["chairman", "executive_manager", "sales_manager", "warehouse_manager", "purchasing_manager", "production_manager", "operations_manager"] as const;
 export const MAX_RANGE_DAYS = 366;
 
 const ISO = /^\d{4}-\d{2}-\d{2}$/;
@@ -54,4 +54,5 @@ export const STATUS_FILTERS: Readonly<Record<ReportId, readonly string[]>> = {
   sales: ["confirmed", "shipped", "paid", "pending_approval"],
   inventory: [],
   purchases: ["pending_approval", "approved", "sent", "partially_received", "received"],
+  production: ["new", "pending_supervisor", "materials_requested", "materials_approved", "in_production", "quality_check", "completed", "delivered_customer", "delivered_warehouse"],
 };

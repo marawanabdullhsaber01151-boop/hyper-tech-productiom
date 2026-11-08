@@ -9,6 +9,7 @@ import {
   boolean,
   jsonb,
   index,
+  primaryKey,
 } from "drizzle-orm/pg-core";
 import { z } from "zod";
 import { USER_ROLES } from "../../lib/roles";
@@ -152,3 +153,15 @@ export type InsertSystemSetting = z.infer<typeof insertSystemSettingSchema>;
 export type SystemSetting = typeof systemSettingsTable.$inferSelect;
 export type InsertSystemUser = z.infer<typeof insertSystemUserSchema>;
 export type SystemUser = typeof systemUsersTable.$inferSelect;
+
+/** تفضيلات المستخدم (الخطوة 41ب): صف لكل (مستخدم، مفتاح) وقيمته JSON. */
+export const userPreferencesTable = pgTable(
+  "user_preferences",
+  {
+    userId: integer("user_id").notNull().references(() => systemUsersTable.id, { onDelete: "cascade" }),
+    key: text("key").notNull(),
+    value: jsonb("value").notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({ pk: primaryKey({ columns: [t.userId, t.key] }) }),
+);

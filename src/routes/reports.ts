@@ -2,10 +2,10 @@
 // التقارير القابلة للتصدير (الخطوة 41أ): مبيعات ومخزون ومشتريات. معاينة JSON + تصدير Excel/CSV. الحسابات النقية في src/domain/reports.ts.
 import { Router } from "express";
 import { and, asc, desc, eq, gte, lt, lte, notInArray, sql } from "drizzle-orm";
-import { contactsTable, db, inventoryItemsTable, purchaseOrdersTable, salesOrdersTable } from "../db";
+import { contactsTable, db, inventoryItemsTable, productionWorkflowOrdersTable, purchaseOrdersTable, salesOrdersTable } from "../db";
 import { isIsoDate, reportRange } from "../domain/oee";
 import {
-  REPORT_ROLES, REPORT_TITLES, ROW_LIMIT, SALES_STATUS_LABEL, csvRows, exportFileName, inventoryReport, isReportId, needsRange, purchasesReport, reportsFor, salesReport,
+  PRODUCTION_COST_ROLES, PRODUCTION_STATUS_LABEL, REPORT_ROLES, REPORT_TITLES, ROW_LIMIT, SALES_STATUS_LABEL, csvRows, exportFileName, inventoryReport, isReportId, needsRange, productionReport, purchasesReport, reportsFor, salesReport,
   type ReportId, type ReportResult,
 } from "../domain/reports";
 import { writeAuditEvent } from "../lib/governance";
@@ -25,7 +25,7 @@ router.get("/reports", (req, res) => {
   res.json(reportsFor(req.user!.role).map((id) => ({ id, title: REPORT_TITLES[id], needsRange: needsRange(id) })));
 });
 
-async function load(id: ReportId, from: string, to: string, status: string): Promise<ReportResult> {
+async function load(id: ReportId, from: string, to: string, status: string, role: string): Promise<ReportResult> {
   if (id === "inventory") {
     const rows = await db.select({
       code: inventoryItemsTable.code, name: inventoryItemsTable.name, category: inventoryItemsTable.category, unit: inventoryItemsTable.unit,
@@ -51,6 +51,24 @@ async function load(id: ReportId, from: string, to: string, status: string): Pro
       .where(and(...cond)).orderBy(desc(salesOrdersTable.date), desc(salesOrdersTable.id)).limit(ROW_LIMIT + 1);
     return salesReport(rows.slice(0, ROW_LIMIT), rows.length > ROW_LIMIT);
   }
+  if (id === "production") {
+    const wo = productionWorkflowOrdersTable;
+    const withCost = PRODUCTION_COST_ROLES.includes(role);
+    if (status && !(status in PRODUCTION_STATUS_LABEL)) throw bad("حالة غير معروفة");
+    const rows = await db.select({
+      orderNumber: wo.orderNumber,
+      date: sql<string>`to_char(${wo.createdAt} at time zone 'Africa/Cairo', 'YYYY-MM-DD')`,
+      productName: wo.productName, status: wo.workflowStatus, orderQty: wo.qty,
+      planned: sql<string>`(select coalesce(sum(b.planned_qty), 0)::text from production_batches b where b.workflow_order_id = ${wo.id})`,
+      produced: sql<string>`(select coalesce(sum(b.produced_qty), 0)::text from production_batches b where b.workflow_order_id = ${wo.id})`,
+      accepted: sql<string>`(select coalesce(sum(b.accepted_qty), 0)::text from production_batches b where b.workflow_order_id = ${wo.id})`,
+      scrap: sql<string>`(select coalesce(sum(b.scrap_qty), 0)::text from production_batches b where b.workflow_order_id = ${wo.id})`,
+      cost: withCost ? sql<string>`(select coalesce(sum(c.amount), 0)::text from production_cost_entries c where c.workflow_order_id = ${wo.id} and c.status = 'approved')` : sql<string>`'0'`,
+    }).from(wo)
+      .where(and(gte(wo.createdAt, range.from), lt(wo.createdAt, range.to), status ? eq(wo.workflowStatus, status) : notInArray(wo.workflowStatus, ["cancelled"])))
+      .orderBy(desc(wo.createdAt), desc(wo.id)).limit(ROW_LIMIT + 1);
+    return productionReport(rows.slice(0, ROW_LIMIT), withCost, rows.length > ROW_LIMIT);
+  }
   const rows = await db.select({
     poNumber: purchaseOrdersTable.poNumber,
     date: sql<string>`to_char(${purchaseOrdersTable.createdAt} at time zone 'Africa/Cairo', 'YYYY-MM-DD')`,
@@ -72,7 +90,7 @@ router.get("/reports/:id", async (req, res, next) => {
     const format = q(req.query.format) || "json";
     if (!["json", "xlsx", "csv"].includes(format)) throw bad("صيغة غير مدعومة");
     const from = q(req.query.from); const to = q(req.query.to);
-    const report = await load(id, from, to, q(req.query.status));
+    const report = await load(id, from, to, q(req.query.status), req.user!.role);
     if (format === "json") { res.json({ data: report }); return; }
     // التصدير بيطلّع بيانات برّه النظام فبيتسجّل مين صدّر إيه.
     await writeAuditEvent({

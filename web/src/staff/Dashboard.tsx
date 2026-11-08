@@ -1,13 +1,15 @@
+import type { ComponentChildren } from "preact";
 import { useEffect, useMemo, useState } from "preact/hooks";
 import { api } from "../admin/api";
 import { useQuery } from "../api/hooks";
 import { t, type CopyKey } from "../copy";
 import { Button, Card, DataTable, EmptyState, InlineAlert, ProgressBar, Stat, StatusPill, type Column } from "../design/components";
-import { RefreshCw } from "../design/icons";
+import { ChevronDown, ChevronUp, RefreshCw } from "../design/icons";
 import { formatDate, formatNumber } from "../lib/format";
 import { resolveHref, type NavResponse } from "./nav";
 import { getShared, invalidateShared } from "./sharedData";
 import { Link } from "../app/router";
+import { DEFAULT_LAYOUT, customizableCards, isDefaultLayout, moveCard, normalizeLayout, toggleCard, visibleCards, type CardId, type Layout } from "./dashboardLayout";
 import { categoryShares, computeKpis, deriveAlerts, isActive, isKnownStatus, statusCounts, statusTone, type DashAlert, type DashSummary, type InvItem, type WorkflowOrder } from "./dashboardCore";
 
 const MAX_ALERTS = 8;
@@ -63,6 +65,23 @@ export function Dashboard({ nav }: { nav?: NavResponse }) {
   const stock = useQuery(() => (mayStock ? getShared<InvItem[]>("/inventory") : Promise.resolve(null)), [mayStock]);
   const summary = useQuery((signal) => (maySummary ? api.get<DashSummary>("/dashboard", { signal }) : Promise.resolve(null)), [maySummary]);
   const [updated, setUpdated] = useState<Date | null>(null);
+  // ترتيب وإخفاء الكروت محفوظين على السيرفر لكل مستخدم (بيمشوا معاه على أي جهاز)
+  const [layout, setLayout] = useState<Layout>(DEFAULT_LAYOUT);
+  const [editing, setEditing] = useState(false);
+  const [saveFailed, setSaveFailed] = useState(false);
+  const anySource = !access.loading && (mayOrders || mayStock || maySummary);
+  useEffect(() => {
+    if (!anySource) return;
+    const ctrl = new AbortController();
+    api.get<unknown>("/me/preferences/dashboard", { signal: ctrl.signal }).then((v) => setLayout(normalizeLayout(v))).catch(() => undefined);
+    return () => ctrl.abort();
+  }, [anySource]);
+  const saveLayout = (next: Layout) => {
+    setLayout(next);
+    setSaveFailed(false);
+    const call = isDefaultLayout(next) ? api.delete<unknown>("/me/preferences/dashboard") : api.put<unknown>("/me/preferences/dashboard", next);
+    call.catch(() => setSaveFailed(true));
+  };
 
   const refreshAll = async () => {
     // التحديث اليدوي والدوري دايمًا بيجيب بيانات جديدة (الكاش المشترك للجرس والبحث بس)
@@ -115,19 +134,17 @@ export function Dashboard({ nav }: { nav?: NavResponse }) {
   const near = summary.data?.inventory?.approachingLowStock ?? [];
   const quick = QUICK.filter((q) => hrefs.has(q.href.replace(/^\//, "")));
 
-  return (
-    <section class="st-dash" aria-labelledby="st-dash-title">
-      <div class="st-dash__head">
-        <h2 id="st-dash-title" class="st-dash__title">{t("staff.dash.title")}</h2>
-        <div class="st-dash__tools">
-          <StatusPill tone={failed.length ? "danger" : "success"} pulse={!failed.length}>{failed.length ? t("staff.dash.offline") : t("staff.dash.live")}</StatusPill>
-          {updated ? <span class="st-dash__muted">{t("staff.dash.updated", { time: updated.toLocaleTimeString("ar-EG-u-nu-latn", { hour: "2-digit", minute: "2-digit" }) })}</span> : null}
-          <Button size="sm" variant="secondary" icon={RefreshCw} onClick={() => void refreshAll()}>{t("staff.dash.refresh")}</Button>
-        </div>
-      </div>
-
-      {failed.length ? <InlineAlert tone="danger">{t("staff.dash.err", { parts: failed.join(t("staff.dash.sep")) })}</InlineAlert> : null}
-
+  const available = new Set<CardId>([
+    ...(mayOrders || mayStock ? (["kpis", "alerts"] as CardId[]) : []),
+    ...(mayOrders ? (["status", "orders"] as CardId[]) : []),
+    ...(mayStock ? (["categories"] as CardId[]) : []),
+    ...(maySummary && summary.data ? (["summary"] as CardId[]) : []),
+  ]);
+  const shown = visibleCards(layout, available);
+  const editable = customizableCards(layout, available);
+  const cards: Record<CardId, ComponentChildren> = {
+    kpis: (
+      <>
       {mayOrders || mayStock ? (
         <div class="st-stats">
           {mayOrders ? <Stat label={t("staff.dash.stat.completed")} value={formatNumber(kpis.completedThisMonth)} tone="success" /> : null}
@@ -136,8 +153,10 @@ export function Dashboard({ nav }: { nav?: NavResponse }) {
           {mayStock ? <Stat label={t("staff.dash.stat.coverage")} value={`${formatNumber(kpis.coverage)}%`} hint={t("staff.dash.stat.coverageHint")} /> : null}
         </div>
       ) : null}
-
-      <div class="st-dash__cols">
+      </>
+    ),
+    status: (
+      <>
         {mayOrders ? (
           <Card class="st-dash__card">
             <h3 class="st-dash__h3">{t("staff.dash.status.title")}</h3>
@@ -156,6 +175,11 @@ export function Dashboard({ nav }: { nav?: NavResponse }) {
           </Card>
         ) : null}
 
+
+      </>
+    ),
+    alerts: (
+      <>
         {mayOrders || mayStock ? (
           <Card class="st-dash__card">
             <div class="st-dash__row">
@@ -180,8 +204,11 @@ export function Dashboard({ nav }: { nav?: NavResponse }) {
             )}
           </Card>
         ) : null}
-      </div>
 
+      </>
+    ),
+    orders: (
+      <>
       {mayOrders ? (
         <Card class="st-dash__card">
           <div class="st-dash__row">
@@ -199,7 +226,11 @@ export function Dashboard({ nav }: { nav?: NavResponse }) {
         </Card>
       ) : null}
 
-      <div class="st-dash__cols">
+
+      </>
+    ),
+    categories: (
+      <>
         {mayStock ? (
           <Card class="st-dash__card">
             <h3 class="st-dash__h3">{t("staff.dash.cat.title")}</h3>
@@ -221,6 +252,11 @@ export function Dashboard({ nav }: { nav?: NavResponse }) {
           </Card>
         ) : null}
 
+
+      </>
+    ),
+    summary: (
+      <>
         {maySummary && summary.data ? (
           <Card class="st-dash__card">
             <h3 class="st-dash__h3">{t("staff.dash.sum.title")}</h3>
@@ -248,6 +284,56 @@ export function Dashboard({ nav }: { nav?: NavResponse }) {
             )}
           </Card>
         ) : null}
+      </>
+    ),
+  };
+
+  return (
+    <section class="st-dash" aria-labelledby="st-dash-title">
+      <div class="st-dash__head">
+        <h2 id="st-dash-title" class="st-dash__title">{t("staff.dash.title")}</h2>
+        <div class="st-dash__tools">
+          <StatusPill tone={failed.length ? "danger" : "success"} pulse={!failed.length}>{failed.length ? t("staff.dash.offline") : t("staff.dash.live")}</StatusPill>
+          {updated ? <span class="st-dash__muted">{t("staff.dash.updated", { time: updated.toLocaleTimeString("ar-EG-u-nu-latn", { hour: "2-digit", minute: "2-digit" }) })}</span> : null}
+          <Button size="sm" variant="ghost" aria-expanded={editing} onClick={() => setEditing((v) => !v)}>{t("staff.dash.custom.open")}</Button>
+          <Button size="sm" variant="secondary" icon={RefreshCw} onClick={() => void refreshAll()}>{t("staff.dash.refresh")}</Button>
+        </div>
+      </div>
+
+      {failed.length ? <InlineAlert tone="danger">{t("staff.dash.err", { parts: failed.join(t("staff.dash.sep")) })}</InlineAlert> : null}
+
+      {editing ? (
+        <Card class="st-dash__card">
+          <h3 class="st-dash__h3">{t("staff.dash.custom.title")}</h3>
+          <p class="st-dash__muted">{t("staff.dash.custom.hint")}</p>
+          {saveFailed ? <InlineAlert tone="warn">{t("staff.dash.custom.saveFail")}</InlineAlert> : null}
+          <ul class="st-dash__custom">
+            {editable.map((id, i) => {
+              const hidden = layout.hidden.includes(id);
+              const name = t(`staff.dash.card.${id}` as CopyKey);
+              return (
+                <li key={id} class="st-dash__row">
+                  <span class={hidden ? "st-dash__muted" : undefined}>{name}</span>
+                  <span class="st-dash__custom-actions">
+                    <Button size="sm" variant="ghost" icon={ChevronUp} aria-label={t("staff.dash.custom.up", { name })} disabled={i === 0} onClick={() => saveLayout(moveCard(layout, id, -1, available))} />
+                    <Button size="sm" variant="ghost" icon={ChevronDown} aria-label={t("staff.dash.custom.down", { name })} disabled={i === editable.length - 1} onClick={() => saveLayout(moveCard(layout, id, 1, available))} />
+                    <Button size="sm" variant="secondary" aria-pressed={!hidden} onClick={() => saveLayout(toggleCard(layout, id))}>{hidden ? t("staff.dash.custom.show") : t("staff.dash.custom.hide")}</Button>
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+          <div class="st-dash__tools">
+            <Button size="sm" variant="ghost" disabled={isDefaultLayout(layout)} onClick={() => saveLayout(DEFAULT_LAYOUT)}>{t("staff.dash.custom.reset")}</Button>
+            <Button size="sm" onClick={() => setEditing(false)}>{t("staff.dash.custom.done")}</Button>
+          </div>
+        </Card>
+      ) : null}
+
+      <div class="st-dash__grid">
+        {shown.map((id) => (
+          <div key={id} class={`st-dash__slot${id === "kpis" || id === "orders" ? " st-dash__slot--wide" : ""}`}>{cards[id]}</div>
+        ))}
       </div>
 
       {quick.length ? (

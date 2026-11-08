@@ -102,6 +102,11 @@
 .st-dash__title { margin: 0; font-size: var(--fs-lg); font-weight: 800; }
 .st-dash__tools { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); }
 .st-dash__cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: var(--sp-3); }
+.st-dash__grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: var(--sp-3); align-items: start; }
+.st-dash__slot { min-width: 0; }
+.st-dash__slot--wide { grid-column: 1 / -1; }
+.st-dash__custom { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--sp-2); }
+.st-dash__custom-actions { display: flex; align-items: center; gap: var(--sp-1); }
 .st-dash__card { display: flex; flex-direction: column; gap: var(--sp-3); }
 .st-dash__h3 { margin: 0; font-size: var(--fs-md); font-weight: 800; }
 .st-dash__h4 { margin: 0; font-size: var(--fs-sm); font-weight: 700; color: var(--c-text-2); }
