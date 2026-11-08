@@ -15,6 +15,7 @@ import { receivingCopy } from "./receiving";
 import { activityCopy } from "./activity";
 import { approvalsCopy } from "./approvals";
 import { approvalsAdminCopy } from "./approvalsAdmin";
+import { reportsCopy } from "./reports";
 import { settingsCopy } from "./settings";
 
 export const lazyCopies = {
@@ -32,4 +33,5 @@ export const lazyCopies = {
   approvals: approvalsCopy,
   approvalsAdmin: approvalsAdminCopy,
   settings: settingsCopy,
+  reports: reportsCopy,
 } as const;

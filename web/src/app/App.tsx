@@ -11,7 +11,7 @@ import { StaffShell } from "../staff/StaffShell";
 import { StaffNotFound } from "../staff/SystemPages";
 import { RoleGuard } from "../staff/RoleGuard";
 import { PURCHASE_ROLES } from "../staff/purchasingCore";
-import { ACTIVITY_PAGE_ROLES, APPROVALS_PAGE_ROLES, CONTACT_ROLES, ENGINEERING_PAGE_ROLES, FOUNDATION_PAGE_ROLES, HEALTH_ROLES, OPERATIONS_ROLES, PLANNING_PAGE_ROLES, PRODUCTION_PAGE_ROLES, RECEIVING_PAGE_ROLES, SALES_PAGE_ROLES, SETTINGS_PAGE_ROLES, STOCK_ROLES } from "../staff/staffRoles";
+import { ACTIVITY_PAGE_ROLES, APPROVALS_PAGE_ROLES, CONTACT_ROLES, ENGINEERING_PAGE_ROLES, FOUNDATION_PAGE_ROLES, HEALTH_ROLES, OPERATIONS_ROLES, PLANNING_PAGE_ROLES, PRODUCTION_PAGE_ROLES, RECEIVING_PAGE_ROLES, REPORT_PAGE_ROLES, SALES_PAGE_ROLES, SETTINGS_PAGE_ROLES, STOCK_ROLES } from "../staff/staffRoles";
 import { LazyPage } from "./lazyPage";
 
 const loadSales = () => import("../staff/Sales").then((m) => m.Sales as ComponentType<{ key?: string }>);
@@ -20,6 +20,7 @@ const loadContacts = () => import("../staff/Contacts").then((m) => m.Contacts as
 const loadOperations = () => import("../staff/Operations").then((m) => m.Operations as ComponentType<{ key?: string }>);
 const loadProduction = () => import("../staff/Production").then((m) => m.Production as ComponentType<{ key?: string }>);
 const loadFoundation = () => import("../staff/Foundation").then((m) => m.Foundation as ComponentType<{ key?: string }>);
+const loadReports = () => import("../staff/Reports").then((m) => m.Reports as ComponentType<Record<string, never>>);
 const loadSettings = () => import("../staff/Settings").then((m) => m.Settings as ComponentType<Record<string, never>>);
 const loadAccount = () => import("../staff/Account").then((m) => m.Account as ComponentType<Record<string, never>>);
 const loadApprovals = () => import("../staff/Approvals").then((m) => m.Approvals as ComponentType<Record<string, never>>);
@@ -39,6 +40,7 @@ export const staffRoutes: RouteDef[] = [
   { path: "/staff/contacts", render: () => <RoleGuard roles={CONTACT_ROLES}><LazyPage key={location.search} load={loadContacts} props={{}} /></RoleGuard> },
   { path: "/staff/operations", render: () => <RoleGuard roles={OPERATIONS_ROLES}><LazyPage key={location.search} load={loadOperations} props={{}} /></RoleGuard> },
   { path: "/staff/production", render: () => <RoleGuard roles={PRODUCTION_PAGE_ROLES}><LazyPage key={location.search} load={loadProduction} props={{}} /></RoleGuard> },
+  { path: "/staff/reports", render: () => <RoleGuard roles={REPORT_PAGE_ROLES}><LazyPage load={loadReports} props={{}} /></RoleGuard> },
   { path: "/staff/settings", render: () => <RoleGuard roles={SETTINGS_PAGE_ROLES}><LazyPage load={loadSettings} props={{}} /></RoleGuard> },
   { path: "/staff/account", render: () => <LazyPage load={loadAccount} props={{}} /> },
   { path: "/staff/approvals", render: () => <RoleGuard roles={APPROVALS_PAGE_ROLES}><LazyPage load={loadApprovals} props={{}} /></RoleGuard> },

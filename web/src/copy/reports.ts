@@ -1,0 +1,40 @@
+/** نصوص صفحة التقارير (الخطوة 41أ). */
+import { registerCopy } from "./registry";
+
+export const reportsCopy = {
+  "rep.title": "التقارير",
+  "rep.subtitle": "اختار التقرير والفترة، راجع الأرقام، ونزّله Excel أو اطبعه PDF.",
+  "rep.pick": "التقرير",
+  "rep.from": "من تاريخ",
+  "rep.to": "إلى تاريخ",
+  "rep.status": "الحالة",
+  "rep.status.all": "كل الحالات المعتمدة",
+  "rep.status.confirmed": "مؤكدة",
+  "rep.status.shipped": "تم الشحن",
+  "rep.status.paid": "مدفوعة",
+  "rep.status.pending_approval": "في انتظار الاعتماد",
+  "rep.status.approved": "معتمد",
+  "rep.status.sent": "مُرسل",
+  "rep.status.partially_received": "استلام جزئي",
+  "rep.status.received": "تم الاستلام",
+  "rep.run": "عرض التقرير",
+  "rep.excel": "تنزيل Excel",
+  "rep.csv": "تنزيل CSV",
+  "rep.print": "طباعة / حفظ PDF",
+  "rep.printHint": "في نافذة الطباعة اختار «حفظ كـ PDF».",
+  "rep.snapshot": "بيانات اللحظة الحالية (من غير فترة).",
+  "rep.period": "الفترة: من {from} إلى {to}",
+  "rep.generated": "اتطلع في {when}",
+  "rep.empty": "مفيش بيانات في الفترة دي.",
+  "rep.none": "مفيش تقارير متاحة لدورك.",
+  "rep.truncated": "التقرير فيه أكتر من 5000 صف، المعروض أول 5000 بس. ضيّق الفترة.",
+  "rep.err.format": "اختار تاريخين صحيحين.",
+  "rep.err.order": "تاريخ البداية لازم يسبق النهاية أو يساويها.",
+  "rep.err.long": "أقصى فترة سنة واحدة.",
+  "rep.loadFail": "تعذّر تحميل التقرير.",
+  "rep.exportFail": "تعذّر التنزيل. جرّب تاني.",
+  "rep.exported": "تم تنزيل الملف.",
+  "rep.caption": "جدول التقرير",
+} as const;
+
+registerCopy(reportsCopy);

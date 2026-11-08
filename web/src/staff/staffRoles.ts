@@ -43,3 +43,4 @@ export { APPROVER_ROLES as APPROVALS_PAGE_ROLES } from "./approvalsCore";
 
 /** مركز الإعدادات: نفس صلاحية settings.manageUsers في السيرفر (رئيس المجلس). */
 export { SETTINGS_ROLES as SETTINGS_PAGE_ROLES } from "./settingsCore";
+export { REPORT_PAGE_ROLES } from "./reportsCore";
