@@ -84,6 +84,12 @@ describe("workflows GitHub", () => {
     expect(y).toContain("BACKUP_AGE_PUBLIC_KEY");
   });
 
+  it("أسرار المخزن بتتنضّف من المسافات والسطر الجديد، والرابط بيتصلّح (https وبدون / أو اسم bucket)", () => {
+    const c = read("scripts/backup/common.sh");
+    expect(c).toContain("tr -d '[:space:]'");
+    expect(c).toContain('ep="${ep%/}"');
+    expect(c).toContain('ep="${ep%/$kd}"');
+  });
   it("restore-test أسبوعي بقاعدة مؤقتة والمفتاح الخاص فيه هو بس", () => {
     const y = read(".github/workflows/restore-test.yml");
     expect(y).toMatch(/cron: "0 2 \* \* 0"/);

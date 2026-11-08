@@ -31,9 +31,14 @@ configured_stores() {
 use_store() {
   local p; p=$(printf '%s' "$1" | tr '[:lower:]' '[:upper:]')
   local a="${p}_ACCESS_KEY_ID" b="${p}_SECRET_ACCESS_KEY" c="${p}_ENDPOINT" d="${p}_BUCKET"
-  export AWS_ACCESS_KEY_ID="${!a}" AWS_SECRET_ACCESS_KEY="${!b}" S3_BUCKET="${!d}"
-  local ep="${!c}"
+  # الأسرار بتتنضّف من أي مسافة أو سطر جديد اتلصق بالغلط (سبب خطأ «Invalid endpoint: https:// ***»).
+  local ka kb kd ep
+  ka=$(printf '%s' "${!a}" | tr -d '[:space:]'); kb=$(printf '%s' "${!b}" | tr -d '[:space:]'); kd=$(printf '%s' "${!d}" | tr -d '[:space:]')
+  ep=$(printf '%s' "${!c}" | tr -d '[:space:]'); ep="${ep%/}"
+  export AWS_ACCESS_KEY_ID="$ka" AWS_SECRET_ACCESS_KEY="$kb" S3_BUCKET="$kd"
   case "$ep" in http://*|https://*) ;; *) ep="https://$ep" ;; esac
+  # لو الرابط فيه اسم الـbucket في آخره (R2 أحيانًا بيدّيه كده) بنشيله.
+  ep="${ep%/$kd}"
   export S3_ENDPOINT="$ep"
   # R2 بيستخدم region=auto. Backblaze region بتتاخد من العنوان: s3.<region>.backblazeb2.com
   if [ "$1" = "r2" ]; then export AWS_DEFAULT_REGION=auto
