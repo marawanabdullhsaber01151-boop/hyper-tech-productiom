@@ -2,7 +2,7 @@
 # دوال مشتركة لسكربتات النسخ الاحتياطي واختبار الاسترجاع. بتتحمّل بـ: source scripts/backup/common.sh
 # أي سر بييجي من متغيرات البيئة (GitHub Secrets)، ومفيش حاجة منهم بتتطبع.
 
-PG_MAJOR="${PG_MAJOR:-17}"
+PG_MAJOR="${PG_MAJOR:-18}"
 PG_BIN="/usr/lib/postgresql/${PG_MAJOR}/bin"
 [ -x "$PG_BIN/pg_dump" ] || PG_BIN="$(dirname "$(command -v pg_dump)")"
 

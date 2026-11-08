@@ -3,7 +3,7 @@ description: يثبّت أدوات Postgres (نفس إصدار الخادم) و�
 inputs:
   pg-major:
     description: رقم إصدار PostgreSQL الرئيسي (لازم يساوي أو يزيد عن إصدار خادم Neon)
-    default: "17"
+    default: "18"
 runs:
   using: composite
   steps:

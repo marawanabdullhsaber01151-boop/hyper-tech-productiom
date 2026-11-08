@@ -87,7 +87,7 @@ describe("workflows GitHub", () => {
   it("restore-test أسبوعي بقاعدة مؤقتة والمفتاح الخاص فيه هو بس", () => {
     const y = read(".github/workflows/restore-test.yml");
     expect(y).toMatch(/cron: "0 2 \* \* 0"/);
-    expect(y).toContain("image: postgres:17");
+    expect(y).toContain("image: postgres:18");
     expect(y).toContain("secrets.BACKUP_AGE_PRIVATE_KEY");
     expect(y).toContain("RESTORE_ADMIN_URL: postgres://postgres:ci@localhost");
   });
@@ -102,9 +102,9 @@ describe("workflows GitHub", () => {
 
   it("إصدار Postgres واحد في الـworkflows والـaction والخدمة", () => {
     const a = read(".github/actions/setup-backup-tools/action.yml");
-    expect(a).toContain('default: "17"');
-    expect(read(".github/workflows/backup.yml")).toContain('PG_MAJOR: "17"');
-    expect(read(".github/workflows/restore-test.yml")).toContain('PG_MAJOR: "17"');
+    expect(a).toContain('default: "18"');
+    expect(read(".github/workflows/backup.yml")).toContain('PG_MAJOR: "18"');
+    expect(read(".github/workflows/restore-test.yml")).toContain('PG_MAJOR: "18"');
   });
 
   it("الدليل موجود، و.gitignore بيمنع النسخ والمفاتيح", () => {

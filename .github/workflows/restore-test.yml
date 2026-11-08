@@ -20,7 +20,7 @@ jobs:
     timeout-minutes: 45
     services:
       postgres:
-        image: postgres:17
+        image: postgres:18
         env:
           POSTGRES_PASSWORD: ci
           POSTGRES_DB: postgres
@@ -28,7 +28,7 @@ jobs:
         options: >-
           --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
     env:
-      PG_MAJOR: "17"
+      PG_MAJOR: "18"
       RESTORE_ADMIN_URL: postgres://postgres:ci@localhost:5432/postgres
       BACKUP_AGE_PRIVATE_KEY: ${{ secrets.BACKUP_AGE_PRIVATE_KEY }}
       BACKUP_DATABASE_URL: ${{ secrets.BACKUP_DATABASE_URL }}
@@ -44,6 +44,6 @@ jobs:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-backup-tools
         with:
-          pg-major: "17"
+          pg-major: "18"
       - name: استرجاع ومقارنة
         run: bash scripts/backup/restore-test.sh
