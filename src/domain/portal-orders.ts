@@ -6,6 +6,8 @@ export type PortalOrderItem = {
   productName: string;
   qty: string;
   unit: string;
+  /** عدد القطع في الكرتونة وقت الطلب (اختياري، 42ب). */
+  piecesPerCarton?: number | null;
   workflowStatus: string;
   // Phase 3: تسعير مرجعي + تواريخ/طرق تسليم مقترحة، كلها معروضة للعميل
   // كمعلومات إرشادية فقط — مفيش أي منها مربوط بفاتورة أو رصيد.
@@ -27,6 +29,7 @@ export function toPortalOrderItem(
     productName: order.productName,
     qty: order.qty,
     unit: order.unit,
+    ...(order.piecesPerCarton ? { piecesPerCarton: order.piecesPerCarton } : {}),
     workflowStatus: order.workflowStatus,
     neededBy: order.neededBy ?? null,
     suggestedDueDate: order.suggestedDueDate ?? null,

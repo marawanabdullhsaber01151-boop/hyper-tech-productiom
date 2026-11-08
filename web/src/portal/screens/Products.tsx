@@ -9,6 +9,7 @@ import { can } from "../session";
 import { setCartQty, useCart } from "../cart";
 import type { Product, ProductDetail } from "../types";
 import { cartonHint } from "../cartonCore";
+import { breakdownText, qtyBreakdown } from "../../lib/qtyBreakdown";
 import { ListSkeleton, LoadError } from "./shared";
 
 function useConfig() {
@@ -87,6 +88,7 @@ export function Products() {
             <span class="pt-product__info">
               <span class="pt-product__name">{p.productName}</span>
               <span class="pt-product__code">{p.productCode}</span>
+              {p.cartonConversion ? <span class="pt-product__carton">{t("p.products.cartonAvail", { per: formatNumber(p.cartonConversion.piecesPerCarton) })}</span> : null}
             </span>
           </button>
         ))}
@@ -150,6 +152,7 @@ function ProductDrawer({ id, onClose, fav, onFav }: { id: number | null; onClose
   const per = d?.cartonConversion?.piecesPerCarton ?? 0;
   const pieces = (unit === "carton" ? Number(qty) * per : Number(qty)) || 0;
   const hint = unit === "piece" ? cartonHint(pieces, per, min) : null;
+  const breakdown = qtyBreakdown(pieces, per);
   const inCart = d ? cart.items.find((i) => i.recipeId === d.id) : undefined;
 
   useEffect(() => {
@@ -226,6 +229,7 @@ function ProductDrawer({ id, onClose, fav, onFav }: { id: number | null; onClose
               <Field label={unit === "carton" ? t("p.products.cartons") : t("p.products.qty")} hint={unit === "carton" && pieces ? t("p.products.cartonsHint", { n: formatNumber(pieces) }) : undefined}>
                 <Input type="number" inputMode="numeric" min={1} dir="ltr" value={qty} onInput={(e) => setQty((e.currentTarget as HTMLInputElement).value)} />
               </Field>
+              {breakdown ? <p class="pt-muted">{breakdownText(breakdown)}. {t("common.qty.total", { pieces: formatNumber(breakdown.pieces) })}</p> : null}
               {hint ? (
                 <div class="pt-carton-hint">
                   <span class="pt-muted">{t("p.carton.hint", { add: formatNumber(hint.add) })}</span>

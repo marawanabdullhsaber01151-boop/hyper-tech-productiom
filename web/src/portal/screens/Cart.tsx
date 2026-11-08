@@ -8,6 +8,7 @@ import { formatNumber } from "../../lib/format";
 import { api } from "../api";
 import { can } from "../session";
 import { cartonHint } from "../cartonCore";
+import { breakdownText, qtyBreakdown } from "../../lib/qtyBreakdown";
 import { cartPieces, clearCartLocal, loadCart, removeFromCart, setCartQty, useCart } from "../cart";
 import type { CartItem } from "../types";
 import { ApiError } from "../../api/client";
@@ -18,10 +19,17 @@ function Line({ item }: { item: CartItem }) {
   const toast = useToast();
   const [draft, setDraft] = useState<string | null>(null);
   const qty = Number(item.qty);
+  const per = item.cartonConversion?.piecesPerCarton ?? 0;
+  const [unit, setUnit] = useState<"piece" | "carton">("piece");
+  const byCarton = unit === "carton" && per > 1;
+  const step = byCarton ? per : 1;
+  const shownQty = byCarton ? Math.floor(qty / per) : qty;
+  const breakdown = qtyBreakdown(qty, per);
   const hint = cartonHint(qty, item.cartonConversion?.piecesPerCarton, 1); // الحد الأدنى اتفحص وقت الإضافة للسلة
   const run = (p: Promise<unknown>) => p.catch((e: ApiError) => toast({ tone: "danger", message: e.message }));
   const commit = () => {
-    const n = Math.round(Number(draft));
+    const typed = Math.round(Number(draft));
+    const n = byCarton ? typed * per : typed; // الكمية في السلة دايمًا بالقطع
     setDraft(null);
     if (Number.isFinite(n) && n >= 1 && n !== qty) void run(setCartQty(item.recipeId, n, "set"));
   };
@@ -31,6 +39,7 @@ function Line({ item }: { item: CartItem }) {
         <div class="pt-line__name">{item.productName}</div>
         <div class="pt-muted pt-ltr">{item.productCode}</div>
         {!item.available ? <InlineAlert tone="warn">{t("p.cart.unavailable")}</InlineAlert> : null}
+        {breakdown ? <div class="pt-muted">{breakdownText(breakdown)}. {t("common.qty.total", { pieces: formatNumber(breakdown.pieces) })}</div> : null}
         {hint ? (
           <div class="pt-carton-hint">
             <span class="pt-muted">{t("p.carton.hint", { add: formatNumber(hint.add) })}</span>
@@ -39,19 +48,25 @@ function Line({ item }: { item: CartItem }) {
         ) : null}
       </div>
       <div class="pt-line__ctrl">
-        <IconButton icon={Minus} size="sm" label={t("p.cart.dec", { name: item.productName })} disabled={qty <= 1} onClick={() => void run(setCartQty(item.recipeId, qty - 1, "set"))} />
+        {per > 1 ? (
+          <div class="pt-seg" role="group" aria-label={t("p.cart.unitOf", { name: item.productName })}>
+            <button type="button" aria-pressed={unit === "piece"} onClick={() => { setUnit("piece"); setDraft(null); }}>{t("p.cart.byPiece")}</button>
+            <button type="button" aria-pressed={unit === "carton"} onClick={() => { setUnit("carton"); setDraft(null); }}>{t("p.cart.byCarton")}</button>
+          </div>
+        ) : null}
+        <IconButton icon={Minus} size="sm" label={t("p.cart.dec", { name: item.productName })} disabled={qty - step < 1} onClick={() => void run(setCartQty(item.recipeId, qty - step, "set"))} />
         <input
           class="ht-control ht-control--ltr"
           type="number"
           inputMode="numeric"
           min={1}
           aria-label={t("p.cart.qtyOf", { name: item.productName })}
-          value={draft ?? String(qty)}
+          value={draft ?? String(shownQty)}
           onInput={(e) => setDraft((e.currentTarget as HTMLInputElement).value)}
           onBlur={commit}
           onKeyDown={(e) => e.key === "Enter" && (e.currentTarget as HTMLInputElement).blur()}
         />
-        <IconButton icon={Plus} size="sm" label={t("p.cart.inc", { name: item.productName })} onClick={() => void run(setCartQty(item.recipeId, qty + 1, "set"))} />
+        <IconButton icon={Plus} size="sm" label={t("p.cart.inc", { name: item.productName })} onClick={() => void run(setCartQty(item.recipeId, qty + step, "set"))} />
         <IconButton icon={Trash} size="sm" variant="danger" label={t("p.cart.remove", { name: item.productName })} onClick={() => void run(removeFromCart(item.recipeId))} />
       </div>
     </Card>

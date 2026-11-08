@@ -28,6 +28,10 @@ export type Plural = { zero?: string; one?: string; two?: string; few?: string; 
 export type Msg = string | Plural;
 
 export const ar = {
+  "common.qty.cartons": "{n} كرتونة (الكرتونة {per} قطعة)",
+  "common.qty.cartonsLoose": "{n} كرتونة + {loose} قطعة (الكرتونة {per} قطعة)",
+  "common.qty.total": "الإجمالي {pieces} قطعة",
+  "common.qty.perCarton": "الكرتونة = {per} قطعة",
   "common.save": "احفظ",
   "common.saved": "تم الحفظ",
   "common.cancel": "إلغاء",

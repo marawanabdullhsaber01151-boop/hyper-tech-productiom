@@ -65,6 +65,7 @@ import { suggestDueDate } from "../lib/dueDateSuggestion";
 import { resolvePortalProductIdentity } from "../lib/portalCatalog";
 import { toPortalFeaturedIngredients } from "../lib/featuredIngredients";
 import { CartonConversion, toCartonConversion } from "../lib/cartonConversion";
+import { loadCartonConversions } from "../lib/cartonLookup";
 import { computeDeliveryMethod } from "../lib/deliveryMethod";
 import {
   assertCancellable,
@@ -1708,31 +1709,8 @@ router.get(
           ),
         )
         .orderBy(portalCartItemsTable.createdAt);
-      // تحويل الكرتونة لكل صنف في السلة (للاقتراح «زوّد N قطع تكمّل كرتونة»): استعلام واحد لكل السلة بدل استعلام لكل صنف.
-      const recipeIds = items.map((i) => i.recipeId);
-      const convs = recipeIds.length
-        ? await db
-            .select({
-              recipeId: bomRecipesTable.id,
-              fromUnit: foundationUnitConversionsTable.fromUnit,
-              factor: foundationUnitConversionsTable.factor,
-            })
-            .from(bomRecipesTable)
-            .innerJoin(foundationItemsTable, eq(foundationItemsTable.id, bomRecipesTable.foundationItemId))
-            .innerJoin(
-              foundationUnitConversionsTable,
-              and(
-                eq(foundationUnitConversionsTable.itemId, foundationItemsTable.id),
-                eq(foundationUnitConversionsTable.toUnit, foundationItemsTable.baseUnit),
-              ),
-            )
-            .where(inArray(bomRecipesTable.id, recipeIds))
-        : [];
-      const byRecipe = new Map<number, CartonConversion>();
-      for (const c of convs) {
-        const conv = toCartonConversion(c);
-        if (conv && !byRecipe.has(c.recipeId)) byRecipe.set(c.recipeId, conv);
-      }
+      // تحويل الكرتونة لكل صنف في السلة (للاقتراح وعرض «N كرتونة + M قطعة»): استعلام واحد لكل السلة.
+      const byRecipe = await loadCartonConversions(items.map((i) => i.recipeId));
       res.json(items.map((i) => ({ ...i, cartonConversion: byRecipe.get(i.recipeId) ?? null })));
     } catch (err) {
       next(err);
@@ -2234,6 +2212,7 @@ router.get(
         primaryImages.map((img) => [img.bomRecipeId, img.imageData]),
       );
 
+      const cartonByRecipe = await loadCartonConversions(recipeIds);
       const products = recipes.map((r) => {
         const identity = resolvePortalProductIdentity(
           { productCode: r.productCode, productName: r.productName },
@@ -2252,6 +2231,7 @@ router.get(
           isActive: r.isActive,
           orderCount: r.orderCount,
           primaryImage: primaryImageByRecipe.get(r.id) ?? null,
+          cartonConversion: cartonByRecipe.get(r.id) ?? null,
         };
       });
       res.json(products);
@@ -2571,6 +2551,9 @@ router.post(
         .from(deliveryMethodRulesTable)
         .where(eq(deliveryMethodRulesTable.isActive, true));
 
+      // عدد القطع في الكرتونة وقت الطلب (بيتسجّل على كل سطر عشان العرض بالكراتين والقطع)
+      const cartonAtOrder = await loadCartonConversions(canonicalItems.map((i) => i.bomRecipeId));
+
       const createdOrders = await db.transaction(async (tx: Transaction) => {
         const results = [];
         let runningValue = 0;
@@ -2631,6 +2614,7 @@ router.post(
               productName: recipe.productName,
               qty: item.qty,
               unit: item.unit,
+              piecesPerCarton: cartonAtOrder.get(item.bomRecipeId)?.piecesPerCarton ?? null,
               bomRecipeId: item.bomRecipeId,
               customerName:
                 customer.companyName ?

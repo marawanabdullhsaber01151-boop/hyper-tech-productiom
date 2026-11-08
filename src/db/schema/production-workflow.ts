@@ -105,6 +105,8 @@ export const productionWorkflowOrdersTable = pgTable(
     productName: text("product_name").notNull(),
     qty: numeric("qty", { precision: 12, scale: 3 }).notNull(),
     unit: text("unit").notNull().default("وحدة"),
+    // 42ب: عدد القطع في الكرتونة وقت الطلب (NULL = مفيش كرتونة صالحة). الكمية نفسها دايمًا بالقطع.
+    piecesPerCarton: integer("pieces_per_carton"),
     priority: text("priority").notNull().default("normal"),
     neededBy: date("needed_by", { mode: "string" }),
     notes: text("notes"),

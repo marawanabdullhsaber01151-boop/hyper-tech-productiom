@@ -52,6 +52,7 @@ export interface Product {
   description: string | null;
   primaryImage: string | null;
   orderCount: number;
+  cartonConversion?: { cartonUnit: string; piecesPerCarton: number } | null;
 }
 export interface ProductDetail extends Product {
   componentsCount: number;
@@ -82,6 +83,7 @@ export interface OrderItem {
   bomRecipeId: number | null;
   qty: string;
   unit: string;
+  piecesPerCarton?: number | null;
   workflowStatus: string;
   referenceLineTotal: string | null;
   suggestedDueDate: string | null;

@@ -6,6 +6,7 @@ import { navigate, usePath } from "../../app/router";
 import { ApiError } from "../../api/client";
 import { useMutation } from "../../api/hooks";
 import { formatDate, formatDateTime, formatNumber } from "../../lib/format";
+import { breakdownText, qtyBreakdown } from "../../lib/qtyBreakdown";
 import { api } from "../api";
 import { can } from "../session";
 import { loadCart, setCartQty } from "../cart";
@@ -42,7 +43,7 @@ export function BatchCard({ b, onOpen }: { b: OrderBatch; onOpen: () => void }) 
         {b.items.slice(0, 3).map((i) => (
           <div key={i.id} class="pt-order__item">
             <span>{i.productName}</span>
-            <span class="pt-muted">{t("p.orders.qty", { qty: formatNumber(readQty(i.qty)), unit: i.unit })}</span>
+            <span class="pt-muted">{qtyLine(i)}</span>
           </div>
         ))}
         {b.items.length > 3 ? <span class="pt-muted">{t("p.orders.items", { n: formatNumber(b.items.length) })}</span> : null}
@@ -51,12 +52,19 @@ export function BatchCard({ b, onOpen }: { b: OrderBatch; onOpen: () => void }) 
   );
 }
 
+/** «36 قطعة» أو لو الطلب عنده كرتونة: «3 كرتونة (الكرتونة 12 قطعة) = 36 قطعة». */
+function qtyLine(i: OrderItem): string {
+  const base = t("p.orders.qty", { qty: formatNumber(readQty(i.qty)), unit: i.unit });
+  const b = qtyBreakdown(readQty(i.qty), i.piecesPerCarton);
+  return b ? `${breakdownText(b)} = ${base}` : base;
+}
+
 function ItemBlock({ item, onCancel }: { item: OrderItem; onCancel: (i: OrderItem) => void }) {
   return (
     <div class="pt-stack">
       <div class="pt-order__item">
         <strong>{item.productName}</strong>
-        <span class="pt-muted">{t("p.orders.qty", { qty: formatNumber(readQty(item.qty)), unit: item.unit })}</span>
+        <span class="pt-muted">{qtyLine(item)}</span>
       </div>
       <div class="pt-steps" aria-hidden="true">
         {item.timeline.map((s) => (

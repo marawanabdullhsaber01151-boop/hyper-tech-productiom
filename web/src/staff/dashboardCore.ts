@@ -7,6 +7,7 @@ export interface WorkflowOrder {
   orderNumber: string;
   productName: string;
   qty: string | number | null;
+  piecesPerCarton?: number | null;
   workflowStatus: string;
   neededBy?: string | null;
   updatedAt?: string | null;

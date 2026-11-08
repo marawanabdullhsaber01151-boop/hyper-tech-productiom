@@ -9,6 +9,7 @@ import { Button, DataTable, Dialog, EmptyState, Field, InlineAlert, Input, Selec
 import { Plus, RefreshCw } from "../design/icons";
 import { formatDate, formatDateTime, formatNumber } from "../lib/format";
 import { MaterialsDialog } from "./ProductionMaterials";
+import { QtyCell } from "./QtyCell";
 import { OrderNotes } from "./ProductionNotes";
 import { canReadNotes, hoursLabel, stalledMap, type StalledRow } from "./oversightCore";
 import {
@@ -37,6 +38,7 @@ export interface OrderRow {
   productName: string;
   qty: string;
   unit: string;
+  piecesPerCarton?: number | null;
   priority: string;
   workflowStatus: string;
   neededBy: string | null;
@@ -114,7 +116,7 @@ export function ProductionOrders() {
         {r.orderSource === "website" ? <StatusPill tone="info">{t("prd.ord.src.website")}</StatusPill> : null}
       </div>
     ) },
-    { key: "qty", header: t("prd.ord.col.qty"), cell: (r) => `${formatNumber(Number(r.qty))} ${r.unit}`, numeric: true, mobile: "hide" },
+    { key: "qty", header: t("prd.ord.col.qty"), cell: (r) => <QtyCell qty={r.qty} unit={r.unit} per={r.piecesPerCarton} />, numeric: true, mobile: "hide" },
     { key: "status", header: t("prd.ord.col.status"), cell: (r) => (
       <div class="prd-status">
         <StatusPill tone={TONE[groupOf(r.workflowStatus)] ?? "neutral"}>{statusLabel(r.workflowStatus)}</StatusPill>

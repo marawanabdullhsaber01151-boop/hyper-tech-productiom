@@ -9,6 +9,7 @@ import { formatDate, formatNumber } from "../lib/format";
 import { resolveHref, type NavResponse } from "./nav";
 import { getShared, invalidateShared } from "./sharedData";
 import { Link } from "../app/router";
+import { QtyCell } from "./QtyCell";
 import { DEFAULT_LAYOUT, customizableCards, isDefaultLayout, moveCard, normalizeLayout, toggleCard, visibleCards, type CardId, type Layout } from "./dashboardLayout";
 import { categoryShares, computeKpis, deriveAlerts, isActive, isKnownStatus, statusCounts, statusTone, type DashAlert, type DashSummary, type InvItem, type WorkflowOrder } from "./dashboardCore";
 
@@ -122,7 +123,7 @@ export function Dashboard({ nav }: { nav?: NavResponse }) {
   const columns: Column<WorkflowOrder>[] = [
     { key: "code", header: t("staff.dash.orders.code"), cell: (o) => o.orderNumber, mobile: "title" },
     { key: "product", header: t("staff.dash.orders.product"), cell: (o) => o.productName },
-    { key: "qty", header: t("staff.dash.orders.qty"), cell: (o) => (o.qty === null || !Number.isFinite(Number(o.qty)) ? "—" : formatNumber(Number(o.qty))), numeric: true },
+    { key: "qty", header: t("staff.dash.orders.qty"), cell: (o) => <QtyCell qty={o.qty} per={o.piecesPerCarton} />, numeric: true },
     { key: "status", header: t("staff.dash.orders.status"), cell: (o) => <StatusPill tone={statusTone(o.workflowStatus)}>{statusText(o.workflowStatus)}</StatusPill> },
     { key: "due", header: t("staff.dash.orders.due"), cell: (o) => (o.neededBy ? formatDate(o.neededBy) : "—"), mobile: "hide" },
   ];
