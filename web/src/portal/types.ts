@@ -66,6 +66,7 @@ export interface CartItem {
   productCode: string;
   qty: string;
   available: boolean;
+  cartonConversion?: { cartonUnit: string; piecesPerCarton: number } | null;
 }
 export interface TimelineStep {
   key: string;

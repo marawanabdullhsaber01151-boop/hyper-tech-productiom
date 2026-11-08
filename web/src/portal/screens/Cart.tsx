@@ -7,6 +7,7 @@ import { useMutation } from "../../api/hooks";
 import { formatNumber } from "../../lib/format";
 import { api } from "../api";
 import { can } from "../session";
+import { cartonHint } from "../cartonCore";
 import { cartPieces, clearCartLocal, loadCart, removeFromCart, setCartQty, useCart } from "../cart";
 import type { CartItem } from "../types";
 import { ApiError } from "../../api/client";
@@ -17,6 +18,7 @@ function Line({ item }: { item: CartItem }) {
   const toast = useToast();
   const [draft, setDraft] = useState<string | null>(null);
   const qty = Number(item.qty);
+  const hint = cartonHint(qty, item.cartonConversion?.piecesPerCarton, 1); // الحد الأدنى اتفحص وقت الإضافة للسلة
   const run = (p: Promise<unknown>) => p.catch((e: ApiError) => toast({ tone: "danger", message: e.message }));
   const commit = () => {
     const n = Math.round(Number(draft));
@@ -29,6 +31,12 @@ function Line({ item }: { item: CartItem }) {
         <div class="pt-line__name">{item.productName}</div>
         <div class="pt-muted pt-ltr">{item.productCode}</div>
         {!item.available ? <InlineAlert tone="warn">{t("p.cart.unavailable")}</InlineAlert> : null}
+        {hint ? (
+          <div class="pt-carton-hint">
+            <span class="pt-muted">{t("p.carton.hint", { add: formatNumber(hint.add) })}</span>
+            <Button size="sm" variant="secondary" onClick={() => void run(setCartQty(item.recipeId, hint.total, "set"))}>{t("p.carton.apply", { add: formatNumber(hint.add), total: formatNumber(hint.total) })}</Button>
+          </div>
+        ) : null}
       </div>
       <div class="pt-line__ctrl">
         <IconButton icon={Minus} size="sm" label={t("p.cart.dec", { name: item.productName })} disabled={qty <= 1} onClick={() => void run(setCartQty(item.recipeId, qty - 1, "set"))} />

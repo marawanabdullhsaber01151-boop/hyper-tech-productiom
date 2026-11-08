@@ -64,7 +64,7 @@ import { toPortalOrderItem, computeBatchRollupStatus } from "../domain/portal-or
 import { suggestDueDate } from "../lib/dueDateSuggestion";
 import { resolvePortalProductIdentity } from "../lib/portalCatalog";
 import { toPortalFeaturedIngredients } from "../lib/featuredIngredients";
-import { CartonConversion } from "../lib/cartonConversion";
+import { CartonConversion, toCartonConversion } from "../lib/cartonConversion";
 import { computeDeliveryMethod } from "../lib/deliveryMethod";
 import {
   assertCancellable,
@@ -1708,7 +1708,32 @@ router.get(
           ),
         )
         .orderBy(portalCartItemsTable.createdAt);
-      res.json(items);
+      // تحويل الكرتونة لكل صنف في السلة (للاقتراح «زوّد N قطع تكمّل كرتونة»): استعلام واحد لكل السلة بدل استعلام لكل صنف.
+      const recipeIds = items.map((i) => i.recipeId);
+      const convs = recipeIds.length
+        ? await db
+            .select({
+              recipeId: bomRecipesTable.id,
+              fromUnit: foundationUnitConversionsTable.fromUnit,
+              factor: foundationUnitConversionsTable.factor,
+            })
+            .from(bomRecipesTable)
+            .innerJoin(foundationItemsTable, eq(foundationItemsTable.id, bomRecipesTable.foundationItemId))
+            .innerJoin(
+              foundationUnitConversionsTable,
+              and(
+                eq(foundationUnitConversionsTable.itemId, foundationItemsTable.id),
+                eq(foundationUnitConversionsTable.toUnit, foundationItemsTable.baseUnit),
+              ),
+            )
+            .where(inArray(bomRecipesTable.id, recipeIds))
+        : [];
+      const byRecipe = new Map<number, CartonConversion>();
+      for (const c of convs) {
+        const conv = toCartonConversion(c);
+        if (conv && !byRecipe.has(c.recipeId)) byRecipe.set(c.recipeId, conv);
+      }
+      res.json(items.map((i) => ({ ...i, cartonConversion: byRecipe.get(i.recipeId) ?? null })));
     } catch (err) {
       next(err);
     }
@@ -2291,10 +2316,7 @@ router.get(
             ),
           )
           .limit(1);
-        const factor = conversion ? Number(conversion.factor) : 0;
-        if (conversion && Number.isInteger(factor) && factor > 1) {
-          cartonConversion = { cartonUnit: conversion.fromUnit, piecesPerCarton: factor };
-        }
+        cartonConversion = toCartonConversion(conversion);
       }
 
       const items = await db

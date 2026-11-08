@@ -66,3 +66,13 @@ describe("suggestCartonCompletion", () => {
     );
   });
 });
+
+import { toCartonConversion } from "./cartonConversion";
+describe("toCartonConversion (42أ)", () => {
+  it("مضاعف صحيح أكبر من 1 فقط", () => {
+    expect(toCartonConversion({ fromUnit: "box", factor: "12" })).toEqual({ cartonUnit: "box", piecesPerCarton: 12 });
+    expect(toCartonConversion({ fromUnit: "box", factor: 1 })).toBeNull();
+    expect(toCartonConversion({ fromUnit: "box", factor: "12.5" })).toBeNull();
+    expect(toCartonConversion(null)).toBeNull();
+  });
+});

@@ -179,6 +179,8 @@ export const portalCopy = {
   "p.products.cartons": "كراتين",
   "p.products.cartonsHint": "هتتحوّل لقطع: {n}",
   "p.products.byPiece": "بالقطعة",
+  "p.carton.hint": "ناقص {add} قطعة وتكمّل كرتونة كاملة. ده اقتراح بس، تقدر تكمّل بكمية حضرتك.",
+  "p.carton.apply": "زوّد {add} قطعة (المجموع {total})",
   "p.products.byCarton": "بالكرتونة",
   "p.products.components": "{n} مكوّن",
   "p.products.featured": "المكونات المميزة",

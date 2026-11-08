@@ -8,6 +8,7 @@ import { api } from "../api";
 import { can } from "../session";
 import { setCartQty, useCart } from "../cart";
 import type { Product, ProductDetail } from "../types";
+import { cartonHint } from "../cartonCore";
 import { ListSkeleton, LoadError } from "./shared";
 
 function useConfig() {
@@ -148,6 +149,7 @@ function ProductDrawer({ id, onClose, fav, onFav }: { id: number | null; onClose
   const min = cfg.data?.minimumOrderQuantity ?? 1;
   const per = d?.cartonConversion?.piecesPerCarton ?? 0;
   const pieces = (unit === "carton" ? Number(qty) * per : Number(qty)) || 0;
+  const hint = unit === "piece" ? cartonHint(pieces, per, min) : null;
   const inCart = d ? cart.items.find((i) => i.recipeId === d.id) : undefined;
 
   useEffect(() => {
@@ -224,6 +226,12 @@ function ProductDrawer({ id, onClose, fav, onFav }: { id: number | null; onClose
               <Field label={unit === "carton" ? t("p.products.cartons") : t("p.products.qty")} hint={unit === "carton" && pieces ? t("p.products.cartonsHint", { n: formatNumber(pieces) }) : undefined}>
                 <Input type="number" inputMode="numeric" min={1} dir="ltr" value={qty} onInput={(e) => setQty((e.currentTarget as HTMLInputElement).value)} />
               </Field>
+              {hint ? (
+                <div class="pt-carton-hint">
+                  <span class="pt-muted">{t("p.carton.hint", { add: formatNumber(hint.add) })}</span>
+                  <Button size="sm" variant="secondary" onClick={() => setQty(String(hint.total))}>{t("p.carton.apply", { add: formatNumber(hint.add), total: formatNumber(hint.total) })}</Button>
+                </div>
+              ) : null}
               {add.error ? <InlineAlert tone="danger">{add.error.message}</InlineAlert> : null}
               {ask.error ? <InlineAlert tone="danger">{ask.error.message}</InlineAlert> : null}
               <div class="pt-row">

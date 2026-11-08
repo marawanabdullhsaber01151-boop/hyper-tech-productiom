@@ -88,6 +88,7 @@
 /* ---------- السلة ---------- */
 .pt-line { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--sp-3); align-items: center; padding: var(--sp-3) var(--sp-4); }
 .pt-line__name { font-weight: 700; }
+.pt-carton-hint { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); margin-block-start: var(--sp-2); }
 .pt-line__ctrl { display: inline-flex; align-items: center; gap: var(--sp-1); }
 .pt-line__ctrl input { inline-size: 64px; text-align: center; }
 .pt-sticky-bar { position: sticky; inset-block-end: calc(64px + env(safe-area-inset-bottom, 0px)); padding: var(--sp-3) var(--sp-4); display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); background: var(--c-surface-1); border: 1px solid var(--c-border-2); border-radius: var(--r-md); box-shadow: var(--shadow-3); }

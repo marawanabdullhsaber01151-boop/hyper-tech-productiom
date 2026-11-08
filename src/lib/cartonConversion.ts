@@ -66,3 +66,13 @@ export function suggestCartonCompletion(
     suggestedCartonQty,
   };
 }
+
+/**
+ * من صف تحويل وحدات (1 <fromUnit> = <factor> <وحدة البيع الأساسية>) لتحويل كرتونة صالح، أو null.
+ * الكرتونة الصالحة = مضاعف صحيح أكبر من 1 (غير كده مفيش خيار كرتونة). مستخدمة في تفاصيل المنتج والسلة.
+ */
+export function toCartonConversion(row: { fromUnit: string; factor: string | number } | null | undefined): CartonConversion | null {
+  if (!row) return null;
+  const factor = Number(row.factor);
+  return Number.isInteger(factor) && factor > 1 ? { cartonUnit: row.fromUnit, piecesPerCarton: factor } : null;
+}
