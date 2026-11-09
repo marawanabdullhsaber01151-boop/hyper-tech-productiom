@@ -112,6 +112,7 @@ export const DEPARTMENTS: readonly NavDepartment[] = [
         roles: ["chairman", "executive_manager", "sales_manager", "online_seller", "hr", "hr_manager"],
         pages: [
           { id: "sales-online", label: "فواتير الأونلاين", href: "/v2/staff/sales?channel=website", roles: ["chairman", "executive_manager", "sales_manager", "online_seller", "hr", "hr_manager"] },
+          { id: "reports", label: "تقرير المبيعات", href: "/v2/staff/reports", roles: ["sales_manager"] },
         ],
       },
       {
@@ -221,6 +222,7 @@ export const DEPARTMENTS: readonly NavDepartment[] = [
           { id: "purchases-receive", label: "استلام أوامر الشراء", href: "/v2/staff/purchases", roles: ["chairman", "warehouse_manager", "storekeeper"] },
           { id: "production-requests-warehouse", label: "طلبات إنتاج بانتظار المخزن", href: "/v2/staff/production?tab=requests", roles: ["chairman", "warehouse_manager", "storekeeper"] },
           { id: "movements", label: "حركات المخزون", href: "/v2/staff/stock?tab=movements", roles: ["chairman", "warehouse_manager", "storekeeper"] },
+          { id: "reports", label: "تقرير المخزون", href: "/v2/staff/reports", roles: ["warehouse_manager"] },
           { id: "factory-warehouse-manager", label: "قرار خامات أوامر الإنتاج", href: "/v2/staff/production?tab=orders", roles: ["chairman", "warehouse_manager", "storekeeper"] },
         ],
       },
@@ -238,6 +240,7 @@ export const DEPARTMENTS: readonly NavDepartment[] = [
         roles: ["chairman", "purchasing_manager", "buyer"],
         pages: [
           { id: "purchases", label: "الاحتياجات وأوامر الشراء", href: "/v2/staff/purchases", roles: ["chairman", "purchasing_manager", "buyer"] },
+          { id: "reports", label: "تقرير المشتريات", href: "/v2/staff/reports", roles: ["purchasing_manager"] },
         ],
       },
       {

@@ -43,12 +43,12 @@ describe("/nav لكل دور من الـ18 (قبول المرحلة ١)", () => 
     }
   });
 
-  it("المشتريات: الدورين يشوفوا الاحتياجات وأوامر الشراء، والمخزون للقراءة بس (الواجهة الجديدة)", () => {
+  it("المشتريات: الدورين يشوفوا الاحتياجات وأوامر الشراء، والمخزون للقراءة بس (الواجهة الجديدة؛ ومدير المشتريات معاه التقرير)", () => {
     for (const role of ["purchasing_manager", "buyer"] as const) {
       // صندوق الاعتمادات (39أ) قسم مستقل لأي دور معتمد (مدير المشتريات منهم)، فبنستثنيه من المقارنة.
       const depts = getNavForRole(role).filter((d) => d.id !== "approvals");
       expect(depts.map((d) => d.id)).toEqual(["purchasing"]);
-      expect(pageIds(role).filter((id) => id !== "approvals")).toEqual(["purchases", "stock-view"]);
+      expect(pageIds(role).filter((id) => id !== "approvals")).toEqual(role === "purchasing_manager" ? ["purchases", "reports", "stock-view"] : ["purchases", "stock-view"]);
       expect(depts[0]!.subFunctions[0]!.pages[0]!.href).toBe("/v2/staff/purchases");
       expect(depts[0]!.subFunctions[1]!.pages[0]!.href).toBe("/v2/staff/stock");
     }

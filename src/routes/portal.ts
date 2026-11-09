@@ -1270,6 +1270,16 @@ router.post(
   },
 );
 
+// شروط الدفع الفعلية للعميل (إعداد الشركة أو العام) — بتتعرض قبل تأكيد الطلب. بيانات الجلسة بس.
+router.get("/portal/order-terms", requirePortalAuth, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const settings = await createSettingsResolver({ companyId: getAuthenticatedPortalCustomerId(req), memberId: req.portalAuth!.memberId });
+    res.json({ paymentTerms: settings.get<string>("orders.payment_terms") });
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.get("/portal/config", (_req: Request, res: Response) => {
   res.json({
     minimumOrderQuantity: configuredMinimumOrderQuantity,
@@ -2492,6 +2502,7 @@ router.post(
         companyId: customer.id,
         memberId: auth.memberId,
       });
+      const paymentTerms = orderSettings.get<string>("orders.payment_terms"); // لقطة وقت الطلب
       const effectiveMinQty = Math.max(
         configuredMinimumOrderQuantity,
         customer.minimumOrderQuantity,
@@ -2615,6 +2626,7 @@ router.post(
               qty: item.qty,
               unit: item.unit,
               piecesPerCarton: cartonAtOrder.get(item.bomRecipeId)?.piecesPerCarton ?? null,
+              paymentTerms,
               bomRecipeId: item.bomRecipeId,
               customerName:
                 customer.companyName ?

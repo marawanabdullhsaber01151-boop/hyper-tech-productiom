@@ -39,6 +39,7 @@ export interface OrderRow {
   qty: string;
   unit: string;
   piecesPerCarton?: number | null;
+  paymentTerms?: string | null;
   priority: string;
   workflowStatus: string;
   neededBy: string | null;
@@ -114,6 +115,7 @@ export function ProductionOrders() {
         <span>{r.productName}</span>
         <StatusPill tone={PRIO_TONE[r.priority] ?? "neutral"}>{prioLabel(r.priority)}</StatusPill>
         {r.orderSource === "website" ? <StatusPill tone="info">{t("prd.ord.src.website")}</StatusPill> : null}
+        {r.paymentTerms && r.paymentTerms !== "cash" ? <StatusPill tone="neutral">{t("common.terms.label", { terms: t(`common.terms.${r.paymentTerms}` as CopyKey) })}</StatusPill> : null}
       </div>
     ) },
     { key: "qty", header: t("prd.ord.col.qty"), cell: (r) => <QtyCell qty={r.qty} unit={r.unit} per={r.piecesPerCarton} />, numeric: true, mobile: "hide" },

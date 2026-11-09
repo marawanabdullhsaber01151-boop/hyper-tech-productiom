@@ -1,4 +1,4 @@
-import { useState } from "preact/hooks";
+import { useEffect, useState } from "preact/hooks";
 import { t, type CopyKey } from "../../copy";
 import { Button, Card, ConfirmDialog, EmptyState, Field, Icon, IconButton, InlineAlert, Select, Textarea, useToast } from "../../design/components";
 import { CircleCheck, Minus, Plus, Trash } from "../../design/icons";
@@ -80,6 +80,12 @@ export function Cart() {
   const [confirm, setConfirm] = useState(false);
   const [key, setKey] = useState(() => crypto.randomUUID());
   const [sent, setSent] = useState<string | null>(null);
+  const [terms, setTerms] = useState<string | null>(null);
+  // شروط الدفع الفعلية بتتجاب لما نافذة التأكيد تتفتح (إعداد الشركة أو العام)
+  useEffect(() => {
+    if (!confirm) return;
+    api.get<{ paymentTerms: string }>("/portal/order-terms").then((r) => setTerms(r.paymentTerms)).catch(() => setTerms(null));
+  }, [confirm]);
   const pieces = cartPieces(cart.items);
   const blocked = cart.items.some((i) => !i.available);
 
@@ -155,7 +161,7 @@ export function Cart() {
         onConfirm={() => void send.mutate(undefined)}
         loading={send.loading}
         title={t("p.cart.confirmTitle")}
-        description={t("p.cart.confirmBody", { n: formatNumber(cart.items.length), pieces: formatNumber(pieces) })}
+        description={`${t("p.cart.confirmBody", { n: formatNumber(cart.items.length), pieces: formatNumber(pieces) })}${terms ? ` ${t("p.terms.label", { terms: t(`p.terms.${terms}` as CopyKey) })}` : ""}`}
         confirmLabel={t("p.cart.send")}
       />
       {send.error ? (

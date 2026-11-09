@@ -1,6 +1,6 @@
 import type { ComponentChildren } from "preact";
 import { useEffect, useState } from "preact/hooks";
-import { t } from "../../copy";
+import { t, type CopyKey } from "../../copy";
 import { Button, Card, Dialog, Drawer, EmptyState, Field, InlineAlert, Select, StatusPill, Textarea, Timeline, useToast } from "../../design/components";
 import { navigate, usePath } from "../../app/router";
 import { ApiError } from "../../api/client";
@@ -66,6 +66,7 @@ function ItemBlock({ item, onCancel }: { item: OrderItem; onCancel: (i: OrderIte
         <strong>{item.productName}</strong>
         <span class="pt-muted">{qtyLine(item)}</span>
       </div>
+      {item.paymentTerms ? <span class="pt-muted">{t("p.terms.label", { terms: t(`p.terms.${item.paymentTerms}` as CopyKey) })}</span> : null}
       <div class="pt-steps" aria-hidden="true">
         {item.timeline.map((s) => (
           <span key={s.key} class="pt-steps__dot" data-s={s.state} />

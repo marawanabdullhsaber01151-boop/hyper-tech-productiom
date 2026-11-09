@@ -28,6 +28,11 @@ export type Plural = { zero?: string; one?: string; two?: string; few?: string; 
 export type Msg = string | Plural;
 
 export const ar = {
+  "common.terms.label": "الدفع: {terms}",
+  "common.terms.cash": "نقدي",
+  "common.terms.credit_15": "آجل 15 يوم",
+  "common.terms.credit_30": "آجل 30 يوم",
+  "common.terms.credit_60": "آجل 60 يوم",
   "common.qty.cartons": "{n} كرتونة (الكرتونة {per} قطعة)",
   "common.qty.cartonsLoose": "{n} كرتونة + {loose} قطعة (الكرتونة {per} قطعة)",
   "common.qty.total": "الإجمالي {pieces} قطعة",

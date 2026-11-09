@@ -107,6 +107,8 @@ export const productionWorkflowOrdersTable = pgTable(
     unit: text("unit").notNull().default("وحدة"),
     // 42ب: عدد القطع في الكرتونة وقت الطلب (NULL = مفيش كرتونة صالحة). الكمية نفسها دايمًا بالقطع.
     piecesPerCarton: integer("pieces_per_carton"),
+    // 42ج: شروط الدفع وقت الطلب (cash | credit_15 | credit_30 | credit_60). NULL = قبل الميزة (نقدي في العرض).
+    paymentTerms: text("payment_terms"),
     priority: text("priority").notNull().default("normal"),
     neededBy: date("needed_by", { mode: "string" }),
     notes: text("notes"),

@@ -84,6 +84,7 @@ export interface OrderItem {
   qty: string;
   unit: string;
   piecesPerCarton?: number | null;
+  paymentTerms?: string | null;
   workflowStatus: string;
   referenceLineTotal: string | null;
   suggestedDueDate: string | null;
