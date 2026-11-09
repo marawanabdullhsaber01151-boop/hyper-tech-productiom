@@ -5,7 +5,7 @@
 import { z } from "zod";
 import type { CheckOutcome } from "./systemHealthCore";
 
-export const OUTBOX_TYPES = ["notify.user", "notify.role", "portal.alert"] as const;
+export const OUTBOX_TYPES = ["notify.user", "notify.role", "portal.alert", "portal.notice"] as const;
 export type OutboxType = (typeof OUTBOX_TYPES)[number];
 
 const notificationBody = {
@@ -23,6 +23,14 @@ export const OUTBOX_PAYLOADS = {
     userId: z.number().int().positive(),
     companyId: z.number().int().positive().nullable().optional(),
     template: z.enum(["password_changed", "recovery_code_used"]),
+  }),
+  // إشعار طلب لعميل البوابة على القنوات الخارجية المتأكدة (واحد لكل مستلم، عشان فشل واحد ما يكرّر للباقي)
+  "portal.notice": z.object({
+    userId: z.number().int().positive(),
+    companyId: z.number().int().positive().nullable().optional(),
+    type: z.string().min(1).max(100),
+    title: z.string().min(1).max(300),
+    body: z.string().max(2000),
   }),
 } as const;
 

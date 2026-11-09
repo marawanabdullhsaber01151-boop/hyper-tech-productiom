@@ -17,7 +17,7 @@ import { getChannelAdapter } from "./registry";
 import { renderTemplate, type TemplateKey } from "./templates";
 import { maskAddress, type ChannelId } from "./types";
 
-export type DeliverPurpose = "activation" | "recovery" | "alert" | "channel_verify";
+export type DeliverPurpose = "activation" | "recovery" | "alert" | "channel_verify" | "notice";
 
 export type DeliverInput = {
   purpose: DeliverPurpose;
@@ -49,6 +49,7 @@ type Target = { channel: ChannelId; to: string };
 function settingKey(p: DeliverPurpose): string {
   return p === "activation" ? "delivery.activation.channels"
     : p === "recovery" ? "delivery.recovery.channels"
+    : p === "notice" ? "delivery.notice.channels"
     : "delivery.alert.channels";
 }
 
@@ -104,7 +105,7 @@ async function record(input: DeliverInput, channel: ChannelId, status: string, e
 
 export async function deliver(input: DeliverInput): Promise<DeliverResult> {
   const strategy = await resolveSetting<"first_success" | "all_verified" | "manual_only">("delivery.strategy", {});
-  const order = (await resolveSetting<ChannelId[]>(settingKey(input.purpose), {})).filter((c) => c !== "whatsapp_manual");
+  const order = (await resolveSetting<ChannelId[]>(settingKey(input.purpose), { companyId: input.companyId ?? null })).filter((c) => c !== "whatsapp_manual");
   const msg = await renderTemplate(input.template, input.vars);
   const result: DeliverResult = { delivered: false, results: [], whatsappUrl: null, emailSent: false };
 

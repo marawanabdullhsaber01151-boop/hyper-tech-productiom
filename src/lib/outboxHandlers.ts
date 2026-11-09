@@ -28,8 +28,17 @@ const portalAlert: OutboxHandler = async (_tx: Executor, raw) => {
   if (!r.delivered && attempted.length > 0) throw new Error(`فشل إرسال التنبيه على ${attempted.length} قناة`);
 };
 
+const portalNotice: OutboxHandler = async (_tx: Executor, raw) => {
+  const p = OUTBOX_PAYLOADS["portal.notice"].parse(raw) as OutboxPayloadMap["portal.notice"];
+  const r = await deliver({ purpose: "notice", userId: p.userId, companyId: p.companyId ?? null, template: "order_notice", vars: { title: p.title, body: p.body }, allowUnverified: false, only: ["email", "telegram"] });
+  // نفس قاعدة التنبيهات: وصلت على أي قناة = تمام، مفيش قناة مضبوطة/متأكدة = مفيش داعي نعيد، كل المحاولات فشلت = نعيد.
+  const attempted = r.results.filter((x) => x.status === "sent" || x.status === "failed");
+  if (!r.delivered && attempted.length > 0) throw new Error(`فشل إرسال إشعار الطلب على ${attempted.length} قناة`);
+};
+
 export const OUTBOX_HANDLERS: Record<string, OutboxHandler> = {
   "notify.user": notify,
   "notify.role": notify,
   "portal.alert": portalAlert,
+  "portal.notice": portalNotice,
 };

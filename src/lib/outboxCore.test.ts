@@ -43,6 +43,12 @@ describe("بيانات الأحداث", () => {
     expect(validatePayload("portal.alert", { userId: 1, template: "weird" }).ok).toBe(false);
     expect(validatePayload("portal.alert", { userId: 1, companyId: null, template: "password_changed" }).ok).toBe(true);
   });
+  it("إشعار الطلب الخارجي: مستخدم وعنوان لازم، والعنوان الفاضي مرفوض", () => {
+    const ok = { userId: 4, companyId: 2, type: "portal_order_priced", title: "تم تحديد سعر طلبك", body: "تفاصيل" };
+    expect(validatePayload("portal.notice", ok).ok).toBe(true);
+    expect(validatePayload("portal.notice", { ...ok, title: "" }).ok).toBe(false);
+    expect(validatePayload("portal.notice", { ...ok, userId: 0 }).ok).toBe(false);
+  });
   it("حقول زيادة بتتشال من القيمة المخزّنة", () => {
     const r = validatePayload("notify.role", { role: "hr", ...n, secret: "x" });
     expect(r.ok && (r.value as Record<string, unknown>).secret).toBeUndefined();

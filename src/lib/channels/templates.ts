@@ -7,7 +7,8 @@ export type TemplateKey =
   | "channel_verify"
   | "password_changed"
   | "recovery_code_used"
-  | "owner_reset_link";
+  | "owner_reset_link"
+  | "order_notice";
 
 const DEFAULTS: Record<TemplateKey, { subject: string; body: string }> = {
   activation: {
@@ -33,6 +34,10 @@ const DEFAULTS: Record<TemplateKey, { subject: string; body: string }> = {
   owner_reset_link: {
     subject: "رابط تعيين كلمة سر جديدة",
     body: "{owner} بعتلك رابط لتعيين كلمة سر جديدة (صالح {duration}): {url}",
+  },
+  order_notice: {
+    subject: "{title}",
+    body: "{title}\n{body}\nHyper-Tech",
   },
 };
 
