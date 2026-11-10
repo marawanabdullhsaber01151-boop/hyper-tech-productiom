@@ -191,6 +191,7 @@ router.get(`${BASE}/:batchRef`, ...view, async (req, res, next) => {
       workflowStatus: l.workflowStatus,
       stage: lineStage(l.workflowStatus),
       referenceUnitPrice: l.referenceUnitPrice,
+      agreedUnitPrice: l.agreedUnitPrice ?? null,
       referenceLineTotal: l.referenceLineTotal,
       suggestedDueDate: l.suggestedDueDate,
       suggestedDeliveryMethod: l.suggestedDeliveryMethod,

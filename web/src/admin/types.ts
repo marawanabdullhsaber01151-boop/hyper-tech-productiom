@@ -346,6 +346,8 @@ export interface OrdLine {
   workflowStatus: string;
   stage: string;
   referenceUnitPrice: string | null;
+  /** سعر متفق عليه من عرض سعر (45أ): مقفول ومش بيتغيّر وقت المراجعة. */
+  agreedUnitPrice?: string | null;
   referenceLineTotal: string | null;
   suggestedDueDate: string | null;
   suggestedDeliveryMethod: string | null;

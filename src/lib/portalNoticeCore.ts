@@ -10,6 +10,7 @@ export const EXTERNAL_NOTICE_TYPES: readonly string[] = [
   "portal_order_rejected",
   "portal_order_cancelled_by_staff",
   "portal_price_inquiry_answered",
+  "portal_price_quote_sent",
   "workflow_in_production",
   "workflow_delivery_pending",
   "workflow_delivered",

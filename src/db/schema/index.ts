@@ -7,6 +7,7 @@ export * from "./production";
 export * from "./bom";
 export * from "./product-images";
 export * from "./portal-price-inquiries";
+export * from "./price-quotes";
 export * from "./quality";
 export * from "./movements";
 export * from "./settings";

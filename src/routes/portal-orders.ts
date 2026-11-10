@@ -36,6 +36,7 @@ import { createApprovalRequest } from "../lib/approvals";
 import { z } from "zod";
 import { MoneyError, priceLines } from "../lib/money";
 import { runAfterCommit } from "../lib/afterCommit";
+import { agreedPriceIssue } from "../lib/priceQuoteCore";
 
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -228,6 +229,14 @@ router.post(
               ),
               { status: 400 },
             );
+          }
+        }
+
+        // سعر متفق عليه في عرض سعر (45أ): مقفول، لازم يتطابق بالقرش.
+        for (const order of orders) {
+          const locked = agreedPriceIssue(order.agreedUnitPrice, priceMap.get(order.id)!);
+          if (locked !== null) {
+            throw Object.assign(new Error(`السعر متفق عليه في عرض سعر (${locked} جنيه) ومينفعش يتغيّر لـ "${order.productName}"`), { status: 400 });
           }
         }
 

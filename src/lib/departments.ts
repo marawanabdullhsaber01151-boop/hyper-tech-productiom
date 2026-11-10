@@ -112,6 +112,7 @@ export const DEPARTMENTS: readonly NavDepartment[] = [
         roles: ["chairman", "executive_manager", "sales_manager", "online_seller", "hr", "hr_manager"],
         pages: [
           { id: "sales-online", label: "فواتير الأونلاين", href: "/v2/staff/sales?channel=website", roles: ["chairman", "executive_manager", "sales_manager", "online_seller", "hr", "hr_manager"] },
+          { id: "quotes", label: "عروض الأسعار", href: "/v2/staff/quotes", roles: ["chairman", "executive_manager", "sales_manager", "online_seller", "hr", "hr_manager"] },
           { id: "reports", label: "تقرير المبيعات", href: "/v2/staff/reports", roles: ["sales_manager"] },
         ],
       },
@@ -121,6 +122,7 @@ export const DEPARTMENTS: readonly NavDepartment[] = [
         roles: ["chairman", "executive_manager", "sales_manager", "offline_seller", "hr", "hr_manager"],
         pages: [
           { id: "sales-offline", label: "فواتير الأوفلاين", href: "/v2/staff/sales?channel=direct", roles: ["chairman", "executive_manager", "sales_manager", "offline_seller", "hr", "hr_manager"] },
+          { id: "quotes-offline", label: "عروض الأسعار", href: "/v2/staff/quotes", roles: ["chairman", "executive_manager", "sales_manager", "offline_seller", "hr", "hr_manager"] },
         ],
       },
       {

@@ -163,3 +163,18 @@ export interface AuditEvent {
   actorLabel: string | null;
   createdAt: string;
 }
+
+/** عرض سعر وصل للعميل (45أ). */
+export interface PortalQuote {
+  id: number;
+  quoteNumber: string;
+  status: "sent" | "ordered" | "declined" | "cancelled" | "expired";
+  validUntil: string;
+  notes: string | null;
+  sentAt: string | null;
+  decidedAt: string | null;
+  declineReason: string | null;
+  batchRef: string | null;
+  total: string;
+  lines: Array<{ bomRecipeId: number; productName: string; qty: string; unitPrice: string }>;
+}

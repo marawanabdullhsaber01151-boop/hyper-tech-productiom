@@ -10,7 +10,7 @@
  */
 import { Router, Request, Response, NextFunction } from "express";
 import { addActivationEvent } from "../lib/activationEvents";
-import { and, eq, desc, sql, inArray, gt, gte, isNull, ne, count, or } from "drizzle-orm";
+import { and, asc, eq, desc, sql, inArray, gt, gte, isNull, ne, count, or } from "drizzle-orm";
 import rateLimit from "express-rate-limit";
 import bcrypt from "bcryptjs";
 import { createHash, randomInt } from "node:crypto";
@@ -36,7 +36,11 @@ import {
   foundationItemsTable,
   foundationUnitConversionsTable,
   productImagesTable,
+  priceQuotesTable,
+  priceQuoteLinesTable,
 } from "../db/schema";
+import { ORDER_REFUSAL_TEXT, orderRefusal } from "../lib/priceQuoteCore";
+import { todayCairo } from "../lib/operationsCapacityCore";
 import {
   requirePortalAuth,
   requirePortalPermission,
@@ -2398,6 +2402,8 @@ export const submitOrderSchema = z.object({
   priority: z.enum(["low", "normal", "high", "urgent"]).default("normal"),
   notes: z.string().max(1000).optional().nullable(),
   idempotencyKey: z.string().min(8).max(150),
+  /** عرض سعر (45أ): لو اتبعت، السطور والكميات والأسعار بتيجي من العرض نفسه مش من الطلب. */
+  quoteId: z.number().int().positive().optional(),
 });
 
 router.post(
@@ -2445,8 +2451,22 @@ router.post(
       // using the conversion looked up server-side (never trust a
       // client-computed piece count — a customer could otherwise claim any
       // conversion factor to sneak under the minimum-quantity check).
+      // طلب من عرض سعر (45أ): السطور والكميات من العرض مش من العميل، والسعر متفق عليه.
+      let quoteCtx: { id: number; prices: Map<number, string> } | null = null;
+      let sourceItems = data.items;
+      if (data.quoteId !== undefined) {
+        const [quote] = await db.select().from(priceQuotesTable).where(eq(priceQuotesTable.id, data.quoteId)).limit(1);
+        const refused = orderRefusal(quote ?? null, customer.id, todayCairo(new Date()));
+        if (refused !== null) {
+          res.status(refused === "NOT_FOUND" ? 404 : 409).json({ error: { code: `QUOTE_${refused}`, message: ORDER_REFUSAL_TEXT[refused] } });
+          return;
+        }
+        const quoteLines = await db.select().from(priceQuoteLinesTable).where(eq(priceQuoteLinesTable.quoteId, data.quoteId)).orderBy(asc(priceQuoteLinesTable.id));
+        quoteCtx = { id: data.quoteId, prices: new Map(quoteLines.map((l) => [l.bomRecipeId, l.unitPrice])) };
+        sourceItems = quoteLines.map((l) => ({ bomRecipeId: l.bomRecipeId, qty: String(Number(l.qty)), unit: "قطعة", orderUnit: "piece" as const }));
+      }
       const canonicalItems = await Promise.all(
-        data.items.map(async (item) => {
+        sourceItems.map(async (item) => {
           if (item.orderUnit !== "carton") {
             return { ...item, qty: item.qty, unit: item.unit };
           }
@@ -2568,6 +2588,12 @@ router.post(
       const createdOrders = await db.transaction(async (tx: Transaction) => {
         const results = [];
         let runningValue = 0;
+        if (quoteCtx) {
+          // قفل العرض: طلبين متزامنين من نفس العرض ما يعدّوش الاتنين.
+          const [locked] = await tx.select().from(priceQuotesTable).where(eq(priceQuotesTable.id, quoteCtx.id)).for("update").limit(1);
+          const again = orderRefusal(locked ?? null, customer.id, todayCairo(new Date()));
+          if (again !== null) throw Object.assign(new Error(ORDER_REFUSAL_TEXT[again]), { status: 409, code: `QUOTE_${again}` });
+        }
         for (const item of canonicalItems) {
           const [recipe] = await tx
             .select()
@@ -2602,7 +2628,8 @@ router.post(
           // Phase 3: تسعير مرجعي فقط — بيتعرض للعميل كتقدير، ومايتحسبش في
           // أي فاتورة أو رصيد. السعر الحقيقي لسه بيتحدد يدويًا وقت المراجعة
           // بدون أي تغيير في المنطق ده.
-          const referenceUnitPrice = recipe.referencePrice;
+          const agreedUnitPrice = quoteCtx?.prices.get(item.bomRecipeId) ?? null;
+          const referenceUnitPrice = agreedUnitPrice ?? recipe.referencePrice;
           const referenceLineTotal =
             referenceUnitPrice !== null ?
               (qtyNumber * Number(referenceUnitPrice)).toFixed(2)
@@ -2642,6 +2669,8 @@ router.post(
               suggestedDueDate: suggestion.date,
               referenceUnitPrice,
               referenceLineTotal,
+              quoteId: quoteCtx?.id ?? null,
+              agreedUnitPrice,
               suggestedDeliveryMethod,
               // ✅ عميل البوابة مش موظف، فمفيش له userId حقيقي في نظام الموظفين —
               // بنسجّل رقمه هو نفسه هنا (namespace مختلف عن system_users، مرجعي بس)
@@ -2663,6 +2692,12 @@ router.post(
               );
             }
           }
+        }
+        if (quoteCtx) {
+          await tx
+            .update(priceQuotesTable)
+            .set({ status: "ordered", batchRef, decidedAt: new Date(), decidedByName: submitter.fullName, updatedAt: new Date() })
+            .where(eq(priceQuotesTable.id, quoteCtx.id));
         }
         return results;
       });

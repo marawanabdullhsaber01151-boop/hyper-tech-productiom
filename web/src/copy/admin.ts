@@ -592,6 +592,7 @@ export const adminCopy = {
   "a.po.d.reason": "السبب: {reason}",
   "a.po.d.qty": "الكمية: {qty} {unit}",
   "a.po.d.refPrice": "السعر المرجعي: {price}",
+  "a.po.confirm.agreed": "السعر متفق عليه في عرض سعر، ومش بيتغيّر.",
   "a.po.d.by": "طُلب بواسطة {name}",
   "a.po.confirm.title": "تأكيد الطلب",
   "a.po.confirm.body": "اكتب سعر الوحدة لكل صنف. هيتعمل أمر بيع مسودة.",

@@ -35,7 +35,7 @@ export function OrderDrawer({ batchRef, onClose, onChanged }: { batchRef: string
     onChanged();
   };
   const live = (d?.items ?? []).filter((l) => l.stage !== "cancelled");
-  const priceOf = (l: OrdLine) => prices[l.id] ?? l.referenceUnitPrice ?? "";
+  const priceOf = (l: OrdLine) => l.agreedUnitPrice ?? prices[l.id] ?? l.referenceUnitPrice ?? "";
   const pricesOk = live.length > 0 && live.every((l) => Number(priceOf(l)) > 0);
 
   const confirm = async () => {
@@ -118,8 +118,8 @@ export function OrderDrawer({ batchRef, onClose, onChanged }: { batchRef: string
         footer={<><Button variant="ghost" onClick={close}>{t("common.cancel")}</Button><Button loading={busy} disabled={!pricesOk} onClick={() => void confirm()}>{t("a.po.confirm.go")}</Button></>}>
         <div class="ad-stack">
           {live.map((l) => (
-            <Field key={l.id} label={`${l.productName} — ${t("a.po.confirm.price")}`}>
-              <Input type="number" inputMode="decimal" min="0" value={priceOf(l)} onInput={(e) => { const v = (e.currentTarget as HTMLInputElement).value; setPrices((p) => ({ ...p, [l.id]: v })); }} />
+            <Field key={l.id} label={`${l.productName} — ${t("a.po.confirm.price")}`} hint={l.agreedUnitPrice ? t("a.po.confirm.agreed") : undefined}>
+              <Input type="number" inputMode="decimal" min="0" value={priceOf(l)} disabled={!!l.agreedUnitPrice} onInput={(e) => { const v = (e.currentTarget as HTMLInputElement).value; setPrices((p) => ({ ...p, [l.id]: v })); }} />
             </Field>
           ))}
           <Field label={t("a.po.confirm.reply")}>

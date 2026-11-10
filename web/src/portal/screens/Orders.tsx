@@ -12,6 +12,7 @@ import { can } from "../session";
 import { loadCart, setCartQty } from "../cart";
 import type { OrderBatch, OrderItem, Paged } from "../types";
 import { PriceInquiries } from "./PriceInquiries";
+import { PriceQuotes } from "./PriceQuotes";
 import { ListSkeleton, LoadError, ROLLUP_TONE, currentStepLabel, readQty, rollupLabel } from "./shared";
 
 export async function reorderBatch(batch: OrderBatch): Promise<number> {
@@ -238,15 +239,20 @@ function OrdersList({ openRef, tabs }: { openRef?: string; tabs?: ComponentChild
   );
 }
 
-/** تبديل بين «الطلبات» و«طلبات الأسعار» (نفس الصفحة، بتتحفظ في الرابط). */
-function OrdersTabs({ inquiries }: { inquiries: boolean }) {
+type OrdersTab = "orders" | "inquiries" | "quotes";
+
+/** تبديل بين «الطلبات» و«طلبات الأسعار» و«عروض الأسعار» (نفس الصفحة، بتتحفظ في الرابط). */
+function OrdersTabs({ tab }: { tab: OrdersTab }) {
   return (
     <div class="pt-seg" role="group" aria-label={t("p.inq.tabs")}>
-      <button type="button" aria-pressed={!inquiries} onClick={() => navigate("/portal/orders")}>
+      <button type="button" aria-pressed={tab === "orders"} onClick={() => navigate("/portal/orders")}>
         {t("p.inq.tab.orders")}
       </button>
-      <button type="button" aria-pressed={inquiries} onClick={() => navigate("/portal/orders?tab=inquiries")}>
+      <button type="button" aria-pressed={tab === "inquiries"} onClick={() => navigate("/portal/orders?tab=inquiries")}>
         {t("p.inq.tab.inquiries")}
+      </button>
+      <button type="button" aria-pressed={tab === "quotes"} onClick={() => navigate("/portal/orders?tab=quotes")}>
+        {t("p.qt.tab")}
       </button>
     </div>
   );
@@ -254,19 +260,20 @@ function OrdersTabs({ inquiries }: { inquiries: boolean }) {
 
 export function Orders({ openRef }: { openRef?: string }) {
   usePath();
-  const inquiries = !openRef && new URLSearchParams(location.search).get("tab") === "inquiries";
-  if (inquiries) {
+  const param = new URLSearchParams(location.search).get("tab");
+  const tab: OrdersTab = openRef ? "orders" : param === "inquiries" ? "inquiries" : param === "quotes" ? "quotes" : "orders";
+  if (tab !== "orders") {
     return (
       <>
         <div class="pt-page-head">
-          <h1 class="pt-page-title">{t("p.inq.tab.inquiries")}</h1>
+          <h1 class="pt-page-title">{tab === "quotes" ? t("p.qt.tab") : t("p.inq.tab.inquiries")}</h1>
         </div>
-        <OrdersTabs inquiries />
-        <PriceInquiries />
+        <OrdersTabs tab={tab} />
+        {tab === "quotes" ? <PriceQuotes /> : <PriceInquiries />}
       </>
     );
   }
   return (
-    <OrdersList openRef={openRef} tabs={openRef ? undefined : <OrdersTabs inquiries={false} />} />
+    <OrdersList openRef={openRef} tabs={openRef ? undefined : <OrdersTabs tab="orders" />} />
   );
 }
