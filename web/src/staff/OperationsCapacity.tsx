@@ -5,7 +5,7 @@ import { t } from "../copy";
 import { Button, EmptyState, InlineAlert, Skeleton, Stat } from "../design/components";
 import { RefreshCw } from "../design/icons";
 import { formatDate } from "../lib/format";
-import { loadBand, pct, type Capacity } from "./capacityCore";
+import { loadBand, orderState, pct, sortOrders, type Capacity, type CenterCapacity } from "./capacityCore";
 
 /** السعة: حمل المصنع على 14 يوم عمل جاية بسقف تحميل 85%. */
 export function OperationsCapacity() {
@@ -40,6 +40,78 @@ export function OperationsCapacity() {
           ))}
         </ol>
       )}
+      <CenterHeatmap />
     </div>
+  );
+}
+
+/** الخريطة الحرارية بدقايق مسارات التصنيع على مراكز العمل، وتاريخ الانتهاء المتوقع للأوامر. */
+function CenterHeatmap() {
+  const q = useQuery((signal) => api.get<CenterCapacity>("/operations-center/capacity/centers", { signal }), []);
+  const c = q.data;
+  if (q.error) return <InlineAlert tone="danger" title={t("opc.err")} action={<Button size="sm" variant="secondary" onClick={() => void q.refetch()}>{t("common.retry")}</Button>}>{q.error.message}</InlineAlert>;
+  if (q.loading || !c) return <Skeleton lines={4} />;
+  const orders = sortOrders(c.orders);
+  return (
+    <section class="opc-heat" aria-label={t("opc.heat.title")}>
+      <h3 class="opc-heat__title">{t("opc.heat.title")}</h3>
+      <p class="opc-muted">{t("opc.heat.note", { cap: String(pct(c.cap)) })}</p>
+      {c.shiftsAssumed ? <InlineAlert tone="warn">{t("opc.heat.noShifts")}</InlineAlert> : null}
+      {c.liveRoutingOrders > 0 ? <InlineAlert tone="info">{t("opc.heat.live", { n: String(c.liveRoutingOrders) })}</InlineAlert> : null}
+      {c.noRoutingOrders > 0 ? <InlineAlert tone="info">{t("opc.heat.noRouting", { n: String(c.noRoutingOrders) })}</InlineAlert> : null}
+      {c.unassignedOps > 0 ? <InlineAlert tone="info">{t("opc.heat.unassigned", { n: String(c.unassignedOps) })}</InlineAlert> : null}
+      {c.centers.length === 0 || c.scheduledOrders === 0 ? <EmptyState title={t("opc.heat.empty")} compact /> : (
+        <>
+          <div class="opc-heat__scroll">
+            <table class="opc-heat__table">
+              <thead>
+                <tr>
+                  <th scope="col">{t("opc.heat.center")}</th>
+                  {(c.centers[0]?.days ?? []).map((d) => <th key={d.date} scope="col">{formatDate(d.date)}</th>)}
+                </tr>
+              </thead>
+              <tbody>
+                {c.centers.map((row) => (
+                  <tr key={row.id}>
+                    <th scope="row">{row.name}</th>
+                    {row.days.map((d) => (
+                      <td key={d.date} class={`opc-heat__cell opc-heat__cell--${loadBand(d.load)}`} aria-label={t("opc.heat.cellAria", { c: row.name, d: formatDate(d.date), p: String(pct(d.load)) })}>{pct(d.load)}%</td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <h3 class="opc-heat__title">{t("opc.heat.ordersTitle")}</h3>
+          <div class="opc-heat__scroll">
+            <table class="opc-heat__table">
+              <thead>
+                <tr>
+                  <th scope="col">{t("opc.heat.order")}</th>
+                  <th scope="col">{t("opc.heat.product")}</th>
+                  <th scope="col">{t("opc.heat.needed")}</th>
+                  <th scope="col">{t("opc.heat.finish")}</th>
+                  <th scope="col">{t("opc.heat.status")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {orders.map((o) => {
+                  const st = orderState(o);
+                  return (
+                    <tr key={o.id}>
+                      <th scope="row">{o.orderNumber}</th>
+                      <td>{o.productName}</td>
+                      <td>{o.neededBy ? formatDate(o.neededBy) : t("opc.heat.noDate")}</td>
+                      <td>{o.finish ? formatDate(o.finish) : t("opc.heat.beyond")}</td>
+                      <td class={st === "late" ? "opc-heat__late" : undefined}>{st === "late" ? (o.lateDays !== null ? t("opc.heat.lateBy", { n: String(o.lateDays) }) : t("opc.heat.lateFar")) : st === "onTime" ? t("opc.heat.onTime") : t("opc.heat.noDate")}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+    </section>
   );
 }

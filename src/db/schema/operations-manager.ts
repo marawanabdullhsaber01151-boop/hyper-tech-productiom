@@ -163,3 +163,29 @@ export type OperationsCase = typeof operationsCasesTable.$inferSelect;
 export type OperationsCaseLine = typeof operationsCaseLinesTable.$inferSelect;
 export type OperationsCaseRevision =
   typeof operationsCaseRevisionsTable.$inferSelect;
+
+/** وعود التسليم المثبّتة على الحالة (44ب): إضافة فقط. أول صف = الوعد الأول، وآخر صف = الحالي. */
+export const operationsCasePromisesTable = pgTable(
+  "operations_case_promises",
+  {
+    id: serial("id").primaryKey(),
+    caseId: integer("case_id")
+      .notNull()
+      .references(() => operationsCasesTable.id, { onDelete: "cascade" }),
+    promisedDate: date("promised_date", { mode: "string" }).notNull(),
+    earliestDate: date("earliest_date", { mode: "string" }),
+    likelyDate: date("likely_date", { mode: "string" }),
+    latestDate: date("latest_date", { mode: "string" }),
+    confidencePercent: integer("confidence_percent"),
+    method: text("method").notNull(),
+    runs: integer("runs").notNull().default(0),
+    dueDate: date("due_date", { mode: "string" }),
+    reason: text("reason"),
+    createdBy: integer("created_by").references(() => systemUsersTable.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    caseIdx: index("operations_case_promises_case_idx").on(table.caseId, table.id),
+  }),
+);
+

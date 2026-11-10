@@ -11,6 +11,7 @@ import { formatDate, formatNumber, formatRelative } from "../lib/format";
 import { OperationsCase } from "./OperationsCase";
 import { OperationsQueues } from "./OperationsQueues";
 import { OperationsCapacity } from "./OperationsCapacity";
+import { OperationsPromises } from "./OperationsPromises";
 import { OperationsPlans } from "./OperationsPlans";
 import { OperationsTransfers } from "./OperationsTransfers";
 import { CaseStatusPill, PriorityPill, ReasonChips, RiskPill } from "./OperationsParts";
@@ -46,7 +47,7 @@ interface Filters {
 }
 const NO_FILTERS: Filters = { status: "", priority: "", risk: "", assignee: "", search: "" };
 const PAGE_SIZE = 15;
-const TABS = ["overview", "cases", "claim", "plans", "transfers", "capacity", "needs"] as const;
+const TABS = ["overview", "cases", "claim", "plans", "transfers", "capacity", "promises", "needs"] as const;
 type Tab = (typeof TABS)[number];
 const val = (e: Event) => (e.target as HTMLInputElement).value;
 
@@ -82,6 +83,7 @@ export function Operations() {
     { id: "plans", label: t("opc.tab.plans"), panel: <OperationsPlans onChanged={changed} /> },
     { id: "transfers", label: t("opc.tab.transfers"), badge: o?.kpis.transfersPending || undefined, panel: <OperationsTransfers onChanged={changed} /> },
     { id: "capacity", label: t("opc.tab.capacity"), panel: <OperationsCapacity /> },
+    { id: "promises", label: t("opc.tab.promises"), panel: <OperationsPromises onOpen={setOpenId} /> },
     { id: "needs", label: t("opc.tab.needs"), badge: o ? o.kpis.requisitionsPending + o.kpis.exceptionsOpen || undefined : undefined, panel: <OperationsQueues part="needs" onChanged={changed} /> },
   ];
 

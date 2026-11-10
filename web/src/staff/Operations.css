@@ -104,3 +104,50 @@
   gap: var(--sp-2);
   align-items: center;
 }
+
+.opc-heat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  margin-block-start: var(--sp-4);
+}
+.opc-heat__title {
+  margin: 0;
+  font-size: var(--fs-md);
+}
+.opc-heat__scroll {
+  overflow-x: auto;
+}
+.opc-heat__table {
+  border-collapse: separate;
+  border-spacing: var(--sp-1);
+  inline-size: 100%;
+  font-size: var(--fs-sm);
+}
+.opc-heat__table th,
+.opc-heat__table td {
+  padding: var(--sp-2);
+  text-align: start;
+  white-space: nowrap;
+}
+.opc-heat__table thead th {
+  font-size: var(--fs-xs);
+  color: var(--c-text-3);
+  font-weight: 500;
+}
+.opc-heat__cell {
+  text-align: center;
+  font-weight: 700;
+  border-radius: var(--r-sm);
+  background: var(--c-surface-2);
+}
+.opc-heat__cell--busy {
+  background: var(--c-warn-soft);
+}
+.opc-heat__cell--full {
+  background: var(--c-danger-soft);
+}
+.opc-heat__late {
+  color: var(--c-danger);
+  font-weight: 700;
+}

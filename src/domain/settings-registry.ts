@@ -33,6 +33,10 @@ export const SETTING_DEFS: readonly SettingDef[] = [
   { key: "work.start_hour", group: "operations", type: "int", label: "بداية الدوام", hint: "الساعة (بتوقيت القاهرة، من 0 لـ 23).", unit: "ساعة", default: "9", min: 0, max: 23 },
   { key: "work.end_hour", group: "operations", type: "int", label: "نهاية الدوام", hint: "الساعة (بتوقيت القاهرة، من 1 لـ 24) وبتكون بعد البداية.", unit: "ساعة", default: "17", min: 1, max: 24 },
   { key: "work.off_day", group: "operations", type: "select", label: "يوم الإجازة الأسبوعية", default: "5", options: WEEKDAYS },
+  { key: "work.off_day_2", group: "operations", type: "select", label: "إجازة أسبوعية تانية", hint: "لو المصنع بيجازي يومين في الأسبوع. «من غير» = يوم واحد بس. بتأثر على السعة وتواريخ الانتهاء المتوقعة.", default: "none", options: [{ value: "none", label: "من غير" }, ...WEEKDAYS] },
+  { key: "capacity.cap_percent", group: "operations", type: "int", label: "سقف تحميل المصنع", hint: "أقصى نسبة من وقت المركز بنحمّلها بالشغل (الباقي للأعطال والتغيير والطوارئ). الأعلى = سعة أكتر على الورق وخطر تأخير أكبر.", unit: "%", default: "85", min: 50, max: 100 },
+  { key: "promise.confidence_percent", group: "operations", type: "int", label: "نسبة الثقة في وعد التسليم", hint: "الوعد بيتحسب من محاكاة: 80 يعني التاريخ اللي فيه 80% احتمال نخلص قبله أو فيه. الأعلى = وعد أبعد وأأمن.", unit: "%", default: "80", min: 50, max: 99 },
+  { key: "promise.variability_percent", group: "operations", type: "int", label: "تذبذب مدة التصنيع في المحاكاة", hint: "قد إيه مدة الأمر ممكن تزيد أو تنقص عن المقدّر. 20 = من 10% أقل لـ30% أكتر. 0 = من غير محاكاة (حساب ثابت).", unit: "%", default: "20", min: 0, max: 100 },
   { key: "approval.sla_hours", group: "operations", type: "int", label: "مهلة الرد على طلب الاعتماد", hint: "بساعات العمل. بعدها بيتفتح تنبيه للإدارة العليا.", unit: "ساعة عمل", default: "4", min: 1, max: 48 },
   { key: "stall.percent", group: "operations", type: "int", label: "حساسية «أمر واقف»", hint: "100 = الحدود الأصلية لكل مرحلة. أقل = تنبيه أبكر، وأكتر = تنبيه أبطأ.", unit: "%", default: "100", min: 25, max: 300 },
   { key: "security.require_2fa_top", group: "security", type: "select", label: "طلب التحقق بخطوتين للإدارة العليا", hint: "مقفول = صحة النظام ما بتذكرش الموضوع خالص. مفعّل = لو حساب رئيس مجلس الإدارة أو المدير التنفيذي من غير تحقق بخطوتين بتظهر ملاحظة.", default: "off", options: [{ value: "off", label: "مقفول" }, { value: "on", label: "مفعّل" }] },
@@ -80,7 +84,7 @@ export function resolveSettings(stored: Readonly<Record<string, string>>): Setti
 }
 
 export interface SettingChange { key: string; before: string; after: string }
-export type SettingsIssue = { key: string; error: Exclude<ValueCheck, { ok: true }>["error"] | "unknown" | "hours" };
+export type SettingsIssue = { key: string; error: Exclude<ValueCheck, { ok: true }>["error"] | "unknown" | "hours" | "days" };
 
 /** بيحسب اللي اتغير فعلًا (القيم المتساوية بتتجاهل) ويرجّع مشاكل التحقق، بما فيها: النهاية بعد البداية. */
 export function planChanges(current: Readonly<Record<string, string>>, updates: Readonly<Record<string, unknown>>): { changes: SettingChange[]; issues: SettingsIssue[]; next: SettingValues } {
@@ -97,6 +101,7 @@ export function planChanges(current: Readonly<Record<string, string>>, updates: 
     if (c.value !== base[key]) changes.push({ key, before: base[key], after: c.value });
   }
   if (Number(next["work.end_hour"]) <= Number(next["work.start_hour"])) issues.push({ key: "work.end_hour", error: "hours" });
+  if (next["work.off_day_2"] !== "none" && next["work.off_day_2"] === next["work.off_day"]) issues.push({ key: "work.off_day_2", error: "days" });
   return { changes, issues, next };
 }
 

@@ -1,9 +1,11 @@
 import { Router } from "express";
-import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, notInArray, sql } from "drizzle-orm";
+import { z } from "zod";
 import { db } from "../db";
 import {
   operationsCaseLinesTable,
   operationsCaseRevisionsTable,
+  operationsCasePromisesTable,
   operationsCasesTable,
   productionExceptionsTable,
   productionWorkflowOrdersTable,
@@ -11,7 +13,6 @@ import {
   operationTransfersTable,
   salesOrdersTable,
   systemUsersTable,
-  bomRecipesTable,
 } from "../db/schema";
 import { requireAuth, requirePermission } from "../middleware/auth";
 import { parseIdParam } from "../lib/validate";
@@ -26,8 +27,10 @@ import {
 } from "../lib/operationsCenterCore";
 import { escalateOperationsSla } from "../lib/operationsSla";
 import { loadCapacityForecast } from "../lib/operationsCapacity";
-import { CAPACITY_CAP, deliveryPromise, orderDemandDays, todayCairo } from "../lib/operationsCapacityCore";
-import { planConversion } from "../lib/operationsCenterCore";
+import { loadCenterCapacity } from "../lib/capacityCenters";
+import { computeCasePromise } from "../lib/casePromise";
+import { CLOSED_CASE_STATUSES, commitIssue, isClosedCase, standing, summarize } from "../lib/promiseCommitCore";
+import { writeAuditEvent } from "../lib/governance";
 
 const router = Router();
 
@@ -291,13 +294,31 @@ router.get(
       const cap = await loadCapacityForecast(now);
       res.json({
         generatedAt: now.toISOString(),
-        cap: CAPACITY_CAP,
+        cap: cap.config.cap,
+        holidaysAhead: cap.config.holidaysAhead,
         lines: cap.lines,
         linesAssumed: cap.linesAssumed,
         openOrders: cap.openOrders,
         noRecipeOrders: cap.noRecipeOrders,
         ...cap.forecast,
       });
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+/** خريطة السعة حسب مركز العمل: دقايق مسارات الأوامر المفتوحة على أيام العمل، وتاريخ الانتهاء المتوقع لكل أمر. */
+router.get(
+  "/operations-center/capacity/centers",
+  requireAuth,
+  requirePermission(OPERATIONS_MANAGER_PERMISSIONS.caseView),
+  async (_req, res, next) => {
+    try {
+      const now = new Date();
+      const snap = await loadCenterCapacity(now);
+      const { config, ...rest } = snap;
+      res.json({ generatedAt: now.toISOString(), cap: config.cap, holidaysAhead: config.holidaysAhead, offDays: config.calendar.offDays, ...rest });
     } catch (err) {
       next(err);
     }
@@ -313,39 +334,145 @@ router.get(
     try {
       const id = parseIdParam(req.params.id, res);
       if (id === null) return;
-      const [record] = await db.select().from(operationsCasesTable).where(eq(operationsCasesTable.id, id)).limit(1);
-      if (!record) {
+      const out = await computeCasePromise(id, new Date());
+      if (!out) {
         res.status(404).json({ error: { message: "حالة التشغيل غير موجودة" } });
         return;
       }
-      const [lines, recipes] = await Promise.all([
-        db.select().from(operationsCaseLinesTable).where(eq(operationsCaseLinesTable.caseId, id)),
-        db.select({ id: bomRecipesTable.id, productName: bomRecipesTable.productName, outputQty: bomRecipesTable.outputQty, days: bomRecipesTable.expectedProductionDays }).from(bomRecipesTable),
-      ]);
-      const plan = planConversion(lines.map((l) => ({ id: l.id, productNameSnapshot: l.productNameSnapshot })), recipes);
-      const recipeById = new Map(recipes.map((r) => [r.id, r]));
-      const recipeOf = new Map(plan.resolved.map((r) => [r.lineId, recipeById.get(r.recipeId)]));
-      let needed = 0;
-      for (const l of lines) {
-        const r = recipeOf.get(l.id);
-        needed += orderDemandDays({ expectedProductionDays: r?.days ?? null, qty: Number(l.orderedQty), outputQty: Number(r?.outputQty ?? 1), status: "claimed" });
-      }
-      const now = new Date();
-      const cap = await loadCapacityForecast(now);
-      const promise = deliveryPromise({ queueDays: cap.forecast.queueDays, newDays: needed, lines: cap.lines, startIso: todayCairo(now), dueDate: record.dueDate });
-      res.json({
-        ...promise,
-        dueDate: record.dueDate,
-        queueDays: cap.forecast.queueDays,
-        lines: cap.lines,
-        linesAssumed: cap.linesAssumed,
-        assumedDurationLines: plan.unresolved.length,
-        utilization: cap.forecast.utilization,
-      });
+      res.json(out.body);
     } catch (err) {
       next(err);
     }
   },
 );
+
+const commitSchema = z.object({ reason: z.string().trim().max(300).optional() });
+
+/** تثبيت الوعد على الحالة: سجل إضافة فقط. الأول من غير سبب، وأي تعديل بعده بسبب إجباري. بمعاملة واحدة مع التدقيق. */
+router.post(
+  "/operations-center/cases/:id/promise/commit",
+  requireAuth,
+  requirePermission(OPERATIONS_MANAGER_PERMISSIONS.caseEdit),
+  async (req, res, next) => {
+    try {
+      const id = parseIdParam(req.params.id, res);
+      if (id === null) return;
+      const body = commitSchema.parse(req.body ?? {});
+      const out = await computeCasePromise(id, new Date());
+      if (!out) {
+        res.status(404).json({ error: { message: "حالة التشغيل غير موجودة" } });
+        return;
+      }
+      if (isClosedCase(out.status)) {
+        res.status(409).json({ error: { code: "CASE_CLOSED", message: "الحالة مقفولة، مينفعش نثبّت وعد عليها" } });
+        return;
+      }
+      const saved = await db.transaction(async (tx) => {
+        const previous = await tx.select({ id: operationsCasePromisesTable.id }).from(operationsCasePromisesTable).where(eq(operationsCasePromisesTable.caseId, id)).limit(1);
+        if (commitIssue({ hasPrevious: previous.length > 0, reason: body.reason }) === "reason") return null;
+        const p = out.body;
+        const [row] = await tx
+          .insert(operationsCasePromisesTable)
+          .values({
+            caseId: id,
+            promisedDate: p.confidenceDate,
+            earliestDate: p.earliest,
+            likelyDate: p.likely,
+            latestDate: p.latest,
+            confidencePercent: p.confidence === null ? null : Math.round(p.confidence * 100),
+            method: p.method,
+            runs: p.runs,
+            dueDate: p.dueDate,
+            reason: body.reason || null,
+            createdBy: req.user!.userId,
+          })
+          .returning();
+        await writeAuditEvent({
+          actorUserId: req.user!.userId,
+          actorName: req.user!.username,
+          actionKey: previous.length ? "case.promise.revised" : "case.promise.committed",
+          resourceType: "operations_case",
+          resourceId: id,
+          afterData: { promisedDate: p.confidenceDate, method: p.method, confidence: p.confidence, dueDate: p.dueDate },
+          reason: body.reason || null,
+          ipAddress: req.ip,
+          userAgent: req.get("user-agent"),
+          executor: tx,
+        });
+        return row ?? null;
+      });
+      if (!saved) {
+        res.status(400).json({ error: { code: "REASON_REQUIRED", message: "تعديل وعد مثبّت لازم له سبب (3 حروف على الأقل)" } });
+        return;
+      }
+      res.status(201).json(toPromiseRow(saved));
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+/** سجل وعود الحالة (الأحدث الأول). */
+router.get(
+  "/operations-center/cases/:id/promise/history",
+  requireAuth,
+  requirePermission(OPERATIONS_MANAGER_PERMISSIONS.caseView),
+  async (req, res, next) => {
+    try {
+      const id = parseIdParam(req.params.id, res);
+      if (id === null) return;
+      const rows = await db.select().from(operationsCasePromisesTable).where(eq(operationsCasePromisesTable.caseId, id)).orderBy(desc(operationsCasePromisesTable.id)).limit(100);
+      res.json(rows.map(toPromiseRow));
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+/** تبويب «الوعود»: الحالات المفتوحة اللي ليها وعد مثبّت، الأول والحالي وعدد التعديلات ومقارنته بموعد الحالة. */
+router.get(
+  "/operations-center/promises",
+  requireAuth,
+  requirePermission(OPERATIONS_MANAGER_PERMISSIONS.caseView),
+  async (_req, res, next) => {
+    try {
+      const rows = await db
+        .select({
+          id: operationsCasePromisesTable.id,
+          caseId: operationsCasePromisesTable.caseId,
+          promisedDate: operationsCasePromisesTable.promisedDate,
+          confidencePercent: operationsCasePromisesTable.confidencePercent,
+          method: operationsCasePromisesTable.method,
+          reason: operationsCasePromisesTable.reason,
+          createdAt: operationsCasePromisesTable.createdAt,
+          caseNumber: operationsCasesTable.caseNumber,
+          customer: operationsCasesTable.customerDisplayName,
+          dueDate: operationsCasesTable.dueDate,
+          status: operationsCasesTable.status,
+        })
+        .from(operationsCasePromisesTable)
+        .innerJoin(operationsCasesTable, eq(operationsCasesTable.id, operationsCasePromisesTable.caseId))
+        .where(notInArray(operationsCasesTable.status, [...CLOSED_CASE_STATUSES]))
+        .orderBy(desc(operationsCasePromisesTable.id))
+        .limit(1000);
+      const meta = new Map(rows.map((r) => [r.caseId, { caseNumber: r.caseNumber, customer: r.customer, dueDate: r.dueDate }]));
+      const sums = summarize(rows.map((r) => ({ id: r.id, caseId: r.caseId, promisedDate: r.promisedDate, confidencePercent: r.confidencePercent, method: r.method, reason: r.reason, createdAt: r.createdAt.toISOString() })));
+      res.json(
+        sums
+          .map((s) => {
+            const m = meta.get(s.caseId);
+            return { caseId: s.caseId, caseNumber: m?.caseNumber ?? "", customer: m?.customer ?? null, dueDate: m?.dueDate ?? null, first: s.first, current: s.current, revisions: s.revisions, standing: standing(s.current.promisedDate, m?.dueDate ?? null) };
+          })
+          .sort((a, b) => (a.current.promisedDate < b.current.promisedDate ? -1 : 1)),
+      );
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+function toPromiseRow(r: typeof operationsCasePromisesTable.$inferSelect) {
+  return { id: r.id, caseId: r.caseId, promisedDate: r.promisedDate, confidencePercent: r.confidencePercent, method: r.method, reason: r.reason, createdAt: r.createdAt.toISOString() };
+}
 
 export default router;

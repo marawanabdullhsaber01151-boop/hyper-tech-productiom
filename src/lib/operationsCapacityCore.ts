@@ -46,14 +46,30 @@ export function orderDemandDays(i: DemandInput): number {
 const DAY = 86_400_000;
 const parse = (iso: string) => Date.parse(`${iso}T00:00:00Z`);
 const iso = (ms: number) => new Date(ms).toISOString().slice(0, 10);
-export const isWorkDay = (dateIso: string) => (OPS_WORK.workDays as readonly number[]).includes(new Date(parse(dateIso)).getUTCDay());
+
+/** تقويم العمل: أيام الإجازة الأسبوعية (0 = الأحد … 6 = السبت) + عطلات بتواريخ. الافتراضي: الجمعة بس (السبت–الخميس شغل). */
+export interface WorkCalendar {
+  offDays: readonly number[];
+  holidays: ReadonlySet<string>;
+}
+export const DEFAULT_CALENDAR: WorkCalendar = { offDays: [5], holidays: new Set<string>() };
+
+/** تقويم من الإعدادات: الإجازة الأسبوعية، وإجازة تانية اختيارية ("none" = من غير)، والعطلات. */
+export function calendarFrom(input: { offDay: number; offDay2: string; holidays: readonly string[] }): WorkCalendar {
+  const second = input.offDay2 === "none" ? null : Number(input.offDay2);
+  const offDays = [input.offDay, ...(second !== null && Number.isInteger(second) && second >= 0 && second <= 6 && second !== input.offDay ? [second] : [])];
+  return { offDays, holidays: new Set(input.holidays) };
+}
+
+export const isWorkDay = (dateIso: string, cal: WorkCalendar = DEFAULT_CALENDAR) =>
+  !cal.offDays.includes(new Date(parse(dateIso)).getUTCDay()) && !cal.holidays.has(dateIso);
 
 /** أول `count` يوم عمل بدءًا من تاريخ (شامل لو هو يوم عمل). */
-export function workDaysFrom(startIso: string, count: number): string[] {
+export function workDaysFrom(startIso: string, count: number, cal: WorkCalendar = DEFAULT_CALENDAR): string[] {
   const out: string[] = [];
-  for (let ms = parse(startIso), guard = 0; out.length < count && guard < 800; ms += DAY, guard += 1) {
+  for (let ms = parse(startIso), guard = 0; out.length < count && guard < 1200; ms += DAY, guard += 1) {
     const d = iso(ms);
-    if (isWorkDay(d)) out.push(d);
+    if (isWorkDay(d, cal)) out.push(d);
   }
   return out;
 }
@@ -78,11 +94,11 @@ export interface Forecast {
 }
 
 /** جدولة الطلب على أيام العمل بالأقرب موعدًا أول، وحساب الحمل لكل يوم. */
-export function buildForecast(input: { demands: readonly ScheduledDemand[]; lines: number; startIso: string; horizon?: number }): Forecast {
+export function buildForecast(input: { demands: readonly ScheduledDemand[]; lines: number; startIso: string; horizon?: number; cap?: number; calendar?: WorkCalendar }): Forecast {
   const horizon = input.horizon ?? FORECAST_DAYS;
   const lines = Math.max(1, input.lines);
-  const perDay = lines * CAPACITY_CAP;
-  const dates = workDaysFrom(input.startIso, horizon);
+  const perDay = lines * (input.cap ?? CAPACITY_CAP);
+  const dates = workDaysFrom(input.startIso, horizon, input.calendar);
   const used = new Array<number>(dates.length).fill(0);
   const sorted = [...input.demands].filter((d) => d.days > 0).sort((a, b) => (a.neededBy ?? "9999-12-31").localeCompare(b.neededBy ?? "9999-12-31"));
   let cursor = 0;
@@ -133,11 +149,11 @@ export interface DeliveryPromise {
 }
 
 /** وعد التسليم لطلب جديد بمدة `newDays` فوق طابور `queueDays`، ومقارنته بالموعد المطلوب. */
-export function deliveryPromise(input: { queueDays: number; newDays: number; lines: number; startIso: string; dueDate: string | null }): DeliveryPromise {
-  const perDay = Math.max(1, input.lines) * CAPACITY_CAP;
+export function deliveryPromise(input: { queueDays: number; newDays: number; lines: number; startIso: string; dueDate: string | null; cap?: number; calendar?: WorkCalendar }): DeliveryPromise {
+  const perDay = Math.max(1, input.lines) * (input.cap ?? CAPACITY_CAP);
   const finish = (factor: number) => {
     const workDays = Math.max(1, Math.ceil(((input.queueDays + input.newDays) * factor) / perDay));
-    const dates = workDaysFrom(input.startIso, workDays);
+    const dates = workDaysFrom(input.startIso, workDays, input.calendar);
     return dates[dates.length - 1] ?? input.startIso;
   };
   const earliest = finish(PROMISE_FACTORS.earliest);

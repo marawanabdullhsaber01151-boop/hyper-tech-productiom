@@ -97,3 +97,22 @@ describe("حسابي", () => {
     expect(groupSecret("ABCDEFGHIJ")).toBe("ABCD EFGH IJ");
   });
 });
+
+import { holidayError, holidayPayload, isPastHoliday, sortHolidays } from "./settingsAdminCore";
+
+describe("العطلات", () => {
+  const existing = [{ id: 1, date: "2026-12-25", reason: "عيد" }];
+  it("تاريخ حقيقي وسبب حرفين وغير مكرر", () => {
+    expect(holidayError({ date: "2026-12-30", reason: "إجازة" }, existing)).toBeNull();
+    expect(holidayError({ date: "2026-02-30", reason: "إجازة" }, existing)).toBe("date");
+    expect(holidayError({ date: "", reason: "إجازة" }, existing)).toBe("date");
+    expect(holidayError({ date: "2026-12-30", reason: " ع " }, existing)).toBe("reason");
+    expect(holidayError({ date: "2026-12-25", reason: "تاني" }, existing)).toBe("dup");
+  });
+  it("الإرسال بسبب مقصوص، والترتيب بالتاريخ، والفايت بيتعلّم", () => {
+    expect(holidayPayload({ date: "2026-12-30", reason: "  إجازة  " })).toEqual({ date: "2026-12-30", reason: "إجازة" });
+    expect(sortHolidays([{ id: 2, date: "2026-12-30", reason: "ب" }, { id: 1, date: "2026-12-25", reason: "أ" }]).map((h) => h.id)).toEqual([1, 2]);
+    expect(isPastHoliday({ id: 1, date: "2026-11-01", reason: "أ" }, "2026-11-09")).toBe(true);
+    expect(isPastHoliday({ id: 1, date: "2026-11-09", reason: "أ" }, "2026-11-09")).toBe(false);
+  });
+});

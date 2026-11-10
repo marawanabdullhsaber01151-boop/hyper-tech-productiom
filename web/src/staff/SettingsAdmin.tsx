@@ -5,10 +5,10 @@ import { api } from "../admin/api";
 import { useQuery } from "../api/hooks";
 import { t, type CopyKey } from "../copy";
 import { Button, ConfirmDialog, DataTable, Dialog, EmptyState, Field, InlineAlert, Input, PasswordInput, Select, Stat, StatusPill, type Column, type Option } from "../design/components";
-import { formatNumber } from "../lib/format";
+import { formatDate, formatNumber } from "../lib/format";
 import {
-  EMPTY_RULE, EMPTY_USER, cacheKeys, filterUsers, rangeParts, ruleError, rulePayload, ruleTogglePayload, sortRules, uptimeParts, userChanged, userError, userFormOf, userPayload,
-  type RuleForm, type RuleRow, type SystemInfo, type UserForm, type UserRow,
+  EMPTY_HOLIDAY, EMPTY_RULE, EMPTY_USER, cacheKeys, holidayError, holidayPayload, isPastHoliday, sortHolidays, filterUsers, rangeParts, ruleError, rulePayload, ruleTogglePayload, sortRules, uptimeParts, userChanged, userError, userFormOf, userPayload,
+  type HolidayForm, type HolidayRow, type RuleForm, type RuleRow, type SystemInfo, type UserForm, type UserRow,
 } from "./settingsAdminCore";
 import "./Activity.css";
 
@@ -161,6 +161,56 @@ function RuleDialog({ onClose, onDone }: { onClose: () => void; onDone: () => Pr
         <Field label={t("dlv.f.timing")}><Select value={f.timing} options={(["any", "on_time", "late"] as const).map((x) => ({ value: x, label: t(`dlv.timing.${x}` as CopyKey) }))} onChange={set("timing")} /></Field>
         <Field label={t("dlv.f.method")}><Select value={f.deliveryMethod} options={(["customer", "warehouse"] as const).map((x) => ({ value: x, label: t(`dlv.method.${x}` as CopyKey) }))} onChange={set("deliveryMethod")} /></Field>
         <Field label={t("dlv.f.priority")} error={show("priority")}><Input inputMode="numeric" value={f.priority} onInput={set("priority")} /></Field>
+      </div>
+    </Dialog>
+  );
+}
+
+/** تبويب «العطلات»: تواريخ بتتخطاها السعة وتواريخ الانتهاء المتوقعة. */
+export function HolidaysPanel() {
+  const list = useQuery((signal) => api.get<HolidayRow[]>("/settings/center/holidays", { signal }), []);
+  const act = useAct();
+  const [adding, setAdding] = useState(false);
+  const [deleting, setDeleting] = useState<HolidayRow | null>(null);
+  const rows = sortHolidays(arr<HolidayRow>(list.data));
+  const today = new Date().toISOString().slice(0, 10);
+  const cols: Column<HolidayRow>[] = [
+    { key: "d", header: t("hol.col.date"), cell: (r) => <strong>{formatDate(r.date)}</strong>, mobile: "title" },
+    { key: "r", header: t("hol.col.reason"), cell: (r) => r.reason },
+    { key: "s", header: "", cell: (r) => (isPastHoliday(r, today) ? <StatusPill tone="neutral">{t("hol.past")}</StatusPill> : null), mobile: "hide" },
+    { key: "x", header: t("hol.col.do"), cell: (r) => <Button size="sm" variant="ghost" onClick={() => setDeleting(r)}>{t("hol.delete")}</Button> },
+  ];
+  return (
+    <div class="act-list">
+      <p class="st-login__sub">{t("hol.intro")}</p>
+      <div class="act-toolbar"><Button onClick={() => setAdding(true)}>{t("hol.add")}</Button></div>
+      {list.error ? <InlineAlert tone="warn">{t("hol.loadFail")}</InlineAlert> : null}
+      <DataTable columns={cols} rows={rows} rowKey={(r) => r.id} caption={t("hol.caption")} loading={list.loading} empty={<EmptyState title={t("hol.empty")} compact />} />
+      {adding ? <HolidayDialog existing={rows} onClose={() => setAdding(false)} onDone={async () => { setAdding(false); await list.refetch(); }} /> : null}
+      <ConfirmDialog open={!!deleting} danger loading={act.busy} onClose={() => setDeleting(null)} title={t("hol.confirmDelete")}
+        onConfirm={async () => { const r = deleting; if (!r) return; const ok = await act.run(async () => { await api.delete<unknown>(`/settings/center/holidays/${r.id}`); return true; }, t("hol.deleted")); if (ok) { setDeleting(null); await list.refetch(); } }} />
+    </div>
+  );
+}
+
+function HolidayDialog({ existing, onClose, onDone }: { existing: readonly HolidayRow[]; onClose: () => void; onDone: () => Promise<void> }) {
+  const act = useAct();
+  const [f, setF] = useState<HolidayForm>(EMPTY_HOLIDAY);
+  const [tried, setTried] = useState(false);
+  const err = holidayError(f, existing);
+  const set = (k: keyof HolidayForm) => (e: Event) => setF({ ...f, [k]: val(e) });
+  const show = (code: string) => (tried && err === code ? t(`hol.err.${code}` as CopyKey) : undefined);
+  const submit = async () => {
+    setTried(true);
+    if (err) return;
+    const ok = await act.run(async () => { await api.post<unknown>("/settings/center/holidays", holidayPayload(f)); return true; }, t("hol.created"));
+    if (ok) await onDone();
+  };
+  return (
+    <Dialog open onClose={onClose} title={t("hol.dialog")} footer={<><Button variant="ghost" onClick={onClose}>{t("hol.cancel")}</Button><Button loading={act.busy} onClick={() => void submit()}>{t("hol.save")}</Button></>}>
+      <div class="act-list">
+        <Field label={t("hol.f.date")} error={show("date") ?? show("dup")}><Input type="date" value={f.date} onInput={set("date")} /></Field>
+        <Field label={t("hol.f.reason")} error={show("reason")}><Input value={f.reason} maxLength={120} onInput={set("reason")} /></Field>
       </div>
     </Dialog>
   );

@@ -16,7 +16,7 @@ export function dirtyKeys(defs: readonly SettingDef[], saved: Readonly<SettingVa
 }
 export const changedPayload = (keys: readonly string[], draft: Readonly<SettingValues>) => Object.fromEntries(keys.map((k) => [k, draft[k]]));
 
-export type FieldError = "required" | "number" | "range" | "email" | "length" | "hours";
+export type FieldError = "required" | "number" | "range" | "email" | "length" | "hours" | "days";
 
 /** تحقق سريع قبل الإرسال (نفس قواعد السيرفر). بيرجّع الأخطاء لكل مفتاح. */
 export function validateDraft(defs: readonly SettingDef[], draft: Readonly<SettingValues>): Record<string, FieldError> {
@@ -35,6 +35,7 @@ export function validateDraft(defs: readonly SettingDef[], draft: Readonly<Setti
   }
   const s = Number(draft["work.start_hour"]), e = Number(draft["work.end_hour"]);
   if (!out["work.end_hour"] && !out["work.start_hour"] && e <= s) out["work.end_hour"] = "hours";
+  if (draft["work.off_day_2"] && draft["work.off_day_2"] !== "none" && draft["work.off_day_2"] === draft["work.off_day"]) out["work.off_day_2"] = "days";
   return out;
 }
 

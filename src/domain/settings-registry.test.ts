@@ -87,3 +87,39 @@ describe("إعدادات التشغيل بتأثر على الحسابات", () 
     expect(operationalConfig({ "stall.percent": "200" }).stallFactor).toBe(2);
   });
 });
+
+describe("إعدادات السعة (43ب)", () => {
+  it("الافتراضي: سقف 85% وإجازة تانية «من غير»", () => {
+    const v = resolveSettings({});
+    expect(v["capacity.cap_percent"]).toBe("85");
+    expect(v["work.off_day_2"]).toBe("none");
+  });
+  it("السقف بين 50 و100 بس", () => {
+    const d = defOf("capacity.cap_percent")!;
+    expect(checkValue(d, "49")).toEqual({ ok: false, error: "range" });
+    expect(checkValue(d, "101")).toEqual({ ok: false, error: "range" });
+    expect(checkValue(d, "100")).toEqual({ ok: true, value: "100" });
+  });
+  it("الإجازة التانية ما تساويش الأولى", () => {
+    expect(planChanges({}, { "work.off_day_2": "5" }).issues).toEqual([{ key: "work.off_day_2", error: "days" }]);
+    expect(planChanges({}, { "work.off_day_2": "6" }).issues).toEqual([]);
+    expect(planChanges({ "work.off_day": "6" }, { "work.off_day_2": "6" }).issues).toHaveLength(1);
+  });
+});
+
+describe("إعدادات وعد التسليم (44أ)", () => {
+  it("الافتراضي: ثقة 80% وتذبذب 20%", () => {
+    const v = resolveSettings({});
+    expect(v["promise.confidence_percent"]).toBe("80");
+    expect(v["promise.variability_percent"]).toBe("20");
+  });
+  it("الثقة 50–99 والتذبذب 0–100", () => {
+    const c = defOf("promise.confidence_percent")!, v = defOf("promise.variability_percent")!;
+    expect(checkValue(c, "49")).toEqual({ ok: false, error: "range" });
+    expect(checkValue(c, "100")).toEqual({ ok: false, error: "range" });
+    expect(checkValue(c, "95")).toEqual({ ok: true, value: "95" });
+    expect(checkValue(v, "0")).toEqual({ ok: true, value: "0" });
+    expect(checkValue(v, "101")).toEqual({ ok: false, error: "range" });
+  });
+});
+

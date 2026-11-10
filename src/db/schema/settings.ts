@@ -10,6 +10,8 @@ import {
   jsonb,
   index,
   primaryKey,
+  date,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { z } from "zod";
 import { USER_ROLES } from "../../lib/roles";
@@ -164,4 +166,19 @@ export const userPreferencesTable = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => ({ pk: primaryKey({ columns: [t.userId, t.key] }) }),
+);
+
+/** العطلات الرسمية وإجازات المصنع (43ب): السعة بتتخطى التواريخ دي زي الإجازة الأسبوعية. */
+export const workHolidaysTable = pgTable(
+  "work_holidays",
+  {
+    id: serial("id").primaryKey(),
+    holidayDate: date("holiday_date", { mode: "string" }).notNull(),
+    reason: text("reason").notNull(),
+    createdBy: integer("created_by").references(() => systemUsersTable.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    dateUnique: uniqueIndex("work_holidays_date_unique").on(table.holidayDate),
+  }),
 );

@@ -7,11 +7,11 @@ import { t, type CopyKey } from "../copy";
 import { Button, DataTable, EmptyState, Field, InlineAlert, Input, Select, Tabs, type Column } from "../design/components";
 import { formatDateTime, formatNumber } from "../lib/format";
 import { changedPayload, defsOf, dirtyKeys, displayValue, validateDraft, type HistoryRow, type SettingDef, type SettingValues } from "./settingsCore";
-import { AboutPanel, DeliveryPanel, UsersPanel } from "./SettingsAdmin";
+import { AboutPanel, DeliveryPanel, HolidaysPanel, UsersPanel } from "./SettingsAdmin";
 import "./Activity.css";
 
 const val = (e: Event) => (e.target as HTMLInputElement).value;
-const TABS = ["company", "security", "operations", "users", "delivery", "about", "history"];
+const TABS = ["company", "security", "operations", "users", "delivery", "holidays", "about", "history"];
 /** ?tab=users مثلًا بيفتح التبويب ده (روابط صحة النظام). */
 const initialTab = (search: string) => { const v = new URLSearchParams(search).get("tab") ?? ""; return TABS.includes(v) ? v : "company"; };
 interface Center { defs: SettingDef[]; values: SettingValues }
@@ -46,6 +46,7 @@ export function Settings() {
           { id: "operations", label: t("set.tab.operations"), panel: <SettingsForm intro={t("set.ops.intro")} defs={defsOf(c.defs, "operations")} values={c.values} onSaved={saved} /> },
           { id: "users", label: t("set.tab.users"), panel: <UsersPanel /> },
           { id: "delivery", label: t("set.tab.delivery"), panel: <DeliveryPanel /> },
+          { id: "holidays", label: t("set.tab.holidays"), panel: <HolidaysPanel /> },
           { id: "about", label: t("set.tab.about"), panel: <AboutPanel /> },
           { id: "history", label: t("set.tab.history"), panel: <DataTable columns={histCols} rows={hist} rowKey={(r) => r.id} caption={t("set.hist.caption")} loading={history.loading} empty={<EmptyState title={t("set.hist.empty")} compact />} /> },
         ]} />

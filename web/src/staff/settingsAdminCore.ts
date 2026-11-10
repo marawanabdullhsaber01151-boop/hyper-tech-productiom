@@ -115,3 +115,20 @@ export interface TwoFaStatus { totpEnabled: boolean; totpEnabledAt: string | nul
 export interface TwoFaSetup { secret: string; otpauthUrl: string }
 /** السر بيتعرض مقسّم 4-4 عشان يتكتب بسهولة. */
 export const groupSecret = (s: string) => s.replace(/\s+/g, "").replace(/(.{4})/g, "$1 ").trim();
+
+export interface HolidayRow { id: number; date: string; reason: string }
+export interface HolidayForm { date: string; reason: string }
+export const EMPTY_HOLIDAY: HolidayForm = { date: "", reason: "" };
+export type HolidayError = "date" | "reason" | "dup";
+
+/** تحقق قبل الإرسال: تاريخ حقيقي، سبب حرفين على الأقل، وتاريخ مش متسجّل. */
+export function holidayError(f: HolidayForm, existing: readonly HolidayRow[]): HolidayError | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(f.date) || new Date(`${f.date}T00:00:00Z`).toISOString().slice(0, 10) !== f.date) return "date";
+  if (f.reason.trim().length < 2) return "reason";
+  if (existing.some((h) => h.date === f.date)) return "dup";
+  return null;
+}
+export const holidayPayload = (f: HolidayForm) => ({ date: f.date, reason: f.reason.trim() });
+/** مرتّبة بالتاريخ، وبنعلّم اللي فات (مقارنة نصية بتاريخ النهارده بصيغة YYYY-MM-DD). */
+export const sortHolidays = (rows: readonly HolidayRow[]): HolidayRow[] => [...rows].sort((a, b) => a.date.localeCompare(b.date));
+export const isPastHoliday = (h: HolidayRow, todayIso: string) => h.date < todayIso;

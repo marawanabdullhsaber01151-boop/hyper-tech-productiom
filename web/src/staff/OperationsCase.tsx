@@ -12,6 +12,7 @@ import { formatDate, formatNumber, formatRelative } from "../lib/format";
 import { CaseStatusPill, PriorityPill, ReasonChips, RiskPill, wfLabel, wfTone } from "./OperationsParts";
 import { OrderCost } from "./OperationsCost";
 import { verdictTone, type PromiseVerdict } from "./capacityCore";
+import { driftDays, driftState, reasonNeeded, reasonOk, type PromiseRow } from "./promisesCore";
 import { PRIORITIES, parseRevisionReason, unresolvedFrom, type NextAction, type RiskLevel, type UnresolvedLine } from "./operationsCore";
 
 interface CaseRec {
@@ -432,31 +433,77 @@ interface Promise3 {
   queueDays: number;
   linesAssumed: boolean;
   assumedDurationLines: number;
+  method?: "simulation" | "days";
+  confidenceDate?: string;
+  confidence?: number | null;
+  runs?: number;
 }
 
-/** وعد التسليم للحالة: نطاق تاريخ حسب الطابور الحالي والسعة، ومقارنته بموعد الحالة. */
+/** وعد التسليم للحالة: تاريخ بنسبة ثقة ونطاق، ومقارنته بموعد الحالة، وتثبيته (أول وعد ما بيتغيّرش، والتعديل بسبب). */
 function PromiseBlock({ caseId }: { caseId: number }) {
   const act = useAct();
   const [p, setP] = useState<Promise3 | null>(null);
+  const [committing, setCommitting] = useState(false);
+  const [reason, setReason] = useState("");
+  const [tried, setTried] = useState(false);
+  const history = useQuery((signal) => api.get<PromiseRow[]>(`/operations-center/cases/${caseId}/promise/history`, { signal }), [caseId]);
+  const rows = Array.isArray(history.data) ? history.data : [];
+  const current = rows[0] ?? null;
+  const first = rows.length ? rows[rows.length - 1] : null;
   const run = async () => {
     const r = await act.run(() => api.get<Promise3>(`/operations-center/cases/${caseId}/promise`));
     if (r) setP(r);
   };
+  const needReason = reasonNeeded(rows.length > 0);
+  const commit = async () => {
+    setTried(true);
+    if (needReason && !reasonOk(reason)) return;
+    const ok = await act.run(async () => { await api.post<unknown>(`/operations-center/cases/${caseId}/promise/commit`, needReason ? { reason: reason.trim() } : {}); return true; }, t("opc.pr.done"));
+    if (ok) {
+      setCommitting(false);
+      setReason("");
+      setTried(false);
+      await history.refetch();
+    }
+  };
+  const live = p ? (p.confidenceDate ?? p.latest) : null;
+  const drift = current && live ? driftDays(current.promisedDate, live) : null;
   return (
     <>
       <div class="opc-hrow">
         <h3 class="opc-h">{t("opc.pr.title")}</h3>
         <Button size="sm" variant="secondary" loading={act.busy} onClick={() => void run()}>{p ? t("opc.plan.reload") : t("opc.pr.run")}</Button>
       </div>
+      {current ? (
+        <div class="opc-stack">
+          <div class="opc-promise">
+            <strong>{t("opc.pr.committed", { d: formatDate(current.promisedDate), at: formatDate(current.createdAt) })}</strong>
+            {first && first.id !== current.id ? <span class="opc-muted">{t("opc.pr.committedFirst", { d: formatDate(first.promisedDate) })}</span> : null}
+            {rows.length > 1 ? <span class="opc-muted">{t("opc.pr.revs", { n: String(rows.length - 1) })}</span> : null}
+          </div>
+          {drift !== null ? <p class="opc-muted">{t(`opc.pr.drift.${driftState(drift)}` as CopyKey, { n: String(Math.abs(drift)) })}</p> : null}
+        </div>
+      ) : null}
       {p ? (
         <div class="opc-stack">
           <div class="opc-promise">
             <StatusPill tone={verdictTone(p.verdict)}>{t(`opc.pr.v.${p.verdict}` as CopyKey)}</StatusPill>
+            {p.method === "simulation" && p.confidenceDate && p.confidence ? <strong>{t("opc.pr.promiseDate", { p: String(Math.round(p.confidence * 100)), d: formatDate(p.confidenceDate) })}</strong> : null}
             <span>{t("opc.pr.range", { a: formatDate(p.earliest), b: formatDate(p.likely), c: formatDate(p.latest) })}</span>
             {p.dueDate ? <span class="opc-muted">{t("opc.pr.due", { d: formatDate(p.dueDate) })}</span> : null}
           </div>
+          <p class="opc-muted">{p.method === "simulation" ? t("opc.pr.bySim", { n: String(p.runs ?? 0) }) : t("opc.pr.byDays")}</p>
           {p.assumedDurationLines > 0 ? <p class="opc-muted">{t("opc.pr.assumed", { n: String(p.assumedDurationLines) })}</p> : null}
           {p.linesAssumed ? <p class="opc-muted">{t("opc.cap.assumed")}</p> : null}
+          {committing ? (
+            <div class="opc-stack">
+              {needReason ? <Field label={t("opc.pr.reason")} error={tried && !reasonOk(reason) ? t("opc.pr.reasonErr") : undefined}><Input value={reason} maxLength={300} onInput={(e) => setReason((e.target as HTMLInputElement).value)} /></Field> : null}
+              <div class="opc-hrow">
+                <Button size="sm" loading={act.busy} onClick={() => void commit()}>{t("opc.pr.confirm")}</Button>
+                <Button size="sm" variant="ghost" onClick={() => { setCommitting(false); setTried(false); }}>{t("opc.pr.cancel")}</Button>
+              </div>
+            </div>
+          ) : <div><Button size="sm" onClick={() => (needReason ? setCommitting(true) : void commit())}>{t(current ? "opc.pr.recommit" : "opc.pr.commit")}</Button></div>}
         </div>
       ) : <p class="opc-muted">{t("opc.pr.note")}</p>}
     </>
