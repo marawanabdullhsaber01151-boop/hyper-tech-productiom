@@ -4,6 +4,6 @@ export {
   CircleAlert, CircleCheck, Clock, Copy, Ellipsis, Eye, EyeOff, Info, Inbox, KeyRound, ListFilter, LoaderCircle, Lock,
   Menu, MessageCircle, Monitor, Moon, Pencil, Phone, Plus, Printer, QrCode, Search, Share2, Sun, Trash, TriangleAlert, Users, X,
   Bell, ClipboardList, Download, Heart, House, ImageOff, LogOut, Mail, Minus, Package, RefreshCw, Send, ShieldCheck, ShoppingCart, Smartphone, UserRound, WifiOff,
-  Ban, Link2, Play, Settings, Undo2, UserPlus,
+  Ban, Link2, Play, Settings, Undo2, Upload, UserPlus,
   Circle, Database, Factory, Globe, Landmark, Truck, Warehouse, Workflow,
 } from "lucide-preact";

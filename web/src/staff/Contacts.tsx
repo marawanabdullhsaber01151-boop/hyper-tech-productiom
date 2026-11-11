@@ -7,10 +7,11 @@ import { navigate } from "../app/router";
 import { t, type CopyKey } from "../copy";
 import { GOVERNORATES } from "../copy/governorates";
 import { Button, DataTable, EmptyState, FilterBar, InlineAlert, Select, Stat, StatusPill, Tabs, useToast, type Column } from "../design/components";
-import { Download, Plus } from "../design/icons";
+import { Download, Plus, Upload } from "../design/icons";
 import { formatNumber } from "../lib/format";
 import { ContactDrawer } from "./ContactDrawer";
 import { ContactEditor } from "./ContactEditor";
+import { ContactsImport } from "./ContactsImport";
 import { SEGMENTS, canWriteContacts, contactCounts, filterContacts, initials, isCustomer, isSupplier, sortContacts, telLink, type ContactRow, type SortKey, type TypeTab } from "./contactsCore";
 import { buildCsv } from "./salesCore";
 import { CONTACT_ROLES } from "./staffRoles";
@@ -33,6 +34,7 @@ export function Contacts() {
   const [sort, setSort] = useState<SortKey>("name");
   const [openId, setOpenId] = useState<number | null>(() => Number(qs.get("open")) || null);
   const [editor, setEditor] = useState<{ contact?: ContactRow } | null>(null);
+  const [importing, setImporting] = useState(false);
 
   const list = useQuery((signal) => api.get<ContactRow[]>("/contacts/overview", { signal }), []);
   const rows = Array.isArray(list.data) ? list.data : [];
@@ -130,6 +132,7 @@ export function Contacts() {
       <p class="st-login__sub">{t("con.subtitle")}</p>
       <div class="con-bar">
         {canWrite ? <Button icon={Plus} onClick={() => setEditor({})}>{t("con.new")}</Button> : null}
+        {canWrite ? <Button variant="secondary" icon={Upload} onClick={() => setImporting(true)}>{t("con.import")}</Button> : null}
         <Button variant="secondary" icon={Download} onClick={exportCsv} disabled={shown.length === 0}>{t("con.export")}</Button>
       </div>
       <div class="con-stats">
@@ -154,6 +157,7 @@ export function Contacts() {
           onAllSales={() => navigate(`/staff/sales?customer=${opened.id}`)}
         />
       ) : null}
+      {importing ? <ContactsImport onClose={() => setImporting(false)} onDone={() => { setImporting(false); void list.refetch(); }} /> : null}
       {editor ? (
         <ContactEditor
           contact={editor.contact}

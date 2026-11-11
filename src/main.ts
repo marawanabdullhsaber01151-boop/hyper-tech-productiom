@@ -15,6 +15,7 @@ import dashboardRouter from "./routes/dashboard";
 import accessRouter from "./routes/access";
 import inventoryRouter from "./routes/inventory";
 import contactsRouter from "./routes/contacts";
+import contactsImportRouter from "./routes/contacts-import";
 import salesRouter from "./routes/sales";
 import bomRouter from "./routes/bom";
 import qualityRouter from "./routes/quality";
@@ -158,6 +159,7 @@ apiRouter.use(authRouter);
 apiRouter.use(dashboardRouter);
 apiRouter.use(accessRouter);
 apiRouter.use(inventoryRouter);
+apiRouter.use(contactsImportRouter);
 apiRouter.use(contactsRouter);
 apiRouter.use(salesRouter);
 // The legacy /production-orders route is intentionally not mounted.
