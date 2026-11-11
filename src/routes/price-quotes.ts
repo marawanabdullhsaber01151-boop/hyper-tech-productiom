@@ -11,6 +11,8 @@ import { PERMISSIONS } from "../lib/permissions";
 import { notifyRoles } from "../lib/notifications";
 import { notifyPortalCustomer } from "../lib/portalNotifications";
 import { writeAuditEvent } from "../lib/governance";
+import { QUOTE_MANAGER_ROLES, sendBlocked } from "../lib/priceAgreementCore";
+import { toCents } from "../lib/money";
 import { loadSettingValues } from "../lib/settingsStore";
 import { parseIdParam } from "../lib/validate";
 import { todayCairo } from "../lib/operationsCapacityCore";
@@ -307,6 +309,11 @@ router.post("/price-quotes/:id/send", requireAuth, requireRole(...PERMISSIONS.sa
       const lines = await tx.select().from(priceQuoteLinesTable).where(eq(priceQuoteLinesTable.quoteId, id));
       const issues = quoteIssues({ lines: lines.map((l) => ({ bomRecipeId: l.bomRecipeId, qty: String(Number(l.qty)), unitPrice: l.unitPrice })), validUntil: row.validUntil, today });
       if (issues.length > 0) throw fail(400, issues.map((i) => ISSUE_TEXT[i]).join("، "), "QUOTE_INVALID");
+      const limit = Number((await loadSettingValues())["quotes.approval_limit"]);
+      const isManager = (QUOTE_MANAGER_ROLES as readonly string[]).includes(req.user!.role);
+      if (sendBlocked({ totalCents: toCents(quoteTotal(lines)), limit, isManager })) {
+        throw fail(403, `إجمالي العرض أكبر من ${limit} جنيه، لازم رئيس المجلس أو المدير التنفيذي أو مدير المبيعات هو اللي يبعته`, "NEEDS_MANAGER");
+      }
       const [updated] = await tx.update(priceQuotesTable).set({ status: "sent", sentAt: new Date(), updatedAt: new Date() }).where(eq(priceQuotesTable.id, id)).returning();
       await writeAuditEvent({
         actorUserId: req.user!.userId,

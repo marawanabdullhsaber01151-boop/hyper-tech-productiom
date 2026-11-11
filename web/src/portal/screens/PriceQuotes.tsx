@@ -6,7 +6,7 @@ import { useMutation, useQuery } from "../../api/hooks";
 import { formatDate, formatMoney, formatNumber } from "../../lib/format";
 import { api } from "../api";
 import { can } from "../session";
-import type { PortalQuote } from "../types";
+import type { PortalAgreement, PortalQuote } from "../types";
 import { ListSkeleton, LoadError } from "./shared";
 
 const tone = (s: PortalQuote["status"]) => (s === "sent" ? "info" : s === "ordered" ? "success" : s === "expired" ? "warn" : "neutral");
@@ -14,6 +14,7 @@ const tone = (s: PortalQuote["status"]) => (s === "sent" ? "info" : s === "order
 /** عروض الأسعار اللي وصلت للعميل: يطلب منها بنفس السعر بضغطة واحدة، أو يرفضها. */
 export function PriceQuotes() {
   const q = useQuery((signal) => api.get<{ items: PortalQuote[] }>("/portal/price-quotes", { signal }), []);
+  const ag = useQuery((signal) => api.get<{ items: PortalAgreement[] }>("/portal/price-agreements", { signal }), []);
   const toast = useToast();
   const [order, setOrder] = useState<PortalQuote | null>(null);
   const [decline, setDecline] = useState<{ quote: PortalQuote; reason: string } | null>(null);
@@ -41,6 +42,20 @@ export function PriceQuotes() {
     <div class="pt-stack">
       {q.error ? <LoadError error={q.error} onRetry={() => void q.refetch()} /> : null}
       {q.loading && !q.data ? <ListSkeleton /> : null}
+      {(ag.data?.items.length ?? 0) > 0 ? (
+        <Card class="pt-stack" pad>
+          <strong>{t("p.ag.title")}</strong>
+          <p class="pt-muted">{t("p.ag.hint")}</p>
+          <ul class="pt-stack">
+            {(ag.data?.items ?? []).map((a) => (
+              <li key={a.id} class="pt-row pt-row--between">
+                <span>{a.productName}</span>
+                <span class="pt-muted">{t("p.ag.line", { price: formatMoney(Number(a.unitPrice)), from: formatDate(a.validFrom), until: formatDate(a.validUntil) })}</span>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      ) : null}
       {q.data && rows.length === 0 ? <EmptyState title={t("p.qt.empty")} description={t("p.qt.emptyBody")} /> : null}
       <div class="pt-list">
         {rows.map((r) => (

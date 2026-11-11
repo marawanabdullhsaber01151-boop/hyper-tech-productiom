@@ -38,7 +38,9 @@ import {
   productImagesTable,
   priceQuotesTable,
   priceQuoteLinesTable,
+  priceAgreementsTable,
 } from "../db/schema";
+import { pickAgreement } from "../lib/priceAgreementCore";
 import { ORDER_REFUSAL_TEXT, orderRefusal } from "../lib/priceQuoteCore";
 import { todayCairo } from "../lib/operationsCapacityCore";
 import {
@@ -2585,6 +2587,15 @@ router.post(
       // عدد القطع في الكرتونة وقت الطلب (بيتسجّل على كل سطر عشان العرض بالكراتين والقطع)
       const cartonAtOrder = await loadCartonConversions(canonicalItems.map((i) => i.bomRecipeId));
 
+      // اتفاقيات الأسعار الشغالة (45ب): لو مفيش عرض، السطر بياخد سعر الاتفاقية تلقائيًا ومتقفل.
+      const agreementToday = todayCairo(new Date());
+      const agreements = quoteCtx
+        ? []
+        : await db
+            .select()
+            .from(priceAgreementsTable)
+            .where(and(eq(priceAgreementsTable.portalCustomerId, customer.id), eq(priceAgreementsTable.status, "active")));
+
       const createdOrders = await db.transaction(async (tx: Transaction) => {
         const results = [];
         let runningValue = 0;
@@ -2628,7 +2639,8 @@ router.post(
           // Phase 3: تسعير مرجعي فقط — بيتعرض للعميل كتقدير، ومايتحسبش في
           // أي فاتورة أو رصيد. السعر الحقيقي لسه بيتحدد يدويًا وقت المراجعة
           // بدون أي تغيير في المنطق ده.
-          const agreedUnitPrice = quoteCtx?.prices.get(item.bomRecipeId) ?? null;
+          const agreement = quoteCtx ? null : pickAgreement(agreements, item.bomRecipeId, agreementToday);
+          const agreedUnitPrice = quoteCtx?.prices.get(item.bomRecipeId) ?? agreement?.unitPrice ?? null;
           const referenceUnitPrice = agreedUnitPrice ?? recipe.referencePrice;
           const referenceLineTotal =
             referenceUnitPrice !== null ?
@@ -2671,6 +2683,7 @@ router.post(
               referenceLineTotal,
               quoteId: quoteCtx?.id ?? null,
               agreedUnitPrice,
+              agreementId: agreement?.id ?? null,
               suggestedDeliveryMethod,
               // ✅ عميل البوابة مش موظف، فمفيش له userId حقيقي في نظام الموظفين —
               // بنسجّل رقمه هو نفسه هنا (namespace مختلف عن system_users، مرجعي بس)

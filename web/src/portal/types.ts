@@ -164,6 +164,17 @@ export interface AuditEvent {
   createdAt: string;
 }
 
+/** سعر متفق عليه للعميل (45ب). */
+export interface PortalAgreement {
+  id: number;
+  bomRecipeId: number;
+  productName: string;
+  unitPrice: string;
+  validFrom: string;
+  validUntil: string;
+  status: "active" | "upcoming";
+}
+
 /** عرض سعر وصل للعميل (45أ). */
 export interface PortalQuote {
   id: number;

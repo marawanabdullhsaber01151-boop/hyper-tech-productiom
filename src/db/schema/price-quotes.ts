@@ -50,3 +50,31 @@ export const priceQuoteLinesTable = pgTable(
 
 export type PriceQuote = typeof priceQuotesTable.$inferSelect;
 export type PriceQuoteLine = typeof priceQuoteLinesTable.$inferSelect;
+
+/** اتفاقية سعر (45ب): سعر متفق عليه لمنتج لعميل لفترة. بتتقفل (ended) بسبب، مش بتتمسح. */
+export const priceAgreementsTable = pgTable(
+  "price_agreements",
+  {
+    id: serial("id").primaryKey(),
+    portalCustomerId: integer("portal_customer_id").notNull().references(() => portalCustomersTable.id, { onDelete: "cascade" }),
+    customerName: text("customer_name").notNull(),
+    bomRecipeId: integer("bom_recipe_id").notNull().references(() => bomRecipesTable.id),
+    productName: text("product_name").notNull(),
+    unitPrice: numeric("unit_price", { precision: 12, scale: 2 }).notNull(),
+    validFrom: date("valid_from", { mode: "string" }).notNull(),
+    validUntil: date("valid_until", { mode: "string" }).notNull(),
+    note: text("note"),
+    /** active | ended — «قادمة/منتهية» بتتحسب من التواريخ وقت القراءة. */
+    status: text("status").notNull().default("active"),
+    createdBy: integer("created_by").references(() => systemUsersTable.id, { onDelete: "set null" }),
+    createdByName: text("created_by_name"),
+    endedAt: timestamp("ended_at", { withTimezone: true }),
+    endedByName: text("ended_by_name"),
+    endReason: text("end_reason"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    customerIdx: index("price_agreements_customer_idx").on(table.portalCustomerId, table.bomRecipeId, table.status),
+  }),
+);
+export type PriceAgreement = typeof priceAgreementsTable.$inferSelect;

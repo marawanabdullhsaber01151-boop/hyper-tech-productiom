@@ -210,6 +210,8 @@ export const productionWorkflowOrdersTable = pgTable(
     // عرض سعر (45أ): لو السطر اتولّد من عرض، السعر المتفق عليه مقفول وقت مراجعة المبيعات.
     quoteId: integer("quote_id"),
     agreedUnitPrice: numeric("agreed_unit_price", { precision: 12, scale: 2 }),
+    /** اتفاقية سعر (45ب) اتطبقت على السطر ده. */
+    agreementId: integer("agreement_id"),
     // Phase 3: طريقة التسليم المحسوبة تلقائيًا من src/lib/deliveryMethod.ts
     // (بالإضافة لـ deliveryType الموجود أصلًا، اللي بيتسجل وقت التسليم
     // الفعلي من مدير الإنتاج — القيمتين منفصلتين عمدًا: دي اقتراح مبكر،

@@ -95,3 +95,31 @@ export const formEstimate = (f: QuoteForm): number => Math.round(f.lines.reduce(
 export function daysLeft(validUntil: string, today: string): number {
   return Math.round((Date.parse(`${validUntil}T00:00:00Z`) - Date.parse(`${today}T00:00:00Z`)) / 86_400_000);
 }
+
+export interface QuoteSummary {
+  open: number;
+  ordered: number;
+  declined: number;
+  expired: number;
+  /** نسبة اللي اتحوّل لطلب من العروض اللي خلص مصيرها (طلب/رفض/انتهاء). null لو لسه مفيش. */
+  conversionPct: number | null;
+  orderedValue: number;
+  openValue: number;
+}
+
+/** ملخص التحويل (45ب): المسودات والملغي مش بتتحسب. القيم بالجنيه للعرض فقط. */
+export function summarize(items: readonly Pick<Quote, "status" | "total">[]): QuoteSummary {
+  const s: QuoteSummary = { open: 0, ordered: 0, declined: 0, expired: 0, conversionPct: null, orderedValue: 0, openValue: 0 };
+  for (const q of items) {
+    const v = Number(q.total) || 0;
+    if (q.status === "sent") { s.open++; s.openValue += v; }
+    else if (q.status === "ordered") { s.ordered++; s.orderedValue += v; }
+    else if (q.status === "declined") s.declined++;
+    else if (q.status === "expired") s.expired++;
+  }
+  const done = s.ordered + s.declined + s.expired;
+  s.conversionPct = done === 0 ? null : Math.round((s.ordered / done) * 100);
+  s.orderedValue = Math.round(s.orderedValue * 100) / 100;
+  s.openValue = Math.round(s.openValue * 100) / 100;
+  return s;
+}

@@ -79,3 +79,36 @@ describe("واجهة العروض", () => {
     expect(d).toContain("disabled={!!l.agreedUnitPrice}");
   });
 });
+
+describe("اتفاقيات الأسعار (45ب)", () => {
+  const a = read("src/routes/price-agreements.ts");
+  it("المسارات بصلاحية المبيعات، والكتابة بمعاملة وتدقيق وقفل العميل ضد التداخل", () => {
+    for (const m of ['get("/price-agreements", requireAuth, requireRole(...PERMISSIONS.sales.view)', 'post("/price-agreements", requireAuth, requireRole(...PERMISSIONS.sales.write)', 'post("/price-agreements/:id/end", requireAuth, requireRole(...PERMISSIONS.sales.write)']) expect(a).toContain(m);
+    expect(a).toContain('actionKey: "agreement.created"');
+    expect(a).toContain('actionKey: "agreement.ended"');
+    expect((a.match(/db\.transaction/g) ?? []).length).toBeGreaterThanOrEqual(2);
+    expect(a).toContain('.for("update")');
+    expect(a).toContain("AGREEMENT_OVERLAP");
+    expect(read("src/main.ts")).toContain("apiRouter.use(priceAgreementsRouter)");
+  });
+  it("الطلب العادي بياخد سعر الاتفاقية ومتقفل، والعرض له الأولوية", () => {
+    const p = read("src/routes/portal.ts");
+    expect(p).toContain("pickAgreement(agreements, item.bomRecipeId, agreementToday)");
+    expect(p).toContain("quoteCtx?.prices.get(item.bomRecipeId) ?? agreement?.unitPrice ?? null");
+    expect(p).toContain("agreementId: agreement?.id ?? null");
+  });
+  it("حد الإرسال بالمدير، والإعداد في السجل، والهجرة فيها الجدول والعمود", () => {
+    const q = read("src/routes/price-quotes.ts");
+    expect(q).toContain("sendBlocked({ totalCents: toCents(quoteTotal(lines)), limit, isManager })");
+    expect(q).toContain('"NEEDS_MANAGER"');
+    expect(read("src/domain/settings-registry.ts")).toContain('key: "quotes.approval_limit"');
+    const m = read("migrations/0099_price_agreements.sql");
+    expect(m).toContain('CREATE TABLE IF NOT EXISTS "price_agreements"');
+    expect(m).toContain('"agreement_id" integer REFERENCES "price_agreements"');
+    expect(m).toContain("Rollback");
+  });
+  it("الواجهة: تبويب الاتفاقيات في صفحة العروض وقسم أسعار العميل في بوابته", () => {
+    expect(read("web/src/staff/Quotes.tsx")).toContain("<PriceAgreements />");
+    expect(read("web/src/portal/screens/PriceQuotes.tsx")).toContain("/portal/price-agreements");
+  });
+});

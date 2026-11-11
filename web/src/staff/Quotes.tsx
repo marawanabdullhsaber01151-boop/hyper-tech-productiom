@@ -8,8 +8,9 @@ import { t, type CopyKey } from "../copy";
 import { Button, DataTable, Dialog, EmptyState, Field, InlineAlert, Input, Select, Stat, StatusPill, Textarea, type Column } from "../design/components";
 import { formatDate, formatDateTime, formatMoney, formatNumber } from "../lib/format";
 import { SALES_PAGE_ROLES } from "./staffRoles";
+import { PriceAgreements } from "./PriceAgreements";
 import {
-  QUOTE_FILTERS, daysLeft, emptyForm, formEstimate, formFromQuote, formIssues, statusTone, toPayload,
+  QUOTE_FILTERS, daysLeft, emptyForm, formEstimate, formFromQuote, formIssues, statusTone, summarize, toPayload,
   type Quote, type QuoteForm, type QuoteList, type QuoteLookups, type QuoteShown,
 } from "./quotesCore";
 import "./Engineering.css";
@@ -23,6 +24,7 @@ const cairoToday = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Ca
 export function Quotes() {
   const role = staffUser()?.role ?? "";
   const allowed = (SALES_PAGE_ROLES as readonly string[]).includes(role);
+  const [tab, setTab] = useState<"quotes" | "agreements">("quotes");
   const [status, setStatus] = useState("");
   const [search, setSearch] = useState("");
   const q = useQuery((signal) => (allowed ? api.get<QuoteList>(`/price-quotes?q=${encodeURIComponent(search)}`, { signal }) : Promise.resolve({ items: [], counts: {} } as QuoteList)), [allowed, search]);
@@ -33,6 +35,7 @@ export function Quotes() {
   const counts = q.data?.counts ?? {};
   const shown = status ? all.filter((x) => x.status === status) : all;
   const today = cairoToday();
+  const sum = summarize(all);
   const cols: Column<Quote>[] = [
     { key: "no", header: t("qt.col.number"), cell: (r) => <Button size="sm" variant="ghost" onClick={() => setView(r)}>{r.quoteNumber}</Button>, mobile: "title" },
     { key: "cu", header: t("qt.col.customer"), cell: (r) => r.customerName },
@@ -48,9 +51,19 @@ export function Quotes() {
         <h1 class="ad-title">{t("qt.title")}</h1>
         <p class="st-login__sub">{t("qt.subtitle")}</p>
       </div>
+      <div class="eng-toolbar" role="group" aria-label={t("qt.tabs")}>
+        <Button variant={tab === "quotes" ? "primary" : "secondary"} aria-pressed={tab === "quotes"} onClick={() => setTab("quotes")}>{t("qt.tab.quotes")}</Button>
+        <Button variant={tab === "agreements" ? "primary" : "secondary"} aria-pressed={tab === "agreements"} onClick={() => setTab("agreements")}>{t("qt.tab.agreements")}</Button>
+      </div>
+      {tab === "agreements" ? <PriceAgreements /> : null}
+      {tab === "quotes" ? <>
       <div class="eng-stats">
         {(["draft", "sent", "ordered", "expired"] as QuoteShown[]).map((s) => <Stat key={s} label={t(k(`qt.status.${s}`))} value={formatNumber(counts[s] ?? 0)} />)}
+        <Stat label={t("qt.sum.conversion")} value={sum.conversionPct === null ? t("qt.sum.conversionNone") : `${formatNumber(sum.conversionPct)}%`} />
+        <Stat label={t("qt.sum.orderedValue")} value={money(sum.orderedValue)} />
+        <Stat label={t("qt.sum.openValue")} value={money(sum.openValue)} />
       </div>
+      <p class="eng-muted">{t("qt.sum.hint")}</p>
       <div class="eng-toolbar">
         <Input aria-label={t("qt.search")} placeholder={t("qt.search")} value={search} onInput={(e) => setSearch(val(e))} />
         <Select aria-label={t("qt.col.status")} value={status} onChange={(e) => setStatus(val(e))} options={[{ value: "", label: t("qt.filter.all") }, ...QUOTE_FILTERS.map((s) => ({ value: s, label: t(k(`qt.status.${s}`)) }))]} />
@@ -58,6 +71,7 @@ export function Quotes() {
       </div>
       {q.error ? <InlineAlert tone="danger" title={t("qt.err")} action={<Button size="sm" variant="secondary" onClick={refresh}>{t("common.retry")}</Button>}>{q.error.message}</InlineAlert> : null}
       <DataTable columns={cols} rows={shown} rowKey={(r) => r.id} caption={t("qt.caption")} loading={q.loading} empty={<EmptyState title={t("qt.empty")} compact />} />
+      </> : null}
       {form ? <QuoteDialog edit={form.edit} onClose={() => setForm(null)} onDone={() => { setForm(null); refresh(); }} /> : null}
       {view ? <DetailDialog quote={view} onClose={() => setView(null)} onEdit={() => { setForm({ edit: view }); setView(null); }} onDone={() => { setView(null); refresh(); }} /> : null}
     </div>
