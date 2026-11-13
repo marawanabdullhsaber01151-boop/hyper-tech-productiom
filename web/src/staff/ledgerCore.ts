@@ -9,8 +9,8 @@ const AMOUNT = /^\d{1,12}(?:\.\d{1,2})?$/;
 export function parseCents(raw: string): bigint | null {
   const s = raw
     .trim()
-    .replace(/[٠-٩]/g, (d) => String("٠١٢٣٤٥٦٧٨٩".indexOf(d)))
-    .replace(/[،,٫]/g, ".");
+    .replace(/[\u0660-\u0669]/g, (d) => String(d.charCodeAt(0) - 0x0660))
+    .replace(/[\u060C,\u066B]/g, ".");
   if (s === "") return 0n;
   if (!AMOUNT.test(s)) return null;
   const [w = "0", f = ""] = s.split(".");

@@ -162,6 +162,8 @@ const entryBody = z.object({
 function dbGuard(err: unknown): never {
   const msg = String((err as { message?: string })?.message ?? "");
   if (msg.includes("GL_UNBALANCED")) throw fail(422, "القيد غير متوازن", "UNBALANCED");
+  if (msg.includes("GL_TOO_FEW_LINES")) throw fail(422, "القيد لازم يكون له سطرين على الأقل", "TOO_FEW_LINES");
+  if (msg.includes("GL_TOTAL_MISMATCH")) throw fail(422, "إجمالي القيد مش مطابق لمجموع سطوره", "TOTAL_MISMATCH");
   if (msg.includes("GL_PERIOD_CLOSED")) throw fail(422, "الفترة دي مقفولة ومينفعش يتسجّل عليها قيد", "PERIOD_CLOSED");
   throw err;
 }
