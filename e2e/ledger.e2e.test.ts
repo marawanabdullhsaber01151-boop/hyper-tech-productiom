@@ -137,7 +137,7 @@ suite("الحسابات — ترجرات القاعدة والترحيل (Postgr
   it("قيد المصدر مبيتكررش (عملية اتعادت = قيد واحد)", async () => {
     await post("2001-05-02", "3", "3", { sourceType: "e2e_invoice", sourceId: `INV-${stamp}` });
     const dup = await failure(post("2001-05-02", "3", "3", { sourceType: "e2e_invoice", sourceId: `INV-${stamp}` }));
-    expect(String(dup?.message)).toContain("gl_entries_source_unique");
+    expect(`${dup?.message} ${dup?.cause?.message ?? ""} ${dup?.cause?.constraint ?? ""}`).toContain("gl_entries_source_unique");
     expect((await pool.query("select count(*)::int c from gl_journal_entries where source_id=$1", [`INV-${stamp}`])).rows[0].c).toBe(1);
   });
 
