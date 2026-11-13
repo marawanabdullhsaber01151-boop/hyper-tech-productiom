@@ -162,16 +162,19 @@ router.post("/price-agreements/:id/end", requireAuth, requireRole(...PERMISSIONS
 });
 
 /** أسعار العميل المتفق عليها دلوقتي (الشغالة والقادمة) في بوابته. */
+/** الاتفاقيات الفعالة والجاية زي ما العميل بيشوفها. بتُستخدم في البوابة وفي «شاهد كما يراه العميل». */
+export async function portalAgreementItems(customerId: number) {
+  const today = todayCairo(new Date());
+  const rows = await db.select().from(priceAgreementsTable).where(and(eq(priceAgreementsTable.portalCustomerId, customerId), ne(priceAgreementsTable.status, "ended"))).orderBy(priceAgreementsTable.productName);
+  return rows
+    .map((r) => ({ r, shown: agreementShown(r, today) }))
+    .filter((x) => x.shown === "active" || x.shown === "upcoming")
+    .map(({ r, shown }) => ({ id: r.id, bomRecipeId: r.bomRecipeId, productName: r.productName, unitPrice: r.unitPrice, validFrom: r.validFrom, validUntil: r.validUntil, status: shown }));
+}
+
 router.get("/portal/price-agreements", requirePortalAuth, async (req, res, next) => {
   try {
-    const customerId = getAuthenticatedPortalCustomerId(req);
-    const today = todayCairo(new Date());
-    const rows = await db.select().from(priceAgreementsTable).where(and(eq(priceAgreementsTable.portalCustomerId, customerId), ne(priceAgreementsTable.status, "ended"))).orderBy(priceAgreementsTable.productName);
-    const items = rows
-      .map((r) => ({ r, shown: agreementShown(r, today) }))
-      .filter((x) => x.shown === "active" || x.shown === "upcoming")
-      .map(({ r, shown }) => ({ id: r.id, bomRecipeId: r.bomRecipeId, productName: r.productName, unitPrice: r.unitPrice, validFrom: r.validFrom, validUntil: r.validUntil, status: shown }));
-    res.json({ items });
+    res.json({ items: await portalAgreementItems(getAuthenticatedPortalCustomerId(req)) });
   } catch (err) {
     next(err);
   }

@@ -1,3 +1,4 @@
+import "../../copy/viewas";
 import { t } from "../../copy";
 import { Drawer, InlineAlert, Skeleton, Tabs, Button } from "../../design/components";
 import { navigate } from "../../app/router";
@@ -7,12 +8,15 @@ import { StatusBadge } from "../parts";
 import type { CompanyDetail } from "../types";
 import { ChatTab, LogTab, OrdersTab, OverviewTab, SecurityTab, SettingsTab } from "./CompanyTabs";
 import { TeamTab } from "./TeamTab";
+import { ViewAs } from "./ViewAs";
+import { useState } from "preact/hooks";
 
 export const TAB_IDS = ["overview", "team", "orders", "chat", "security", "settings", "log"] as const;
 
 export function CompanyDrawer({ id, tab, search, onClose, onListChanged }: { id: number; tab: string; search: string; onClose: () => void; onListChanged: () => void }) {
   const q = useQuery((signal) => api.get<CompanyDetail>(`/portal-companies/${id}`, { signal }), [id]);
   const d = q.data;
+  const [viewing, setViewing] = useState(false);
   const reload = async () => {
     await q.refetch();
     onListChanged();
@@ -40,7 +44,8 @@ export function CompanyDrawer({ id, tab, search, onClose, onListChanged }: { id:
       {!d && !q.error ? <div class="ad-stack"><Skeleton height={32} /><Skeleton height={120} /><Skeleton height={200} /></div> : null}
       {d ? (
         <div class="ad-stack">
-          <div><StatusBadge status={d.company.status} /></div>
+          <div><StatusBadge status={d.company.status} /> <Button size="sm" variant="secondary" onClick={() => setViewing(true)}>{t("va.open")}</Button></div>
+          {viewing ? <ViewAs companyId={id} companyName={d.company.companyName} onClose={() => setViewing(false)} /> : null}
           <Tabs tabs={tabs} value={active} onChange={(tid) => navigate(`/admin/portal-customers/${id}/${tid}${search}`, { replace: true })} label={t("a.tabs.label")} />
         </div>
       ) : null}

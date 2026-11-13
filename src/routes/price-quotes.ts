@@ -390,35 +390,37 @@ router.post("/price-quotes/:id/cancel", requireAuth, requireRole(...PERMISSIONS.
 
 /* ───────────── للعميل (البوابة) ───────────── */
 
+/** عروض الأسعار زي ما العميل بيشوفها (من غير بيانات داخلية). بتُستخدم في البوابة وفي «شاهد كما يراه العميل». */
+export async function portalQuoteItems(customerId: number) {
+  const today = todayCairo(new Date());
+  const rows = await db
+    .select()
+    .from(priceQuotesTable)
+    .where(and(eq(priceQuotesTable.portalCustomerId, customerId), sql`${priceQuotesTable.status} <> 'draft'`))
+    .orderBy(desc(priceQuotesTable.id))
+    .limit(100);
+  const lines = await linesOf(rows.map((r) => r.id));
+  return rows.map((r) => {
+    const p = present(r, lines.get(r.id) ?? [], today);
+    return {
+      id: p.id,
+      quoteNumber: p.quoteNumber,
+      status: p.status,
+      validUntil: p.validUntil,
+      notes: p.notes,
+      sentAt: p.sentAt,
+      decidedAt: p.decidedAt,
+      declineReason: p.declineReason,
+      batchRef: p.batchRef,
+      total: p.total,
+      lines: p.lines.map((l) => ({ bomRecipeId: l.bomRecipeId, productName: l.productName, qty: l.qty, unitPrice: l.unitPrice })),
+    };
+  });
+}
+
 router.get("/portal/price-quotes", requirePortalAuth, async (req, res, next) => {
   try {
-    const customerId = getAuthenticatedPortalCustomerId(req);
-    const today = todayCairo(new Date());
-    const rows = await db
-      .select()
-      .from(priceQuotesTable)
-      .where(and(eq(priceQuotesTable.portalCustomerId, customerId), sql`${priceQuotesTable.status} <> 'draft'`))
-      .orderBy(desc(priceQuotesTable.id))
-      .limit(100);
-    const lines = await linesOf(rows.map((r) => r.id));
-    // العميل مايشوفش بيانات داخلية (اسم الموظف، سبب إلغاء داخلي).
-    const items = rows.map((r) => {
-      const p = present(r, lines.get(r.id) ?? [], today);
-      return {
-        id: p.id,
-        quoteNumber: p.quoteNumber,
-        status: p.status,
-        validUntil: p.validUntil,
-        notes: p.notes,
-        sentAt: p.sentAt,
-        decidedAt: p.decidedAt,
-        declineReason: p.declineReason,
-        batchRef: p.batchRef,
-        total: p.total,
-        lines: p.lines.map((l) => ({ bomRecipeId: l.bomRecipeId, productName: l.productName, qty: l.qty, unitPrice: l.unitPrice })),
-      };
-    });
-    res.json({ items });
+    res.json({ items: await portalQuoteItems(getAuthenticatedPortalCustomerId(req)) });
   } catch (err) {
     next(err);
   }

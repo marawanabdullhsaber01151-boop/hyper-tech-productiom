@@ -18,6 +18,7 @@ import { approvalsAdminCopy } from "./approvalsAdmin";
 import { reportsCopy } from "./reports";
 import { settingsCopy } from "./settings";
 import { quotesCopy } from "./quotes";
+import { viewAsCopy } from "./viewas";
 
 export const lazyCopies = {
   sales: salesCopy,
@@ -36,4 +37,5 @@ export const lazyCopies = {
   settings: settingsCopy,
   reports: reportsCopy,
   quotes: quotesCopy,
+  viewas: viewAsCopy,
 } as const;
