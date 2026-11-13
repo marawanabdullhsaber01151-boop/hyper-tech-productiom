@@ -11,7 +11,7 @@ import { StaffShell } from "../staff/StaffShell";
 import { StaffNotFound } from "../staff/SystemPages";
 import { RoleGuard } from "../staff/RoleGuard";
 import { PURCHASE_ROLES } from "../staff/purchasingCore";
-import { ACTIVITY_PAGE_ROLES, APPROVALS_PAGE_ROLES, CONTACT_ROLES, ENGINEERING_PAGE_ROLES, FOUNDATION_PAGE_ROLES, HEALTH_ROLES, OPERATIONS_ROLES, PLANNING_PAGE_ROLES, PRODUCTION_PAGE_ROLES, RECEIVING_PAGE_ROLES, REPORT_PAGE_ROLES, SALES_PAGE_ROLES, SETTINGS_PAGE_ROLES, STOCK_ROLES } from "../staff/staffRoles";
+import { ACTIVITY_PAGE_ROLES, APPROVALS_PAGE_ROLES, CONTACT_ROLES, ENGINEERING_PAGE_ROLES, FOUNDATION_PAGE_ROLES, HEALTH_ROLES, OPERATIONS_ROLES, PLANNING_PAGE_ROLES, PRODUCTION_PAGE_ROLES, RECEIVING_PAGE_ROLES, FINANCE_PAGE_ROLES, REPORT_PAGE_ROLES, SALES_PAGE_ROLES, SETTINGS_PAGE_ROLES, STOCK_ROLES } from "../staff/staffRoles";
 import { LazyPage } from "./lazyPage";
 
 const loadSales = () => import("../staff/Sales").then((m) => m.Sales as ComponentType<{ key?: string }>);
@@ -25,6 +25,7 @@ const loadSettings = () => import("../staff/Settings").then((m) => m.Settings as
 const loadAccount = () => import("../staff/Account").then((m) => m.Account as ComponentType<Record<string, never>>);
 const loadApprovals = () => import("../staff/Approvals").then((m) => m.Approvals as ComponentType<Record<string, never>>);
 const loadActivity = () => import("../staff/Activity").then((m) => m.Activity as ComponentType<Record<string, never>>);
+const loadLedger = () => import("../staff/Ledger").then((m) => m.Ledger as ComponentType<{ key?: string }>);
 const loadQuotes = () => import("../staff/Quotes").then((m) => m.Quotes as ComponentType<{ key?: string }>);
 const loadReceiving = () => import("../staff/Receiving").then((m) => m.Receiving as ComponentType<{ key?: string }>);
 const loadPlanning = () => import("../staff/Planning").then((m) => m.Planning as ComponentType<{ key?: string }>);
@@ -46,6 +47,7 @@ export const staffRoutes: RouteDef[] = [
   { path: "/staff/account", render: () => <LazyPage load={loadAccount} props={{}} /> },
   { path: "/staff/approvals", render: () => <RoleGuard roles={APPROVALS_PAGE_ROLES}><LazyPage load={loadApprovals} props={{}} /></RoleGuard> },
   { path: "/staff/activity", render: () => <RoleGuard roles={ACTIVITY_PAGE_ROLES}><LazyPage load={loadActivity} props={{}} /></RoleGuard> },
+  { path: "/staff/ledger", render: () => <RoleGuard roles={FINANCE_PAGE_ROLES}><LazyPage key={location.search} load={loadLedger} props={{}} /></RoleGuard> },
   { path: "/staff/quotes", render: () => <RoleGuard roles={SALES_PAGE_ROLES}><LazyPage key={location.search} load={loadQuotes} props={{}} /></RoleGuard> },
   { path: "/staff/receiving", render: () => <RoleGuard roles={RECEIVING_PAGE_ROLES}><LazyPage key={location.search} load={loadReceiving} props={{}} /></RoleGuard> },
   { path: "/staff/foundation", render: () => <RoleGuard roles={FOUNDATION_PAGE_ROLES}><LazyPage key={location.search} load={loadFoundation} props={{}} /></RoleGuard> },

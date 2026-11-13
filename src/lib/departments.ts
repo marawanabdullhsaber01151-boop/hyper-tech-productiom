@@ -66,6 +66,7 @@ export const DEPARTMENTS: readonly NavDepartment[] = [
           { id: "system-health", label: "صحة النظام", href: "/v2/staff/system-health", roles: TOP_MGMT },
           { id: "activity", label: "سجل النشاط", href: "/v2/staff/activity", roles: TOP_MGMT },
           { id: "reports", label: "التقارير", href: "/v2/staff/reports", roles: TOP_MGMT },
+          { id: "ledger", label: "الحسابات والقيود", href: "/v2/staff/ledger", roles: TOP_MGMT },
         ],
       },
     ],

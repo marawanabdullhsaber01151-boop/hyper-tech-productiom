@@ -9,6 +9,9 @@ export const HEALTH_ROLES = ["chairman", "executive_manager"] as const;
 
 export const SALES_PAGE_ROLES = SALES_ROLES;
 
+/** لازم تتطابق مع PERMISSIONS.finance في السيرفر. */
+export const FINANCE_PAGE_ROLES = ["chairman", "executive_manager"] as const;
+
 /** نفس PERMISSIONS.contacts.view / write في السيرفر. */
 export const CONTACT_ROLES = ["chairman", "executive_manager", "sales_manager", "online_seller", "offline_seller", "hr", "hr_manager"] as const;
 export const CONTACT_WRITE_ROLES = ["chairman", "sales_manager", "online_seller", "offline_seller", "hr", "hr_manager"] as const;

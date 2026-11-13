@@ -115,6 +115,11 @@ export const PERMISSIONS = {
       "chairman",
     ],
   },
+  // المحاسبة (48): دليل الحسابات وقيود اليومية وميزان المراجعة. الإدارة العليا بس لحد ما يتحدد دور محاسب.
+  finance: {
+    view: ["chairman", "executive_manager"],
+    write: ["chairman", "executive_manager"],
+  },
   // صلاحيات إدارة حسابات بوابة العملاء منفصلة عن صلاحيات المبيعات العامة.
   // الواجهة الحالية مخصصة لهذه الأدوار الثلاثة فقط.
   portalCustomers: {
