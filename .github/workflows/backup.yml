@@ -31,7 +31,7 @@ jobs:
       B2_ENDPOINT: ${{ secrets.B2_ENDPOINT }}
       B2_BUCKET: ${{ secrets.B2_BUCKET }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/setup-backup-tools
         with:
           pg-major: "18"
