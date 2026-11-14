@@ -1,3 +1,4 @@
+import { syncSalesOrderLedger } from "../lib/ledgerAuto";
 import { enrichAuditRows } from "../lib/auditEnrich";
 import { Router } from "express";
 import { and, asc, desc, eq, gt, inArray, isNull, or } from "drizzle-orm";
@@ -309,6 +310,7 @@ router.patch("/governance/approval-requests/:id/decide", requireRole("chairman",
               // (مش نثبّته دايمًا على "confirmed" بغض النظر عن حالته الحقيقية)
               await tx.update(salesOrdersTable).set({ status: originalStatus, updatedAt: new Date() })
                 .where(eq(salesOrdersTable.id, request.resourceId));
+              await syncSalesOrderLedger(tx, request.resourceId, { userId: req.user!.userId, username: req.user!.username });
             } else {
               const items = await tx.select().from(salesOrderItemsTable)
                 .where(eq(salesOrderItemsTable.orderId, request.resourceId));
@@ -333,6 +335,7 @@ router.patch("/governance/approval-requests/:id/decide", requireRole("chairman",
               // above still applies; only the balance adjustment is gone.)
               await tx.update(salesOrdersTable).set({ status: "cancelled", updatedAt: new Date() })
                 .where(eq(salesOrdersTable.id, request.resourceId));
+              await syncSalesOrderLedger(tx, request.resourceId, { userId: req.user!.userId, username: req.user!.username });
             }
           }
         }

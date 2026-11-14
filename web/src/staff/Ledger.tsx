@@ -43,6 +43,7 @@ export function Ledger() {
         { id: "accounts", label: t("lg.tab.accounts"), panel: <Accounts /> },
         { id: "trial", label: t("lg.tab.trial"), panel: <Trial /> },
         { id: "periods", label: t("lg.tab.periods"), panel: <Periods data={periods.data?.items ?? []} /> },
+        { id: "auto", label: t("lg.tab.auto"), panel: <AutoPosting /> },
       ]} />
     </div>
   );
@@ -59,7 +60,7 @@ function Entries() {
     { key: "n", header: t("lg.col.number"), cell: (r) => <Button size="sm" variant="ghost" onClick={() => setOpen(r.id)}>{r.entryNumber}</Button>, mobile: "title" },
     { key: "d", header: t("lg.col.date"), cell: (r) => formatDate(r.entryDate) },
     { key: "x", header: t("lg.col.desc"), cell: (r) => r.description, mobile: "hide" },
-    { key: "s", header: t("lg.col.source"), cell: (r) => t(k(`lg.src.${r.sourceType === "reversal" ? "reversal" : "manual"}`)), mobile: "hide" },
+    { key: "s", header: t("lg.col.source"), cell: (r) => t(k(`lg.src.${["reversal", "sales_invoice", "purchase_receipt"].includes(r.sourceType) ? r.sourceType : "manual"}`)), mobile: "hide" },
     { key: "t", header: t("lg.col.total"), cell: (r) => money(r.total), numeric: true },
     { key: "st", header: t("lg.col.status"), cell: (r) => <StatusPill tone={r.status === "posted" ? "success" : "warn"}>{t(k(`lg.status.${r.status}`))}</StatusPill> },
   ];
@@ -255,6 +256,41 @@ function Periods({ data }: { data: Period[] }) {
     <div class="ad-stack">
       <p class="eng-muted">{t("lg.p.hint")}</p>
       <DataTable columns={cols} rows={data} rowKey={(p) => p.id} caption={t("lg.p.caption")} empty={<EmptyState compact title={t("lg.p.empty")} />} />
+    </div>
+  );
+}
+
+/* ---------------- الترحيل التلقائي ---------------- */
+interface AutoState { enabled: boolean; startDate: string | null; locked: boolean; autoEntries: number }
+function AutoPosting() {
+  const act = useAct();
+  const q = useQuery((signal) => api.get<AutoState>("/ledger/auto-posting", { signal }), []);
+  const [date, setDate] = useState("");
+  const d = q.data;
+  const save = async (startDate: string | null) => {
+    const r = await act.run(() => api.put<AutoState>("/ledger/auto-posting", { startDate }), startDate ? t("lg.x.saved") : t("lg.x.stopped"));
+    if (r) { setDate(""); void q.refetch(); }
+  };
+  return (
+    <div class="ad-stack">
+      <p class="eng-muted">{t("lg.x.hint")}</p>
+      {q.error ? <InlineAlert tone="danger" title={t("lg.err")}>{q.error.message}</InlineAlert> : null}
+      {d ? (
+        <>
+          <div class="st-stats">
+            <Stat label={t("lg.x.state")} value={d.enabled ? t("lg.x.on") : t("lg.x.off")} />
+            <Stat label={t("lg.x.from")} value={d.startDate ?? "—"} />
+            <Stat label={t("lg.x.count")} value={formatNumber(d.autoEntries)} />
+          </div>
+          {d.locked ? <InlineAlert tone="info">{t("lg.x.locked")}</InlineAlert> : (
+            <div class="eng-toolbar">
+              <Field label={t("lg.x.pick")}><Input type="date" min={cairoToday()} value={date} onInput={(e) => setDate(val(e))} /></Field>
+              <Button disabled={!date || act.busy} onClick={() => void save(date)}>{t("lg.x.start")}</Button>
+              {d.enabled ? <Button variant="ghost" disabled={act.busy} onClick={() => void save(null)}>{t("lg.x.stop")}</Button> : null}
+            </div>
+          )}
+        </>
+      ) : null}
     </div>
   );
 }

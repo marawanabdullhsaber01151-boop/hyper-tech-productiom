@@ -1,5 +1,6 @@
 /** @format */
 
+import { postPurchaseReceiptEntry } from "../lib/ledgerAuto";
 import { Router } from "express";
 import { and, asc, desc, eq, inArray, or, type SQL } from "drizzle-orm";
 import { z } from "zod";
@@ -410,6 +411,13 @@ router.post("/purchases/receipts/:id/inspect", requireAuth, requireRole(...INSPE
         }
         await tx.update(purchaseReceiptLinesTable).set({ qtyAccepted: String(l.accepted), qtyRejected: String(l.rejected), rejectReason: l.rejectReason }).where(eq(purchaseReceiptLinesTable.id, l.id));
       }
+      await postPurchaseReceiptEntry(tx, {
+        receiptId: id, receiptNumber: receipt.receiptNumber, poNumber: po.poNumber,
+        lines: plan.lines.filter((l) => l.accepted > 0).map((l) => {
+          const line = byLine.get(l.id)!;
+          return { inventoryItemId: line.inventoryItemId, qty: String(l.accepted), unitPrice: priceOf.get(line.poItemId) ?? "0" };
+        }),
+      }, { userId: req.user!.userId, username: req.user!.username });
       // المقبول بس بيزوّد المستلم على الأمر، وحالة الأمر بتتحسب منه
       const add = new Map<number, number>();
       for (const l of plan.lines) {

@@ -6,6 +6,9 @@ import { and, asc, desc, eq, gte, ilike, lte, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "../db";
 import { glAccountsTable, glJournalEntriesTable, glJournalLinesTable, glPeriodsTable } from "../db/schema";
+import { systemSettingsTable } from "../db";
+import { getAutoPostingStart } from "../lib/ledgerAuto";
+import { AUTO_SETTING_KEY, SOURCE_PURCHASE_RECEIPT, SOURCE_SALES_INVOICE, checkAutoPostingChange } from "../lib/ledgerAutoCore";
 import { requireAuth, requireRole } from "../middleware/auth";
 import { PERMISSIONS } from "../lib/permissions";
 import { writeAuditEvent } from "../lib/governance";
@@ -197,6 +200,9 @@ router.post("/ledger/entries/:id/reverse", ...write, async (req, res, next) => {
         if (!orig) throw fail(404, "القيد مش موجود", "ENTRY_NOT_FOUND");
         if (orig.status !== "posted") throw fail(409, "القيد ده اتعكس قبل كده", "ALREADY_REVERSED");
         if (orig.reversalOf) throw fail(409, "ده قيد عكسي ومينفعش يتعكس تاني", "IS_REVERSAL");
+        if (orig.sourceType === SOURCE_SALES_INVOICE || orig.sourceType === SOURCE_PURCHASE_RECEIPT) {
+          throw fail(409, "ده قيد تلقائي. صحّحه من المستند نفسه (أمر البيع أو استلام الشراء) مش بعكس يدوي", "AUTO_ENTRY");
+        }
         const lines = await tx.select().from(glJournalLinesTable).where(eq(glJournalLinesTable.entryId, id)).orderBy(asc(glJournalLinesTable.lineNo));
         const flipped = reverseLines(lines.map((l) => ({ accountId: l.accountId, debit: l.debit, credit: l.credit, memo: l.memo })));
         const r = await postJournalEntry(tx, {
@@ -215,6 +221,48 @@ router.post("/ledger/entries/:id/reverse", ...write, async (req, res, next) => {
       })
       .catch(dbGuard);
     res.status(201).json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+/* ---------------- الترحيل التلقائي (49أ) ---------------- */
+async function autoEntryCount(exec: typeof db): Promise<number> {
+  const r = await exec.execute(sql`select count(*)::int as n from gl_journal_entries where source_type in (${SOURCE_SALES_INVOICE}, ${SOURCE_PURCHASE_RECEIPT})`);
+  return Number((r.rows[0] as { n: number } | undefined)?.n ?? 0);
+}
+
+router.get("/ledger/auto-posting", ...view, async (_req, res, next) => {
+  try {
+    const [startDate, entries] = await Promise.all([getAutoPostingStart(db), autoEntryCount(db)]);
+    res.json({ enabled: startDate !== null, startDate, locked: entries > 0, autoEntries: entries });
+  } catch (err) {
+    next(err);
+  }
+});
+
+const autoBody = z.object({ startDate: z.union([isoDate, z.null()]) });
+const AUTO_MESSAGES: Record<string, string> = {
+  LOCKED: "الترحيل التلقائي اشتغل وسجّل قيود، فمينفعش تغيّر تاريخ البداية أو توقفه",
+  PAST: "تاريخ البداية لازم يكون النهارده أو بعده، عشان القديم ميتسجّلش نص نص",
+  BAD_DATE: "تاريخ غير صحيح",
+};
+
+router.put("/ledger/auto-posting", ...write, async (req, res, next) => {
+  try {
+    const body = autoBody.parse(req.body);
+    const out = await db.transaction(async (tx) => {
+      await tx.execute(sql`select pg_advisory_xact_lock(4801)`);
+      const before = await getAutoPostingStart(tx);
+      const count = await autoEntryCount(tx as unknown as typeof db);
+      const verdict = checkAutoPostingChange(body.startDate, todayCairo(new Date()), count);
+      if (!verdict.ok) throw fail(422, AUTO_MESSAGES[verdict.code] ?? "تعذر الحفظ", verdict.code);
+      await tx.insert(systemSettingsTable).values({ key: AUTO_SETTING_KEY, value: body.startDate ?? "" })
+        .onConflictDoUpdate({ target: systemSettingsTable.key, set: { value: body.startDate ?? "", updatedAt: sql`now()` } });
+      await writeAuditEvent({ executor: tx, actorUserId: req.user!.userId, actorName: req.user!.username, actionKey: "ledger.auto_posting_changed", resourceType: "setting", beforeData: { startDate: before }, afterData: { startDate: body.startDate }, reason: body.startDate ? "تشغيل الترحيل التلقائي" : "إيقاف الترحيل التلقائي", ipAddress: req.ip, userAgent: req.get("user-agent") });
+      return { enabled: body.startDate !== null, startDate: body.startDate, locked: false, autoEntries: count };
+    });
+    res.json(out);
   } catch (err) {
     next(err);
   }

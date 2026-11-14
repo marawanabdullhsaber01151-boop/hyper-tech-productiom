@@ -38,6 +38,7 @@ import { maskFields } from "../lib/fieldMasking";
 import { z } from "zod";
 import { createApprovalRequest } from "../lib/approvals";
 import { writeAuditEvent } from "../lib/governance";
+import { syncSalesOrderLedger } from "../lib/ledgerAuto";
 import {
   computeStockAndBalanceEffects,
   getSalesOrderStockState,
@@ -737,9 +738,11 @@ router.post(
             .set({ status: "pending_approval", updatedAt: new Date() })
             .where(eq(salesOrdersTable.id, order.id))
             .returning();
+          await syncSalesOrderLedger(tx, order.id, { userId: req.user!.userId, username: req.user!.username });
           return { ...pending, items: orderItems, approvalRequestId: approval.request.id };
         }
 
+        await syncSalesOrderLedger(tx, order.id, { userId: req.user!.userId, username: req.user!.username });
         return { ...order, items: orderItems };
       });
 
@@ -943,6 +946,7 @@ router.patch(
               if (normalized) {
                 await writePriceOverrideAudits(tx, req, updated.id, normalized);
               }
+              await syncSalesOrderLedger(tx, updated.id, { userId: req.user!.userId, username: req.user!.username });
               return {
                 ...pending,
                 items: normalized?.items ?? existingItems,
@@ -978,6 +982,7 @@ router.patch(
           }
         }
 
+        await syncSalesOrderLedger(tx, updated.id, { userId: req.user!.userId, username: req.user!.username });
         const finalItems = itemsChanged
           ? await tx
               .select()
@@ -1072,6 +1077,7 @@ router.delete(
           userAgent: req.get("user-agent"),
           executor: tx,
         });
+        await syncSalesOrderLedger(tx, id, { userId: req.user!.userId, username: req.user!.username }, { forceStatus: "cancelled" });
         await tx.delete(salesOrdersTable).where(eq(salesOrdersTable.id, id));
       });
 
@@ -1177,6 +1183,7 @@ router.post(
           executor: tx,
         });
         await writePriceOverrideAudits(tx, req, orderId, normalized);
+        await syncSalesOrderLedger(tx, orderId, { userId: req.user!.userId, username: req.user!.username });
 
         return item;
       });
@@ -1303,6 +1310,7 @@ router.delete(
           userAgent: req.get("user-agent"),
           executor: tx,
         });
+        await syncSalesOrderLedger(tx, orderId, { userId: req.user!.userId, username: req.user!.username });
       });
 
       res.status(204).send();

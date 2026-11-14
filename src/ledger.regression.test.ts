@@ -49,7 +49,7 @@ describe("دفتر الأستاذ: السيرفر", () => {
   it("كل المسارات محمية بصلاحية finance، والكتابة بمعاملة وتدقيق", () => {
     expect(r).toContain("PERMISSIONS.finance.view");
     expect(r).toContain("PERMISSIONS.finance.write");
-    for (const k of ["ledger.account_created", "ledger.account_updated", "ledger.entry_posted", "ledger.entry_reversed"]) expect(r).toContain(`actionKey: "${k}"`);
+    for (const k of ["ledger.account_created", "ledger.account_updated", "ledger.entry_posted", "ledger.entry_reversed", "ledger.auto_posting_changed"]) expect(r).toContain(`actionKey: "${k}"`);
     expect((r.match(/\.transaction\(/g) ?? []).length).toBeGreaterThanOrEqual(4);
   });
   it("العكس: سبب إجباري، ما يتعكسش مرتين ولا عكسي، وبيستخدم نفس الدالة", () => {
