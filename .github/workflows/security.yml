@@ -26,4 +26,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: npm audit --omit=dev --audit-level=high
+      - run: npm i -g npm@11
+      - run: npm ci --include=dev
+      - run: npm audit --omit=dev --json > audit.json || true
+      - run: npx tsx scripts/audit-gate.ts audit.json
