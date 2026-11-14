@@ -90,5 +90,9 @@
   },
   "engines": {
     "node": ">=20 <25"
+  },
+  "overrides": {
+    "body-parser": "^2.4.0",
+    "proxy-addr": "^2.0.8"
   }
 }
