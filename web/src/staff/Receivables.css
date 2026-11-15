@@ -1,0 +1,23 @@
+.rc-totals { display: flex; flex-wrap: wrap; gap: var(--sp-2) var(--sp-4); margin: 0; font-size: var(--fs-sm); }
+.rc-h { margin: 0; font-size: var(--fs-lg); }
+.rc-scroll { overflow-x: auto; }
+.rc-table { inline-size: 100%; border-collapse: collapse; font-size: var(--fs-sm); }
+.rc-cap { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip-path: inset(50%); }
+.rc-table th, .rc-table td { padding: var(--sp-2) var(--sp-3); border-block-end: 1px solid var(--c-border-1); text-align: start; white-space: nowrap; }
+.rc-table th { font-weight: 700; background: var(--c-surface-2); }
+.rc-table tfoot td { font-weight: 700; border-block-start: 2px solid var(--c-border-1); }
+.rc-num { text-align: end !important; font-variant-numeric: tabular-nums; }
+.rc-closing { font-weight: 700; margin-block: var(--sp-3) 0; }
+
+/* الطباعة / حفظ PDF: الكشف بس، على ورق أبيض بغض النظر عن ثيم الشاشة */
+@media print {
+  body * { visibility: hidden; }
+  .rc-print, .rc-print * { visibility: visible; }
+  .rc-print { position: absolute; inset-block-start: 0; inset-inline: 0; padding: 0; color: CanvasText; background: Canvas; }
+  .rc-table th { background: none; border-block-end: 2px solid CanvasText; }
+  .rc-table th, .rc-table td { border-color: GrayText; padding-block: 2px; white-space: normal; }
+  .rc-table { font-size: 10pt; }
+  .rc-scroll { overflow: visible; }
+  thead { display: table-header-group; }
+  tr { break-inside: avoid; }
+}

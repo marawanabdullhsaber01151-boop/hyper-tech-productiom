@@ -1,4 +1,5 @@
 import { Collections } from "./Collections";
+import { Receivables } from "./Receivables";
 import "../copy/ledger";
 import { useState } from "preact/hooks";
 import { useAct } from "../admin/act";
@@ -45,6 +46,7 @@ export function Ledger() {
         { id: "trial", label: t("lg.tab.trial"), panel: <Trial /> },
         { id: "periods", label: t("lg.tab.periods"), panel: <Periods data={periods.data?.items ?? []} /> },
         { id: "collections", label: t("lg.tab.collections"), panel: <Collections /> },
+        { id: "receivables", label: t("lg.tab.receivables"), panel: <Receivables /> },
         { id: "valuation", label: t("lg.tab.valuation"), panel: <Valuation /> },
         { id: "auto", label: t("lg.tab.auto"), panel: <AutoPosting /> },
       ]} />
