@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { slaState, workingMinutesBetween } from "./approvals-inbox";
 import { stallInfo } from "./production-stall";
-import { DEFAULT_OPERATIONAL, SETTING_DEFS, checkValue, defOf, isKnownKey, operationalConfig, planChanges, resolveSettings } from "./settings-registry";
+import { DEFAULT_OPERATIONAL, SETTING_DEFS, taxConfig, checkValue, defOf, isKnownKey, operationalConfig, planChanges, resolveSettings } from "./settings-registry";
 
 const def = (k: string) => defOf(k)!;
 
@@ -123,3 +123,10 @@ describe("إعدادات وعد التسليم (44أ)", () => {
   });
 });
 
+describe("إعداد الضريبة (50)", () => {
+  it("مقفولة افتراضيًا بنسبة 14، والتفعيل بيشتغل، والقيمة التالفة ترجع للافتراضي", () => {
+    expect(taxConfig({})).toEqual({ enabled: false, ratePercent: 14 });
+    expect(taxConfig({ "tax.vat_enabled": "on", "tax.vat_rate": "5" })).toEqual({ enabled: true, ratePercent: 5 });
+    expect(taxConfig({ "tax.vat_enabled": "yes", "tax.vat_rate": "abc" })).toEqual({ enabled: false, ratePercent: 14 });
+  });
+});

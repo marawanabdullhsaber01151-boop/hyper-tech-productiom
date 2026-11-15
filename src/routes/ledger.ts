@@ -10,13 +10,14 @@ import { systemSettingsTable } from "../db";
 import { getAutoPostingStart } from "../lib/ledgerAuto";
 import { AUTO_SETTING_KEY, SOURCE_PURCHASE_RECEIPT, SOURCE_SALES_COGS, SOURCE_SALES_INVOICE, checkAutoPostingChange } from "../lib/ledgerAutoCore";
 import { centsToString, toCents } from "../lib/money";
+import { SOURCE_CUSTOMER_PAYMENT, SOURCE_PAYMENT_ALLOCATION } from "../lib/paymentsCore";
 import { requireAuth, requireRole } from "../middleware/auth";
 import { PERMISSIONS } from "../lib/permissions";
 import { writeAuditEvent } from "../lib/governance";
 import { parseIdParam } from "../lib/validate";
 import { loadSettingValues } from "../lib/settingsStore";
 import { todayCairo } from "../lib/operationsCapacityCore";
-import { postJournalEntry } from "../lib/ledger";
+import { lockLedger, postJournalEntry } from "../lib/ledger";
 import {
   ACCOUNT_ISSUE_TEXT, ACCOUNT_TYPES, accountIssues, fiscalYearLabel, isIsoDate, normalSideOf, reverseLines, trialBalance,
   type AccountType,
@@ -201,8 +202,8 @@ router.post("/ledger/entries/:id/reverse", ...write, async (req, res, next) => {
         if (!orig) throw fail(404, "القيد مش موجود", "ENTRY_NOT_FOUND");
         if (orig.status !== "posted") throw fail(409, "القيد ده اتعكس قبل كده", "ALREADY_REVERSED");
         if (orig.reversalOf) throw fail(409, "ده قيد عكسي ومينفعش يتعكس تاني", "IS_REVERSAL");
-        if (orig.sourceType === SOURCE_SALES_INVOICE || orig.sourceType === SOURCE_PURCHASE_RECEIPT || orig.sourceType === SOURCE_SALES_COGS) {
-          throw fail(409, "ده قيد تلقائي. صحّحه من المستند نفسه (أمر البيع أو استلام الشراء) مش بعكس يدوي", "AUTO_ENTRY");
+        if (orig.sourceType === SOURCE_SALES_INVOICE || orig.sourceType === SOURCE_PURCHASE_RECEIPT || orig.sourceType === SOURCE_SALES_COGS || orig.sourceType === SOURCE_CUSTOMER_PAYMENT || orig.sourceType === SOURCE_PAYMENT_ALLOCATION) {
+          throw fail(409, "ده قيد تلقائي. صحّحه من المستند نفسه (أمر البيع أو استلام الشراء أو إلغاء التحصيل) مش بعكس يدوي", "AUTO_ENTRY");
         }
         const lines = await tx.select().from(glJournalLinesTable).where(eq(glJournalLinesTable.entryId, id)).orderBy(asc(glJournalLinesTable.lineNo));
         const flipped = reverseLines(lines.map((l) => ({ accountId: l.accountId, debit: l.debit, credit: l.credit, memo: l.memo })));
@@ -229,7 +230,7 @@ router.post("/ledger/entries/:id/reverse", ...write, async (req, res, next) => {
 
 /* ---------------- الترحيل التلقائي (49أ) ---------------- */
 async function autoEntryCount(exec: typeof db): Promise<number> {
-  const r = await exec.execute(sql`select count(*)::int as n from gl_journal_entries where source_type in (${SOURCE_SALES_INVOICE}, ${SOURCE_PURCHASE_RECEIPT}, ${SOURCE_SALES_COGS})`);
+  const r = await exec.execute(sql`select count(*)::int as n from gl_journal_entries where source_type in (${SOURCE_SALES_INVOICE}, ${SOURCE_PURCHASE_RECEIPT}, ${SOURCE_SALES_COGS}, ${SOURCE_CUSTOMER_PAYMENT}, ${SOURCE_PAYMENT_ALLOCATION})`);
   return Number((r.rows[0] as { n: number } | undefined)?.n ?? 0);
 }
 
@@ -253,7 +254,7 @@ router.put("/ledger/auto-posting", ...write, async (req, res, next) => {
   try {
     const body = autoBody.parse(req.body);
     const out = await db.transaction(async (tx) => {
-      await tx.execute(sql`select pg_advisory_xact_lock(4801)`);
+      await lockLedger(tx);
       const before = await getAutoPostingStart(tx);
       const count = await autoEntryCount(tx as unknown as typeof db);
       const verdict = checkAutoPostingChange(body.startDate, todayCairo(new Date()), count);

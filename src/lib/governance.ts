@@ -35,7 +35,7 @@ export function delegationCoversAmount(delegation: typeof delegationsTable.$infe
 type AuditExecutor = Pick<typeof db, "select" | "insert"> & Partial<Pick<typeof db, "execute">>;
 
 /** رقم ثابت لقفل كتابة سلسلة التدقيق: كاتب واحد بس في اللحظة بيقرا آخر hash ويضيف الصف اللي بعده. */
-const AUDIT_CHAIN_LOCK = 7_420_001;
+export const AUDIT_CHAIN_LOCK = 7_420_001;
 
 export async function writeAuditEvent(input: {
   actorUserId?: number | null; actorName?: string | null; actionKey: string;

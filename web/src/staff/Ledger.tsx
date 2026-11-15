@@ -1,3 +1,4 @@
+import { Collections } from "./Collections";
 import "../copy/ledger";
 import { useState } from "preact/hooks";
 import { useAct } from "../admin/act";
@@ -43,6 +44,7 @@ export function Ledger() {
         { id: "accounts", label: t("lg.tab.accounts"), panel: <Accounts /> },
         { id: "trial", label: t("lg.tab.trial"), panel: <Trial /> },
         { id: "periods", label: t("lg.tab.periods"), panel: <Periods data={periods.data?.items ?? []} /> },
+        { id: "collections", label: t("lg.tab.collections"), panel: <Collections /> },
         { id: "valuation", label: t("lg.tab.valuation"), panel: <Valuation /> },
         { id: "auto", label: t("lg.tab.auto"), panel: <AutoPosting /> },
       ]} />
@@ -61,7 +63,7 @@ function Entries() {
     { key: "n", header: t("lg.col.number"), cell: (r) => <Button size="sm" variant="ghost" onClick={() => setOpen(r.id)}>{r.entryNumber}</Button>, mobile: "title" },
     { key: "d", header: t("lg.col.date"), cell: (r) => formatDate(r.entryDate) },
     { key: "x", header: t("lg.col.desc"), cell: (r) => r.description, mobile: "hide" },
-    { key: "s", header: t("lg.col.source"), cell: (r) => t(k(`lg.src.${["reversal", "sales_invoice", "purchase_receipt", "sales_cogs"].includes(r.sourceType) ? r.sourceType : "manual"}`)), mobile: "hide" },
+    { key: "s", header: t("lg.col.source"), cell: (r) => t(k(`lg.src.${["reversal", "sales_invoice", "purchase_receipt", "sales_cogs", "customer_payment", "payment_allocation"].includes(r.sourceType) ? r.sourceType : "manual"}`)), mobile: "hide" },
     { key: "t", header: t("lg.col.total"), cell: (r) => money(r.total), numeric: true },
     { key: "st", header: t("lg.col.status"), cell: (r) => <StatusPill tone={r.status === "posted" ? "success" : "warn"}>{t(k(`lg.status.${r.status}`))}</StatusPill> },
   ];

@@ -30,6 +30,8 @@ export const SETTING_DEFS: readonly SettingDef[] = [
   { key: "company_address", group: "company", type: "text", label: "عنوان الشركة", default: "", maxLength: 250 },
   { key: "currency", group: "company", type: "select", label: "العملة", default: "EGP", options: [{ value: "EGP", label: "جنيه مصري" }, { value: "USD", label: "دولار أمريكي" }, { value: "SAR", label: "ريال سعودي" }] },
   { key: "fiscal_year_start", group: "company", type: "select", label: "بداية السنة المالية", default: "01-01", options: [{ value: "01-01", label: "يناير" }, { value: "04-01", label: "أبريل" }, { value: "07-01", label: "يوليو" }, { value: "10-01", label: "أكتوبر" }] },
+  { key: "tax.vat_enabled", group: "company", type: "select", label: "ضريبة القيمة المضافة", hint: "مقفولة افتراضيًا: الأسعار والفواتير زي ما هي من غير أي ضريبة. التفعيل بيسجّل الإعداد بس دلوقتي، وتطبيقه على الفواتير بيتم في خطوة الفاتورة الإلكترونية بعد ما نتفق إن الأسعار شاملة الضريبة ولا لا.", default: "off", options: [{ value: "off", label: "مقفولة" }, { value: "on", label: "مفعّلة" }] },
+  { key: "tax.vat_rate", group: "company", type: "int", label: "نسبة ضريبة القيمة المضافة", hint: "بتتستخدم لما الضريبة تكون مفعّلة. النسبة العادية في مصر 14.", unit: "%", default: "14", min: 0, max: 100 },
   { key: "work.start_hour", group: "operations", type: "int", label: "بداية الدوام", hint: "الساعة (بتوقيت القاهرة، من 0 لـ 23).", unit: "ساعة", default: "9", min: 0, max: 23 },
   { key: "work.end_hour", group: "operations", type: "int", label: "نهاية الدوام", hint: "الساعة (بتوقيت القاهرة، من 1 لـ 24) وبتكون بعد البداية.", unit: "ساعة", default: "17", min: 1, max: 24 },
   { key: "work.off_day", group: "operations", type: "select", label: "يوم الإجازة الأسبوعية", default: "5", options: WEEKDAYS },
@@ -46,6 +48,12 @@ export const SETTING_DEFS: readonly SettingDef[] = [
 
 /** مفاتيح قديمة مسموحة في السيرفر للتوافق، من غير شاشة (مفيش كود بيقراها). */
 export const LEGACY_SETTING_KEYS: readonly string[] = ["company_logo", "currency_symbol", "language", "timezone", "low_stock_alert_enabled", "default_payment_terms", "invoice_footer_note", "vat_rate", "vat_enabled"];
+
+/** إعداد الضريبة (50): مقفولة افتراضيًا. نسبة تالفة أو غير موجودة ترجع 14. */
+export function taxConfig(stored: Readonly<Record<string, string>>): { enabled: boolean; ratePercent: number } {
+  const values = resolveSettings(stored);
+  return { enabled: values["tax.vat_enabled"] === "on", ratePercent: Number(values["tax.vat_rate"]) };
+}
 
 export const defOf = (key: string): SettingDef | undefined => SETTING_DEFS.find((d) => d.key === key);
 export const isKnownKey = (key: string) => !!defOf(key) || LEGACY_SETTING_KEYS.includes(key);

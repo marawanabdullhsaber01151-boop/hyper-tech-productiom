@@ -4,6 +4,7 @@ import { and, desc, eq, inArray, like, sql } from "drizzle-orm";
 import { glAccountsTable, glJournalEntriesTable, glJournalLinesTable, glPeriodsTable } from "../db/schema";
 import { ISSUE_TEXT, checkEntry, nextEntryNumber, periodOf, type AccountLite, type EntryInput, type EntryIssue } from "./ledgerCore";
 import { centsToString } from "./money";
+import { AUDIT_CHAIN_LOCK } from "./governance";
 
 /** executor = tx أو db. ما بنسمّيش النوع عشان drizzle بيغيّره بين المعاملة والاتصال. */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -30,6 +31,15 @@ export interface PostInput extends EntryInput {
 
 const LEDGER_LOCK = 4801;
 
+/**
+ * قفل الدفتر بترتيب ثابت لكل النظام: سلسلة التدقيق الأول وبعدين الدفتر. مسارات كتير بتكتب تدقيق وبعدين تقيّد،
+ * وغيرها بيقيّد وبعدين يكتب تدقيق؛ من غير ترتيب موحّد معاملتين متزامنتين كانوا ممكن يعلّقوا بعض (deadlock).
+ */
+export async function lockLedger(tx: Exec): Promise<void> {
+  await tx.execute(sql`select pg_advisory_xact_lock(${AUDIT_CHAIN_LOCK})`);
+  await tx.execute(sql`select pg_advisory_xact_lock(${LEDGER_LOCK})`);
+}
+
 /** بيرجّع الفترة (وبيعملها لو لسه ما اتعملتش). */
 export async function ensurePeriod(tx: Exec, entryDate: string) {
   const p = periodOf(entryDate);
@@ -40,7 +50,7 @@ export async function ensurePeriod(tx: Exec, entryDate: string) {
 
 /** يرحّل قيد واحد. بيرمي LedgerError بكل المشاكل لو القيد غلط، والقاعدة نفسها بتمنع غير المتوازن والفترة المقفولة كخط دفاع تاني. */
 export async function postJournalEntry(tx: Exec, input: PostInput): Promise<{ id: number; entryNumber: string; total: string }> {
-  await tx.execute(sql`select pg_advisory_xact_lock(${LEDGER_LOCK})`);
+  await lockLedger(tx);
   const ids = [...new Set(input.lines.map((l) => l.accountId))];
   const rows = ids.length ? await tx.select().from(glAccountsTable).where(inArray(glAccountsTable.id, ids)) : [];
   const accounts = new Map<number, AccountLite>(

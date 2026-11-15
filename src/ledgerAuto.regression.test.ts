@@ -33,7 +33,7 @@ describe("الترحيل التلقائي: الإعداد والعكس اليد�
   it("الإعداد للإدارة العليا بس وبيتسجّل في المراجعة وبقفل مشترك مع الترحيل", () => {
     expect(ledger).toContain('router.get("/ledger/auto-posting", ...view');
     expect(ledger).toContain('router.put("/ledger/auto-posting", ...write');
-    expect(ledger).toContain("pg_advisory_xact_lock(4801)");
+    expect(ledger).toContain("lockLedger(tx)");
     expect(ledger).toContain("checkAutoPostingChange(");
     expect(ledger).toContain('actionKey: "ledger.auto_posting_changed"');
   });

@@ -4,7 +4,7 @@
 import { eq, inArray, sql } from "drizzle-orm";
 import { inventoryItemsTable, salesOrderItemsTable, salesOrdersTable, systemSettingsTable } from "../db";
 import { glAccountsTable } from "../db/schema";
-import { LedgerError, postJournalEntry } from "./ledger";
+import { LedgerError, lockLedger, postJournalEntry } from "./ledger";
 import type { EntryLineInput } from "./ledgerCore";
 import {
   AUTO_ACCOUNT_CODES, AUTO_SETTING_KEY, COGS_ACCOUNT_CODE, COGS_STATUSES, SOURCE_PURCHASE_RECEIPT, SOURCE_SALES_COGS, SOURCE_SALES_INVOICE,
@@ -16,7 +16,6 @@ import { todayCairo } from "./operationsCapacityCore";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Exec = any;
 export interface AutoActor { userId: number | null; username: string | null }
-const LEDGER_LOCK = 4801;
 
 /** تاريخ بداية الترحيل التلقائي (YYYY-MM-DD) أو null لو مقفول. */
 export async function getAutoPostingStart(exec: Exec): Promise<string | null> {
@@ -65,7 +64,7 @@ async function postedCogs(exec: Exec, orderId: number): Promise<{ nets: Map<numb
 export async function syncSalesOrderLedger(tx: Exec, orderId: number, actor: AutoActor, opts: { forceStatus?: string } = {}): Promise<{ posted: boolean }> {
   const start = await getAutoPostingStart(tx);
   if (!start) return { posted: false };
-  await tx.execute(sql`select pg_advisory_xact_lock(${LEDGER_LOCK})`);
+  await lockLedger(tx);
   const [order] = await tx.select().from(salesOrdersTable).where(eq(salesOrdersTable.id, orderId)).limit(1);
   if (!order) return { posted: false };
   const ids = await accountIdsByCode(tx, [AUTO_ACCOUNT_CODES.receivable, AUTO_ACCOUNT_CODES.sales]);
