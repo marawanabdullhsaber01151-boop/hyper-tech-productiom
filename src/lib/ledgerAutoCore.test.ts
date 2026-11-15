@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { checkAutoPostingChange, isIsoDay, isTracked, revenueDelta, salesEntryLines, salesTargetCents, stockAccountCode, valueReceipt } from "./ledgerAutoCore";
+import { checkAutoPostingChange, cogsEntryLines, isIsoDay, isTracked, reversalFromNet, revenueDelta, salesEntryLines, salesTargetCents, stockAccountCode, valueCogs, valueReceipt, weightedAvgCost } from "./ledgerAutoCore";
 import { lineTotalCents } from "./money";
 
 describe("الإيراد المفروض حسب الحالة", () => {
@@ -68,5 +68,56 @@ describe("تاريخ التشغيل", () => {
     expect(checkAutoPostingChange("2026-11-14", "2026-11-14", 0)).toEqual({ ok: true });
     expect(checkAutoPostingChange(null, "2026-11-14", 0)).toEqual({ ok: true });
     expect(isIsoDay("2026-13-01")).toBe(false);
+  });
+});
+
+describe("متوسط التكلفة المرجّح", () => {
+  it("أول شراء: السعر نفسه. بعد كده: متوسط مرجّح بـ4 خانات", () => {
+    expect(weightedAvgCost("0", "0", "10", "5.00")).toBe("5.0000");
+    expect(weightedAvgCost("10", "5.0000", "10", "7.00")).toBe("6.0000");
+    expect(weightedAvgCost("3", "10.0000", "1", "11.00")).toBe("10.2500");
+    expect(weightedAvgCost("1", "1.0000", "2", "1.00")).toBe("1.0000");
+  });
+  it("مخزون قديم من غير تكلفة مبيتخلطش: التكلفة بتبدأ من سعر الشراء", () => {
+    expect(weightedAvgCost("50", "0", "10", "8.00")).toBe("8.0000");
+  });
+  it("كمية أو سعر صفر مبيغيّرش المتوسط، وقيمة غلط بتتفشل", () => {
+    expect(weightedAvgCost("10", "5.0000", "0", "9.00")).toBe("5.0000");
+    expect(weightedAvgCost("10", "5.0000", "4", "0")).toBe("5.0000");
+    expect(() => weightedAvgCost("10", "5", "-1", "2")).toThrow();
+  });
+  it("التقريب نصف لأعلى", () => {
+    expect(weightedAvgCost("1", "1.0000", "2", "1.0001")).toBe("1.0001");
+    expect(weightedAvgCost("2", "1.0000", "1", "1.0001")).toBe("1.0000");
+  });
+});
+
+describe("تكلفة البضاعة المباعة", () => {
+  const cents = (q: string, p: string) => lineTotalCents(q, p);
+  it("بتتجمّع حسب حساب المخزون، والبند من غير تكلفة غير مقيَّم مش صفر", () => {
+    const v = valueCogs([
+      { category: "finished_good", qty: "10", avgCost: "12.5000" },
+      { category: "raw_material", qty: "4", avgCost: "2.2500" },
+      { category: "finished_good", qty: "5", avgCost: "0" },
+    ], cents);
+    expect(v.totalCents).toBe(13400n);
+    expect(v.byAccount.get("1170")).toBe(12500n);
+    expect(v.byAccount.get("1150")).toBe(900n);
+    expect(v.unvalued).toBe(1);
+  });
+  it("القيد متوازن: مدين 5150 = مجموع دائن المخزون", () => {
+    const v = valueCogs([{ category: "finished_good", qty: "3", avgCost: "10.3333" }, { category: "raw_material", qty: "1", avgCost: "0.5000" }], cents);
+    const ids = new Map([["1170", 7], ["1150", 8]]);
+    const lines = cogsEntryLines(v, 99, ids, "SO-1");
+    const d = lines.reduce((a, l) => a + Number(l.debit ?? 0), 0);
+    const c = lines.reduce((a, l) => a + Number(l.credit ?? 0), 0);
+    expect(Math.round(d * 100)).toBe(Math.round(c * 100));
+    expect(lines[0].accountId).toBe(99);
+  });
+  it("العكس بالظبط: كل حساب بيتقلب، والصفر بيتخطى", () => {
+    const lines = reversalFromNet(new Map([[99, 13400n], [7, -12500n], [8, -900n], [5, 0n]]), "SO-1");
+    expect(lines).toHaveLength(3);
+    expect(lines.find((l) => l.accountId === 99)).toEqual({ accountId: 99, credit: "134.00", memo: "SO-1" });
+    expect(lines.find((l) => l.accountId === 7)).toEqual({ accountId: 7, debit: "125.00", memo: "SO-1" });
   });
 });

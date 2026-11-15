@@ -43,6 +43,7 @@ export function Ledger() {
         { id: "accounts", label: t("lg.tab.accounts"), panel: <Accounts /> },
         { id: "trial", label: t("lg.tab.trial"), panel: <Trial /> },
         { id: "periods", label: t("lg.tab.periods"), panel: <Periods data={periods.data?.items ?? []} /> },
+        { id: "valuation", label: t("lg.tab.valuation"), panel: <Valuation /> },
         { id: "auto", label: t("lg.tab.auto"), panel: <AutoPosting /> },
       ]} />
     </div>
@@ -60,7 +61,7 @@ function Entries() {
     { key: "n", header: t("lg.col.number"), cell: (r) => <Button size="sm" variant="ghost" onClick={() => setOpen(r.id)}>{r.entryNumber}</Button>, mobile: "title" },
     { key: "d", header: t("lg.col.date"), cell: (r) => formatDate(r.entryDate) },
     { key: "x", header: t("lg.col.desc"), cell: (r) => r.description, mobile: "hide" },
-    { key: "s", header: t("lg.col.source"), cell: (r) => t(k(`lg.src.${["reversal", "sales_invoice", "purchase_receipt"].includes(r.sourceType) ? r.sourceType : "manual"}`)), mobile: "hide" },
+    { key: "s", header: t("lg.col.source"), cell: (r) => t(k(`lg.src.${["reversal", "sales_invoice", "purchase_receipt", "sales_cogs"].includes(r.sourceType) ? r.sourceType : "manual"}`)), mobile: "hide" },
     { key: "t", header: t("lg.col.total"), cell: (r) => money(r.total), numeric: true },
     { key: "st", header: t("lg.col.status"), cell: (r) => <StatusPill tone={r.status === "posted" ? "success" : "warn"}>{t(k(`lg.status.${r.status}`))}</StatusPill> },
   ];
@@ -291,6 +292,29 @@ function AutoPosting() {
           )}
         </>
       ) : null}
+    </div>
+  );
+}
+
+/* ---------------- تقييم المخزون مقابل الدفتر ---------------- */
+interface ValuationRow { category: string; accountCode: string; items: number; unvalued: number; stockValue: string; ledgerBalance: string; difference: string }
+function Valuation() {
+  const q = useQuery((signal) => api.get<{ items: ValuationRow[] }>("/ledger/inventory-valuation", { signal }), []);
+  const rows = q.data?.items ?? [];
+  const columns: Column<ValuationRow>[] = [
+    { key: "c", header: t("lg.v.cat"), cell: (r) => t(k(`lg.v.cat.${r.category}`)) },
+    { key: "a", header: t("lg.v.acc"), cell: (r) => r.accountCode },
+    { key: "i", header: t("lg.v.items"), cell: (r) => formatNumber(r.items) },
+    { key: "u", header: t("lg.v.unvalued"), cell: (r) => formatNumber(r.unvalued) },
+    { key: "s", header: t("lg.v.stock"), cell: (r) => money(r.stockValue) },
+    { key: "l", header: t("lg.v.ledger"), cell: (r) => money(r.ledgerBalance) },
+    { key: "d", header: t("lg.v.diff"), cell: (r) => money(r.difference) },
+  ];
+  return (
+    <div class="ad-stack">
+      <p class="eng-muted">{t("lg.v.hint")}</p>
+      {q.error ? <InlineAlert tone="danger" title={t("lg.err")}>{q.error.message}</InlineAlert> : null}
+      <DataTable columns={columns} rows={rows} rowKey={(r) => r.category} caption={t("lg.tab.valuation")} />
     </div>
   );
 }

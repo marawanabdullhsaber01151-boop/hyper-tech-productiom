@@ -2,6 +2,8 @@ export const FIELD_VISIBILITY: Record<string, Record<string, readonly string[]>>
   inventory_items: {
     unitPrice: ["chairman", "executive_manager", "hr", "hr_manager", "warehouse_manager", "storekeeper"],
     supplierId: ["chairman", "executive_manager", "hr", "hr_manager", "purchasing_manager", "buyer", "warehouse_manager", "storekeeper"],
+    // متوسط التكلفة (49ب): تكلفة الشركة نفسها، للإدارة العليا بس (أضيق من سعر الوحدة).
+    avgCost: ["chairman", "executive_manager"],
   },
   sales_order_items: {
     unitPrice: ["chairman", "executive_manager", "sales_manager", "hr", "hr_manager"],

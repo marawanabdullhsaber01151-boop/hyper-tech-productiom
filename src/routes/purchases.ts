@@ -1,6 +1,7 @@
 /** @format */
 
 import { postPurchaseReceiptEntry } from "../lib/ledgerAuto";
+import { updateAverageCost } from "../lib/inventoryCost";
 import { Router } from "express";
 import { and, asc, desc, eq, inArray, or, type SQL } from "drizzle-orm";
 import { z } from "zod";
@@ -407,6 +408,7 @@ router.post("/purchases/receipts/:id/inspect", requireAuth, requireRole(...INSPE
       for (const l of plan.lines) {
         const line = byLine.get(l.id)!;
         if (l.accepted > 0) {
+          await updateAverageCost(tx, line.inventoryItemId, String(l.accepted), priceOf.get(line.poItemId) ?? "0");
           await applyStockMovement(tx, { inventoryItemId: line.inventoryItemId, movementType: "in", qty: String(l.accepted), referenceType: "purchase", referenceId: po.id, unitPrice: priceOf.get(line.poItemId) ?? "0", notes: [`استلام ${po.poNumber} (${receipt.receiptNumber})`, data.notes?.trim()].filter(Boolean).join(" — ") });
         }
         await tx.update(purchaseReceiptLinesTable).set({ qtyAccepted: String(l.accepted), qtyRejected: String(l.rejected), rejectReason: l.rejectReason }).where(eq(purchaseReceiptLinesTable.id, l.id));

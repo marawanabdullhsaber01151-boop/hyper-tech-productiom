@@ -34,6 +34,10 @@ export const inventoryItemsTable = pgTable(
     unitPrice: numeric("unit_price", { precision: 12, scale: 2 })
       .notNull()
       .default("0"),
+    // متوسط التكلفة المرجّح من المشتريات المفحوصة (49ب). 0 = لسه ملهوش تكلفة.
+    avgCost: numeric("avg_cost", { precision: 14, scale: 4 })
+      .notNull()
+      .default("0"),
     unit: text("unit"),
     requiresQualityCheck: boolean("requires_quality_check")
       .notNull()

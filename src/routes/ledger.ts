@@ -8,7 +8,8 @@ import { db } from "../db";
 import { glAccountsTable, glJournalEntriesTable, glJournalLinesTable, glPeriodsTable } from "../db/schema";
 import { systemSettingsTable } from "../db";
 import { getAutoPostingStart } from "../lib/ledgerAuto";
-import { AUTO_SETTING_KEY, SOURCE_PURCHASE_RECEIPT, SOURCE_SALES_INVOICE, checkAutoPostingChange } from "../lib/ledgerAutoCore";
+import { AUTO_SETTING_KEY, SOURCE_PURCHASE_RECEIPT, SOURCE_SALES_COGS, SOURCE_SALES_INVOICE, checkAutoPostingChange } from "../lib/ledgerAutoCore";
+import { centsToString, toCents } from "../lib/money";
 import { requireAuth, requireRole } from "../middleware/auth";
 import { PERMISSIONS } from "../lib/permissions";
 import { writeAuditEvent } from "../lib/governance";
@@ -200,7 +201,7 @@ router.post("/ledger/entries/:id/reverse", ...write, async (req, res, next) => {
         if (!orig) throw fail(404, "القيد مش موجود", "ENTRY_NOT_FOUND");
         if (orig.status !== "posted") throw fail(409, "القيد ده اتعكس قبل كده", "ALREADY_REVERSED");
         if (orig.reversalOf) throw fail(409, "ده قيد عكسي ومينفعش يتعكس تاني", "IS_REVERSAL");
-        if (orig.sourceType === SOURCE_SALES_INVOICE || orig.sourceType === SOURCE_PURCHASE_RECEIPT) {
+        if (orig.sourceType === SOURCE_SALES_INVOICE || orig.sourceType === SOURCE_PURCHASE_RECEIPT || orig.sourceType === SOURCE_SALES_COGS) {
           throw fail(409, "ده قيد تلقائي. صحّحه من المستند نفسه (أمر البيع أو استلام الشراء) مش بعكس يدوي", "AUTO_ENTRY");
         }
         const lines = await tx.select().from(glJournalLinesTable).where(eq(glJournalLinesTable.entryId, id)).orderBy(asc(glJournalLinesTable.lineNo));
@@ -228,7 +229,7 @@ router.post("/ledger/entries/:id/reverse", ...write, async (req, res, next) => {
 
 /* ---------------- الترحيل التلقائي (49أ) ---------------- */
 async function autoEntryCount(exec: typeof db): Promise<number> {
-  const r = await exec.execute(sql`select count(*)::int as n from gl_journal_entries where source_type in (${SOURCE_SALES_INVOICE}, ${SOURCE_PURCHASE_RECEIPT})`);
+  const r = await exec.execute(sql`select count(*)::int as n from gl_journal_entries where source_type in (${SOURCE_SALES_INVOICE}, ${SOURCE_PURCHASE_RECEIPT}, ${SOURCE_SALES_COGS})`);
   return Number((r.rows[0] as { n: number } | undefined)?.n ?? 0);
 }
 
@@ -263,6 +264,41 @@ router.put("/ledger/auto-posting", ...write, async (req, res, next) => {
       return { enabled: body.startDate !== null, startDate: body.startDate, locked: false, autoEntries: count };
     });
     res.json(out);
+  } catch (err) {
+    next(err);
+  }
+});
+
+/* ---------------- تقييم المخزون مقابل الدفتر (49ب) ---------------- */
+const signedCents = (v: string): bigint => (v.startsWith("-") ? -toCents(v.slice(1)) : toCents(v));
+const VALUATION_ACCOUNTS: Record<string, string> = { raw_material: "1150", wip: "1160", finished_good: "1170" };
+
+router.get("/ledger/inventory-valuation", ...view, async (_req, res, next) => {
+  try {
+    const stock = await db.execute(sql`
+      select category, count(*)::int as items,
+             count(*) filter (where qty > 0 and avg_cost = 0)::int as unvalued,
+             coalesce(sum(round(qty * avg_cost, 2)), 0)::text as value
+      from inventory_items group by category`);
+    const gl = await db.execute(sql`
+      select a.code as code, coalesce(sum(l.debit - l.credit), 0)::text as balance
+      from gl_accounts a left join gl_journal_lines l on l.account_id = a.id
+      where a.code in ('1150', '1160', '1170') group by a.code`);
+    const glByCode = new Map((gl.rows as Array<{ code: string; balance: string }>).map((r) => [r.code, r.balance]));
+    const rows = (stock.rows as Array<{ category: string; items: number; unvalued: number; value: string }>).map((r) => {
+      const code = VALUATION_ACCOUNTS[r.category] ?? "1150";
+      const ledgerBalance = glByCode.get(code) ?? "0";
+      return {
+        category: r.category,
+        accountCode: code,
+        items: r.items,
+        unvalued: r.unvalued,
+        stockValue: r.value,
+        ledgerBalance,
+        difference: centsToString(signedCents(r.value) - signedCents(ledgerBalance)),
+      };
+    });
+    res.json({ items: rows });
   } catch (err) {
     next(err);
   }

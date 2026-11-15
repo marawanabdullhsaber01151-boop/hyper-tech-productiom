@@ -47,3 +47,36 @@ describe("الترحيل التلقائي: الإعداد والعكس اليد�
     expect(lib).toContain("postJournalEntry(");
   });
 });
+
+describe("49ب: التكلفة والتقييم", () => {
+  it("متوسط التكلفة بيتحدّث من استلام المشتريات المفحوصة بس وقبل حركة الزيادة", () => {
+    const p = read("src/routes/purchases.ts");
+    expect(p).toContain("updateAverageCost(tx,");
+    expect(p.indexOf("updateAverageCost(tx,")).toBeLessThan(p.indexOf('movementType: "in"'));
+    expect(read("src/lib/stock.ts")).not.toContain("avgCost");
+  });
+  it("التكلفة بتتحمّل عند الشحن بحساب 5150 وبتتعكس من المسجّل نفسه، من نفس دالة المزامنة", () => {
+    const lib = read("src/lib/ledgerAuto.ts");
+    expect(lib).toContain("COGS_STATUSES.includes(status)");
+    expect(lib).toContain("reversalFromNet(cogs.nets");
+    expect(lib).toContain("SOURCE_SALES_COGS");
+  });
+  it("الهجرة 0102: عمود التكلفة (مش سالب) وحساب 5150 قابل للترحيل", () => {
+    const m = read("migrations/0102_inventory_avg_cost.sql");
+    expect(m).toContain('"avg_cost" numeric(14,4)');
+    expect(m).toContain("inventory_items_avg_cost_nonneg");
+    expect(m).toContain("'5150'");
+    expect(read("src/db/schema/inventory.ts")).toContain('numeric("avg_cost"');
+  });
+  it("مسار تقييم المخزون للإدارة العليا، والقيد التلقائي للتكلفة مينفعش يتعكس يدوي", () => {
+    const l = read("src/routes/ledger.ts");
+    expect(l).toContain('router.get("/ledger/inventory-valuation", ...view');
+    expect(l).toContain("orig.sourceType === SOURCE_SALES_COGS");
+  });
+  it("متوسط التكلفة بيتخفي عن غير الإدارة العليا (زي باقي الحقول الحساسة)", async () => {
+    const { maskFields } = await import("./lib/fieldMasking");
+    const row = { id: 1, name: "x", avgCost: "5.0000" };
+    expect((maskFields("inventory_items", row, "storekeeper") as Record<string, unknown>).avgCost).toBeUndefined();
+    expect((maskFields("inventory_items", row, "chairman") as Record<string, unknown>).avgCost).toBe("5.0000");
+  });
+});
