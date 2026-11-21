@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 import { axe } from "../../test/axe";
 import {
   Button, CodeInput, ConfirmDialog, CopyField, DataTable, Dialog, Field, Input, Menu, PermissionMatrix, PhoneInput, Select, Switch, Tabs,
-  ToastProvider, useToast, StepWizard, Pagination, type Column,
+  ToastProvider, useToast, StepWizard, Pagination, hiddenEdges, type Column,
 } from ".";
 import { Ellipsis } from "../icons";
 
@@ -244,5 +244,31 @@ describe("a11y (axe) على الحالات الأساسية", () => {
     );
     const res = await axe(container);
     expect(res.violations.map((v) => `${v.id}: ${v.nodes[0]?.html}`)).toEqual([]);
+  });
+});
+
+describe("Tabs: تمرير وتدرّج وتفاف", () => {
+  it("hiddenEdges: مفيش تمرير = مفيش تدرّج، وفي LTR/RTL بيحدد الطرف المخفي صح", () => {
+    expect(hiddenEdges({ scrollLeft: 0, scrollWidth: 300, clientWidth: 300 }, false)).toEqual({ left: false, right: false });
+    expect(hiddenEdges({ scrollLeft: 0, scrollWidth: 600, clientWidth: 300 }, false)).toEqual({ left: false, right: true });
+    expect(hiddenEdges({ scrollLeft: 300, scrollWidth: 600, clientWidth: 300 }, false)).toEqual({ left: true, right: false });
+    expect(hiddenEdges({ scrollLeft: 150, scrollWidth: 600, clientWidth: 300 }, false)).toEqual({ left: true, right: true });
+    // RTL: البداية عند scrollLeft = 0 (أقصى اليمين) والباقي بقيم سالبة
+    expect(hiddenEdges({ scrollLeft: 0, scrollWidth: 600, clientWidth: 300 }, true)).toEqual({ left: true, right: false });
+    expect(hiddenEdges({ scrollLeft: -300, scrollWidth: 600, clientWidth: 300 }, true)).toEqual({ left: false, right: true });
+  });
+
+  it("التبويب المختار بيتعمله scrollIntoView، و wrap بيضيف كلاس اللفّ", () => {
+    const spy = vi.fn();
+    const old = HTMLElement.prototype.scrollIntoView;
+    HTMLElement.prototype.scrollIntoView = spy;
+    const tabs = [{ id: "a", label: "أ", panel: "pa" }, { id: "b", label: "ب", panel: "pb" }];
+    const { container, unmount } = render(<Tabs value="b" onChange={() => {}} tabs={tabs} wrap />);
+    expect(spy).toHaveBeenCalled();
+    expect(container.querySelector('[role="tablist"]')?.className).toMatch(/--wrap/);
+    unmount();
+    const r2 = render(<Tabs value="a" onChange={() => {}} tabs={tabs} />);
+    expect(r2.container.querySelector('[role="tablist"]')?.className).not.toMatch(/--wrap/);
+    HTMLElement.prototype.scrollIntoView = old;
   });
 });

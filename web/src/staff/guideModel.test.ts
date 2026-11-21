@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { SCREENS, GLOSSARY, SCENARIOS } from "./guideScreens";
 import { ACC_TOPICS, AUTO_RULES, FLOWS, FLOW_IDS, FLOW_STEP_H, FLOW_STEP_W, flowPos, flowViewBox, edgeEnds, MAP_EDGES, MAP_NODES, ORDER_EDGES, ORDER_POS, ORDER_STATES, RESOURCES, levelOf, pagesForRole, resourceReach, roleAbilities, slaHours, tierFor, tierViews, type GuideNavDept, type GuidePermission, type GuidePolicyGroup, type GuideRole } from "./guideModel";
 
 const perms: GuidePermission[] = [
@@ -142,5 +143,79 @@ describe("خرائط العمليات (المرحلة 2)", () => {
   it("مواضيع الحسابات وقواعد الترحيل من غير تكرار", () => {
     expect(new Set(ACC_TOPICS).size).toBe(ACC_TOPICS.length);
     expect(new Set(AUTO_RULES).size).toBe(AUTO_RULES.length);
+  });
+});
+
+describe("فهرس الشاشات (بنية)", () => {
+  it("معرّفات الشاشات والأزرار فريدة، وكل زرار ليه مفتاح src بصيغة prefix:rest", () => {
+    expect(new Set(SCREENS.map((s) => s.id)).size).toBe(SCREENS.length);
+    for (const s of SCREENS) {
+      expect(new Set(s.buttons.map((b) => b.id)).size, s.id).toBe(s.buttons.length);
+      for (const b of s.buttons) expect(b.src, `${s.id}.${b.id}`).toMatch(/^[a-z]+:[A-Za-z0-9.]+$/);
+    }
+  });
+  it("شاشات العميل مالهاش صفحات قايمة، وشاشات الموظفين غالبًا ليها", () => {
+    for (const s of SCREENS.filter((x) => x.side === "portal")) expect(s.pages).toEqual([]);
+    expect(SCREENS.filter((x) => x.side === "staff" && x.pages.length > 0).length).toBeGreaterThan(15);
+  });
+  it("القاموس والسيناريوهات من غير تكرار وكل سيناريو له خطوتين على الأقل", () => {
+    expect(new Set(GLOSSARY).size).toBe(GLOSSARY.length);
+    expect(new Set(SCENARIOS.map((s) => s.id)).size).toBe(SCENARIOS.length);
+    for (const s of SCENARIOS) expect(s.steps).toBeGreaterThanOrEqual(2);
+  });
+});
+
+import { edgeGeom, segmentHitsBox, NW, NH, ORDER_W, ORDER_H } from "./guideModel";
+
+type G = { id: string; x: number; y: number }[];
+function crossings(nodes: G, edges: ReadonlyArray<{ from: string; to: string }>, w: number, h: number): string[] {
+  const out: string[] = [];
+  const by = new Map(nodes.map((n) => [n.id, n]));
+  const rev = (a: string, b: string) => edges.some((e) => e.from === b && e.to === a);
+  for (const e of edges) {
+    const a = by.get(e.from)!, b = by.get(e.to)!;
+    const g = edgeGeom(a, b, w, h, rev(e.from, e.to) ? 9 : 0);
+    for (const n of nodes) {
+      if (n.id === e.from || n.id === e.to) continue;
+      if (segmentHitsBox(g.x1, g.y1, g.x2, g.y2, n, w, h, 3)) out.push(`${e.from}→${e.to} يعدّي فوق ${n.id}`);
+    }
+    for (const n of nodes) if (Math.abs(g.lx - n.x) < w / 2 && Math.abs(g.ly - n.y) < h / 2) out.push(`اسم ${e.from}→${e.to} فوق ${n.id}`);
+  }
+  return out;
+}
+
+describe("هندسة الخرائط: مفيش خط بيعدّي فوق مربع ومفيش اسم سهم فوق مربع", () => {
+  it("خريطة النظام", () => {
+    expect(crossings(MAP_NODES as unknown as G, MAP_EDGES, NW, NH)).toEqual([]);
+  });
+  it("رحلة أمر البيع", () => {
+    const nodes = ORDER_STATES.map((s) => ({ id: s, ...ORDER_POS[s] }));
+    expect(crossings(nodes, ORDER_EDGES, ORDER_W, ORDER_H)).toEqual([]);
+  });
+  it("كل خرائط العمليات", () => {
+    for (const id of FLOW_IDS) {
+      const f = FLOWS[id];
+      const nodes = f.steps.map((s) => ({ id: s.id, ...flowPos(s) }));
+      expect(crossings(nodes, f.edges, FLOW_STEP_W, FLOW_STEP_H), id).toEqual([]);
+    }
+  });
+  it("السهمين العكس (إنتاج↔مخزن) أسماءهم متباعدة ومش فوق بعض", () => {
+    const a = MAP_NODES.find((n) => n.id === "production")!, b = MAP_NODES.find((n) => n.id === "warehouse")!;
+    const g1 = edgeGeom(b, a, NW, NH, 9), g2 = edgeGeom(a, b, NW, NH, 9);
+    expect(Math.hypot(g1.lx - g2.lx, g1.ly - g2.ly)).toBeGreaterThan(14);
+  });
+  it("المسافة بين المربعات المتجاورة تكفي لاسم السهم (≥ 70)", () => {
+    for (const e of MAP_EDGES) {
+      const a = MAP_NODES.find((n) => n.id === e.from)!, b = MAP_NODES.find((n) => n.id === e.to)!;
+      const g = edgeGeom(a, b, NW, NH, 0);
+      expect(Math.hypot(g.x2 - g.x1, g.y2 - g.y1), `${e.from}→${e.to}`).toBeGreaterThan(50);
+    }
+  });
+  it("segmentHitsBox: قطعة بتعدّي المربع = true، وقطعة بعيدة أو بتلمس الحافة بره الهامش = false", () => {
+    const c = { x: 100, y: 100 };
+    expect(segmentHitsBox(0, 100, 200, 100, c, 50, 50)).toBe(true);
+    expect(segmentHitsBox(0, 0, 200, 0, c, 50, 50)).toBe(false);
+    expect(segmentHitsBox(0, 100, 60, 100, c, 50, 50)).toBe(false);
+    expect(segmentHitsBox(0, 100, 60, 100, c, 50, 50, 20)).toBe(true);
   });
 });

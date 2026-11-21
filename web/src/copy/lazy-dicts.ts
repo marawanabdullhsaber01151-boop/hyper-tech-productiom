@@ -22,6 +22,7 @@ import { viewAsCopy } from "./viewas";
 import { ledgerCopy } from "./ledger";
 import { guideCopy } from "./guide";
 import { guide2Copy } from "./guide2";
+import { guide3Copy } from "./guide3";
 
 export const lazyCopies = {
   sales: salesCopy,
@@ -44,4 +45,5 @@ export const lazyCopies = {
   ledger: ledgerCopy,
   guide: guideCopy,
   guide2: guide2Copy,
+  guide3: guide3Copy,
 } as const;

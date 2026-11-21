@@ -135,4 +135,46 @@ describe("دليل النظام", () => {
     expect(screen.getByText("تحصيل من عميل")).toBeTruthy();
     expect(screen.getAllByText(/مدينون العملاء \(1130\)/).length).toBeGreaterThan(1);
   });
+  it("فهرس الشاشات: بيعرض الشاشات والأزرار وشرحها، والبحث بيفلتر، ومفيش نتايج بيقول كده", async () => {
+    mount();
+    fireEvent.click(await screen.findByRole("tab", { name: "فهرس الشاشات والأزرار" }));
+    expect(await screen.findByText("كل شاشة وكل زرار")).toBeTruthy();
+    expect(screen.getByText("فواتير المبيعات")).toBeTruthy();
+    expect(screen.getByText("شاشات العميل (البوابة)")).toBeTruthy();
+    expect(screen.getAllByText("رحّل القيد").length).toBe(1);
+    fireEvent.input(screen.getByLabelText("ابحث باسم شاشة أو زرار"), { target: { value: "تحصيل جديد" } });
+    expect(await screen.findByText("الحسابات والقيود")).toBeTruthy();
+    expect(screen.queryByText("فواتير المبيعات")).toBeNull();
+    fireEvent.input(screen.getByLabelText("ابحث باسم شاشة أو زرار"), { target: { value: "زززززز" } });
+    expect(await screen.findByText("مفيش نتايج للبحث ده.")).toBeTruthy();
+  });
+
+  it("السيناريوهات والقاموس", async () => {
+    mount();
+    fireEvent.click(await screen.findByRole("tab", { name: "سيناريوهات وقاموس" }));
+    expect(await screen.findByText("عميل هيعدّي حد الائتمان")).toBeTruthy();
+    expect(screen.getByText("القيد العكسي")).toBeTruthy();
+    expect(screen.getByText(/مهلة الرد \(SLA\)/)).toBeTruthy();
+  });
+});
+
+describe("دليل النظام على الموبايل", () => {
+  it("الخريطة بتتحول لقائمة بتتفتح كروت، والضغط بيفتح التفاصيل", async () => {
+    const old = window.matchMedia;
+    window.matchMedia = ((q: string) => ({ matches: true, media: q, addEventListener() {}, removeEventListener() {}, addListener() {}, removeListener() {}, onchange: null, dispatchEvent: () => false })) as never;
+    try {
+      mount();
+      await screen.findByText("النظام كله في صورة واحدة");
+      expect(document.querySelector("svg.gd-svg")).toBeNull();
+      const head = screen.getByRole("button", { name: "المبيعات" });
+      expect(head.getAttribute("aria-expanded")).toBe("false");
+      fireEvent.click(head);
+      expect(head.getAttribute("aria-expanded")).toBe("true");
+      expect(await screen.findByText("صفحات القسم")).toBeTruthy();
+      fireEvent.click(head);
+      expect(head.getAttribute("aria-expanded")).toBe("false");
+    } finally {
+      window.matchMedia = old;
+    }
+  });
 });

@@ -56,3 +56,26 @@
 .gd-flowbox:last-child { border-block-end: 0; }
 .gd-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: var(--sp-3); }
 .gd-table--text th, .gd-table--text td { white-space: normal; text-align: start; min-inline-size: 150px; line-height: 1.7; }
+.gd-sidebox { display: flex; flex-direction: column; gap: var(--sp-3); }
+.gd-btnlabel { display: inline-block; padding: 2px 10px; border-radius: 8px; background: var(--c-brand-soft); color: var(--c-brand-text); font-weight: 700; }
+.gd-opens { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-1); }
+
+/* قايمة الرسمة على الموبايل: كل قسم/خطوة بطاقة تتفتح */
+.gd-glist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--sp-2); }
+.gd-glist__item { border: 1px solid var(--c-border-1); border-radius: 12px; background: var(--c-surface-1); overflow: hidden; }
+.gd-glist__item--on { border-color: var(--c-brand); }
+.gd-glist__item--neg { border-style: dashed; }
+.gd-glist__head { inline-size: 100%; min-block-size: 48px; padding: var(--sp-3) var(--sp-4); text-align: start; background: none; border: 0; font: inherit; font-weight: 700; color: var(--c-text-1); cursor: pointer; display: flex; align-items: center; justify-content: space-between; }
+.gd-glist__head::after { content: "\002B"; color: var(--c-brand); font-weight: 800; }
+.gd-glist__item--on .gd-glist__head::after { content: "\2212"; }
+.gd-glist__body { padding: 0 var(--sp-4) var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-2); }
+.gd-glist__rel { margin: 0; padding: var(--sp-2) var(--sp-3); border-radius: 8px; background: var(--c-surface-2); line-height: 1.7; }
+.gd-glist__rel--in { background: transparent; color: var(--c-text-2); padding-inline: 0; }
+.gd-glist__detail { border-block-start: 1px dashed var(--c-border-1); padding-block-start: var(--sp-3); }
+@media (max-width: 767px) {
+  .gd { padding: var(--sp-3); gap: var(--sp-3); }
+  .gd-title { font-size: var(--fs-lg); }
+  .gd-card { padding: var(--sp-3); }
+  .gd-tier__range { min-inline-size: 0; }
+  .gd-legend { flex-wrap: wrap; gap: var(--sp-2) var(--sp-3); }
+}

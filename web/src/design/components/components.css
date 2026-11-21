@@ -130,6 +130,13 @@
 
 /* ===== tabs ===== */
 .ht-tabs__list { display: flex; gap: var(--sp-1); border-block-end: 1px solid var(--c-border-2); overflow-x: auto; scrollbar-width: none; }
+.ht-tabs__list--fade-l { mask-image: linear-gradient(to right, transparent 0, currentColor 32px); -webkit-mask-image: linear-gradient(to right, transparent 0, currentColor 32px); }
+.ht-tabs__list--fade-r { mask-image: linear-gradient(to left, transparent 0, currentColor 32px); -webkit-mask-image: linear-gradient(to left, transparent 0, currentColor 32px); }
+.ht-tabs__list--fade-l.ht-tabs__list--fade-r { mask-image: linear-gradient(to right, transparent 0, currentColor 32px, currentColor calc(100% - 32px), transparent 100%); -webkit-mask-image: linear-gradient(to right, transparent 0, currentColor 32px, currentColor calc(100% - 32px), transparent 100%); }
+.ht-tabs__list--wrap { flex-wrap: wrap; overflow-x: visible; gap: var(--sp-1) var(--sp-2); padding-block-end: var(--sp-1); }
+.ht-tabs__list--wrap .ht-tabs__tab { border-radius: var(--r-sm); min-block-size: 40px; border: 1px solid transparent; }
+.ht-tabs__list--wrap .ht-tabs__tab[aria-selected="true"] { background: var(--c-brand-soft); border-color: var(--c-brand); }
+.ht-tabs__list--wrap .ht-tabs__tab[aria-selected="true"]::after { display: none; }
 .ht-tabs__tab { position: relative; display: inline-flex; align-items: center; gap: 8px; min-block-size: 44px; padding-inline: var(--sp-4); border: 0; background: none; color: var(--c-text-2); font-weight: 700; cursor: pointer; white-space: nowrap; border-radius: var(--r-sm) var(--r-sm) 0 0; }
 .ht-tabs__tab:hover { color: var(--c-text-1); background: var(--c-surface-2); }
 .ht-tabs__tab[aria-selected="true"] { color: var(--c-brand-text); }

@@ -1,5 +1,5 @@
 import type { ComponentChildren } from "preact";
-import { useId, useRef, useState } from "preact/hooks";
+import { useEffect, useId, useRef, useState } from "preact/hooks";
 import { t } from "../../copy";
 import { formatNumber } from "../../lib/format";
 import { cx } from "./util";
@@ -40,10 +40,34 @@ export interface TabDef {
   badge?: number;
   panel: ComponentChildren;
 }
-export function Tabs({ tabs, value, onChange, label = t("tabs.label") }: { tabs: TabDef[]; value: string; onChange: (id: string) => void; label?: string }) {
+/** أي أطراف مخفية في صف التبويبات (يمين/شمال بصريًا)؟ بيشتغل مع RTL (scrollLeft سالب). */
+export function hiddenEdges(el: { scrollLeft: number; scrollWidth: number; clientWidth: number }, rtl: boolean): { left: boolean; right: boolean } {
+  const max = Math.max(0, el.scrollWidth - el.clientWidth);
+  if (max <= 1) return { left: false, right: false };
+  const fromLeft = rtl ? max + el.scrollLeft : el.scrollLeft;
+  return { left: fromLeft > 1, right: fromLeft < max - 1 };
+}
+
+export function Tabs({ tabs, value, onChange, label = t("tabs.label"), wrap = false }: { tabs: TabDef[]; value: string; onChange: (id: string) => void; label?: string; /** يلفّ التبويبات على أكتر من صف (للشاشات اللي فيها تبويبات كتير) بدل التمرير الأفقي. */ wrap?: boolean }) {
   const base = useId();
   const refs = useRef<Array<HTMLButtonElement | null>>([]);
+  const listRef = useRef<HTMLDivElement | null>(null);
+  const [edges, setEdges] = useState({ left: false, right: false });
   const idx = Math.max(0, tabs.findIndex((x) => x.id === value));
+  // التبويب المختار دايمًا ظاهر، وأطراف الصف اللي فيها تبويبات مخفية بتتلوّن بتدرّج (عشان المستخدم يعرف إن في تمرير).
+  useEffect(() => {
+    const el = listRef.current;
+    if (!el) return;
+    const measure = () => setEdges(hiddenEdges(el, getComputedStyle(el).direction === "rtl"));
+    refs.current[idx]?.scrollIntoView?.({ inline: "center", block: "nearest" });
+    measure();
+    el.addEventListener("scroll", measure, { passive: true });
+    window.addEventListener("resize", measure);
+    return () => {
+      el.removeEventListener("scroll", measure);
+      window.removeEventListener("resize", measure);
+    };
+  }, [idx, tabs.length]);
   const onKey = (e: KeyboardEvent) => {
     // RTL: السهم اليمين = السابق (الاتجاه البصري)
     const rtl = getComputedStyle(e.currentTarget as HTMLElement).direction === "rtl";
@@ -59,7 +83,7 @@ export function Tabs({ tabs, value, onChange, label = t("tabs.label") }: { tabs:
   };
   return (
     <div class="ht-tabs">
-      <div role="tablist" aria-label={label} class="ht-tabs__list" onKeyDown={onKey}>
+      <div role="tablist" aria-label={label} ref={listRef} class={cx("ht-tabs__list", wrap && "ht-tabs__list--wrap", !wrap && edges.left && "ht-tabs__list--fade-l", !wrap && edges.right && "ht-tabs__list--fade-r")} onKeyDown={onKey}>
         {tabs.map((tab, i) => (
           <button
             key={tab.id}

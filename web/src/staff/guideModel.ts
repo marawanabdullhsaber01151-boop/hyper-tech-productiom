@@ -75,16 +75,17 @@ export const slaHours = (minutes: number) => Math.round((minutes / 60) * 10) / 1
 // ── خريطة النظام العامة: عقد وأسهم (إحداثيات SVG ثابتة) ──
 export interface MapNode { id: string; x: number; y: number; dept: string | null }
 export const MAP_NODES: readonly MapNode[] = [
+  // شبكة 3 أعمدة × 4 صفوف: كل سهم بين خليتين متجاورتين، فمفيش خط بيعدّي فوق مربع.
+  { id: "operations", x: 180, y: 60, dept: "operations" },
+  { id: "purchasing", x: 440, y: 60, dept: "purchasing" },
   { id: "portal", x: 700, y: 60, dept: "customer-portal" },
-  { id: "sales", x: 700, y: 190, dept: "sales" },
-  { id: "approvals", x: 700, y: 320, dept: "approvals" },
-  { id: "accounting", x: 440, y: 320, dept: "foundation-data" },
-  { id: "warehouse", x: 440, y: 190, dept: "warehouse" },
   { id: "production", x: 180, y: 190, dept: "production" },
-  { id: "purchasing", x: 180, y: 60, dept: "purchasing" },
+  { id: "warehouse", x: 440, y: 190, dept: "warehouse" },
+  { id: "sales", x: 700, y: 190, dept: "sales" },
   { id: "quality", x: 180, y: 320, dept: "quality" },
-  { id: "management", x: 440, y: 60, dept: "top-management" },
-  { id: "operations", x: 440, y: 440, dept: "operations" },
+  { id: "approvals", x: 440, y: 320, dept: "approvals" },
+  { id: "accounting", x: 700, y: 320, dept: "foundation-data" },
+  { id: "management", x: 440, y: 450, dept: "top-management" },
 ];
 export interface MapEdge { from: string; to: string; key: string }
 export const MAP_EDGES: readonly MapEdge[] = [
@@ -102,6 +103,8 @@ export const MAP_EDGES: readonly MapEdge[] = [
 ];
 
 // ── رحلة أمر البيع ──
+/** مقاس مربع حالة الأمر في الرسمة. */
+export const ORDER_W = 130, ORDER_H = 50;
 export const ORDER_STATES = ["draft", "pending_approval", "confirmed", "shipped", "paid", "cancelled"] as const;
 export type OrderState = (typeof ORDER_STATES)[number];
 export const ORDER_EDGES: ReadonlyArray<{ from: OrderState; to: OrderState; key: string }> = [
@@ -130,14 +133,35 @@ export const APPROVAL_FLOW = ["request", "policy", "steps", "decision"] as const
 /** مقاسات عقدة الخريطة. */
 export const NW = 170, NH = 58;
 
-/** نقطة تقاطع الخط بين مركزين مع حدود المستطيل (عشان السهم يلمس الحافة مش المركز). */
-export function edgeEnds(a: { x: number; y: number }, b: { x: number; y: number }, off: number) {
+/**
+ * هندسة سهم بين مركزين: بداية ونهاية على حافة المستطيل (مش المركز) + مكان الاسم.
+ * off ≠ 0 لما في سهمين عكس بعض (بيتزحزحوا على الجانبين واسميهما بيتباعدوا).
+ */
+export function edgeGeom(a: { x: number; y: number }, b: { x: number; y: number }, w: number, h: number, off = 0) {
   const dx = b.x - a.x, dy = b.y - a.y;
   const len = Math.hypot(dx, dy) || 1;
   const ux = dx / len, uy = dy / len;
-  const tt = Math.min(dx === 0 ? Infinity : NW / 2 / Math.abs(dx), dy === 0 ? Infinity : NH / 2 / Math.abs(dy)) * len;
+  const tt = Math.min(dx === 0 ? Infinity : w / 2 / Math.abs(dx), dy === 0 ? Infinity : h / 2 / Math.abs(dy)) * len;
   const px = -uy * off, py = ux * off;
-  return { x1: a.x + ux * tt + px, y1: a.y + uy * tt + py, x2: b.x - ux * tt + px, y2: b.y - uy * tt + py };
+  const x1 = a.x + ux * tt + px, y1 = a.y + uy * tt + py, x2 = b.x - ux * tt + px, y2 = b.y - uy * tt + py;
+  return { x1, y1, x2, y2, lx: (x1 + x2) / 2 - uy * off * 1.2, ly: (y1 + y2) / 2 + ux * off * 1.2 - 5 };
+}
+/** توافق مع النداءات القديمة. */
+export const edgeEnds = (a: { x: number; y: number }, b: { x: number; y: number }, off: number) => edgeGeom(a, b, NW, NH, off);
+
+/** هل القطعة (x1,y1)-(x2,y2) بتعدّي جوه مستطيل مركزه c (مع هامش pad)؟ (Liang–Barsky) */
+export function segmentHitsBox(x1: number, y1: number, x2: number, y2: number, c: { x: number; y: number }, w: number, h: number, pad = 0): boolean {
+  const xmin = c.x - w / 2 - pad, xmax = c.x + w / 2 + pad, ymin = c.y - h / 2 - pad, ymax = c.y + h / 2 + pad;
+  let t0 = 0, t1 = 1;
+  const dx = x2 - x1, dy = y2 - y1;
+  const clip = (p: number, q: number): boolean => {
+    if (p === 0) return q >= 0;
+    const r = q / p;
+    if (p < 0) { if (r > t1) return false; if (r > t0) t0 = r; }
+    else { if (r < t0) return false; if (r < t1) t1 = r; }
+    return true;
+  };
+  return clip(-dx, x1 - xmin) && clip(dx, xmax - x1) && clip(-dy, y1 - ymin) && clip(dy, ymax - y1);
 }
 
 // ── المرحلة 2: خرائط العمليات (خطوات على شبكة + أسهم). النصوص كلها في copy/guide2.ts بمفاتيح guide.fl.<flow>.* ──

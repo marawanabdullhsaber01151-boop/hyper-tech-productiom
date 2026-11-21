@@ -1,8 +1,9 @@
 /** @format */
 // دليل النظام (المرحلة 1): حراسة إن الدليل مايتأخرش عن النظام. أي دور/مورد/قسم/حالة جديدة من غير شرح = الاختبار يقع.
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
+import { SCREENS, GLOSSARY, SCENARIOS } from "../web/src/staff/guideScreens";
 import { FLOWS, FLOW_IDS, ACC_TOPICS, AUTO_RULES } from "../web/src/staff/guideModel";
 import { QUALITY_PASS_RATE } from "./lib/productionQualityCore";
 import { PO_STATUSES } from "./lib/purchasing";
@@ -146,5 +147,68 @@ describe("المرحلة 2: كل خطوة وسهم ليهم شرح كامل", ()
   it("الصفحة سجّلت نصوص المرحلة 2 (lazy)", () => {
     expect(read("web/src/staff/Guide.tsx")).toContain('import "../copy/guide2"');
     expect(read("web/src/copy/lazy-dicts.ts")).toContain("guide2: guide2Copy");
+  });
+});
+
+const copy3 = read("web/src/copy/guide3.ts");
+const val3 = (key: string) => copy3.match(new RegExp(`"${key.replace(/\./g, "\\.")}": "((?:[^"\\\\]|\\\\.)*)"`))?.[1];
+/** كل نصوص الواجهة (كل ملفات web/src/copy ماعدا ملفات الدليل نفسه) مفتاح ← نص. */
+const uiCopy = (() => {
+  const out = new Map<string, string>();
+  const dir = resolve(__dirname, "../web/src/copy");
+  for (const f of readdirSync(dir)) {
+    if (!f.endsWith(".ts") || f.startsWith("guide")) continue;
+    for (const m of readFileSync(resolve(dir, f), "utf8").matchAll(/^\s*"([\w.]+)":\s*"((?:[^"\\]|\\.)*)"/gm)) out.set(m[1]!, m[2]!);
+  }
+  return out;
+})();
+
+describe("المرحلة 3: فهرس الشاشات والأزرار", () => {
+  it("اسم كل زرار في الدليل هو نفس اسمه الحقيقي على الشاشة (لو اتغيّر الاسم الاختبار يقع)", () => {
+    expect(SCREENS.flatMap((s) => s.buttons).length).toBeGreaterThan(100);
+    for (const s of SCREENS) for (const b of s.buttons) {
+      const real = uiCopy.get(b.src.replace(":", "."));
+      expect(real, `${s.id}.${b.id} ← ${b.src} مش موجود في نصوص الواجهة`).toBeTruthy();
+      expect(val3(`guide.sc.${s.id}.b.${b.id}.l`), `${s.id}.${b.id}`).toBe(real);
+    }
+  });
+  it("كل شاشة وزرار ليهم شرح، ومفيش شرح يتيم لشاشة أو زرار اتشال", () => {
+    for (const s of SCREENS) {
+      expect(val3(`guide.sc.${s.id}.t`), s.id).toBeTruthy();
+      expect((val3(`guide.sc.${s.id}.d`) ?? "").length, s.id).toBeGreaterThan(15);
+      expect(new Set(s.buttons.map((b) => b.id)).size).toBe(s.buttons.length);
+      for (const b of s.buttons) expect((val3(`guide.sc.${s.id}.b.${b.id}.e`) ?? "").length, `${s.id}.${b.id}`).toBeGreaterThan(8);
+    }
+    const known = new Map(SCREENS.map((s) => [s.id, new Set(s.buttons.map((b) => b.id))]));
+    for (const m of copy3.matchAll(/"guide\.sc\.(\w+)\.b\.(\w+)\.(?:l|e)":/g)) expect(known.get(m[1]!)?.has(m[2]!), `يتيم: ${m[1]}.${m[2]}`).toBe(true);
+    for (const m of copy3.matchAll(/"guide\.sc\.(\w+)\.(?:t|d)":/g)) if (!["title", "intro", "search", "opens", "button", "effect", "empty", "count"].includes(m[1]!)) expect(known.has(m[1]!), `يتيم: ${m[1]}`).toBe(true);
+  });
+  it("كل صفحة في قايمة الموظفين ليها شاشة في الفهرس", () => {
+    const covered = new Set(SCREENS.flatMap((s) => s.pages));
+    const ids = DEPARTMENTS.flatMap((d) => d.subFunctions.flatMap((sf) => sf.pages.map((p) => p.id)));
+    for (const id of ids) expect(covered.has(id), `الصفحة ${id} مالهاش شاشة في الفهرس`).toBe(true);
+  });
+  it("كل صفحة مذكورة في الفهرس موجودة فعلًا في القايمة (مفيش اسم صفحة غلط)", () => {
+    const ids = new Set(DEPARTMENTS.flatMap((d) => d.subFunctions.flatMap((sf) => sf.pages.map((p) => p.id))));
+    for (const s of SCREENS) for (const p of s.pages) expect(ids.has(p), `${s.id} → ${p}`).toBe(true);
+  });
+  it("القاموس والسيناريوهات: كل مصطلح وخطوة ليها نص", () => {
+    for (const g of GLOSSARY) { expect(val3(`guide.gl.${g}.t`), g).toBeTruthy(); expect(val3(`guide.gl.${g}.d`), g).toBeTruthy(); }
+    for (const sn of SCENARIOS) {
+      expect(val3(`guide.sn.${sn.id}.t`), sn.id).toBeTruthy();
+      for (let i = 1; i <= sn.steps; i++) expect(val3(`guide.sn.${sn.id}.s${i}`), `${sn.id}.s${i}`).toBeTruthy();
+      expect(copy3.includes(`"guide.sn.${sn.id}.s${sn.steps + 1}"`), `${sn.id} فيه خطوة زيادة`).toBe(false);
+    }
+  });
+  it("قواعد مكتوبة في السيناريوهات متطابقة مع الكود: 4 ساعات وأقل 3 حروف", () => {
+    expect(read("src/domain/approvals-inbox.ts")).toContain("SLA_WORKING_MINUTES = 240");
+    expect(val3("guide.sn.stuckApproval.s1")).toContain("4 ساعات");
+    expect(val3("guide.sn.wrongEntry.s2")).toContain("3 حروف");
+    expect(read("src/routes/ledger.ts")).toContain("min(3");
+  });
+  it("الصفحة سجّلت نصوص المرحلة 3 (lazy) والأرقام لاتينية", () => {
+    expect(read("web/src/staff/Guide.tsx")).toContain('import "../copy/guide3"');
+    expect(read("web/src/copy/lazy-dicts.ts")).toContain("guide3: guide3Copy");
+    expect(copy3).not.toMatch(/[٠-٩]/);
   });
 });

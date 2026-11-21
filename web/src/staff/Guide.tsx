@@ -1,17 +1,21 @@
 import "../copy/guide";
 import "../copy/guide2";
+import "../copy/guide3";
+import type { ComponentChildren } from "preact";
 import { useMemo, useState } from "preact/hooks";
 import { api } from "../admin/api";
+import { staffUser } from "../admin/session";
 import { useQuery } from "../api/hooks";
 import { navigate } from "../app/router";
 import { t, type CopyKey } from "../copy";
-import { Button, EmptyState, Field, Input, InlineAlert, Select, Spinner, Tabs } from "../design/components";
+import { Button, EmptyState, Field, Input, InlineAlert, Select, Spinner, Tabs, useMediaQuery } from "../design/components";
 import {
-  ACC_TOPICS, AUTO_RULES, FLOWS, FLOW_STEP_H, FLOW_STEP_W, flowPos, flowViewBox, type FlowId,
-  APPROVAL_FLOW, MAP_EDGES, NH, NW, edgeEnds, MAP_NODES, ORDER_EDGES, ORDER_POS, ORDER_STATES, RESOURCES,
+  ACC_TOPICS, AUTO_RULES, FLOWS, FLOW_STEP_H, FLOW_STEP_W, flowPos, flowViewBox, type FlowId, ORDER_H, ORDER_W,
+  APPROVAL_FLOW, MAP_EDGES, NH, NW, edgeGeom, MAP_NODES, ORDER_EDGES, ORDER_POS, ORDER_STATES, RESOURCES,
   levelOf, pagesForRole, resourceReach, roleAbilities, slaHours, tierFor, tierViews,
-  type GuideLive, type GuidePolicyGroup, type Level, type MapNode, type OrderState,
+  type GuideLive, type GuidePolicyGroup, type Level,
 } from "./guideModel";
+import { GLOSSARY, SCENARIOS, SCREENS, type ScreenDef } from "./guideScreens";
 import "./Guide.css";
 
 const k = (key: string) => key as CopyKey;
@@ -40,6 +44,7 @@ export function Guide() {
       </div>
       <Tabs
         label={t("guide.title")}
+        wrap
         value={tab}
         onChange={setTab}
         tabs={[
@@ -51,77 +56,121 @@ export function Guide() {
           { id: "purchasing", label: t("guide.tab.purchasing"), panel: <FlowChapter title="guide.pur.title" intro="guide.pur.intro" flows={["po"]} /> },
           { id: "accounting", label: t("guide.tab.accounting"), panel: <Accounting /> },
           { id: "portal", label: t("guide.tab.portal"), panel: <FlowChapter title="guide.por.title" intro="guide.por.intro" flows={["portal"]} /> },
+          { id: "screens", label: t("guide.tab.screens"), panel: <Screens live={live} /> },
+          { id: "help", label: t("guide.tab.help"), panel: <Help /> },
         ]}
       />
     </div>
   );
 }
 
-/* ---------------- خريطة النظام ---------------- */
-const nodeById = (id: string) => MAP_NODES.find((n) => n.id === id)!;
+/* ---------------- رسمة عامة: خريطة على الشاشات الكبيرة، وقايمة مريحة على الموبايل ---------------- */
+export interface DNode { id: string; x: number; y: number; label: string; neg?: boolean }
+export interface DEdge { from: string; to: string; label: string; neg?: boolean }
 
-function SystemMap({ live }: { live: GuideLive }) {
-  const [sel, setSel] = useState<MapNode | null>(null);
-  const reversed = (f: string, to: string) => MAP_EDGES.some((e) => e.from === to && e.to === f);
-  const dept = sel?.dept ? live.nav.find((d) => d.id === sel.dept) : undefined;
-  const pages = dept ? dept.subFunctions.flatMap((s) => s.pages) : [];
+function Diagram({ nodes, edges, w, h, vw, vh, aria, markerId, selected, onSelect, detail, pick }: {
+  nodes: DNode[]; edges: DEdge[]; w: number; h: number; vw: number; vh: number; aria: string; markerId: string;
+  selected: string | null; onSelect: (id: string) => void; detail: (id: string) => ComponentChildren; pick: string;
+}) {
+  const narrow = useMediaQuery("(max-width: 767px)");
+  const byId = new Map(nodes.map((n) => [n.id, n]));
+  if (narrow) {
+    return (
+      <ul class="gd-glist" aria-label={aria}>
+        {nodes.map((n) => {
+          const out = edges.filter((e) => e.from === n.id);
+          const inn = edges.filter((e) => e.to === n.id);
+          const open = selected === n.id;
+          return (
+            <li key={n.id} class={`gd-glist__item${open ? " gd-glist__item--on" : ""}${n.neg ? " gd-glist__item--neg" : ""}`}>
+              <button type="button" class="gd-glist__head" aria-expanded={open} onClick={() => onSelect(open ? "" : n.id)}>{n.label}</button>
+              {open ? (
+                <div class="gd-glist__body">
+                  {out.map((e) => <p class="gd-glist__rel" key={`o${e.to}${e.label}`}><b>{e.label}</b> ← {byId.get(e.to)?.label}</p>)}
+                  {inn.map((e) => <p class="gd-glist__rel gd-glist__rel--in" key={`i${e.from}${e.label}`}>{t("guide.list.in", { from: byId.get(e.from)?.label ?? "", what: e.label })}</p>)}
+                  <div class="gd-glist__detail">{detail(n.id)}</div>
+                </div>
+              ) : null}
+            </li>
+          );
+        })}
+      </ul>
+    );
+  }
+  const reversed = (f: string, to: string) => edges.some((e) => e.from === to && e.to === f);
   return (
-    <section class="gd-sec">
-      <h2 class="gd-h">{t("guide.map.title")}</h2>
-      <p class="gd-p">{t("guide.map.intro")}</p>
+    <>
       <div class="gd-scroll">
-        <svg class="gd-svg" viewBox="0 0 880 500" role="group" aria-label={t("guide.map.label")}>
+        <svg class="gd-svg" viewBox={`0 0 ${vw} ${vh}`} role="group" aria-label={aria}>
           <defs>
-            <marker id="gd-arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="gd-arrow" /></marker>
+            <marker id={markerId} viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="gd-arrow" /></marker>
           </defs>
-          {MAP_EDGES.map((e) => {
-            const a = nodeById(e.from), b = nodeById(e.to);
-            const p = edgeEnds(a, b, reversed(e.from, e.to) ? 9 : 0);
+          {edges.map((e) => {
+            const a = byId.get(e.from)!, b = byId.get(e.to)!;
+            const g = edgeGeom(a, b, w, h, reversed(e.from, e.to) ? 9 : 0);
             return (
-              <g key={`${e.from}-${e.to}`}>
-                <line class="gd-edge" x1={p.x1} y1={p.y1} x2={p.x2} y2={p.y2} marker-end="url(#gd-arr)" />
-                <text class="gd-edge-t" x={(p.x1 + p.x2) / 2} y={(p.y1 + p.y2) / 2 - 5} text-anchor="middle">{t(k(`guide.edge.${e.key}`))}</text>
+              <g key={`${e.from}-${e.to}-${e.label}`} class={e.neg ? "gd-edge--cancel" : ""}>
+                <line class="gd-edge" x1={g.x1} y1={g.y1} x2={g.x2} y2={g.y2} marker-end={`url(#${markerId})`} />
+                <text class="gd-edge-t" x={g.lx} y={g.ly} text-anchor="middle">{e.label}</text>
               </g>
             );
           })}
-          {MAP_NODES.map((n) => (
+          {nodes.map((n) => (
             <g
               key={n.id}
-              class={`gd-node${sel?.id === n.id ? " gd-node--on" : ""}`}
+              class={`gd-node${n.neg ? " gd-node--cancelled" : ""}${selected === n.id ? " gd-node--on" : ""}`}
               role="button"
               tabIndex={0}
-              aria-pressed={sel?.id === n.id}
-              onClick={() => setSel(n)}
-              onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), setSel(n))}
+              aria-pressed={selected === n.id}
+              onClick={() => onSelect(n.id)}
+              onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), onSelect(n.id))}
             >
-              <rect x={n.x - NW / 2} y={n.y - NH / 2} width={NW} height={NH} rx="12" />
-              <text x={n.x} y={n.y + 5} text-anchor="middle">{t(k(`guide.node.${n.id}`))}</text>
+              <rect x={n.x - w / 2} y={n.y - h / 2} width={w} height={h} rx="12" />
+              <text x={n.x} y={n.y + 5} text-anchor="middle">{n.label}</text>
             </g>
           ))}
         </svg>
       </div>
-      <div class="gd-card" aria-live="polite">
-        {!sel ? (
-          <p class="gd-muted">{t("guide.map.pick")}</p>
+      <div class="gd-card" aria-live="polite">{selected ? detail(selected) : <p class="gd-muted">{pick}</p>}</div>
+    </>
+  );
+}
+
+/* ---------------- خريطة النظام ---------------- */
+function SystemMap({ live }: { live: GuideLive }) {
+  const [sel, setSel] = useState<string | null>(null);
+  const detail = (id: string) => {
+    const nd = MAP_NODES.find((n) => n.id === id);
+    const dept = nd?.dept ? live.nav.find((d) => d.id === nd.dept) : undefined;
+    const pages = dept ? dept.subFunctions.flatMap((s) => s.pages) : [];
+    return (
+      <>
+        <h3 class="gd-h3">{t(k(`guide.node.${id}`))}</h3>
+        <p class="gd-p">{t(k(`guide.dept.${id}`))}</p>
+        <h4 class="gd-h4">{t("guide.map.pages")}</h4>
+        {pages.length === 0 ? (
+          <p class="gd-muted">{t("guide.map.noPages")}</p>
         ) : (
-          <>
-            <h3 class="gd-h3">{t(k(`guide.node.${sel.id}`))}</h3>
-            <p class="gd-p">{t(k(`guide.dept.${sel.id}`))}</p>
-            <h4 class="gd-h4">{t("guide.map.pages")}</h4>
-            {pages.length === 0 ? (
-              <p class="gd-muted">{t("guide.map.noPages")}</p>
-            ) : (
-              <ul class="gd-links">
-                {pages.map((p) => (
-                  <li key={p.id}>
-                    <Button size="sm" variant="ghost" onClick={() => (p.href.startsWith("/v2/") ? navigate(p.href.slice(3)) : (location.href = p.href))}>{p.label}</Button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </>
+          <ul class="gd-links">
+            {pages.map((p) => (
+              <li key={p.id + p.href}>
+                <Button size="sm" variant="ghost" onClick={() => (p.href.startsWith("/v2/") ? navigate(p.href.slice(3)) : (location.href = p.href))}>{p.label}</Button>
+              </li>
+            ))}
+          </ul>
         )}
-      </div>
+      </>
+    );
+  };
+  return (
+    <section class="gd-sec">
+      <h2 class="gd-h">{t("guide.map.title")}</h2>
+      <p class="gd-p">{t("guide.map.intro")}</p>
+      <Diagram
+        nodes={MAP_NODES.map((n) => ({ id: n.id, x: n.x, y: n.y, label: t(k(`guide.node.${n.id}`)) }))}
+        edges={MAP_EDGES.map((e) => ({ from: e.from, to: e.to, label: t(k(`guide.edge.${e.key}`)) }))}
+        w={NW} h={NH} vw={880} vh={520} aria={t("guide.map.label")} markerId="gd-arr" selected={sel} onSelect={(id) => setSel(id || null)} detail={detail} pick={t("guide.map.pick")}
+      />
     </section>
   );
 }
@@ -289,66 +338,30 @@ function Approvals({ live }: { live: GuideLive }) {
 }
 
 /* ---------------- رحلة أمر البيع ---------------- */
-const OW = 130, OH = 50;
 function OrderJourney() {
-  const [sel, setSel] = useState<OrderState | null>(null);
+  const [sel, setSel] = useState<string | null>(null);
+  const detail = (id: string) => (
+    <>
+      <h3 class="gd-h3">{t(k(`guide.st.${id}`))}</h3>
+      <dl class="gd-dl">
+        {(["who", "stock", "money", "note"] as const).map((f) => (
+          <div key={f}>
+            <dt>{t(k(`guide.ord.${f}`))}</dt>
+            <dd>{t(k(`guide.st.${id}.${f}`))}</dd>
+          </div>
+        ))}
+      </dl>
+    </>
+  );
   return (
     <section class="gd-sec">
       <h2 class="gd-h">{t("guide.ord.title")}</h2>
       <p class="gd-p">{t("guide.ord.intro")}</p>
-      <div class="gd-scroll">
-        <svg class="gd-svg" viewBox="0 0 800 300" role="group" aria-label={t("guide.ord.label")}>
-          <defs>
-            <marker id="gd-arr2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="gd-arrow" /></marker>
-          </defs>
-          {ORDER_EDGES.map((e) => {
-            const a = ORDER_POS[e.from], b = ORDER_POS[e.to];
-            const dx = b.x - a.x, dy = b.y - a.y, len = Math.hypot(dx, dy) || 1;
-            const tt = Math.min(dx === 0 ? Infinity : OW / 2 / Math.abs(dx), dy === 0 ? Infinity : OH / 2 / Math.abs(dy)) * len;
-            const x1 = a.x + (dx / len) * tt, y1 = a.y + (dy / len) * tt, x2 = b.x - (dx / len) * tt, y2 = b.y - (dy / len) * tt;
-            return (
-              <g key={`${e.from}-${e.to}`} class={e.to === "cancelled" ? "gd-edge--cancel" : ""}>
-                <line class="gd-edge" x1={x1} y1={y1} x2={x2} y2={y2} marker-end="url(#gd-arr2)" />
-                <text class="gd-edge-t" x={(x1 + x2) / 2} y={(y1 + y2) / 2 - 5} text-anchor="middle">{t(k(`guide.oe.${e.key}`))}</text>
-              </g>
-            );
-          })}
-          {ORDER_STATES.map((s) => {
-            const p = ORDER_POS[s];
-            return (
-              <g
-                key={s}
-                class={`gd-node gd-node--${s}${sel === s ? " gd-node--on" : ""}`}
-                role="button"
-                tabIndex={0}
-                aria-pressed={sel === s}
-                onClick={() => setSel(s)}
-                onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), setSel(s))}
-              >
-                <rect x={p.x - OW / 2} y={p.y - OH / 2} width={OW} height={OH} rx="12" />
-                <text x={p.x} y={p.y + 5} text-anchor="middle">{t(k(`guide.st.${s}`))}</text>
-              </g>
-            );
-          })}
-        </svg>
-      </div>
-      <div class="gd-card" aria-live="polite">
-        {!sel ? (
-          <p class="gd-muted">{t("guide.ord.pick")}</p>
-        ) : (
-          <>
-            <h3 class="gd-h3">{t(k(`guide.st.${sel}`))}</h3>
-            <dl class="gd-dl">
-              {(["who", "stock", "money", "note"] as const).map((f) => (
-                <div key={f}>
-                  <dt>{t(k(`guide.ord.${f}`))}</dt>
-                  <dd>{t(k(`guide.st.${sel}.${f}`))}</dd>
-                </div>
-              ))}
-            </dl>
-          </>
-        )}
-      </div>
+      <Diagram
+        nodes={ORDER_STATES.map((s) => ({ id: s, x: ORDER_POS[s].x, y: ORDER_POS[s].y, label: t(k(`guide.st.${s}`)), neg: s === "cancelled" }))}
+        edges={ORDER_EDGES.map((e) => ({ from: e.from, to: e.to, label: t(k(`guide.oe.${e.key}`)), neg: e.to === "cancelled" }))}
+        w={ORDER_W} h={ORDER_H} vw={800} vh={300} aria={t("guide.ord.label")} markerId="gd-arr2" selected={sel} onSelect={(id) => setSel(id || null)} detail={detail} pick={t("guide.ord.pick")}
+      />
     </section>
   );
 }
@@ -368,68 +381,29 @@ function FlowMap({ flow }: { flow: FlowId }) {
   const def = FLOWS[flow];
   const [sel, setSel] = useState<string | null>(null);
   const size = flowViewBox(def);
-  const pos = (id: string) => flowPos(def.steps.find((s) => s.id === id)!);
-  const reversed = (a: string, b: string) => def.edges.some((e) => e.from === b && e.to === a);
+  const detail = (id: string) => (
+    <>
+      <h4 class="gd-h3">{t(k(`guide.fl.${flow}.s.${id}.n`))}</h4>
+      <dl class="gd-dl">
+        {(["who", "does", "note"] as const).map((f) => (
+          <div key={f}>
+            <dt>{t(k(`guide.fl.${f}`))}</dt>
+            <dd>{t(k(`guide.fl.${flow}.s.${id}.${f}`))}</dd>
+          </div>
+        ))}
+      </dl>
+    </>
+  );
+  const neg = (id: string) => id === "cancelled" || id === "rejected";
   return (
     <div class="gd-flowbox">
       <h3 class="gd-h3">{t(k(`guide.fl.${flow}.title`))}</h3>
       <p class="gd-muted">{t(k(`guide.fl.${flow}.intro`))}</p>
-      <div class="gd-scroll">
-        <svg class="gd-svg" viewBox={`0 0 ${size.w} ${size.h}`} role="group" aria-label={t("guide.fl.label")} style={{ minInlineSize: `${Math.min(size.w, 620)}px` }}>
-          <defs>
-            <marker id={`gd-arr-${flow}`} viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="gd-arrow" /></marker>
-          </defs>
-          {def.edges.map((e) => {
-            const a = pos(e.from), b = pos(e.to);
-            const dx = b.x - a.x, dy = b.y - a.y, len = Math.hypot(dx, dy) || 1;
-            const ux = dx / len, uy = dy / len;
-            const tt = Math.min(dx === 0 ? Infinity : FLOW_STEP_W / 2 / Math.abs(dx), dy === 0 ? Infinity : FLOW_STEP_H / 2 / Math.abs(dy)) * len;
-            const off = reversed(e.from, e.to) ? 8 : 0;
-            const x1 = a.x + ux * tt - uy * off, y1 = a.y + uy * tt + ux * off, x2 = b.x - ux * tt - uy * off, y2 = b.y - uy * tt + ux * off;
-            const neg = e.to === "cancelled" || e.to === "rejected";
-            return (
-              <g key={`${e.from}-${e.to}-${e.key}`} class={neg ? "gd-edge--cancel" : ""}>
-                <line class="gd-edge" x1={x1} y1={y1} x2={x2} y2={y2} marker-end={`url(#gd-arr-${flow})`} />
-                <text class="gd-edge-t" x={(x1 + x2) / 2} y={(y1 + y2) / 2 - 5} text-anchor="middle">{t(k(`guide.fl.${flow}.e.${e.key}`))}</text>
-              </g>
-            );
-          })}
-          {def.steps.map((s) => {
-            const p = flowPos(s);
-            return (
-              <g
-                key={s.id}
-                class={`gd-node${s.id === "cancelled" || s.id === "rejected" ? " gd-node--cancelled" : ""}${sel === s.id ? " gd-node--on" : ""}`}
-                role="button"
-                tabIndex={0}
-                aria-pressed={sel === s.id}
-                onClick={() => setSel(s.id)}
-                onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), setSel(s.id))}
-              >
-                <rect x={p.x - FLOW_STEP_W / 2} y={p.y - FLOW_STEP_H / 2} width={FLOW_STEP_W} height={FLOW_STEP_H} rx="12" />
-                <text x={p.x} y={p.y + 5} text-anchor="middle">{t(k(`guide.fl.${flow}.s.${s.id}.n`))}</text>
-              </g>
-            );
-          })}
-        </svg>
-      </div>
-      <div class="gd-card" aria-live="polite">
-        {!sel ? (
-          <p class="gd-muted">{t("guide.fl.pick")}</p>
-        ) : (
-          <>
-            <h4 class="gd-h3">{t(k(`guide.fl.${flow}.s.${sel}.n`))}</h4>
-            <dl class="gd-dl">
-              {(["who", "does", "note"] as const).map((f) => (
-                <div key={f}>
-                  <dt>{t(k(`guide.fl.${f}`))}</dt>
-                  <dd>{t(k(`guide.fl.${flow}.s.${sel}.${f}`))}</dd>
-                </div>
-              ))}
-            </dl>
-          </>
-        )}
-      </div>
+      <Diagram
+        nodes={def.steps.map((s) => ({ id: s.id, ...flowPos(s), label: t(k(`guide.fl.${flow}.s.${s.id}.n`)), neg: neg(s.id) }))}
+        edges={def.edges.map((e) => ({ from: e.from, to: e.to, label: t(k(`guide.fl.${flow}.e.${e.key}`)), neg: neg(e.to) }))}
+        w={FLOW_STEP_W} h={FLOW_STEP_H} vw={size.w} vh={size.h} aria={t("guide.fl.label")} markerId={`gd-arr-${flow}`} selected={sel} onSelect={(id) => setSel(id || null)} detail={detail} pick={t("guide.fl.pick")}
+      />
     </div>
   );
 }
@@ -466,6 +440,99 @@ function Accounting() {
           </tbody>
         </table>
       </div>
+    </section>
+  );
+}
+
+/* ---------------- فهرس الشاشات والأزرار + السيناريوهات والقاموس (المرحلة 3) ---------------- */
+/** نص الشاشة كله (الاسم والشرح وأسماء الأزرار وشرحها) للبحث. */
+export function screenText(s: ScreenDef): string {
+  return [t(k(`guide.sc.${s.id}.t`)), t(k(`guide.sc.${s.id}.d`)), ...s.buttons.flatMap((b) => [t(k(`guide.sc.${s.id}.b.${b.id}.l`)), t(k(`guide.sc.${s.id}.b.${b.id}.e`))])].join(" ");
+}
+
+function Screens({ live }: { live: GuideLive }) {
+  const [q, setQ] = useState("");
+  const needle = q.trim();
+  const role = staffUser()?.role;
+  const pageOf = (id: string) => {
+    for (const d of live.nav) for (const sf of d.subFunctions) for (const p of sf.pages) if (p.id === id) return p;
+    return undefined;
+  };
+  const shown = SCREENS.filter((s) => !needle || screenText(s).includes(needle));
+  return (
+    <section class="gd-sec">
+      <h2 class="gd-h">{t("guide.sc.title")}</h2>
+      <p class="gd-p">{t("guide.sc.intro")}</p>
+      <Field label={t("guide.sc.search")}>
+        <Input type="search" value={q} onInput={(e) => setQ(val(e))} />
+      </Field>
+      {shown.length === 0 ? <EmptyState title={t("guide.sc.empty")} /> : null}
+      {(["staff", "portal"] as const).map((side) => {
+        const list = shown.filter((s) => s.side === side);
+        if (list.length === 0) return null;
+        return (
+          <div class="gd-sidebox" key={side}>
+            <h3 class="gd-h3">{t(k(`guide.sc.side.${side}`))}</h3>
+            {list.map((s) => {
+              const opens = s.pages.map(pageOf).filter((p): p is NonNullable<ReturnType<typeof pageOf>> => Boolean(p) && (!role || p!.roles.includes(role)));
+              const uniq = opens.filter((p, i) => opens.findIndex((o) => o.href === p.href) === i);
+              return (
+                <article class="gd-card" key={s.id}>
+                  <h4 class="gd-h3">{t(k(`guide.sc.${s.id}.t`))} <small class="gd-muted">{t("guide.sc.count", { n: s.buttons.length })}</small></h4>
+                  <p class="gd-p">{t(k(`guide.sc.${s.id}.d`))}</p>
+                  {uniq.length > 0 ? (
+                    <p class="gd-opens"><span class="gd-muted">{t("guide.sc.opens")}:</span>{" "}
+                      {uniq.map((p) => <Button key={p.href} size="sm" variant="ghost" onClick={() => (p.href.startsWith("/v2/") ? navigate(p.href.slice(3)) : (location.href = p.href))}>{p.label}</Button>)}
+                    </p>
+                  ) : null}
+                  <div class="gd-scroll">
+                    <table class="gd-table gd-table--text">
+                      <thead><tr><th scope="col">{t("guide.sc.button")}</th><th scope="col">{t("guide.sc.effect")}</th></tr></thead>
+                      <tbody>
+                        {s.buttons.map((b) => (
+                          <tr key={b.id}>
+                            <th scope="row"><span class="gd-btnlabel">{t(k(`guide.sc.${s.id}.b.${b.id}.l`))}</span></th>
+                            <td>{t(k(`guide.sc.${s.id}.b.${b.id}.e`))}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        );
+      })}
+    </section>
+  );
+}
+
+function Help() {
+  return (
+    <section class="gd-sec">
+      <h2 class="gd-h">{t("guide.sn.title")}</h2>
+      <p class="gd-p">{t("guide.sn.intro")}</p>
+      <div class="gd-grid">
+        {SCENARIOS.map((sn) => (
+          <div class="gd-card" key={sn.id}>
+            <h3 class="gd-h3">{t(k(`guide.sn.${sn.id}.t`))}</h3>
+            <ol class="gd-seq">
+              {Array.from({ length: sn.steps }, (_, i) => <li key={i}>{t(k(`guide.sn.${sn.id}.s${i + 1}`))}</li>)}
+            </ol>
+          </div>
+        ))}
+      </div>
+      <h2 class="gd-h">{t("guide.gl.title")}</h2>
+      <p class="gd-p">{t("guide.gl.intro")}</p>
+      <dl class="gd-card gd-dl">
+        {GLOSSARY.map((g) => (
+          <div key={g}>
+            <dt>{t(k(`guide.gl.${g}.t`))}</dt>
+            <dd>{t(k(`guide.gl.${g}.d`))}</dd>
+          </div>
+        ))}
+      </dl>
     </section>
   );
 }

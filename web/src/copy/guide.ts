@@ -22,7 +22,7 @@ export const guideCopy = {
   "guide.node.portal": "بوابة العملاء",
   "guide.node.sales": "المبيعات",
   "guide.node.approvals": "الاعتمادات",
-  "guide.node.accounting": "الحسابات والبيانات الأساسية",
+  "guide.node.accounting": "الحسابات والأساسيات",
   "guide.node.warehouse": "المخازن",
   "guide.node.production": "الإنتاج",
   "guide.node.purchasing": "المشتريات",
