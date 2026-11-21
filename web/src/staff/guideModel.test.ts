@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { edgeEnds, MAP_EDGES, MAP_NODES, ORDER_EDGES, ORDER_POS, ORDER_STATES, RESOURCES, levelOf, pagesForRole, resourceReach, roleAbilities, slaHours, tierFor, tierViews, type GuideNavDept, type GuidePermission, type GuidePolicyGroup, type GuideRole } from "./guideModel";
+import { ACC_TOPICS, AUTO_RULES, FLOWS, FLOW_IDS, FLOW_STEP_H, FLOW_STEP_W, flowPos, flowViewBox, edgeEnds, MAP_EDGES, MAP_NODES, ORDER_EDGES, ORDER_POS, ORDER_STATES, RESOURCES, levelOf, pagesForRole, resourceReach, roleAbilities, slaHours, tierFor, tierViews, type GuideNavDept, type GuidePermission, type GuidePolicyGroup, type GuideRole } from "./guideModel";
 
 const perms: GuidePermission[] = [
   { resource: "sales", action: "view", roles: ["a", "b"] },
@@ -98,5 +98,49 @@ describe("رحلة الأمر", () => {
   });
   it("الإلغاء نهاية: مفيش انتقال خارج من ملغي أو مدفوع", () => {
     expect(ORDER_EDGES.some((e) => e.from === "cancelled" || e.from === "paid")).toBe(false);
+  });
+});
+
+
+describe("خرائط العمليات (المرحلة 2)", () => {
+  it("كل خريطة: معرّفات خطوات فريدة، كل سهم بين خطوتين موجودتين، ومفيش خطوة معزولة", () => {
+    for (const id of FLOW_IDS) {
+      const f = FLOWS[id];
+      const ids = f.steps.map((s) => s.id);
+      expect(new Set(ids).size, id).toBe(ids.length);
+      for (const e of f.edges) { expect(ids, `${id}:${e.from}`).toContain(e.from); expect(ids, `${id}:${e.to}`).toContain(e.to); }
+      for (const s of f.steps) expect(f.edges.some((e) => e.from === s.id || e.to === s.id), `${id}:${s.id}`).toBe(true);
+    }
+  });
+  it("مفيش خطوتين على نفس الخانة، ومفيش سهم من خطوة لنفسها ولا سهم مكرر", () => {
+    for (const id of FLOW_IDS) {
+      const f = FLOWS[id];
+      const cells = f.steps.map((s) => `${s.col},${s.row}`);
+      expect(new Set(cells).size, id).toBe(cells.length);
+      const pairs = f.edges.map((e) => `${e.from}>${e.to}`);
+      expect(new Set(pairs).size, id).toBe(pairs.length);
+      for (const e of f.edges) expect(e.from).not.toBe(e.to);
+    }
+  });
+  it("الخطوة الأولى (أقصى اليمين) والنهايات (ملغي/مرفوض) مفيش منها أسهم خارجة", () => {
+    for (const id of FLOW_IDS) for (const e of FLOWS[id].edges) expect(["cancelled", "rejected"]).not.toContain(e.from);
+  });
+  it("المقاسات: كل الخطوات جوه الرسمة والترتيب من اليمين لليسار", () => {
+    for (const id of FLOW_IDS) {
+      const f = FLOWS[id];
+      const v = flowViewBox(f);
+      for (const s of f.steps) {
+        const p = flowPos(s);
+        expect(p.x - FLOW_STEP_W / 2).toBeGreaterThanOrEqual(0);
+        expect(p.x + FLOW_STEP_W / 2).toBeLessThanOrEqual(v.w);
+        expect(p.y + FLOW_STEP_H / 2).toBeLessThanOrEqual(v.h);
+      }
+      const first = f.steps.find((s) => s.col === 0)!, next = f.steps.find((s) => s.col === 1)!;
+      expect(flowPos(first).x).toBeGreaterThan(flowPos(next).x);
+    }
+  });
+  it("مواضيع الحسابات وقواعد الترحيل من غير تكرار", () => {
+    expect(new Set(ACC_TOPICS).size).toBe(ACC_TOPICS.length);
+    expect(new Set(AUTO_RULES).size).toBe(AUTO_RULES.length);
   });
 });

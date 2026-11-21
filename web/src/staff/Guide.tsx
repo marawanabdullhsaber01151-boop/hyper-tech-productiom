@@ -1,4 +1,5 @@
 import "../copy/guide";
+import "../copy/guide2";
 import { useMemo, useState } from "preact/hooks";
 import { api } from "../admin/api";
 import { useQuery } from "../api/hooks";
@@ -6,6 +7,7 @@ import { navigate } from "../app/router";
 import { t, type CopyKey } from "../copy";
 import { Button, EmptyState, Field, Input, InlineAlert, Select, Spinner, Tabs } from "../design/components";
 import {
+  ACC_TOPICS, AUTO_RULES, FLOWS, FLOW_STEP_H, FLOW_STEP_W, flowPos, flowViewBox, type FlowId,
   APPROVAL_FLOW, MAP_EDGES, NH, NW, edgeEnds, MAP_NODES, ORDER_EDGES, ORDER_POS, ORDER_STATES, RESOURCES,
   levelOf, pagesForRole, resourceReach, roleAbilities, slaHours, tierFor, tierViews,
   type GuideLive, type GuidePolicyGroup, type Level, type MapNode, type OrderState,
@@ -45,6 +47,10 @@ export function Guide() {
           { id: "roles", label: t("guide.tab.roles"), panel: <Roles live={live} /> },
           { id: "approvals", label: t("guide.tab.approvals"), panel: <Approvals live={live} /> },
           { id: "order", label: t("guide.tab.order"), panel: <OrderJourney /> },
+          { id: "production", label: t("guide.tab.production"), panel: <FlowChapter title="guide.prod.title" intro="guide.prod.intro" flows={["preq", "porder"]} /> },
+          { id: "purchasing", label: t("guide.tab.purchasing"), panel: <FlowChapter title="guide.pur.title" intro="guide.pur.intro" flows={["po"]} /> },
+          { id: "accounting", label: t("guide.tab.accounting"), panel: <Accounting /> },
+          { id: "portal", label: t("guide.tab.portal"), panel: <FlowChapter title="guide.por.title" intro="guide.por.intro" flows={["portal"]} /> },
         ]}
       />
     </div>
@@ -342,6 +348,123 @@ function OrderJourney() {
             </dl>
           </>
         )}
+      </div>
+    </section>
+  );
+}
+
+/* ---------------- خرائط العمليات (المرحلة 2) ---------------- */
+function FlowChapter({ title, intro, flows }: { title: string; intro: string; flows: FlowId[] }) {
+  return (
+    <section class="gd-sec">
+      <h2 class="gd-h">{t(k(title))}</h2>
+      <p class="gd-p">{t(k(intro))}</p>
+      {flows.map((f) => <FlowMap key={f} flow={f} />)}
+    </section>
+  );
+}
+
+function FlowMap({ flow }: { flow: FlowId }) {
+  const def = FLOWS[flow];
+  const [sel, setSel] = useState<string | null>(null);
+  const size = flowViewBox(def);
+  const pos = (id: string) => flowPos(def.steps.find((s) => s.id === id)!);
+  const reversed = (a: string, b: string) => def.edges.some((e) => e.from === b && e.to === a);
+  return (
+    <div class="gd-flowbox">
+      <h3 class="gd-h3">{t(k(`guide.fl.${flow}.title`))}</h3>
+      <p class="gd-muted">{t(k(`guide.fl.${flow}.intro`))}</p>
+      <div class="gd-scroll">
+        <svg class="gd-svg" viewBox={`0 0 ${size.w} ${size.h}`} role="group" aria-label={t("guide.fl.label")} style={{ minInlineSize: `${Math.min(size.w, 620)}px` }}>
+          <defs>
+            <marker id={`gd-arr-${flow}`} viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="gd-arrow" /></marker>
+          </defs>
+          {def.edges.map((e) => {
+            const a = pos(e.from), b = pos(e.to);
+            const dx = b.x - a.x, dy = b.y - a.y, len = Math.hypot(dx, dy) || 1;
+            const ux = dx / len, uy = dy / len;
+            const tt = Math.min(dx === 0 ? Infinity : FLOW_STEP_W / 2 / Math.abs(dx), dy === 0 ? Infinity : FLOW_STEP_H / 2 / Math.abs(dy)) * len;
+            const off = reversed(e.from, e.to) ? 8 : 0;
+            const x1 = a.x + ux * tt - uy * off, y1 = a.y + uy * tt + ux * off, x2 = b.x - ux * tt - uy * off, y2 = b.y - uy * tt + ux * off;
+            const neg = e.to === "cancelled" || e.to === "rejected";
+            return (
+              <g key={`${e.from}-${e.to}-${e.key}`} class={neg ? "gd-edge--cancel" : ""}>
+                <line class="gd-edge" x1={x1} y1={y1} x2={x2} y2={y2} marker-end={`url(#gd-arr-${flow})`} />
+                <text class="gd-edge-t" x={(x1 + x2) / 2} y={(y1 + y2) / 2 - 5} text-anchor="middle">{t(k(`guide.fl.${flow}.e.${e.key}`))}</text>
+              </g>
+            );
+          })}
+          {def.steps.map((s) => {
+            const p = flowPos(s);
+            return (
+              <g
+                key={s.id}
+                class={`gd-node${s.id === "cancelled" || s.id === "rejected" ? " gd-node--cancelled" : ""}${sel === s.id ? " gd-node--on" : ""}`}
+                role="button"
+                tabIndex={0}
+                aria-pressed={sel === s.id}
+                onClick={() => setSel(s.id)}
+                onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), setSel(s.id))}
+              >
+                <rect x={p.x - FLOW_STEP_W / 2} y={p.y - FLOW_STEP_H / 2} width={FLOW_STEP_W} height={FLOW_STEP_H} rx="12" />
+                <text x={p.x} y={p.y + 5} text-anchor="middle">{t(k(`guide.fl.${flow}.s.${s.id}.n`))}</text>
+              </g>
+            );
+          })}
+        </svg>
+      </div>
+      <div class="gd-card" aria-live="polite">
+        {!sel ? (
+          <p class="gd-muted">{t("guide.fl.pick")}</p>
+        ) : (
+          <>
+            <h4 class="gd-h3">{t(k(`guide.fl.${flow}.s.${sel}.n`))}</h4>
+            <dl class="gd-dl">
+              {(["who", "does", "note"] as const).map((f) => (
+                <div key={f}>
+                  <dt>{t(k(`guide.fl.${f}`))}</dt>
+                  <dd>{t(k(`guide.fl.${flow}.s.${sel}.${f}`))}</dd>
+                </div>
+              ))}
+            </dl>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function Accounting() {
+  return (
+    <section class="gd-sec">
+      <h2 class="gd-h">{t("guide.acc.title")}</h2>
+      <p class="gd-p">{t("guide.acc.intro")}</p>
+      <h3 class="gd-h3">{t("guide.acc.topics")}</h3>
+      <div class="gd-grid">
+        {ACC_TOPICS.map((id) => (
+          <div class="gd-card" key={id}>
+            <h4 class="gd-h3">{t(k(`guide.acc.${id}.t`))}</h4>
+            <p class="gd-p">{t(k(`guide.acc.${id}.d`))}</p>
+          </div>
+        ))}
+      </div>
+      <h3 class="gd-h3">{t("guide.acc.autoTitle")}</h3>
+      <p class="gd-muted">{t("guide.acc.autoHint")}</p>
+      <div class="gd-scroll">
+        <table class="gd-table gd-table--text">
+          <thead>
+            <tr><th scope="col">{t("guide.acc.ev")}</th><th scope="col">{t("guide.acc.dr")}</th><th scope="col">{t("guide.acc.cr")}</th></tr>
+          </thead>
+          <tbody>
+            {AUTO_RULES.map((r) => (
+              <tr key={r}>
+                <th scope="row">{t(k(`guide.acc.rule.${r}.ev`))}</th>
+                <td>{t(k(`guide.acc.rule.${r}.dr`))}</td>
+                <td>{t(k(`guide.acc.rule.${r}.cr`))}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </section>
   );

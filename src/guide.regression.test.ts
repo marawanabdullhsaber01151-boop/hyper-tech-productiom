@@ -3,6 +3,11 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
+import { FLOWS, FLOW_IDS, ACC_TOPICS, AUTO_RULES } from "../web/src/staff/guideModel";
+import { QUALITY_PASS_RATE } from "./lib/productionQualityCore";
+import { PO_STATUSES } from "./lib/purchasing";
+import { AUTO_ACCOUNT_CODES, STOCK_ACCOUNT_BY_CATEGORY } from "./lib/ledgerAutoCore";
+import { CANONICAL_PRODUCTION_STATUSES } from "./domain/production-lifecycle";
 import { PERMISSIONS } from "./lib/permissions";
 import { DEPARTMENTS } from "./lib/departments";
 import { USER_ROLES } from "./lib/roles";
@@ -92,5 +97,54 @@ describe("المسار والصفحة", () => {
   });
   it("نصوص الدليل من غير أرقام هندية (الأرقام لاتينية)", () => {
     expect(copyText).not.toMatch(/[٠-٩]/);
+  });
+});
+
+const copy2 = read("web/src/copy/guide2.ts");
+const has2 = (key: string) => copy2.includes(`"${key}":`);
+
+describe("المرحلة 2: كل خطوة وسهم ليهم شرح كامل", () => {
+  it("كل خطوة: اسم + مين + إيه اللي بيحصل + خد بالك. وكل سهم له اسم", () => {
+    for (const id of FLOW_IDS) {
+      expect(has2(`guide.fl.${id}.title`), id).toBe(true);
+      expect(has2(`guide.fl.${id}.intro`), id).toBe(true);
+      for (const s of FLOWS[id].steps) for (const f of ["n", "who", "does", "note"]) expect(has2(`guide.fl.${id}.s.${s.id}.${f}`), `${id}.${s.id}.${f}`).toBe(true);
+      for (const e of FLOWS[id].edges) expect(has2(`guide.fl.${id}.e.${e.key}`), `${id}.e.${e.key}`).toBe(true);
+    }
+  });
+  it("مفيش شرح يتيم: كل مفتاح خطوة/سهم في النصوص ليه خطوة/سهم في الخريطة", () => {
+    for (const m of copy2.matchAll(/"guide\.fl\.(\w+)\.s\.(\w+)\.(n|who|does|note)":/g)) {
+      const flow = FLOWS[m[1] as keyof typeof FLOWS];
+      expect(flow, m[1]).toBeTruthy();
+      expect(flow.steps.some((s) => s.id === m[2]), `${m[1]}.${m[2]}`).toBe(true);
+    }
+    for (const m of copy2.matchAll(/"guide\.fl\.(\w+)\.e\.(\w+)":/g)) expect(FLOWS[m[1] as keyof typeof FLOWS].edges.some((e) => e.key === m[2]), `${m[1]}.${m[2]}`).toBe(true);
+  });
+  it("الحسابات: كل موضوع وكل قاعدة ترحيل ليها نص", () => {
+    for (const id of ACC_TOPICS) { expect(has2(`guide.acc.${id}.t`), id).toBe(true); expect(has2(`guide.acc.${id}.d`), id).toBe(true); }
+    for (const r of AUTO_RULES) for (const f of ["ev", "dr", "cr"]) expect(has2(`guide.acc.rule.${r}.${f}`), `${r}.${f}`).toBe(true);
+  });
+  it("الشرح متطابق مع الكود: أكواد الحسابات ونسبة الجودة وحالات الشراء", () => {
+    expect(copy2).toContain(`(${AUTO_ACCOUNT_CODES.receivable})`);
+    expect(copy2).toContain(`(${AUTO_ACCOUNT_CODES.sales})`);
+    expect(copy2).toContain(`(${AUTO_ACCOUNT_CODES.suppliers})`);
+    for (const c of Object.values(STOCK_ACCOUNT_BY_CATEGORY)) expect(copy2).toContain(c);
+    expect(QUALITY_PASS_RATE).toBe(95);
+    expect(copy2).toContain("95%");
+    expect([...PO_STATUSES]).toEqual(["draft", "pending_approval", "approved", "sent", "partially_received", "received", "cancelled"]);
+  });
+  it("حالات أمر الإنتاج الـ21 اتغيّرت؟ لو اتغيّرت راجع خريطة أمر الإنتاج في الدليل", () => {
+    expect(CANONICAL_PRODUCTION_STATUSES).toHaveLength(21);
+    for (const s of ["new", "claimed", "in_production", "quality_check", "completed", "rework", "cancelled", "partially_completed"]) expect(CANONICAL_PRODUCTION_STATUSES as readonly string[]).toContain(s);
+  });
+  it("قواعد البوابة والمشتريات المذكورة موجودة في الكود: كلمة سر العميل 6، فصل مهام الفحص، اعتماد الشراء", () => {
+    expect(read("src/db/schema/portal-customers.ts")).toContain("min(6,");
+    expect(read("src/lib/receiving.ts")).toContain("violatesSeparation");
+    expect(read("src/lib/purchasing.ts")).toContain('PO_APPROVER_ROLES = ["chairman", "purchasing_manager"]');
+    expect(read("src/routes/purchases.ts")).toContain("violatesSeparation(role");
+  });
+  it("الصفحة سجّلت نصوص المرحلة 2 (lazy)", () => {
+    expect(read("web/src/staff/Guide.tsx")).toContain('import "../copy/guide2"');
+    expect(read("web/src/copy/lazy-dicts.ts")).toContain("guide2: guide2Copy");
   });
 });

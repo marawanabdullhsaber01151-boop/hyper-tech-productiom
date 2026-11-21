@@ -99,4 +99,40 @@ describe("دليل النظام", () => {
     expect(await screen.findByText("مقدرناش نحمّل بيانات الدليل")).toBeTruthy();
     expect(screen.getByRole("button", { name: "جرّب تاني" })).toBeTruthy();
   });
+  it("تبويب التصنيع: خريطتين، والضغط على خطوة بيعرض مين بيعملها", async () => {
+    mount();
+    fireEvent.click(await screen.findByRole("tab", { name: "التصنيع والجودة" }));
+    expect(await screen.findByText("طلب خامات للإنتاج")).toBeTruthy();
+    expect(screen.getByText("أمر الإنتاج")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "قرار المخزن" }));
+    expect(await screen.findByText(/مدير المخازن أو أمين المخزن/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "فحص الجودة" }));
+    expect(await screen.findByText(/المشرف لا/)).toBeTruthy();
+    expect(screen.getByText(/أقل من 95%/)).toBeTruthy();
+  });
+
+  it("تبويب المشتريات: فحص الخامات فيه فصل المهام ودخول المخزون بعد الفحص بس", async () => {
+    mount();
+    fireEvent.click(await screen.findByRole("tab", { name: "المشتريات والمخزن" }));
+    fireEvent.click(await screen.findByRole("button", { name: "فحص الخامات" }));
+    expect(await screen.findByText(/فصل المهام/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "دخول المخزون" }));
+    expect(await screen.findByText(/المقبول بس بيدخل/)).toBeTruthy();
+  });
+
+  it("تبويب البوابة: كلمة سر العميل 6 حروف", async () => {
+    mount();
+    fireEvent.click(await screen.findByRole("tab", { name: "بوابة العملاء" }));
+    fireEvent.click(await screen.findByRole("button", { name: "حساب العميل" }));
+    expect(await screen.findByText(/6 حروف على الأقل/)).toBeTruthy();
+  });
+
+  it("تبويب الحسابات: المفاهيم وجدول القيود التلقائية", async () => {
+    mount();
+    fireEvent.click(await screen.findByRole("tab", { name: "الحسابات" }));
+    expect(await screen.findByText("الحسابات بالبلدي")).toBeTruthy();
+    expect(screen.getByText("التصحيح بالعكس")).toBeTruthy();
+    expect(screen.getByText("تحصيل من عميل")).toBeTruthy();
+    expect(screen.getAllByText(/مدينون العملاء \(1130\)/).length).toBeGreaterThan(1);
+  });
 });

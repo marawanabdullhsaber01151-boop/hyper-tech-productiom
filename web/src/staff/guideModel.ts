@@ -139,3 +139,73 @@ export function edgeEnds(a: { x: number; y: number }, b: { x: number; y: number 
   const px = -uy * off, py = ux * off;
   return { x1: a.x + ux * tt + px, y1: a.y + uy * tt + py, x2: b.x - ux * tt + px, y2: b.y - uy * tt + py };
 }
+
+// ── المرحلة 2: خرائط العمليات (خطوات على شبكة + أسهم). النصوص كلها في copy/guide2.ts بمفاتيح guide.fl.<flow>.* ──
+export const FLOW_IDS = ["preq", "porder", "po", "portal"] as const;
+export type FlowId = (typeof FLOW_IDS)[number];
+export interface FlowStep { id: string; col: number; row: number }
+export interface FlowEdge { from: string; to: string; key: string }
+export interface FlowDef { steps: readonly FlowStep[]; edges: readonly FlowEdge[] }
+
+export const FLOWS: Record<FlowId, FlowDef> = {
+  // طلب خامات للإنتاج: مشرف ← مخزن ← إدارة الإنتاج ← يتحوّل لدورة إنتاج
+  preq: {
+    steps: [
+      { id: "create", col: 0, row: 0 }, { id: "warehouse", col: 1, row: 0 }, { id: "director", col: 2, row: 0 }, { id: "approved", col: 3, row: 0 },
+      { id: "cancelled", col: 0, row: 1 }, { id: "rejected", col: 2, row: 1 },
+    ],
+    edges: [
+      { from: "create", to: "warehouse", key: "send" }, { from: "warehouse", to: "director", key: "wh_ok" }, { from: "director", to: "approved", key: "dir_ok" },
+      { from: "warehouse", to: "rejected", key: "wh_no" }, { from: "director", to: "rejected", key: "dir_no" }, { from: "create", to: "cancelled", key: "cancel" },
+    ],
+  },
+  // أمر الإنتاج من أول التسلّم لحد التسليم
+  porder: {
+    steps: [
+      { id: "intake", col: 0, row: 0 }, { id: "materials", col: 1, row: 0 }, { id: "making", col: 2, row: 0 }, { id: "quality", col: 3, row: 0 },
+      { id: "done", col: 3, row: 1 }, { id: "delivery", col: 2, row: 1 }, { id: "rework", col: 1, row: 1 }, { id: "cancelled", col: 0, row: 1 },
+    ],
+    edges: [
+      { from: "intake", to: "materials", key: "claim" }, { from: "materials", to: "making", key: "mat_ok" }, { from: "making", to: "quality", key: "finish" },
+      { from: "quality", to: "done", key: "pass" }, { from: "done", to: "delivery", key: "deliver" }, { from: "quality", to: "rework", key: "fail" },
+      { from: "rework", to: "making", key: "redo" }, { from: "intake", to: "cancelled", key: "cancel" },
+    ],
+  },
+  // أمر الشراء ثم الاستلام ثم فحص الخامات ثم دخول المخزون
+  po: {
+    steps: [
+      { id: "draft", col: 0, row: 0 }, { id: "approval", col: 1, row: 0 }, { id: "approved", col: 2, row: 0 }, { id: "sent", col: 3, row: 0 },
+      { id: "cancelled", col: 0, row: 1 }, { id: "receive", col: 3, row: 1 }, { id: "inspect", col: 2, row: 1 }, { id: "stock", col: 1, row: 1 },
+    ],
+    edges: [
+      { from: "draft", to: "approval", key: "submit" }, { from: "approval", to: "approved", key: "approve" }, { from: "approval", to: "draft", key: "back" },
+      { from: "approved", to: "sent", key: "send" }, { from: "sent", to: "receive", key: "arrive" }, { from: "receive", to: "inspect", key: "inspect" },
+      { from: "inspect", to: "stock", key: "accept" }, { from: "draft", to: "cancelled", key: "cancel" },
+    ],
+  },
+  // بوابة العملاء: من الانضمام لحد الاستلام
+  portal: {
+    steps: [
+      { id: "apply", col: 0, row: 0 }, { id: "account", col: 1, row: 0 }, { id: "order", col: 2, row: 0 }, { id: "review", col: 3, row: 0 },
+      { id: "activation", col: 0, row: 1 }, { id: "quote", col: 2, row: 1 }, { id: "progress", col: 3, row: 1 },
+    ],
+    edges: [
+      { from: "apply", to: "account", key: "approve" }, { from: "activation", to: "account", key: "activate" }, { from: "account", to: "order", key: "login" },
+      { from: "order", to: "review", key: "send" }, { from: "quote", to: "order", key: "accept" }, { from: "review", to: "progress", key: "confirm" },
+    ],
+  },
+};
+
+export const FLOW_STEP_W = 150, FLOW_STEP_H = 54, FLOW_GAP_X = 200, FLOW_GAP_Y = 120, FLOW_PAD = 40;
+/** مركز الخطوة بالـSVG: أول عمود على اليمين (الاتجاه عربي). */
+export function flowPos(step: FlowStep, cols = 4): { x: number; y: number } {
+  return { x: FLOW_PAD + FLOW_STEP_W / 2 + (cols - 1 - step.col) * FLOW_GAP_X, y: FLOW_PAD + FLOW_STEP_H / 2 + step.row * FLOW_GAP_Y };
+}
+export const flowViewBox = (f: FlowDef): { w: number; h: number } => {
+  const cols = Math.max(...f.steps.map((s) => s.col)) + 1, rows = Math.max(...f.steps.map((s) => s.row)) + 1;
+  return { w: FLOW_PAD * 2 + FLOW_STEP_W + (cols - 1) * FLOW_GAP_X, h: FLOW_PAD * 2 + FLOW_STEP_H + (rows - 1) * FLOW_GAP_Y };
+};
+
+/** مواضيع فصل الحسابات (نصوص guide.acc.<id>.t/.d) وجدول «الحدث ← القيد التلقائي». */
+export const ACC_TOPICS = ["entry", "reversal", "accounts", "trial", "periods", "auto", "collections", "aging", "credit"] as const;
+export const AUTO_RULES = ["sale", "unsale", "receipt", "payment", "advance"] as const;
