@@ -5,7 +5,7 @@ import { navigate } from "../app/router";
 import { t } from "../copy";
 import { IconButton, Menu, type MenuItem } from "../design/components";
 import { applyTheme, readCachedTheme, type ThemeMode } from "../design/theme-runtime";
-import { ChevronLeft, ChevronRight, LogOut, Menu as MenuIcon, Monitor, Moon, Search, Sun, UserRound } from "../design/icons";
+import { ChevronLeft, ChevronRight, Info, LogOut, Menu as MenuIcon, Monitor, Moon, Search, Sun, UserRound } from "../design/icons";
 import { CommandPalette } from "./CommandPalette";
 import type { CmdItem } from "./commands";
 import { NotificationCenter } from "./NotificationCenter";
@@ -42,6 +42,7 @@ export function Header({ title, nav, name, roleLabel, collapsed, onOpenDrawer, o
   });
   const items: MenuItem[] = [
     { label: t("staff.header.account"), icon: UserRound, onSelect: () => navigate("/staff/account") },
+    { label: t("staff.header.guide"), icon: Info, onSelect: () => navigate("/staff/guide") },
     themeItem("light", t("staff.header.theme.light"), Sun),
     themeItem("dark", t("staff.header.theme.dark"), Moon),
     themeItem("system", t("staff.header.theme.system"), Monitor),
@@ -62,6 +63,7 @@ export function Header({ title, nav, name, roleLabel, collapsed, onOpenDrawer, o
   const extra = useMemo<CmdItem[]>(
     () => [
       { id: "action:home", kind: "action", title: t("staff.cmd.act.home"), keywords: t("staff.cmd.act.homeKeys"), run: () => navigate("/staff") },
+      { id: "action:guide", kind: "action", title: t("staff.cmd.act.guide"), keywords: t("staff.cmd.act.guideKeys"), run: () => navigate("/staff/guide") },
       { id: "action:theme-light", kind: "action", title: t("staff.cmd.act.light"), keywords: t("staff.cmd.act.themeKeys"), run: () => void applyTheme({ mode: "light" }) },
       { id: "action:theme-dark", kind: "action", title: t("staff.cmd.act.dark"), keywords: t("staff.cmd.act.themeKeys"), run: () => void applyTheme({ mode: "dark" }) },
       { id: "action:theme-system", kind: "action", title: t("staff.cmd.act.system"), keywords: t("staff.cmd.act.themeKeys"), run: () => void applyTheme({ mode: "system" }) },

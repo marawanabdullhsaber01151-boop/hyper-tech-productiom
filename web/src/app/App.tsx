@@ -32,6 +32,7 @@ const loadPlanning = () => import("../staff/Planning").then((m) => m.Planning as
 const loadEngineering = () => import("../staff/Engineering").then((m) => m.Engineering as ComponentType<{ key?: string }>);
 const loadStock = () => import("../staff/Stock").then((m) => m.Stock as ComponentType<{ key?: string }>);
 const loadTasks = () => import("../staff/Tasks").then((m) => m.Tasks as ComponentType<{ key?: string }>);
+const loadGuide = () => import("../staff/Guide").then((m) => m.Guide as ComponentType<Record<string, never>>);
 const loadHealth = () => import("../staff/SystemHealth").then((m) => m.SystemHealth as ComponentType<Record<string, never>>);
 
 /** صفحات الموظفين: كلها بتتعرض جوّه غلاف واحد (سايدبار + هيدر). أي صفحة جديدة بتتحط هنا. */
@@ -54,6 +55,7 @@ export const staffRoutes: RouteDef[] = [
   { path: "/staff/planning", render: () => <RoleGuard roles={PLANNING_PAGE_ROLES}><LazyPage load={loadPlanning} props={{}} /></RoleGuard> },
   { path: "/staff/engineering", render: () => <RoleGuard roles={ENGINEERING_PAGE_ROLES}><LazyPage key={location.search} load={loadEngineering} props={{}} /></RoleGuard> },
   { path: "/staff/stock", render: () => <RoleGuard roles={STOCK_ROLES}><LazyPage key={location.search} load={loadStock} props={{}} /></RoleGuard> },
+  { path: "/staff/guide", render: () => <LazyPage load={loadGuide} props={{}} /> },
   { path: "/staff/tasks", render: () => <LazyPage key={location.search} load={loadTasks} props={{}} /> },
   { path: "/staff/system-health", render: () => <RoleGuard roles={HEALTH_ROLES}><LazyPage load={loadHealth} props={{}} /></RoleGuard> },
   ...adminRoutes,

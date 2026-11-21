@@ -41,6 +41,7 @@ export const staffCopy = {
   "staff.header.theme.dark": "داكن",
   "staff.header.theme.system": "زي الجهاز",
   "staff.header.account": "حسابي",
+  "staff.header.guide": "دليل النظام",
   "staff.header.logout": "خروج",
   "staff.header.menu": "قائمة المستخدم",
 
@@ -217,6 +218,8 @@ export const staffCopy = {
   "staff.cmd.keys": "↑↓ للتنقل، Enter للفتح، Esc للإغلاق",
   "staff.cmd.act.home": "الرئيسية",
   "staff.cmd.act.homeKeys": "لوحة التحكم البداية",
+  "staff.cmd.act.guide": "دليل النظام",
+  "staff.cmd.act.guideKeys": "شرح مساعدة خريطة صلاحيات اعتمادات دليل",
   "staff.cmd.act.light": "المظهر الفاتح",
   "staff.cmd.act.dark": "المظهر الداكن",
   "staff.cmd.act.system": "المظهر زي الجهاز",
