@@ -9,14 +9,14 @@
 .opc-focus--danger { background: var(--c-danger-soft); border-color: var(--c-danger); color: var(--c-danger-text); }
 .opc-focus--brand { background: var(--c-brand-soft); border-color: var(--c-brand); color: var(--c-brand-text); }
 .opc-focus--calm { background: var(--c-success-soft); border-color: var(--c-success); color: var(--c-success-text); }
-.opc-stats { display: grid; gap: var(--sp-3); grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+.opc-stats { display: grid; gap: var(--sp-3); grid-template-columns: repeat(auto-fit, minmax(min(150px, 100%), 1fr)); }
 .opc-stat { border-radius: var(--r-md); transition: transform 120ms ease; }
 .opc-stat--link { cursor: pointer; }
 .opc-stat--link:hover { transform: translateY(-2px); }
 .opc-stat:focus-visible { outline: 2px solid var(--c-brand); outline-offset: 2px; }
 .opc-card { display: grid; gap: var(--sp-2); padding: var(--sp-4); border: 1px solid var(--c-border-1); border-radius: var(--r-md); background: var(--c-surface-1); }
 .opc-h { margin: 0; font-size: var(--fs-md); color: var(--c-text-1); }
-.opc-two { display: grid; gap: var(--sp-4); grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+.opc-two { display: grid; gap: var(--sp-4); grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); }
 .opc-bar { display: flex; block-size: 14px; border-radius: var(--r-pill); overflow: hidden; background: var(--c-surface-2); }
 .opc-bar__seg { block-size: 100%; }
 .opc-bar__seg--received { background: var(--c-info); }

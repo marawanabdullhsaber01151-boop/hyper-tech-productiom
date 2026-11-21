@@ -4,7 +4,7 @@
 .sales-title { margin: 0; font-size: var(--fs-lg); color: var(--c-text-1); }
 .sales-muted { margin: var(--sp-1) 0 0; font-size: var(--fs-sm); color: var(--c-text-3); }
 .sales-h { margin: var(--sp-4) 0 var(--sp-2); font-size: var(--fs-md); color: var(--c-text-1); }
-.sales-stats { display: grid; gap: var(--sp-3); grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+.sales-stats { display: grid; gap: var(--sp-3); grid-template-columns: repeat(auto-fit, minmax(min(150px, 100%), 1fr)); }
 .sales-chips { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
 .sales-chip { display: inline-flex; align-items: center; gap: var(--sp-2); padding-block: var(--sp-1); padding-inline: var(--sp-3); border: 1px solid var(--c-border-2); border-radius: var(--r-pill); background: var(--c-surface-1); color: var(--c-text-2); font-size: var(--fs-sm); cursor: pointer; transition: background var(--dur-1) var(--ease), border-color var(--dur-1) var(--ease); }
 .sales-chip:hover { background: var(--c-surface-2); }
@@ -29,7 +29,7 @@
 .sales-foot { display: flex; flex-wrap: wrap; gap: var(--sp-2); inline-size: 100%; justify-content: flex-end; }
 
 .sales-ed { display: grid; gap: var(--sp-3); }
-.sales-ed__grid { display: grid; gap: var(--sp-3); grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+.sales-ed__grid { display: grid; gap: var(--sp-3); grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr)); }
 .sales-ed__add { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
 .sales-rows { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--sp-3); }
 .sales-row { display: flex; gap: var(--sp-2); align-items: flex-start; padding: var(--sp-3); border: 1px solid var(--c-border-1); border-radius: var(--r-md); background: var(--c-surface-1); }

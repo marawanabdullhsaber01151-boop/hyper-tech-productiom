@@ -1,5 +1,5 @@
 .tk-bar { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-block: var(--sp-3); }
-.tk-stats { display: grid; gap: var(--sp-3); grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); margin-block-end: var(--sp-3); }
+.tk-stats { display: grid; gap: var(--sp-3); grid-template-columns: repeat(auto-fit, minmax(min(150px, 100%), 1fr)); margin-block-end: var(--sp-3); }
 .tk-muted { font-size: var(--fs-xs); color: var(--c-text-3); }
 .tk-due { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); }
 .tk-form { display: grid; gap: var(--sp-3); }

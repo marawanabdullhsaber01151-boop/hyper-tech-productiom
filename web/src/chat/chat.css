@@ -29,7 +29,7 @@
 @media (max-width: 520px) { .ch-bubble { max-inline-size: 90%; } .ch-input { grid-template-columns: 1fr auto; } .ch-input > button:first-of-type { grid-column: 1 / -1; justify-self: start; } }
 
 /* ---- شاشة الموظفين ---- */
-.cc { display: grid; grid-template-columns: minmax(280px, 360px) minmax(0, 1fr); gap: var(--sp-4); align-items: start; }
+.cc { display: grid; grid-template-columns: minmax(min(280px, 100%), 360px) minmax(0, 1fr); gap: var(--sp-4); align-items: start; }
 .cc-list { display: flex; flex-direction: column; gap: var(--sp-3); min-inline-size: 0; }
 .cc-items { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--sp-2); max-block-size: calc(100dvh - 330px); overflow-y: auto; }
 .cc-item { inline-size: 100%; text-align: start; display: flex; flex-direction: column; gap: 2px; padding: var(--sp-3); border: 1px solid var(--c-border-1); border-radius: var(--r-md); background: var(--c-surface-1); color: var(--c-text-1); cursor: pointer; font: inherit; }

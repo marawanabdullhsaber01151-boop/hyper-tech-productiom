@@ -1,5 +1,5 @@
 .eng-muted { margin: 0; font-size: var(--fs-xs); color: var(--c-text-3); }
-.eng-stats { display: grid; gap: var(--sp-3); grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); margin-block-end: var(--sp-3); }
+.eng-stats { display: grid; gap: var(--sp-3); grid-template-columns: repeat(auto-fit, minmax(min(150px, 100%), 1fr)); margin-block-end: var(--sp-3); }
 .eng-toolbar { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-block: var(--sp-2); align-items: center; }
 .eng-form { display: grid; gap: var(--sp-3); }
 .eng-stack { display: grid; gap: var(--sp-3); margin-block-start: var(--sp-3); }
@@ -16,7 +16,7 @@
 .eng-issues .is-error { color: var(--c-danger-text); font-weight: 600; }
 .eng-warn { margin: 0; font-size: var(--fs-sm); color: var(--c-danger-text); font-weight: 600; }
 .eng-ok { margin: 0; font-size: var(--fs-sm); color: var(--c-success-text); font-weight: 600; }
-.rcp-gallery { display: grid; gap: var(--sp-3); grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
+.rcp-gallery { display: grid; gap: var(--sp-3); grid-template-columns: repeat(auto-fill, minmax(min(160px, 100%), 1fr)); }
 .rcp-img { margin: 0; display: grid; gap: var(--sp-1); align-content: start; padding: var(--sp-2); border: 1px solid var(--c-border-1); border-radius: var(--r-sm); }
 .rcp-img img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: var(--r-sm); background: var(--c-surface-2, transparent); }
 .rcp-img figcaption { font-size: var(--fs-xs); color: var(--c-text-3); }

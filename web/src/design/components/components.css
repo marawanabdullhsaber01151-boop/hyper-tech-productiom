@@ -309,7 +309,7 @@
 .ht-wizard__dot.is-done .ht-wizard__n, .ht-wizard__dot.is-current .ht-wizard__n { background: var(--c-brand); color: var(--c-on-brand); }
 @media (max-width: 520px) { .ht-wizard__t { display: none; } .ht-wizard__dot.is-current .ht-wizard__t { display: block; } }
 .ht-wizard__nav { display: flex; justify-content: space-between; gap: var(--sp-3); }
-.ht-perm { display: grid; gap: var(--sp-4); grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+.ht-perm { display: grid; gap: var(--sp-4); grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr)); }
 .ht-perm__group { margin: 0; padding: var(--sp-3) var(--sp-4); border: 1px solid var(--c-border-1); border-radius: var(--r-md); background: var(--c-surface-1); min-inline-size: 0; }
 .ht-perm__legend { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); inline-size: 100%; padding: 0; font-weight: 700; }
 .ht-perm__row { display: flex; align-items: flex-start; gap: var(--sp-3); min-block-size: 44px; padding-block: 10px; position: relative; cursor: pointer; border-block-start: 1px dashed var(--c-border-1); }

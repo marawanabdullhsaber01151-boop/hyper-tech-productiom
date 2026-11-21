@@ -1,5 +1,5 @@
 .po-bar { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-block: var(--sp-3); }
-.po-stats { display: grid; gap: var(--sp-3); grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); margin-block-end: var(--sp-3); }
+.po-stats { display: grid; gap: var(--sp-3); grid-template-columns: repeat(auto-fit, minmax(min(150px, 100%), 1fr)); margin-block-end: var(--sp-3); }
 .po-h { margin: var(--sp-3) 0 var(--sp-2); font-size: var(--fs-md); color: var(--c-text-1); }
 .po-muted { font-size: var(--fs-xs); color: var(--c-text-3); }
 .po-num { font-variant-numeric: tabular-nums; color: var(--c-text-2); }
@@ -22,7 +22,7 @@
 .po-items .is-num { text-align: end; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .po-foot { display: flex; flex-wrap: wrap; gap: var(--sp-2); inline-size: 100%; justify-content: flex-end; }
 .po-ed { display: grid; gap: var(--sp-3); }
-.po-ed__grid { display: grid; gap: var(--sp-3); grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+.po-ed__grid { display: grid; gap: var(--sp-3); grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr)); }
 .po-rows { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--sp-3); }
 .po-row { display: flex; gap: var(--sp-2); align-items: flex-start; padding: var(--sp-3); border: 1px solid var(--c-border-1); border-radius: var(--r-md); background: var(--c-surface-1); }
 .po-row__main { flex: 1; display: grid; gap: var(--sp-3); grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr); align-items: start; }

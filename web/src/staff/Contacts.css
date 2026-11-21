@@ -1,7 +1,7 @@
 .con-bar { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-block: var(--sp-3); }
-.con-stats { display: grid; gap: var(--sp-3); grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); margin-block-end: var(--sp-3); }
+.con-stats { display: grid; gap: var(--sp-3); grid-template-columns: repeat(auto-fit, minmax(min(150px, 100%), 1fr)); margin-block-end: var(--sp-3); }
 .con-form { display: grid; gap: var(--sp-3); }
-.con-grid2 { display: grid; gap: var(--sp-3); grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }
+.con-grid2 { display: grid; gap: var(--sp-3); grid-template-columns: repeat(auto-fit, minmax(min(190px, 100%), 1fr)); }
 .con-name { display: inline-flex; align-items: center; gap: var(--sp-2); }
 .con-name small { display: block; }
 .con-avatar { display: inline-grid; place-items: center; inline-size: 44px; block-size: 44px; border-radius: var(--r-pill); background: var(--c-brand-soft); color: var(--c-brand-text); font-weight: 700; flex: none; }

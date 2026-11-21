@@ -37,7 +37,7 @@
 .gd-chip { padding: 2px 10px; border-radius: 999px; font-size: var(--fs-sm); border: 1px solid var(--c-border-1); background: var(--c-surface-2); }
 .gd-chip--write { border-color: var(--c-brand); }
 .gd-links { display: flex; flex-wrap: wrap; gap: var(--sp-1); list-style: none; margin: 0; padding: 0; }
-.gd-flow { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--sp-3); list-style: none; margin: 0; padding: 0; counter-reset: s; }
+.gd-flow { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr)); gap: var(--sp-3); list-style: none; margin: 0; padding: 0; counter-reset: s; }
 .gd-flow__step { position: relative; background: var(--c-surface-1); border: 1px solid var(--c-border-1); border-radius: 12px; padding: var(--sp-3); display: flex; flex-direction: column; gap: var(--sp-1); line-height: 1.7; }
 .gd-flow__step span { color: var(--c-text-2); font-size: var(--fs-sm); }
 .gd-flow__step:not(:last-child)::after { content: "\2190"; position: absolute; inset-inline-end: calc(-1 * var(--sp-3) - 4px); inset-block-start: 50%; transform: translateY(-50%); color: var(--c-brand); font-weight: 800; }
@@ -47,14 +47,14 @@
 .gd-tier__range { font-weight: 700; min-inline-size: 180px; }
 .gd-tier__steps { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
 .gd-step em { color: var(--c-text-2); margin-inline: var(--sp-1); font-style: normal; }
-.gd-try { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--sp-3); }
+.gd-try { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr)); gap: var(--sp-3); }
 .gd-seq { margin: 0; padding-inline-start: 1.4em; line-height: 1.9; }
 .gd-dl { margin: 0; display: flex; flex-direction: column; gap: var(--sp-3); }
 .gd-dl dt { font-weight: 700; color: var(--c-text-2); font-size: var(--fs-sm); }
 .gd-dl dd { margin: 2px 0 0; line-height: 1.8; }
 .gd-flowbox { display: flex; flex-direction: column; gap: var(--sp-2); padding-block-end: var(--sp-4); border-block-end: 1px dashed var(--c-border-1); }
 .gd-flowbox:last-child { border-block-end: 0; }
-.gd-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: var(--sp-3); }
+.gd-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr)); gap: var(--sp-3); }
 .gd-table--text th, .gd-table--text td { white-space: normal; text-align: start; min-inline-size: 150px; line-height: 1.7; }
 .gd-sidebox { display: flex; flex-direction: column; gap: var(--sp-3); }
 .gd-btnlabel { display: inline-block; padding: 2px 10px; border-radius: 8px; background: var(--c-brand-soft); color: var(--c-brand-text); font-weight: 700; }
