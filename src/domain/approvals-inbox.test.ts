@@ -85,4 +85,18 @@ describe("محاكي الأثر", () => {
     expect(describeImpact({ resourceType: "production_cost_entry", amount: 5, metadata: null, nextStepRoles: null }).reject[0]).toContain("مرفوضة");
     expect(describeImpact({ resourceType: "x", amount: 5, metadata: null, nextStepRoles: null }).approve[0]).toContain("معتمد");
   });
+
+  it("طلب تجاوز الائتمان: أول سطر في الاعتماد بيذكر مقدار التجاوز، والرفض زي أي أمر بيع", () => {
+    const r = describeImpact({ resourceType: "sales_order", amount: 500, metadata: { originalStatus: "confirmed", creditOverride: { overBy: "150.00" } }, nextStepRoles: null, itemCount: 2 });
+    expect(r.approve[0]).toContain("150.00");
+    expect(r.approve[0]).toContain("حد الائتمان");
+    expect(r.approve).toHaveLength(2);
+    expect(r.reject).toContain("الأمر بيتلغي ومابيكملش.");
+  });
+  it("أمر عادي من غير creditOverride أو بـoverBy مش نص: مفيش سطر ائتمان", () => {
+    for (const metadata of [{ originalStatus: "confirmed" }, { originalStatus: "confirmed", creditOverride: { overBy: 5 } }, { originalStatus: "confirmed", creditOverride: null }]) {
+      const r = describeImpact({ resourceType: "sales_order", amount: 1, metadata, nextStepRoles: null, itemCount: 1 });
+      expect(r.approve.some((l) => l.includes("حد الائتمان"))).toBe(false);
+    }
+  });
 });

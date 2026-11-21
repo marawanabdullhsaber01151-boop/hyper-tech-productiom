@@ -1,9 +1,10 @@
 import "../copy/ledger";
-import { useState } from "preact/hooks";
+import { useMemo, useState } from "preact/hooks";
+import { useAct } from "../admin/act";
 import { api } from "../admin/api";
 import { useQuery } from "../api/hooks";
 import { t, type CopyKey } from "../copy";
-import { Button, DataTable, EmptyState, Field, InlineAlert, Input, type Column } from "../design/components";
+import { Button, DataTable, Dialog, EmptyState, Field, InlineAlert, Input, Select, StatusPill, Textarea, useToast, type Column } from "../design/components";
 import { formatDate, formatMoney, formatNumber } from "../lib/format";
 import "./Receivables.css";
 
@@ -45,7 +46,64 @@ export function Receivables() {
         </p>
       ) : null}
       <DataTable columns={cols} rows={q.data?.rows ?? []} rowKey={(r) => r.contactId} caption={t("lg.tab.receivables")} loading={q.loading} empty={<EmptyState compact title={t("lg.r.empty")} />} />
+      <CreditLimits />
     </div>
+  );
+}
+
+interface CreditRow { contactId: number; contactName: string; limit: string | null; debt: string; available: string | null; over: boolean; overBy: string }
+interface CreditRes { policy: "off" | "warn" | "block"; rows: CreditRow[] }
+interface ContactOpt { id: number; name: string; type?: string }
+
+/** حدود الائتمان: كل عميل عليه حد أو مديونية، والمتجاوز بيظهر الأول بعلامة. تحديد الحد أو مسحه بسبب مسجّل. */
+function CreditLimits() {
+  const [form, setForm] = useState<{ contactId: string; limit: string } | null>(null);
+  const q = useQuery((signal) => api.get<CreditRes>("/credit/overview", { signal }), []);
+  const cols: Column<CreditRow>[] = [
+    { key: "c", header: t("lg.c.customer"), cell: (r) => <Button size="sm" variant="ghost" onClick={() => setForm({ contactId: String(r.contactId), limit: r.limit ? String(Number(r.limit)) : "" })}>{r.contactName}</Button>, mobile: "title" },
+    { key: "l", header: t("lg.r.cr.limit"), cell: (r) => (r.limit ? money(r.limit) : t("lg.r.cr.none")) },
+    { key: "d", header: t("lg.r.cr.debt"), cell: (r) => money(r.debt) },
+    { key: "a", header: t("lg.r.cr.available"), cell: (r) => (r.available === null ? "-" : money(r.available)), mobile: "hide" },
+    { key: "s", header: t("lg.c.status"), cell: (r) => (r.over ? <StatusPill tone="danger">{t("lg.r.cr.over", { n: money(r.overBy) })}</StatusPill> : r.limit ? <StatusPill tone="success">{t("lg.r.cr.within")}</StatusPill> : <span class="eng-muted">-</span>) },
+  ];
+  return (
+    <section class="ad-stack" aria-labelledby="rc-cr">
+      <h2 id="rc-cr" class="rc-h">{t("lg.r.cr.title")}</h2>
+      <p class="eng-muted">{t("lg.r.cr.hint")}</p>
+      {q.data ? <InlineAlert tone={q.data.policy === "block" ? "warn" : "info"}>{t(k(`lg.r.cr.policy.${q.data.policy}`))}</InlineAlert> : null}
+      {q.error ? <InlineAlert tone="danger" title={t("lg.err")}>{q.error.message}</InlineAlert> : null}
+      <div class="eng-toolbar"><Button onClick={() => setForm({ contactId: "", limit: "" })}>{t("lg.r.cr.set")}</Button></div>
+      <DataTable columns={cols} rows={q.data?.rows ?? []} rowKey={(r) => r.contactId} caption={t("lg.r.cr.title")} loading={q.loading} empty={<EmptyState compact title={t("lg.r.cr.empty")} />} />
+      {form ? <LimitDialog initial={form} onClose={() => setForm(null)} onDone={() => { setForm(null); void q.refetch(); }} /> : null}
+    </section>
+  );
+}
+
+function LimitDialog({ initial, onClose, onDone }: { initial: { contactId: string; limit: string }; onClose: () => void; onDone: () => void }) {
+  const act = useAct();
+  const toast = useToast();
+  const contacts = useQuery((signal) => api.get<ContactOpt[]>("/contacts", { signal }), []);
+  const customers = useMemo(() => (contacts.data ?? []).filter((c) => c.type !== "supplier"), [contacts.data]);
+  const [contactId, setContactId] = useState(initial.contactId);
+  const [limit, setLimit] = useState(initial.limit);
+  const [reason, setReason] = useState("");
+  const limitOk = limit.trim() === "" || (/^\d{1,12}(\.\d{1,2})?$/.test(limit.trim()) && Number(limit) > 0);
+  const save = async () => {
+    const r = await act.run(() => api.put("/credit/limit", { contactId: Number(contactId), limit: limit.trim() === "" ? null : limit.trim(), reason: reason.trim() }), t("lg.r.cr.saved"));
+    if (r) { toast({ tone: "success", message: t("lg.r.cr.saved") }); onDone(); }
+  };
+  return (
+    <Dialog open onClose={onClose} title={t("lg.r.cr.dlgTitle")} description={t("lg.r.cr.dlgDesc")}
+      footer={<><Button variant="ghost" onClick={onClose}>{t("common.cancel")}</Button><Button loading={act.busy} disabled={!contactId || !limitOk || reason.trim().length < 3} onClick={() => void save()}>{t("lg.c.save")}</Button></>}>
+      <div class="eng-form">
+        <Field label={t("lg.c.customer")} required>
+          <Select value={contactId} onChange={(e) => setContactId(val(e))} options={[{ value: "", label: t("lg.c.pickCustomer") }, ...customers.map((c) => ({ value: String(c.id), label: c.name }))]} />
+        </Field>
+        <Field label={t("lg.r.cr.limit")} hint={t("lg.r.cr.limitHint")}><Input inputMode="decimal" dir="ltr" value={limit} onInput={(e) => setLimit(val(e))} /></Field>
+        {!limitOk ? <InlineAlert tone="danger">{t("lg.r.cr.badLimit")}</InlineAlert> : null}
+        <Field label={t("lg.r.cr.reason")} required><Textarea value={reason} maxLength={300} onInput={(e) => setReason(val(e))} /></Field>
+      </div>
+    </Dialog>
   );
 }
 

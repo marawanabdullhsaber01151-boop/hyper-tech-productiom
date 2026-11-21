@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { slaState, workingMinutesBetween } from "./approvals-inbox";
 import { stallInfo } from "./production-stall";
-import { DEFAULT_OPERATIONAL, SETTING_DEFS, taxConfig, checkValue, defOf, isKnownKey, operationalConfig, planChanges, resolveSettings } from "./settings-registry";
+import { DEFAULT_OPERATIONAL, SETTING_DEFS, taxConfig, creditPolicySetting, checkValue, defOf, isKnownKey, operationalConfig, planChanges, resolveSettings } from "./settings-registry";
 
 const def = (k: string) => defOf(k)!;
 
@@ -128,5 +128,15 @@ describe("إعداد الضريبة (50)", () => {
     expect(taxConfig({})).toEqual({ enabled: false, ratePercent: 14 });
     expect(taxConfig({ "tax.vat_enabled": "on", "tax.vat_rate": "5" })).toEqual({ enabled: true, ratePercent: 5 });
     expect(taxConfig({ "tax.vat_enabled": "yes", "tax.vat_rate": "abc" })).toEqual({ enabled: false, ratePercent: 14 });
+  });
+
+  it("سياسة الائتمان: الافتراضي تحذير، وبتقبل منع/مقفولة، والقيمة التالفة ترجع تحذير", () => {
+    expect(creditPolicySetting({})).toBe("warn");
+    expect(creditPolicySetting({ "credit.policy": "block" })).toBe("block");
+    expect(creditPolicySetting({ "credit.policy": "off" })).toBe("off");
+    expect(creditPolicySetting({ "credit.policy": "nope" })).toBe("warn");
+    const def = defOf("credit.policy")!;
+    expect(checkValue(def, "block")).toEqual({ ok: true, value: "block" });
+    expect(checkValue(def, "nope").ok).toBe(false);
   });
 });

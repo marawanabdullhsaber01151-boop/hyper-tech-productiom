@@ -32,6 +32,7 @@ export const SETTING_DEFS: readonly SettingDef[] = [
   { key: "fiscal_year_start", group: "company", type: "select", label: "بداية السنة المالية", default: "01-01", options: [{ value: "01-01", label: "يناير" }, { value: "04-01", label: "أبريل" }, { value: "07-01", label: "يوليو" }, { value: "10-01", label: "أكتوبر" }] },
   { key: "tax.vat_enabled", group: "company", type: "select", label: "ضريبة القيمة المضافة", hint: "مقفولة افتراضيًا: الأسعار والفواتير زي ما هي من غير أي ضريبة. التفعيل بيسجّل الإعداد بس دلوقتي، وتطبيقه على الفواتير بيتم في خطوة الفاتورة الإلكترونية بعد ما نتفق إن الأسعار شاملة الضريبة ولا لا.", default: "off", options: [{ value: "off", label: "مقفولة" }, { value: "on", label: "مفعّلة" }] },
   { key: "tax.vat_rate", group: "company", type: "int", label: "نسبة ضريبة القيمة المضافة", hint: "بتتستخدم لما الضريبة تكون مفعّلة. النسبة العادية في مصر 14.", unit: "%", default: "14", min: 0, max: 100 },
+  { key: "credit.policy", group: "operations", type: "select", label: "سياسة حد الائتمان", hint: "لما أمر جديد يخلّي مديونية العميل تعدّي حده: «تحذير» = الأمر يعدّي والتجاوز يتسجّل ويتبيّن، «منع» = الأمر بيستنى اعتماد المدير التنفيذي أو رئيس المجلس، «مقفولة» = من غير فحص. العميل من غير حد مش بيتأثر.", default: "warn", options: [{ value: "warn", label: "تحذير" }, { value: "block", label: "منع لحد الاعتماد" }, { value: "off", label: "مقفولة" }] },
   { key: "work.start_hour", group: "operations", type: "int", label: "بداية الدوام", hint: "الساعة (بتوقيت القاهرة، من 0 لـ 23).", unit: "ساعة", default: "9", min: 0, max: 23 },
   { key: "work.end_hour", group: "operations", type: "int", label: "نهاية الدوام", hint: "الساعة (بتوقيت القاهرة، من 1 لـ 24) وبتكون بعد البداية.", unit: "ساعة", default: "17", min: 1, max: 24 },
   { key: "work.off_day", group: "operations", type: "select", label: "يوم الإجازة الأسبوعية", default: "5", options: WEEKDAYS },
@@ -48,6 +49,12 @@ export const SETTING_DEFS: readonly SettingDef[] = [
 
 /** مفاتيح قديمة مسموحة في السيرفر للتوافق، من غير شاشة (مفيش كود بيقراها). */
 export const LEGACY_SETTING_KEYS: readonly string[] = ["company_logo", "currency_symbol", "language", "timezone", "low_stock_alert_enabled", "default_payment_terms", "invoice_footer_note", "vat_rate", "vat_enabled"];
+
+/** سياسة الائتمان (52): قيمة تالفة أو غير موجودة ترجع «تحذير». */
+export function creditPolicySetting(stored: Readonly<Record<string, string>>): "off" | "warn" | "block" {
+  const v = resolveSettings(stored)["credit.policy"];
+  return v === "off" || v === "block" ? v : "warn";
+}
 
 /** إعداد الضريبة (50): مقفولة افتراضيًا. نسبة تالفة أو غير موجودة ترجع 14. */
 export function taxConfig(stored: Readonly<Record<string, string>>): { enabled: boolean; ratePercent: number } {

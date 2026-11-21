@@ -35,7 +35,8 @@ export interface InboxRow {
   decidedAt: Date | null;
 }
 
-const ACTION_LABEL = new Map(ACTION_REGISTRY.map((a) => [a.key, a.label]));
+// مفاتيح اعتماد ملهاش صلاحية تنفيذ في الـregistry (زي تجاوز الائتمان) بتتسمّى هنا.
+const ACTION_LABEL = new Map<string, string>([...ACTION_REGISTRY.map((a): [string, string] => [a.key, a.label]), ["sales.credit_override", "اعتماد أمر بيع يتجاوز حد الائتمان"]]);
 const strMeta = (m: unknown, k: string): string | null => (m && typeof m === "object" && typeof (m as Record<string, unknown>)[k] === "string" ? ((m as Record<string, unknown>)[k] as string) : null);
 
 /** بداية انتظار الخطوة الحالية: وقت آخر قرار (الخطوة السابقة) أو إنشاء الطلب. */

@@ -39,6 +39,9 @@ import { z } from "zod";
 import { createApprovalRequest } from "../lib/approvals";
 import { writeAuditEvent } from "../lib/governance";
 import { syncSalesOrderLedger } from "../lib/ledgerAuto";
+import { assessOrderCredit, verdictJson } from "../lib/credit";
+import { CREDIT_OVERRIDE_ACTION } from "../lib/creditCore";
+import { toCents } from "../lib/money";
 import {
   computeStockAndBalanceEffects,
   getSalesOrderStockState,
@@ -724,14 +727,22 @@ router.post(
         });
         await writePriceOverrideAudits(tx, req, order.id, normalized);
 
+        // حد الائتمان (52): أمر بيتأكد/يتشحن ويخلّي مديونية العميل تعدّي حده.
+        const credit = await assessOrderCredit(tx, { contactId: order.contactId ?? null, orderId: order.id, totalCents: toCents(order.total), fromStatus: "draft", toStatus: order.status });
+        const creditHold = credit?.verdict.action === "approval";
+        const creditWarning = credit?.verdict.action === "warn" ? verdictJson(credit.verdict) : null;
         const approval = await createApprovalRequest({
-          actionKey: "sales.approve",
+          actionKey: creditHold ? CREDIT_OVERRIDE_ACTION : "sales.approve",
           resourceType: "sales_order",
           resourceId: order.id,
           amount: Number(order.total),
           requestedBy: req.user!.userId,
-          metadata: { orderNumber: order.orderNumber, originalStatus: order.status },
+          metadata: { orderNumber: order.orderNumber, originalStatus: order.status, ...(creditHold ? { creditOverride: verdictJson(credit!.verdict) } : {}) },
         }, tx);
+        if (creditHold && !approval) throw errorWithStatus("الأمر بيتجاوز حد ائتمان العميل ومفيش سياسة اعتماد للتجاوز. راجع سياسات الاعتماد", 422);
+        if (creditWarning) {
+          await writeAuditEvent({ actorUserId: req.user!.userId, actorName: req.user!.username, actionKey: "sales.credit_warning", resourceType: "sales_order", resourceId: order.id, afterData: { credit: creditWarning }, reason: "أمر بيتجاوز حد ائتمان العميل (السياسة: تحذير)", ipAddress: req.ip, userAgent: req.get("user-agent"), executor: tx });
+        }
         if (approval) {
           const [pending] = await tx
             .update(salesOrdersTable)
@@ -739,11 +750,11 @@ router.post(
             .where(eq(salesOrdersTable.id, order.id))
             .returning();
           await syncSalesOrderLedger(tx, order.id, { userId: req.user!.userId, username: req.user!.username });
-          return { ...pending, items: orderItems, approvalRequestId: approval.request.id };
+          return { ...pending, items: orderItems, approvalRequestId: approval.request.id, ...(creditHold ? { creditHold: verdictJson(credit!.verdict) } : {}) };
         }
 
         await syncSalesOrderLedger(tx, order.id, { userId: req.user!.userId, username: req.user!.username });
-        return { ...order, items: orderItems };
+        return { ...order, items: orderItems, ...(creditWarning ? { creditWarning } : {}) };
       });
 
       res.status(201).json(result);
@@ -908,15 +919,22 @@ router.patch(
         // الحالة لـ"مؤكَّد" مباشرة، من غير ما يمر على أي فحص سقف أو
         // تصعيد اعتماد خالص — يعني تخطّي كامل لنظام الاعتماد بالكامل.
         // نفس الفحص المطبَّق وقت الإنشاء لازم يتكرر هنا بالظبط.
-        if (requiresApproval(transitionPlan)) {
+        // حد الائتمان (52): الأمر بيبقى مديونية جديدة (مؤكد/مشحون) ويخلّي مديونية العميل تعدّي حده.
+        const credit = statusChanged
+          ? await assessOrderCredit(tx, { contactId: updated.contactId ?? null, orderId: updated.id, totalCents: toCents(updated.total), fromStatus: existing.status, toStatus: updated.status })
+          : null;
+        const creditHold = credit?.verdict.action === "approval";
+        const creditWarning = credit?.verdict.action === "warn" ? verdictJson(credit.verdict) : null;
+        if (requiresApproval(transitionPlan) || creditHold) {
           const approval = await createApprovalRequest({
-            actionKey: "sales.approve",
+            actionKey: creditHold ? CREDIT_OVERRIDE_ACTION : "sales.approve",
             resourceType: "sales_order",
             resourceId: updated.id,
             amount: Number(updated.total),
             requestedBy: req.user!.userId,
-            metadata: { orderNumber: updated.orderNumber, originalStatus: toStatus },
+            metadata: { orderNumber: updated.orderNumber, originalStatus: toStatus, ...(creditHold ? { creditOverride: verdictJson(credit!.verdict) } : {}) },
           }, tx);
+          if (creditHold && !approval) throw errorWithStatus("الأمر بيتجاوز حد ائتمان العميل ومفيش سياسة اعتماد للتجاوز. راجع سياسات الاعتماد", 422);
           if (approval) {
             const [pending] = await tx
               .update(salesOrdersTable)
@@ -938,7 +956,7 @@ router.patch(
                   ...pending,
                   items: normalized?.items ?? existingItems,
                 },
-                reason: "تم تحديث أمر البيع وإحالته إلى الاعتماد",
+                reason: creditHold ? "تم تحديث أمر البيع وإحالته لاعتماد تجاوز حد الائتمان" : "تم تحديث أمر البيع وإحالته إلى الاعتماد",
                 ipAddress: req.ip,
                 userAgent: req.get("user-agent"),
                 executor: tx,
@@ -951,6 +969,7 @@ router.patch(
                 ...pending,
                 items: normalized?.items ?? existingItems,
                 approvalRequestId: approval.request.id,
+                ...(creditHold ? { creditHold: verdictJson(credit!.verdict) } : {}),
               };
           }
         }
@@ -982,6 +1001,9 @@ router.patch(
           }
         }
 
+        if (creditWarning) {
+          await writeAuditEvent({ actorUserId: req.user!.userId, actorName: req.user!.username, actionKey: "sales.credit_warning", resourceType: "sales_order", resourceId: updated.id, afterData: { credit: creditWarning }, reason: "أمر بيتجاوز حد ائتمان العميل (السياسة: تحذير)", ipAddress: req.ip, userAgent: req.get("user-agent"), executor: tx });
+        }
         await syncSalesOrderLedger(tx, updated.id, { userId: req.user!.userId, username: req.user!.username });
         const finalItems = itemsChanged
           ? await tx
@@ -989,7 +1011,7 @@ router.patch(
               .from(salesOrderItemsTable)
               .where(eq(salesOrderItemsTable.orderId, id))
           : existingItems;
-        return { ...updated, items: finalItems };
+        return { ...updated, items: finalItems, ...(creditWarning ? { creditWarning } : {}) };
       });
 
       res.json(result);

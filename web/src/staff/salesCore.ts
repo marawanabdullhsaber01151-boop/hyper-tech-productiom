@@ -27,6 +27,9 @@ export interface SalesOrder {
   createdAt?: string;
   updatedAt?: string;
   items?: SalesItem[];
+  /** (52) الأمر اتحوّل لاعتماد لأنه بيتجاوز حد ائتمان العميل / عدّى بتحذير. */
+  creditHold?: { limit: string | null; exposure: string; overBy: string };
+  creditWarning?: { limit: string | null; exposure: string; overBy: string };
 }
 
 export const isSalesStatus = (v: string): v is SalesStatus => (SALES_STATUSES as readonly string[]).includes(v);
@@ -228,4 +231,13 @@ export function toItemsPayload(rows: DraftRow[]): SalesItem[] {
     const price = normNum(r.price);
     return { inventoryItemId: null, description: r.description.trim(), qty, unitPrice: price, total: lineTotal(qty, price) ?? "0.00" };
   });
+}
+
+/** رسالة نجاح نقل الحالة: تجاوز ائتمان (اعتماد) ← اعتماد عادي ← تحذير ائتمان ← نقل عادي. */
+export type MoveNotice = "creditHold" | "approval" | "creditWarning" | "moved";
+export function moveNotice(r: Pick<SalesOrder, "status" | "creditHold" | "creditWarning">, requested: string): MoveNotice {
+  if (r.creditHold) return "creditHold";
+  if (r.status === "pending_approval" && requested !== "pending_approval") return "approval";
+  if (r.creditWarning) return "creditWarning";
+  return "moved";
 }

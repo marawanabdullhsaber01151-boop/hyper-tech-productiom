@@ -9,6 +9,8 @@ updates:
     ignore:
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
+      # esbuild مثبّت على نسخة بعينها لأن esbuild-plugin-pino بيشترط نسخة <= 0.25.8 (ترقيته لوحده بيكسر npm ci).
+      - dependency-name: "esbuild"
     groups:
       minor-and-patch:
         update-types: ["minor", "patch"]

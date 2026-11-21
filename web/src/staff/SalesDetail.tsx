@@ -8,7 +8,7 @@ import { Ban, Pencil, Printer, Trash } from "../design/icons";
 import { formatDate, formatDateTime, formatMoney, formatNumber } from "../lib/format";
 import { useAct } from "../admin/act";
 import { printInvoice } from "./salesPrint";
-import { STATUS_TONE, allowedNext, isOverdue, isSalesStatus, overdueDays, primaryNext, stockEffects, type SalesOrder, type SalesStatus } from "./salesCore";
+import { STATUS_TONE, allowedNext, isOverdue, isSalesStatus, moveNotice, overdueDays, primaryNext, stockEffects, type SalesOrder, type SalesStatus } from "./salesCore";
 
 export const statusLabel = (s: string) => (isSalesStatus(s) ? t(`sales.status.${s}` as CopyKey) : s);
 export const statusTone = (s: string) => (isSalesStatus(s) ? STATUS_TONE[s] : "neutral");
@@ -73,7 +73,11 @@ export function SalesDetail({ id, role, customerName, onClose, onChanged, onEdit
     if (!o || !move) return;
     const r = await act.run(() => api.patch<SalesOrder>(`/sales/${o.id}`, { status: move }));
     if (!r) return;
-    toast({ tone: "success", message: r.status === "pending_approval" && move !== "pending_approval" ? t("sales.moved.approval") : t("sales.moved", { status: statusLabel(r.status) }) });
+    const notice = moveNotice(r, move);
+    toast({
+      tone: notice === "creditWarning" ? "warn" : "success",
+      message: notice === "creditHold" ? t("sales.moved.creditHold") : notice === "approval" ? t("sales.moved.approval") : notice === "creditWarning" ? t("sales.moved.creditWarning", { status: statusLabel(r.status) }) : t("sales.moved", { status: statusLabel(r.status) }),
+    });
     setMove(null);
     onChanged();
     void q.refetch();

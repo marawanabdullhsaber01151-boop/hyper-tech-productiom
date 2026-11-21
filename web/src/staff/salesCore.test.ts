@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  allowedNext, buildCsv, csvCell, dateBounds, draftTotal, isOverdue, lineTotal, normNum, overdueDays, primaryNext,
+  allowedNext, buildCsv, csvCell, dateBounds, draftTotal, isOverdue, lineTotal, moveNotice, normNum, overdueDays, primaryNext,
   stockEffects, suggestOrderNumber, sumTotals, toItemsPayload, validateDraft, validQty, type Draft,
 } from "./salesCore";
 
@@ -149,5 +149,14 @@ describe("مسودة الفاتورة", () => {
       { inventoryItemId: 9, description: "كرتونة", qty: "2", unitPrice: "0", total: "0.00" },
       { inventoryItemId: null, description: "نقل", qty: "1.5", unitPrice: "10", total: "15.00" },
     ]);
+  });
+
+  it("رسالة نقل الحالة: تجاوز الائتمان أقوى من الاعتماد العادي، والتحذير بيظهر لو الأمر عدّى", () => {
+    const v = { limit: "100.00", exposure: "150.00", overBy: "50.00" };
+    expect(moveNotice({ status: "pending_approval", creditHold: v }, "confirmed")).toBe("creditHold");
+    expect(moveNotice({ status: "pending_approval" }, "confirmed")).toBe("approval");
+    expect(moveNotice({ status: "pending_approval" }, "pending_approval")).toBe("moved");
+    expect(moveNotice({ status: "confirmed", creditWarning: v }, "confirmed")).toBe("creditWarning");
+    expect(moveNotice({ status: "confirmed" }, "confirmed")).toBe("moved");
   });
 });

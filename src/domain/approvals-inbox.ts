@@ -116,6 +116,10 @@ export function describeImpact(i: ImpactInput): Impact {
       ? ["الطلب بيتحوّل لخطوة اعتماد أعلى قبل ما يتنفذ.", "الأمر بيفضل «بانتظار الاعتماد» لحد القرار الأخير."]
       : [`الأمر بيرجع لحالته المطلوبة «${statusLabel(original)}» وبيكمل مساره.`];
     const reject = ["الأمر بيتلغي ومابيكملش."];
+    // طلب تجاوز حد الائتمان (52): الاعتماد معناه إنك قبلت العميل يعدّي حده.
+    const co = i.metadata && typeof i.metadata === "object" ? (i.metadata as Record<string, unknown>).creditOverride : null;
+    const over = co && typeof co === "object" && typeof (co as Record<string, unknown>).overBy === "string" ? ((co as Record<string, unknown>).overBy as string) : null;
+    if (over) approve.unshift(`العميل هيعدّي حد الائتمان بـ ${over} جنيه، والاعتماد معناه إنك موافق على التجاوز ده.`);
     if (original === "confirmed") reject.push(`الحجز المخزني على ${items} بيتفك.`);
     else if (original === "shipped" || original === "paid") reject.push(`كميات ${items} بترجع للمخزون.`);
     return { approve, reject };
