@@ -1,6 +1,7 @@
 import "../copy/guide";
 import "../copy/guide2";
 import "../copy/guide3";
+import "../copy/guide4";
 import type { ComponentChildren } from "preact";
 import { useMemo, useState } from "preact/hooks";
 import { api } from "../admin/api";
@@ -16,6 +17,7 @@ import {
   type GuideLive, type GuidePolicyGroup, type Level,
 } from "./guideModel";
 import { GLOSSARY, SCENARIOS, SCREENS, type ScreenDef } from "./guideScreens";
+import { FAQ_IDS, groupOfRole, PORTAL_STEPS, SAFE_ITEMS, START_GROUPS } from "./guideStart";
 import "./Guide.css";
 
 const k = (key: string) => key as CopyKey;
@@ -25,7 +27,7 @@ const amountFmt = (v: string) => Number(v).toLocaleString("en-US");
 /** دليل النظام: خرائط حية بتشرح الأقسام والصلاحيات والاعتمادات ورحلة أمر البيع. */
 export function Guide() {
   const q = useQuery((signal) => api.get<GuideLive>("/guide/live", { signal }), []);
-  const [tab, setTab] = useState("map");
+  const [tab, setTab] = useState("start");
   if (q.loading && !q.data) return <Spinner />;
   if (q.error || !q.data) {
     return (
@@ -48,6 +50,7 @@ export function Guide() {
         value={tab}
         onChange={setTab}
         tabs={[
+          { id: "start", label: t("guide.tab.start"), panel: <StartHere live={live} /> },
           { id: "map", label: t("guide.tab.map"), panel: <SystemMap live={live} /> },
           { id: "roles", label: t("guide.tab.roles"), panel: <Roles live={live} /> },
           { id: "approvals", label: t("guide.tab.approvals"), panel: <Approvals live={live} /> },
@@ -55,9 +58,10 @@ export function Guide() {
           { id: "production", label: t("guide.tab.production"), panel: <FlowChapter title="guide.prod.title" intro="guide.prod.intro" flows={["preq", "porder"]} /> },
           { id: "purchasing", label: t("guide.tab.purchasing"), panel: <FlowChapter title="guide.pur.title" intro="guide.pur.intro" flows={["po"]} /> },
           { id: "accounting", label: t("guide.tab.accounting"), panel: <Accounting /> },
-          { id: "portal", label: t("guide.tab.portal"), panel: <FlowChapter title="guide.por.title" intro="guide.por.intro" flows={["portal"]} /> },
+          { id: "portal", label: t("guide.tab.portal"), panel: <><FlowChapter title="guide.por.title" intro="guide.por.intro" flows={["portal"]} /><PortalSteps live={live} /></> },
+          { id: "safe", label: t("guide.tab.safe"), panel: <Safety live={live} /> },
           { id: "screens", label: t("guide.tab.screens"), panel: <Screens live={live} /> },
-          { id: "help", label: t("guide.tab.help"), panel: <Help /> },
+          { id: "help", label: t("guide.tab.help"), panel: <><Help /><Faq /></> },
         ]}
       />
     </div>
@@ -551,6 +555,118 @@ function Help() {
           </div>
         ))}
       </dl>
+    </section>
+  );
+}
+
+
+/* ---------------- م4: ابدأ من هنا / البوابة للعميل / الأمان / الأسئلة ---------------- */
+
+/** الصفحات اللي الدور ده يقدر يفتحها لشاشة معيّنة (من القايمة الحية). */
+function openPages(live: GuideLive, role: string | undefined, screenId: string) {
+  const def = SCREENS.find((x) => x.id === screenId);
+  if (!def) return [];
+  const out: Array<{ href: string; label: string }> = [];
+  for (const d of live.nav) for (const sf of d.subFunctions) for (const p of sf.pages) {
+    if (def.pages.includes(p.id) && (!role || p.roles.includes(role)) && !out.some((o) => o.href === p.href)) out.push({ href: p.href, label: p.label });
+  }
+  return out;
+}
+const goto = (href: string) => (href.startsWith("/v2/") ? navigate(href.slice(3)) : (location.href = href));
+
+function OpenBtn({ live, role, screen }: { live: GuideLive; role: string | undefined; screen: string }) {
+  const first = openPages(live, role, screen)[0];
+  return first ? <Button size="sm" variant="ghost" onClick={() => goto(first.href)}>{t("guide.st4.open")}: {first.label}</Button> : null;
+}
+
+function StepCard({ live, role, n, screen, btn, base, extra }: { live: GuideLive; role: string | undefined; n: number; screen: string; btn: string; base: string; extra?: ComponentChildren }) {
+  return (
+    <li class="gd-step">
+      <h4 class="gd-h3">{t("guide.st4.step", { n })} · {t(k(`guide.sc.${screen}.t`))}</h4>
+      <p class="gd-p">{t(k(`${base}.do`))}</p>
+      {btn ? <p class="gd-opens"><span class="gd-muted">{t("guide.st4.press")}:</span> <span class="gd-btnlabel">{t(k(`guide.sc.${screen}.b.${btn}.l`))}</span></p> : null}
+      <dl class="gd-dl">
+        <dt>{t("guide.st4.see")}</dt><dd>{t(k(`${base}.see`))}</dd>
+        <dt>{t("guide.st4.stuck")}</dt><dd>{t(k(`${base}.stuck`))}</dd>
+      </dl>
+      {extra}
+      <OpenBtn live={live} role={role} screen={screen} />
+    </li>
+  );
+}
+
+function StartHere({ live }: { live: GuideLive }) {
+  const mine = staffUser()?.role;
+  const [role, setRole] = useState(mine && live.roles.some((r) => r.id === mine) ? mine : live.roles[0]?.id ?? "");
+  const group = groupOfRole(role);
+  const steps = group ? group.steps.map((s, i) => ({ ...s, i: i + 1 })).filter((s) => openPages(live, role, s.screen).length > 0) : [];
+  return (
+    <section class="gd-sec">
+      <h2 class="gd-h">{t("guide.st4.title")}</h2>
+      <p class="gd-p">{t("guide.st4.intro")}</p>
+      <Field label={t("guide.st4.pick")}>
+        <Select value={role} onChange={(e) => setRole(val(e))} options={live.roles.map((r) => ({ value: r.id, label: r.label }))} />
+      </Field>
+      {group ? (
+        <>
+          <h3 class="gd-h3">{t(k(`guide.st4.g.${group.id}.t`))}</h3>
+          <p class="gd-p">{t(k(`guide.st4.g.${group.id}.intro`))}</p>
+          <p class="gd-muted"><b>{t("guide.st4.rhythm")}:</b> {t(k(`guide.st4.g.${group.id}.rhythm`))}</p>
+          {steps.length === 0 ? <EmptyState title={t("guide.st4.none")} /> : null}
+          <ol class="gd-steps">
+            {steps.map((s, idx) => <StepCard key={s.i} live={live} role={role} n={idx + 1} screen={s.screen} btn={s.btn} base={`guide.st4.g.${group.id}.s${s.i}`} />)}
+          </ol>
+        </>
+      ) : <EmptyState title={t("guide.st4.none")} />}
+    </section>
+  );
+}
+
+function PortalSteps({ live }: { live: GuideLive }) {
+  return (
+    <section class="gd-sec">
+      <h2 class="gd-h">{t("guide.st4.por.title")}</h2>
+      <p class="gd-p">{t("guide.st4.por.intro")}</p>
+      <ol class="gd-steps">
+        {PORTAL_STEPS.map((s, i) => (
+          <StepCard key={i} live={live} role={staffUser()?.role} n={i + 1} screen={s.screen} btn={s.btn} base={`guide.st4.por.s${i + 1}`}
+            extra={<p class="gd-muted">{t(k(`guide.st4.por.who.${s.who}`))}</p>} />
+        ))}
+      </ol>
+    </section>
+  );
+}
+
+function Safety({ live }: { live: GuideLive }) {
+  const role = staffUser()?.role;
+  return (
+    <section class="gd-sec">
+      <h2 class="gd-h">{t("guide.sf.title")}</h2>
+      <p class="gd-p">{t("guide.sf.intro")}</p>
+      <div class="gd-grid">
+        {SAFE_ITEMS.map((s) => (
+          <article class="gd-card" key={s.id}>
+            <h3 class="gd-h3">{t(k(`guide.sf.${s.id}.t`))}</h3>
+            <p class="gd-p">{t(k(`guide.sf.${s.id}.d`))}</p>
+            <p class="gd-muted">{t("guide.sf.check")}: {t(k(`guide.sc.${s.screen}.t`))}{s.btn ? <> · <span class="gd-btnlabel">{t(k(`guide.sc.${s.screen}.b.${s.btn}.l`))}</span></> : null}</p>
+            <OpenBtn live={live} role={role} screen={s.screen} />
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function Faq() {
+  return (
+    <section class="gd-sec">
+      <h2 class="gd-h">{t("guide.fq.title")}</h2>
+      {FAQ_IDS.map((id) => (
+        <details class="gd-faq" key={id}>
+          <summary>{t(k(`guide.fq.${id}.q`))}</summary>
+          <p class="gd-p">{t(k(`guide.fq.${id}.a`))}</p>
+        </details>
+      ))}
     </section>
   );
 }

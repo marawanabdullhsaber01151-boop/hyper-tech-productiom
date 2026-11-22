@@ -4,6 +4,8 @@ import { readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { SCREENS, GLOSSARY, SCENARIOS } from "../web/src/staff/guideScreens";
+import { START_GROUPS, PORTAL_STEPS, SAFE_ITEMS, FAQ_IDS } from "../web/src/staff/guideStart";
+import { SELF_APPROVAL_EXEMPT, BUSINESS_HOURS, SLA_WORKING_MINUTES } from "./domain/approvals-inbox";
 import { FLOWS, FLOW_IDS, ACC_TOPICS, AUTO_RULES } from "../web/src/staff/guideModel";
 import { QUALITY_PASS_RATE } from "./lib/productionQualityCore";
 import { PO_STATUSES } from "./lib/purchasing";
@@ -252,4 +254,93 @@ describe("دليل النظام: أسماء الأسهم والمربعات مت
       expect(check(id, nodes, f.edges.map((e) => ({ ...e, label: txt(`guide.fl.${id}.e.${e.key}`) })), (sid) => txt(`guide.fl.${id}.s.${sid}.n`), FLOW_STEP_W, FLOW_STEP_H)).toEqual([]);
     });
   }
+});
+
+describe("دليل النظام م4: ابدأ من هنا والأمان والأسئلة", () => {
+  const c4 = readFileSync(resolve(__dirname, "../web/src/copy/guide4.ts"), "utf8");
+  const c3 = readFileSync(resolve(__dirname, "../web/src/copy/guide3.ts"), "utf8");
+  const has4 = (key: string) => c4.includes(`"${key}":`);
+  const has3 = (key: string) => c3.includes(`"${key}":`);
+  const val4 = (key: string) => c4.match(new RegExp(`"${key.replace(/\./g, "\\.")}":\\s*"([^"]*)"`))?.[1] ?? "";
+  const pageRoles = new Map<string, readonly string[]>();
+  for (const d of DEPARTMENTS) for (const sf of d.subFunctions ?? []) for (const p of sf.pages ?? []) pageRoles.set(p.id, p.roles as readonly string[]);
+  const canOpen = (role: string, screenId: string) => (SCREENS.find((x) => x.id === screenId)?.pages ?? []).some((p) => (pageRoles.get(p) ?? []).includes(role));
+
+  it("كل دور في النظام ليه مجموعة واحدة بالظبط (مفيش دور بلا دليل)", () => {
+    for (const r of USER_ROLES) expect(START_GROUPS.filter((g) => g.roles.includes(r)).length, r).toBe(1);
+    for (const g of START_GROUPS) for (const r of g.roles) expect(USER_ROLES as readonly string[], `${g.id}:${r}`).toContain(r);
+  });
+
+  it("كل دور يلاقي 3 خطوات على الأقل يقدر يفتحها فعلًا (من قايمة الصلاحيات الحقيقية)", () => {
+    for (const r of USER_ROLES) {
+      const g = START_GROUPS.find((x) => x.roles.includes(r))!;
+      expect(g.steps.filter((s) => canOpen(r, s.screen)).length, r).toBeGreaterThanOrEqual(3);
+    }
+  });
+
+  it("كل خطوة بتشاور على شاشة موجودة وزرار حقيقي فيها (أو من غير زرار)، وليها نصوصها", () => {
+    for (const g of START_GROUPS) {
+      for (const f of ["t", "intro", "rhythm"]) expect(has4(`guide.st4.g.${g.id}.${f}`), `${g.id}.${f}`).toBe(true);
+      g.steps.forEach((s, i) => {
+        const sc = SCREENS.find((x) => x.id === s.screen);
+        expect(sc, `${g.id} شاشة ${s.screen}`).toBeTruthy();
+        if (s.btn) expect(sc!.buttons.some((b) => b.id === s.btn), `${g.id}.${s.screen}.${s.btn}`).toBe(true);
+        for (const f of ["do", "see", "stuck"]) expect(has4(`guide.st4.g.${g.id}.s${i + 1}.${f}`), `${g.id}.s${i + 1}.${f}`).toBe(true);
+      });
+    }
+  });
+
+  it("مفيش نص يتيم: كل مفتاح خطوة في الملف ليه خطوة", () => {
+    for (const m of c4.matchAll(/"guide\.st4\.g\.(\w+)\.s(\d+)\./g)) {
+      const g = START_GROUPS.find((x) => x.id === m[1]);
+      expect(g, m[1]).toBeTruthy();
+      expect(Number(m[2]) <= g!.steps.length, `${m[1]}.s${m[2]}`).toBe(true);
+    }
+  });
+
+  it("فصل العميل: كل خطوة ليها نص وشاشة وزرار حقيقيين", () => {
+    PORTAL_STEPS.forEach((s, i) => {
+      const sc = SCREENS.find((x) => x.id === s.screen);
+      expect(sc, s.screen).toBeTruthy();
+      expect(sc!.buttons.some((b) => b.id === s.btn), `${s.screen}.${s.btn}`).toBe(true);
+      for (const f of ["t", "do", "see", "stuck"]) expect(has4(`guide.st4.por.s${i + 1}.${f}`), `s${i + 1}.${f}`).toBe(true);
+    });
+    // كلمة سر العميل 6 حروف في الكود الفعلي وفي الشرح
+    expect(read("src/routes/portal-join.ts")).toContain('min(6, "كلمة السر 6 أحرف على الأقل")');
+    expect(val4("guide.st4.por.s2.see")).toContain("6 حروف");
+  });
+
+  it("ضوابط الأمان: كل ضابط ليه نص وشاشة وزرار حقيقيين", () => {
+    for (const s of SAFE_ITEMS) {
+      for (const f of ["t", "d"]) expect(has4(`guide.sf.${s.id}.${f}`), `${s.id}.${f}`).toBe(true);
+      const sc = SCREENS.find((x) => x.id === s.screen);
+      expect(sc, s.screen).toBeTruthy();
+      if (s.btn) expect(sc!.buttons.some((b) => b.id === s.btn), `${s.screen}.${s.btn}`).toBe(true);
+      if (s.btn) expect(has3(`guide.sc.${s.screen}.b.${s.btn}.l`)).toBe(true);
+    }
+  });
+
+  it("ادعاءات الأمان مطابقة للكود: المعفيين، المهلة وساعات العمل، سبب العكس", () => {
+    expect([...SELF_APPROVAL_EXEMPT].sort()).toEqual(["chairman", "executive_manager"]);
+    expect(val4("guide.sf.selfApprove.d")).toContain("الرئيس والمدير التنفيذي");
+    expect(SLA_WORKING_MINUTES).toBe(240);
+    expect(val4("guide.sf.sla.d")).toContain("4 ساعات عمل");
+    expect(BUSINESS_HOURS).toEqual({ startHour: 9, endHour: 17, offDay: 5 });
+    expect(val4("guide.sf.sla.d")).toContain("9 لـ5");
+    expect(val4("guide.sf.sla.d")).toContain("الجمعة");
+    expect(read("src/routes/ledger.ts")).toContain('min(3, "اكتب سبب العكس")');
+    expect(val4("guide.sf.ledger.d")).toContain("3 حروف");
+  });
+
+  it("الأسئلة الشائعة: كل سؤال ليه جواب، ومفيش سؤال زيادة في الملف", () => {
+    for (const id of FAQ_IDS) { expect(has4(`guide.fq.${id}.q`), id).toBe(true); expect(has4(`guide.fq.${id}.a`), id).toBe(true); }
+    for (const m of c4.matchAll(/"guide\.fq\.(\w+)\.q"/g)) expect(FAQ_IDS, m[1]).toContain(m[1]);
+  });
+
+  it("الدليل بيستورد نصوص م4 والتبويبات الجديدة متسجّلة", () => {
+    const g = read("web/src/staff/Guide.tsx");
+    expect(g).toContain('import "../copy/guide4"');
+    expect(g).toContain('id: "start"');
+    expect(g).toContain('id: "safe"');
+  });
 });

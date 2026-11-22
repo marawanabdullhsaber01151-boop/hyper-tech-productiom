@@ -33,6 +33,8 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+const openMap = async () => { fireEvent.click(await screen.findByRole("tab", { name: "خريطة النظام" })); };
+
 const mount = (body: unknown = LIVE, status = 200) => {
   vi.stubGlobal("fetch", vi.fn(async () => json(body, status)));
   return render(<Guide />);
@@ -41,6 +43,7 @@ const mount = (body: unknown = LIVE, status = 200) => {
 describe("دليل النظام", () => {
   it("بيعرض العنوان وخريطة الأقسام، والضغط على قسم بيوريه صفحاته", async () => {
     mount();
+    await openMap();
     expect(await screen.findByText("النظام كله في صورة واحدة")).toBeTruthy();
     expect(screen.getByText("اختار قسم من الخريطة")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "المبيعات" }));
@@ -50,6 +53,7 @@ describe("دليل النظام", () => {
 
   it("قسم مفيش فيه صفحات للدور بيقول كده بدل ما يفضل فاضي", async () => {
     mount();
+    await openMap();
     await screen.findByText("النظام كله في صورة واحدة");
     fireEvent.click(screen.getByRole("button", { name: "الجودة" }));
     expect(await screen.findByText(/مفيش صفحات ليك في القسم ده/)).toBeTruthy();
@@ -124,7 +128,7 @@ describe("دليل النظام", () => {
     mount();
     fireEvent.click(await screen.findByRole("tab", { name: "بوابة العملاء" }));
     fireEvent.click(await screen.findByRole("button", { name: "حساب العميل" }));
-    expect(await screen.findByText(/6 حروف على الأقل/)).toBeTruthy();
+    expect(await screen.findByText(/كلمة سر العميل 6 حروف على الأقل/)).toBeTruthy();
   });
 
   it("تبويب الحسابات: المفاهيم وجدول القيود التلقائية", async () => {
@@ -164,6 +168,7 @@ describe("دليل النظام على الموبايل", () => {
     window.matchMedia = ((q: string) => ({ matches: true, media: q, addEventListener() {}, removeEventListener() {}, addListener() {}, removeListener() {}, onchange: null, dispatchEvent: () => false })) as never;
     try {
       mount();
+      await openMap();
       await screen.findByText("النظام كله في صورة واحدة");
       expect(document.querySelector("svg.gd-svg")).toBeNull();
       const head = screen.getByRole("button", { name: "المبيعات" });
@@ -176,5 +181,51 @@ describe("دليل النظام على الموبايل", () => {
     } finally {
       window.matchMedia = old;
     }
+  });
+});
+
+const LIVE4: GuideLive = {
+  ...LIVE,
+  nav: [
+    { id: "x", label: "قسم", icon: "i", roles: ["chairman", "buyer"], subFunctions: [{ id: "s", label: "س", pages: [
+      { id: "approvals", label: "صندوق الاعتمادات", href: "/v2/staff/approvals", roles: ["chairman"] },
+      { id: "system-health", label: "صحة النظام", href: "/v2/staff/health", roles: ["chairman"] },
+      { id: "purchases", label: "المشتريات", href: "/v2/staff/purchases", roles: ["chairman", "buyer"] },
+    ] }] },
+  ],
+};
+
+describe("دليل النظام: ابدأ من هنا والأمان والأسئلة", () => {
+  it("ابدأ من هنا هو التبويب الأول، وبيعرض خطوات الدور بشاشاته المتاحة بس", async () => {
+    mount(LIVE4);
+    expect(await screen.findByText("ابدأ من هنا: يومك في النظام")).toBeTruthy();
+    expect(screen.getByText("الإدارة العليا: القرارات والرقابة")).toBeTruthy();
+    expect(screen.getAllByText(/صندوق الاعتمادات والإدارة|صندوق الاعتمادات وإدارتها/).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/الحسابات والقيود/)).toBeNull();
+  });
+
+  it("تغيير الدور بيغيّر المجموعة والخطوات", async () => {
+    mount(LIVE4);
+    await screen.findByText("ابدأ من هنا: يومك في النظام");
+    fireEvent.change(screen.getByRole("combobox"), { target: { value: "buyer" } });
+    expect(await screen.findByText("المشتريات")).toBeTruthy();
+    expect(screen.getByText(/الشرح بيبدأ|ابدأ من الاحتياجات/)).toBeTruthy();
+    expect(screen.queryByText("الإدارة العليا: القرارات والرقابة")).toBeNull();
+  });
+
+  it("تبويب الأمان بيعرض الضوابط ومكان التحقق، والأسئلة الشائعة بتتفتح", async () => {
+    mount(LIVE4);
+    fireEvent.click(await screen.findByRole("tab", { name: "الأمان والضوابط" }));
+    expect(await screen.findByText("ليه النظام آمن؟ ضوابط تطمّنك")).toBeTruthy();
+    expect(screen.getByText("مفيش حد يعتمد طلب هو اللي عمله")).toBeTruthy();
+    fireEvent.click(screen.getByRole("tab", { name: "سيناريوهات وقاموس" }));
+    expect(await screen.findByText("أسئلة بتتسأل كتير")).toBeTruthy();
+    expect(screen.getByText("تايه ومش عارف أفتح إيه؟")).toBeTruthy();
+  });
+
+  it("فصل العميل بيظهر تحت بوابة العملاء", async () => {
+    mount(LIVE4);
+    fireEvent.click(await screen.findByRole("tab", { name: "بوابة العملاء" }));
+    expect(await screen.findByText("للعميل على البوابة: خطوة بخطوة")).toBeTruthy();
   });
 });
