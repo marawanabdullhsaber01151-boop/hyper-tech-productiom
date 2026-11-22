@@ -11,7 +11,7 @@ import { t, type CopyKey } from "../copy";
 import { Button, EmptyState, Field, Input, InlineAlert, Select, Spinner, Tabs, useMediaQuery } from "../design/components";
 import {
   ACC_TOPICS, AUTO_RULES, FLOWS, FLOW_STEP_H, FLOW_STEP_W, flowPos, flowViewBox, type FlowId, ORDER_H, ORDER_W,
-  APPROVAL_FLOW, MAP_EDGES, NH, NW, edgeGeom, MAP_NODES, ORDER_EDGES, ORDER_POS, ORDER_STATES, RESOURCES,
+  APPROVAL_FLOW, MAP_EDGES, NH, NW, edgeGeom, edgeLabelRoom, wrapEdgeLabel, nodeLabelLines, MAP_NODES, ORDER_EDGES, ORDER_POS, ORDER_STATES, RESOURCES,
   levelOf, pagesForRole, resourceReach, roleAbilities, slaHours, tierFor, tierViews,
   type GuideLive, type GuidePolicyGroup, type Level,
 } from "./guideModel";
@@ -68,6 +68,24 @@ export function Guide() {
 export interface DNode { id: string; x: number; y: number; label: string; neg?: boolean }
 export interface DEdge { from: string; to: string; label: string; neg?: boolean }
 
+function EdgeText({ label, x, y, room }: { label: string; x: number; y: number; room: number }) {
+  const lines = wrapEdgeLabel(label, room);
+  return (
+    <text class="gd-edge-t" x={x} y={y - (lines.length - 1) * 13} text-anchor="middle">
+      {lines.map((ln, i) => <tspan key={i} x={x} dy={i === 0 ? 0 : 13}>{ln}</tspan>)}
+    </text>
+  );
+}
+
+function NodeText({ label, x, y, w }: { label: string; x: number; y: number; w: number }) {
+  const lines = nodeLabelLines(label, w);
+  return (
+    <text x={x} y={y + 5 - (lines.length - 1) * 9} text-anchor="middle">
+      {lines.map((ln, i) => <tspan key={i} x={x} dy={i === 0 ? 0 : 18}>{ln}</tspan>)}
+    </text>
+  );
+}
+
 function Diagram({ nodes, edges, w, h, vw, vh, aria, markerId, selected, onSelect, detail, pick }: {
   nodes: DNode[]; edges: DEdge[]; w: number; h: number; vw: number; vh: number; aria: string; markerId: string;
   selected: string | null; onSelect: (id: string) => void; detail: (id: string) => ComponentChildren; pick: string;
@@ -111,7 +129,7 @@ function Diagram({ nodes, edges, w, h, vw, vh, aria, markerId, selected, onSelec
             return (
               <g key={`${e.from}-${e.to}-${e.label}`} class={e.neg ? "gd-edge--cancel" : ""}>
                 <line class="gd-edge" x1={g.x1} y1={g.y1} x2={g.x2} y2={g.y2} marker-end={`url(#${markerId})`} />
-                <text class="gd-edge-t" x={g.lx} y={g.ly} text-anchor="middle">{e.label}</text>
+                <EdgeText label={e.label} x={g.lx} y={g.ly} room={edgeLabelRoom(g)} />
               </g>
             );
           })}
@@ -126,7 +144,7 @@ function Diagram({ nodes, edges, w, h, vw, vh, aria, markerId, selected, onSelec
               onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), onSelect(n.id))}
             >
               <rect x={n.x - w / 2} y={n.y - h / 2} width={w} height={h} rx="12" />
-              <text x={n.x} y={n.y + 5} text-anchor="middle">{n.label}</text>
+              <NodeText label={n.label} x={n.x} y={n.y} w={w} />
             </g>
           ))}
         </svg>

@@ -12,7 +12,7 @@ import { CANONICAL_PRODUCTION_STATUSES } from "./domain/production-lifecycle";
 import { PERMISSIONS } from "./lib/permissions";
 import { DEPARTMENTS } from "./lib/departments";
 import { USER_ROLES } from "./lib/roles";
-import { MAP_NODES, ORDER_STATES, RESOURCES, ORDER_EDGES, MAP_EDGES, APPROVAL_FLOW } from "../web/src/staff/guideModel";
+import { MAP_NODES, ORDER_STATES, RESOURCES, ORDER_EDGES, MAP_EDGES, APPROVAL_FLOW, ORDER_POS, ORDER_W, ORDER_H, NW, NH, FLOW_STEP_W, FLOW_STEP_H, flowPos, edgeGeom, edgeLabelRoom, wrapEdgeLabel, nodeLabelLines, NODE_CHAR_PX, EDGE_CHAR_PX } from "../web/src/staff/guideModel";
 
 const read = (f: string) => readFileSync(resolve(__dirname, "..", f), "utf8");
 const copyText = read("web/src/copy/guide.ts");
@@ -211,4 +211,45 @@ describe("المرحلة 3: فهرس الشاشات والأزرار", () => {
     expect(read("web/src/copy/lazy-dicts.ts")).toContain("guide3: guide3Copy");
     expect(copy3).not.toMatch(/[٠-٩]/);
   });
+});
+
+describe("دليل النظام: أسماء الأسهم والمربعات متتقصّش (من النصوص الحقيقية)", () => {
+  const files = ["guide", "guide2", "guide3"].map((f) => readFileSync(resolve(__dirname, `../web/src/copy/${f}.ts`), "utf8")).join("\n");
+  const txt = (key: string): string => {
+    const m = files.match(new RegExp(`"${key.replace(/\./g, "\\.")}":\\s*"([^"]*)"`));
+    if (!m) throw new Error(`مفيش نص: ${key}`);
+    return m[1]!;
+  };
+  type P = { x: number; y: number };
+  const check = (name: string, nodes: Array<{ id: string } & P>, edges: Array<{ from: string; to: string; label: string }>, nodeLabel: (id: string) => string, w: number, h: number) => {
+    const by = new Map(nodes.map((n) => [n.id, n]));
+    const bad: string[] = [];
+    for (const n of nodes) {
+      const lines = nodeLabelLines(nodeLabel(n.id), w);
+      if (lines.length > 2) bad.push(`${name} مربع ${n.id}: أكتر من سطرين`);
+      for (const l of lines) if (l.length * NODE_CHAR_PX > w - 8) bad.push(`${name} مربع ${n.id}: «${l}» أعرض من المربع`);
+    }
+    for (const e of edges) {
+      const g = edgeGeom(by.get(e.from)!, by.get(e.to)!, w, h, 0);
+      const room = edgeLabelRoom(g);
+      const lines = wrapEdgeLabel(e.label, room);
+      if (lines.length > 3) bad.push(`${name} سهم ${e.from}→${e.to}: ${lines.length} سطور`);
+      for (const l of lines) if (l.length * EDGE_CHAR_PX > room + 1) bad.push(`${name} سهم ${e.from}→${e.to}: «${l}» أعرض من الفراغ (${Math.round(room)}px)`);
+    }
+    return bad;
+  };
+  it("خريطة الأقسام", () => {
+    expect(check("map", MAP_NODES as never, MAP_EDGES.map((e) => ({ ...e, label: txt(`guide.edge.${e.key}`) })), (id) => txt(`guide.node.${id}`), NW, NH)).toEqual([]);
+  });
+  it("رحلة أمر البيع", () => {
+    const nodes = ORDER_STATES.map((s) => ({ id: s, ...ORDER_POS[s] }));
+    expect(check("order", nodes, ORDER_EDGES.map((e) => ({ ...e, label: txt(`guide.oe.${e.key}`) })), (id) => txt(`guide.st.${id}`), ORDER_W, ORDER_H)).toEqual([]);
+  });
+  for (const id of FLOW_IDS) {
+    it(`خريطة العملية ${id}`, () => {
+      const f = FLOWS[id];
+      const nodes = f.steps.map((s) => ({ id: s.id, ...flowPos(s) }));
+      expect(check(id, nodes, f.edges.map((e) => ({ ...e, label: txt(`guide.fl.${id}.e.${e.key}`) })), (sid) => txt(`guide.fl.${id}.s.${sid}.n`), FLOW_STEP_W, FLOW_STEP_H)).toEqual([]);
+    });
+  }
 });

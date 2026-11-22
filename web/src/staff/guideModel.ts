@@ -120,11 +120,11 @@ export const ORDER_EDGES: ReadonlyArray<{ from: OrderState; to: OrderState; key:
 ];
 export const ORDER_POS: Record<OrderState, { x: number; y: number }> = {
   paid: { x: 90, y: 90 },
-  shipped: { x: 280, y: 90 },
-  confirmed: { x: 470, y: 90 },
-  draft: { x: 690, y: 90 },
-  pending_approval: { x: 580, y: 220 },
-  cancelled: { x: 280, y: 230 },
+  shipped: { x: 300, y: 90 },
+  confirmed: { x: 510, y: 90 },
+  draft: { x: 730, y: 90 },
+  pending_approval: { x: 620, y: 220 },
+  cancelled: { x: 300, y: 230 },
 };
 
 /** خطوات تدفق الاعتماد (من أول الطلب لحد القرار) بترتيبها في الرسمة. */
@@ -220,7 +220,7 @@ export const FLOWS: Record<FlowId, FlowDef> = {
   },
 };
 
-export const FLOW_STEP_W = 150, FLOW_STEP_H = 54, FLOW_GAP_X = 200, FLOW_GAP_Y = 120, FLOW_PAD = 40;
+export const FLOW_STEP_W = 150, FLOW_STEP_H = 54, FLOW_GAP_X = 230, FLOW_GAP_Y = 120, FLOW_PAD = 40;
 /** مركز الخطوة بالـSVG: أول عمود على اليمين (الاتجاه عربي). */
 export function flowPos(step: FlowStep, cols = 4): { x: number; y: number } {
   return { x: FLOW_PAD + FLOW_STEP_W / 2 + (cols - 1 - step.col) * FLOW_GAP_X, y: FLOW_PAD + FLOW_STEP_H / 2 + step.row * FLOW_GAP_Y };
@@ -233,3 +233,30 @@ export const flowViewBox = (f: FlowDef): { w: number; h: number } => {
 /** مواضيع فصل الحسابات (نصوص guide.acc.<id>.t/.d) وجدول «الحدث ← القيد التلقائي». */
 export const ACC_TOPICS = ["entry", "reversal", "accounts", "trial", "periods", "auto", "collections", "aging", "credit"] as const;
 export const AUTO_RULES = ["sale", "unsale", "receipt", "payment", "advance"] as const;
+
+/** عرض تقريبي (بكسل) لحرف عربي في اسم السهم (خط 12px). */
+export const EDGE_CHAR_PX = 6.6;
+export const edgeTextWidth = (s: string): number => s.length * EDGE_CHAR_PX;
+/**
+ * بيقسّم اسم السهم على أكتر من سطر (بالكلمات) عشان يتّسع في الفراغ بين مربعين بدل ما يتقصّ تحت المربعات.
+ * كلمة أطول من العرض بتفضل لوحدها في سطر (والاختبار بيضمن إن ده مبيحصلش في الرسمات الفعلية).
+ */
+export function wrapEdgeLabel(text: string, maxPx: number, charPx = EDGE_CHAR_PX): string[] {
+  const words = text.split(/\s+/).filter(Boolean);
+  const lines: string[] = [];
+  let cur = "";
+  for (const w of words) {
+    const next = cur ? `${cur} ${w}` : w;
+    if (cur && next.length * charPx > maxPx) { lines.push(cur); cur = w; } else cur = next;
+  }
+  if (cur) lines.push(cur);
+  return lines.length ? lines : [text];
+}
+/** أقصى عرض متاح لاسم السهم: طول السهم الأفقي تقريبًا (السهم الرأسي الاسم جنبه فاضي). */
+export function edgeLabelRoom(g: { x1: number; y1: number; x2: number; y2: number }): number {
+  const dx = Math.abs(g.x2 - g.x1), dy = Math.abs(g.y2 - g.y1);
+  return dy > dx * 1.5 ? 140 : Math.max(46, Math.hypot(dx, dy) - 10);
+}
+/** اسم المربع (خط 15px عريض ≈ 8px للحرف): بيتقسّم لسطرين لو أعرض من المربع. */
+export const NODE_CHAR_PX = 8;
+export const nodeLabelLines = (text: string, w: number): string[] => wrapEdgeLabel(text, w - 16, NODE_CHAR_PX);
