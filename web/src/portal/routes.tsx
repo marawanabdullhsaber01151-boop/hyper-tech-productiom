@@ -2,6 +2,7 @@ import { useEffect } from "preact/hooks";
 import { t } from "../copy";
 import { EmptyState, Spinner } from "../design/components";
 import { Link, navigate, type RouteDef } from "../app/router";
+import { LazyPage } from "../app/lazyPage";
 import { bootstrap, useAuth } from "./session";
 import { Protected } from "./screens/Shell";
 import { Home } from "./screens/Home";
@@ -20,6 +21,8 @@ import { ActivationRequest } from "./screens/auth/ActivationRequest";
 import "./portal.css";
 import { Team } from "./screens/Team";
 import { Chat } from "./screens/Chat";
+
+const loadPayments = () => import("./screens/Payments").then((m) => m.Payments);
 
 /** أول ما التطبيق يفتح: بنقرأ الجلسة، وبعدها بنحوّل لـ home أو login. */
 function Entry() {
@@ -69,5 +72,6 @@ export const portalRoutes: RouteDef[] = [
   { path: "/portal/notifications", render: () => <Protected><Notifications /></Protected> },
   { path: "/portal/account", render: () => <Protected><Account /></Protected> },
   { path: "/portal/chat", render: () => <Protected perm="chat.use"><Chat /></Protected> },
+  { path: "/portal/payments", render: () => <Protected perm="payments.report"><LazyPage load={loadPayments} props={{}} /></Protected> },
   { path: "/portal/team", render: () => <Protected perm="team.view"><Team /></Protected> },
 ];

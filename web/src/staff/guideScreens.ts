@@ -58,6 +58,7 @@ export const SCREENS: readonly ScreenDef[] = [
     { id: "account", src: "lg:a.new" }, { id: "stop", src: "lg:a.stop" }, { id: "collect", src: "lg:c.new" },
     { id: "void", src: "lg:c.void" }, { id: "print", src: "lg:r.print" }, { id: "limit", src: "lg:r.cr.set" },
     { id: "autoOn", src: "lg:x.start" }, { id: "autoOff", src: "lg:x.stop" },
+    { id: "xfConfirm", src: "tr:st.confirm" }, { id: "xfReject", src: "tr:st.reject" },
   ] },
   { id: "engineering", side: "staff", pages: ["engineering"], buttons: [
     { id: "product", src: "eng:p.new" }, { id: "version", src: "eng:v.new" }, { id: "approve", src: "eng:a.approve" },
@@ -94,6 +95,7 @@ export const SCREENS: readonly ScreenDef[] = [
   ] },
   { id: "pLogin", side: "portal", pages: [], buttons: [{ id: "login", src: "p:login.submit" }, { id: "apply", src: "p:login.apply" }, { id: "applySend", src: "p:apply.send" }] },
   { id: "pShop", side: "portal", pages: [], buttons: [{ id: "add", src: "p:products.add" }, { id: "send", src: "p:cart.send" }, { id: "cancel", src: "p:orders.cancel" }, { id: "decline", src: "p:qt.decline" }] },
+  { id: "pPay", side: "portal", pages: [], buttons: [{ id: "report", src: "tr:p.new" }] },
   { id: "pTeam", side: "portal", pages: [], buttons: [{ id: "add", src: "p:team.add" }, { id: "accept", src: "p:team.req.approve" }, { id: "refuse", src: "p:team.req.reject" }, { id: "remove", src: "p:team.remove" }] },
 ];
 

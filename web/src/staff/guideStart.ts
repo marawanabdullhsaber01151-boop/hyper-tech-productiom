@@ -6,7 +6,7 @@ export interface StartStep { screen: string; btn: string }
 export interface StartGroup { id: string; roles: readonly string[]; steps: readonly StartStep[] }
 export const START_GROUPS: readonly StartGroup[] = [
   { id: "sales", roles: ["sales_manager", "online_seller", "offline_seller", "hr", "hr_manager"], steps: [{ screen: "chat", btn: "claim" }, { screen: "portalAdmin", btn: "poConfirm" }, { screen: "contacts", btn: "new" }, { screen: "quotes", btn: "send" }, { screen: "sales", btn: "new" }] },
-  { id: "management", roles: ["chairman", "executive_manager"], steps: [{ screen: "approvals", btn: "approve" }, { screen: "health", btn: "all" }, { screen: "operations", btn: "promise" }, { screen: "ledger", btn: "collect" }, { screen: "activity", btn: "views" }] },
+  { id: "management", roles: ["chairman", "executive_manager"], steps: [{ screen: "approvals", btn: "approve" }, { screen: "health", btn: "all" }, { screen: "operations", btn: "promise" }, { screen: "ledger", btn: "collect" }, { screen: "activity", btn: "views" }, { screen: "ledger", btn: "xfConfirm" }] },
   { id: "opsmgr", roles: ["operations_manager"], steps: [{ screen: "operations", btn: "claim" }, { screen: "operations", btn: "plan" }, { screen: "porders", btn: "receive" }, { screen: "approvals", btn: "approve" }, { screen: "operations", btn: "promise" }] },
   { id: "prodmgr", roles: ["production_manager"], steps: [{ screen: "preq", btn: "approve" }, { screen: "porders", btn: "receive" }, { screen: "pexec", btn: "batch" }, { screen: "planning", btn: "save" }, { screen: "approvals", btn: "approve" }] },
   { id: "supervisor", roles: ["supervisor", "production_controller"], steps: [{ screen: "porders", btn: "advance" }, { screen: "pexec", btn: "batch" }, { screen: "pexec", btn: "ncr" }, { screen: "engineering", btn: "" }] },
@@ -23,6 +23,7 @@ export const PORTAL_STEPS: readonly (StartStep & { who: "customer" | "staff" })[
   { screen: "pShop", btn: "add", who: "customer" },
   { screen: "pShop", btn: "decline", who: "customer" },
   { screen: "pTeam", btn: "add", who: "customer" },
+  { screen: "pPay", btn: "report", who: "customer" },
 ];
 export const SAFE_ITEMS: readonly { id: string; screen: string; btn: string }[] = [
   { id: "selfApprove", screen: "approvals", btn: "verify" },

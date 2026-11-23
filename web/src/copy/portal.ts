@@ -138,6 +138,7 @@ export const portalCopy = {
   "p.nav.companyOrders": "طلبات الشركة",
   "p.nav.account": "حسابي",
   "p.nav.team": "الفريق",
+  "p.nav.payments": "التحويلات",
   "p.nav.more": "المزيد",
   "p.nav.main": "التنقل الرئيسي",
   "p.nav.notifications": "الإشعارات",
