@@ -25,6 +25,22 @@ export const glPeriodsTable = pgTable("gl_periods", {
   status: text("status").notNull().default("open"),
   closedAt: timestamp("closed_at", { withTimezone: true }),
   closedByName: text("closed_by_name"),
+  closeNote: text("close_note"),
+  closedBy: integer("closed_by"),
+  reopenedAt: timestamp("reopened_at", { withTimezone: true }),
+  reopenedByName: text("reopened_by_name"),
+  reopenReason: text("reopen_reason"),
+  reopenCount: integer("reopen_count").notNull().default(0),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const glPeriodEventsTable = pgTable("gl_period_events", {
+  id: serial("id").primaryKey(),
+  periodId: integer("period_id").notNull().references(() => glPeriodsTable.id),
+  action: text("action").notNull(),
+  reason: text("reason"),
+  actorUserId: integer("actor_user_id"),
+  actorName: text("actor_name").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

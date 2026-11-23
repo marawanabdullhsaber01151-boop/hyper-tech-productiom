@@ -91,11 +91,13 @@ suite("الحسابات — ترجرات القاعدة والترحيل (Postgr
   it("القاعدة بترفض تاريخ برّه الفترة، وفترة مقفولة", async () => {
     const c = await pool.query("select id from gl_periods where year=2001 and month=1");
     expect(await sqlFails("insert into gl_journal_entries(entry_number,entry_date,period_id,description,total) values ($1,'2001-02-01',$2,'x',1)", [`U7-${stamp}`, c.rows[0].id])).toContain("GL_DATE_OUTSIDE_PERIOD");
-    await pool.query("update gl_periods set status='closed' where year=2001 and month=6");
-    expect(await rawEntry(`U8-${stamp}`, "2001-06-10", 1, [[cash, 1, 0], [sales, 0, 1]])).toContain("GL_PERIOD_CLOSED");
-    const e = await failure(post("2001-06-10", "1", "1"));
+    // فترة قديمة معزولة (2000-12) عشان قاعدة «الإقفال بالترتيب» ما تقفلش فترات الاختبار التانية
+    await pool.query("insert into gl_periods(year,month,starts_on,ends_on) values (2000,12,'2000-12-01','2000-12-31') on conflict do nothing");
+    await pool.query("update gl_periods set status='closed', closed_at=now(), closed_by_name='e2e' where year=2000 and month=12");
+    expect(await rawEntry(`U8-${stamp}`, "2000-12-10", 1, [[cash, 1, 0], [sales, 0, 1]])).toContain("GL_PERIOD_CLOSED");
+    const e = await failure(post("2000-12-10", "1", "1"));
     expect(e.code).toBe("PERIOD_CLOSED");
-    await pool.query("update gl_periods set status='open' where year=2001 and month=6");
+    await pool.query("update gl_periods set status='open', reopen_reason='e2e', reopened_at=now(), reopened_by_name='e2e' where year=2000 and month=12");
   });
 
   it("القيد المرحّل مبيتعدّلش ولا بيتمسح (قيد وسطور)، والاستثناء الوحيد posted ← reversed", async () => {

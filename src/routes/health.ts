@@ -11,6 +11,9 @@ import { assertCronAuth } from "../lib/cronAuth";
 import { sendOperationsDigest } from "../lib/operationsDigest";
 import { escalateOperationsSla } from "../lib/operationsSla";
 import { drainOutbox, purgeDoneOutbox } from "../lib/outbox";
+import { ensureCloseReminder } from "../lib/periodClose";
+import { closeDayFrom } from "../lib/periodCloseCore";
+import { loadSettingValues } from "../lib/settingsStore";
 import { runEscalations } from "../lib/humanTasks";
 import { scanStalledOrders } from "../lib/productionOversight";
 import { scanApprovalSla } from "../lib/approvalsInbox";
@@ -268,6 +271,8 @@ router.get("/cron/daily-brief", async (req, res, next) => {
     await escalateOperationsSla(new Date(), { force: true }).catch(() => undefined);
     // ملخص التشغيل اليومي (مرة في اليوم) على نفس الـcron.
     await sendOperationsDigest().catch(() => undefined);
+    // تذكير إقفال الفترة المحاسبية (يوم الإقفال من الإعدادات).
+    await db.transaction(async (tx) => ensureCloseReminder(tx, closeDayFrom((await loadSettingValues())["period.close_day"]))).catch(() => undefined);
     // وكمان بنصرّف صندوق الصادر (احتياطي لو عامل GitHub Actions اتأخر).
     await drainOutbox({ limit: 50, deadlineMs: 15_000 }).catch(() => undefined);
     res.json(await sendDailyBrief());

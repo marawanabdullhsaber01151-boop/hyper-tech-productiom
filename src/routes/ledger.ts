@@ -16,6 +16,7 @@ import { PERMISSIONS } from "../lib/permissions";
 import { writeAuditEvent } from "../lib/governance";
 import { parseIdParam } from "../lib/validate";
 import { loadSettingValues } from "../lib/settingsStore";
+import { closeDayFrom, closeDueDate, isLate } from "../lib/periodCloseCore";
 import { todayCairo } from "../lib/operationsCapacityCore";
 import { lockLedger, postJournalEntry } from "../lib/ledger";
 import {
@@ -105,8 +106,10 @@ router.get("/ledger/periods", ...view, async (_req, res, next) => {
     const values = await loadSettingValues();
     const startMonth = Number(String(values["fiscal_year_start"] ?? "01-01").slice(0, 2)) || 1;
     const today = todayCairo(new Date());
+    const closeDay = closeDayFrom(values["period.close_day"]);
     res.json({
-      items: rows.map((p) => ({ ...p, fiscalYear: fiscalYearLabel(p.startsOn, startMonth) })),
+      items: rows.map((p) => ({ ...p, fiscalYear: fiscalYearLabel(p.startsOn, startMonth), dueDate: closeDueDate(p.year, p.month, closeDay), late: isLate(p, closeDay, today) })),
+      closeDay,
       fiscalStartMonth: startMonth,
       currentFiscalYear: fiscalYearLabel(today, startMonth),
     });

@@ -3,6 +3,7 @@ import "../copy/balances";
 import { Collections } from "./Collections";
 import { Transfers } from "./Transfers";
 import { BalanceConfirmations } from "./BalanceConfirmations";
+import { PeriodsPanel, type PeriodRow } from "./PeriodsPanel";
 import { Receivables } from "./Receivables";
 import "../copy/ledger";
 import { useState } from "preact/hooks";
@@ -25,8 +26,7 @@ const cairoToday = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Ca
 
 interface Entry { id: number; entryNumber: string; entryDate: string; description: string; sourceType: string; status: string; reversalOf: number | null; total: string; createdByName: string | null }
 interface EntryDetail extends Entry { lines: Array<{ id: number; lineNo: number; accountId: number; code: string; accountName: string; debit: string; credit: string; memo: string | null }> }
-interface Period { id: number; year: number; month: number; status: string; fiscalYear: string }
-interface PeriodsRes { items: Period[]; fiscalStartMonth: number; currentFiscalYear: string }
+interface PeriodsRes { items: PeriodRow[]; closeDay: number; fiscalStartMonth: number; currentFiscalYear: string }
 interface TbRow { accountId: number; code: string; name: string; balanceDebit: string; balanceCredit: string; debit: string; credit: string }
 interface Tb { rows: TbRow[]; totalDebit: string; totalCredit: string; totalBalanceDebit: string; totalBalanceCredit: string; balanced: boolean }
 
@@ -35,7 +35,7 @@ export function Ledger() {
   const role = staffUser()?.role ?? "";
   const allowed = (FINANCE_PAGE_ROLES as readonly string[]).includes(role);
   const [tab, setTab] = useState("entries");
-  const periods = useQuery((signal) => (allowed ? api.get<PeriodsRes>("/ledger/periods", { signal }) : Promise.resolve({ items: [], fiscalStartMonth: 1, currentFiscalYear: "" } as PeriodsRes)), [allowed]);
+  const periods = useQuery((signal) => (allowed ? api.get<PeriodsRes>("/ledger/periods", { signal }) : Promise.resolve({ items: [], closeDay: 5, fiscalStartMonth: 1, currentFiscalYear: "" } as PeriodsRes)), [allowed]);
   if (!allowed) return <div class="ad-page"><InlineAlert tone="warn">{t("lg.noAccess")}</InlineAlert></div>;
   return (
     <div class="ad-page">
@@ -48,7 +48,7 @@ export function Ledger() {
         { id: "entries", label: t("lg.tab.entries"), panel: <Entries /> },
         { id: "accounts", label: t("lg.tab.accounts"), panel: <Accounts /> },
         { id: "trial", label: t("lg.tab.trial"), panel: <Trial /> },
-        { id: "periods", label: t("lg.tab.periods"), panel: <Periods data={periods.data?.items ?? []} /> },
+        { id: "periods", label: t("lg.tab.periods"), panel: <PeriodsPanel data={periods.data?.items ?? []} closeDay={periods.data?.closeDay ?? 5} onChanged={() => void periods.refetch()} /> },
         { id: "collections", label: t("lg.tab.collections"), panel: <Collections /> },
         { id: "transfers", label: t("tr.tab"), panel: <Transfers /> },
         { id: "balances", label: t("bc.tab"), panel: <BalanceConfirmations /> },
@@ -252,21 +252,6 @@ function Trial() {
         </>
       ) : null}
       <DataTable columns={cols} rows={d?.rows ?? []} rowKey={(r) => r.accountId} caption={t("lg.t.caption")} loading={q.loading} empty={<EmptyState compact title={t("lg.t.empty")} />} />
-    </div>
-  );
-}
-
-/* ---------------- الفترات ---------------- */
-function Periods({ data }: { data: Period[] }) {
-  const cols: Column<Period>[] = [
-    { key: "p", header: t("lg.p.col.period"), cell: (p) => <span class="num" dir="ltr">{p.year}-{String(p.month).padStart(2, "0")}</span>, mobile: "title" },
-    { key: "f", header: t("lg.p.col.fy"), cell: (p) => p.fiscalYear },
-    { key: "s", header: t("lg.p.col.status"), cell: (p) => <StatusPill tone={p.status === "open" ? "success" : "warn"}>{p.status === "open" ? t("lg.p.open") : t("lg.p.closed")}</StatusPill> },
-  ];
-  return (
-    <div class="ad-stack">
-      <p class="eng-muted">{t("lg.p.hint")}</p>
-      <DataTable columns={cols} rows={data} rowKey={(p) => p.id} caption={t("lg.p.caption")} empty={<EmptyState compact title={t("lg.p.empty")} />} />
     </div>
   );
 }

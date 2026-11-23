@@ -60,6 +60,7 @@ export const SCREENS: readonly ScreenDef[] = [
     { id: "autoOn", src: "lg:x.start" }, { id: "autoOff", src: "lg:x.stop" },
     { id: "xfConfirm", src: "tr:st.confirm" }, { id: "xfReject", src: "tr:st.reject" },
     { id: "bcNew", src: "bc:st.new" }, { id: "bcResolve", src: "bc:st.resolve" }, { id: "bcCancel", src: "bc:st.cancel" },
+    { id: "pcClose", src: "pc:close" }, { id: "pcReopen", src: "pc:reopen" },
   ] },
   { id: "engineering", side: "staff", pages: ["engineering"], buttons: [
     { id: "product", src: "eng:p.new" }, { id: "version", src: "eng:v.new" }, { id: "approve", src: "eng:a.approve" },
