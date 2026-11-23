@@ -46,3 +46,4 @@ export * from "./purchasing";
 export * from "./ledger";
 export * from "./payments";
 export * from "./transferReports";
+export * from "./balanceConfirmations";

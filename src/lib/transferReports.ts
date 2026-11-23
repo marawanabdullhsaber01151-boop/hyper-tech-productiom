@@ -135,7 +135,7 @@ export async function pendingCount(exec: Exec): Promise<number> {
 }
 
 /** المهمة بتتقفل في نفس معاملة القرار (completeTask بياخد executor عبر shim). */
-async function closeTask(tx: Exec, taskId: number | null, note: string, actor: TaskActor): Promise<void> {
+export async function closeTask(tx: Exec, taskId: number | null, note: string, actor: TaskActor): Promise<void> {
   if (!taskId) return;
   const shim = { execute: (q: unknown) => tx.execute(q), transaction: <T>(cb: (t: Exec) => Promise<T>) => cb(tx) };
   try {

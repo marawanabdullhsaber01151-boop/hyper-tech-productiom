@@ -14,6 +14,7 @@ function target(n: PortalNotification): string | null {
   if (n.referenceType === "portal_member") return "/portal/team";
   if (n.referenceType === "portal_price_inquiry") return "/portal/orders?tab=inquiries";
   if (n.referenceType === "transfer_report") return "/portal/payments";
+  if (n.referenceType === "balance_confirmation") return "/portal/balances";
   if (n.referenceType === "price_quote") return "/portal/orders?tab=quotes";
   return null;
 }

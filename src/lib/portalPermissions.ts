@@ -40,6 +40,7 @@ export const PORTAL_PERMISSIONS: readonly PortalPermissionDef[] = [
   { key: "inquiries.create", group: "inquiries", label: "يسأل عن سعر", description: "يبعت طلب سعر للمبيعات." },
   { key: "inquiries.view_company", group: "inquiries", label: "يشوف طلبات أسعار الشركة", description: "يشوف طلبات الأسعار بتاعة كل الموظفين.", implies: ["inquiries.create"] },
   { key: "payments.report", group: "payments", label: "يبلّغ عن تحويل", description: "يبلّغ المالية إنه حوّل فلوس ويتابع حالة التحويل." },
+  { key: "payments.confirm_balance", group: "payments", label: "يؤكد رصيد الشركة", description: "يوافق على رصيد الشركة عند طلب المالية أو يعترض عليه. ده إقرار مالي فاديه بحذر." },
   { key: "chat.use", group: "chat", label: "يتواصل مع المبيعات", description: "يستخدم المحادثة مع فريق المبيعات." },
   { key: "chat.view_company", group: "chat", label: "يراقب محادثات الشركة", description: "يشوف محادثات باقي الموظفين.", dangerous: true, implies: ["chat.use"] },
   { key: "team.view", group: "team", label: "يشوف الفريق", description: "يشوف الموظفين وأدوارهم." },
