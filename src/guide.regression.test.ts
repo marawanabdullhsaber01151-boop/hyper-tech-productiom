@@ -344,3 +344,21 @@ describe("دليل النظام م4: ابدأ من هنا والأمان وال�
     expect(g).toContain('id: "safe"');
   });
 });
+
+describe("دليل النظام: عرض المصطلحات (عيب العمود الضيّق)", () => {
+  const css = read("web/src/staff/Guide.css");
+  const tsx = read("web/src/staff/Guide.tsx");
+  it("المصطلحات بكلاس خاص مش gd-dl اللي بيتحول لشبكة عمودين", () => {
+    expect(tsx).toMatch(/<dl class="gd-card gd-gl">/);
+    expect(tsx).not.toMatch(/<dl class="gd-card gd-dl">/);
+  });
+  it("gd-dl معرّف مرة واحدة بس (تعريف مكرر كان بيكسر العرض)", () => {
+    const defs = css.split("\n").filter((l) => /^\.gd-dl\s*\{/.test(l));
+    expect(defs.length).toBe(1);
+  });
+  it("gd-gl عمود واحد (flex column) مش max-content", () => {
+    const line = css.split("\n").find((l) => /^\.gd-gl\s*\{/.test(l)) ?? "";
+    expect(line).toContain("flex-direction: column");
+    expect(line).not.toContain("max-content");
+  });
+});

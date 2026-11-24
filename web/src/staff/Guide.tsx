@@ -547,7 +547,7 @@ function Help() {
       </div>
       <h2 class="gd-h">{t("guide.gl.title")}</h2>
       <p class="gd-p">{t("guide.gl.intro")}</p>
-      <dl class="gd-card gd-dl">
+      <dl class="gd-card gd-gl">
         {GLOSSARY.map((g) => (
           <div key={g}>
             <dt>{t(k(`guide.gl.${g}.t`))}</dt>
