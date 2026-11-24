@@ -27,6 +27,7 @@ import { guide4Copy } from "./guide4";
 import { transfersCopy } from "./transfers";
 import { balancesCopy } from "./balances";
 import { periodsCopy } from "./periods";
+import { costingCopy } from "./costing";
 
 export const lazyCopies = {
   sales: salesCopy,
@@ -54,4 +55,5 @@ export const lazyCopies = {
   transfers: transfersCopy,
   balances: balancesCopy,
   periods: periodsCopy,
+  costing: costingCopy,
 } as const;

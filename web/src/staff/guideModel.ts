@@ -231,7 +231,7 @@ export const flowViewBox = (f: FlowDef): { w: number; h: number } => {
 };
 
 /** مواضيع فصل الحسابات (نصوص guide.acc.<id>.t/.d) وجدول «الحدث ← القيد التلقائي». */
-export const ACC_TOPICS = ["entry", "reversal", "accounts", "trial", "periods", "auto", "collections", "transfers", "balances", "aging", "credit"] as const;
+export const ACC_TOPICS = ["entry", "reversal", "accounts", "trial", "periods", "costing", "auto", "collections", "transfers", "balances", "aging", "credit"] as const;
 export const AUTO_RULES = ["sale", "unsale", "receipt", "payment", "advance"] as const;
 
 /** عرض تقريبي (بكسل) لحرف عربي في اسم السهم (خط 12px). */

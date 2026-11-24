@@ -4,6 +4,8 @@ import { Collections } from "./Collections";
 import { Transfers } from "./Transfers";
 import { BalanceConfirmations } from "./BalanceConfirmations";
 import { PeriodsPanel, type PeriodRow } from "./PeriodsPanel";
+import { CostingPanel } from "./CostingPanel";
+import "../copy/costing";
 import { Receivables } from "./Receivables";
 import "../copy/ledger";
 import { useState } from "preact/hooks";
@@ -53,6 +55,7 @@ export function Ledger() {
         { id: "transfers", label: t("tr.tab"), panel: <Transfers /> },
         { id: "balances", label: t("bc.tab"), panel: <BalanceConfirmations /> },
         { id: "receivables", label: t("lg.tab.receivables"), panel: <Receivables /> },
+        { id: "costing", label: t("cst.tab"), panel: <CostingPanel /> },
         { id: "valuation", label: t("lg.tab.valuation"), panel: <Valuation /> },
         { id: "auto", label: t("lg.tab.auto"), panel: <AutoPosting /> },
       ]} />
