@@ -88,7 +88,9 @@ describe("المسار والصفحة", () => {
   const route = read("src/routes/guide.ts");
   it("للقراءة بس ولأي موظف مسجّل، ومتوصّل في main", () => {
     expect(route).toContain("requireAuth");
-    expect(route.match(/router\.(get|post|put|patch|delete)\(/g)).toEqual(["router.get("]);
+    // قراءة بس: /guide/live و/guide/mine (صلاحياتي الفعلية). أي كتابة هنا ممنوعة.
+    expect(route.match(/router\.(get|post|put|patch|delete)\(/g)).toEqual(["router.get(", "router.get("]);
+    expect(route.match(/router\.get\("[^"]+", requireAuth/g)?.length).toBe(2);
     expect(read("src/main.ts")).toContain("apiRouter.use(guideRouter)");
   });
   it("الصفحة lazy ومسجلة على /staff/guide، ومتاحة من القايمة العلوية ومن Ctrl+K", () => {

@@ -23,6 +23,7 @@ import type { guideCopy } from "./guide";
 import type { guide2Copy } from "./guide2";
 import type { guide3Copy } from "./guide3";
 import type { guide4Copy } from "./guide4";
+import type { guide5Copy } from "./guide5";
 import type { transfersCopy } from "./transfers";
 import type { balancesCopy } from "./balances";
 import type { periodsCopy } from "./periods";
@@ -169,5 +170,5 @@ export const ar = {
 } as const satisfies Record<string, Msg>;
 
 /** مفاتيح الحزمة الرئيسية + نصوص الصفحات المتحمّلة بالكسل (registry.ts). النوع بس، من غير ما الملفات دي تدخل الحزمة. */
-export type LazyCopy = typeof salesCopy & typeof purchasesCopy & typeof contactsCopy & typeof operationsCopy & typeof productionCopy & typeof engineeringCopy & typeof invCopy & typeof planningCopy & typeof foundationCopy & typeof receivingCopy & typeof activityCopy & typeof approvalsCopy & typeof approvalsAdminCopy & typeof settingsCopy & typeof reportsCopy & typeof quotesCopy & typeof viewAsCopy & typeof ledgerCopy & typeof guideCopy & typeof guide2Copy & typeof guide3Copy & typeof guide4Copy & typeof transfersCopy & typeof balancesCopy & typeof periodsCopy & typeof costingCopy;
+export type LazyCopy = typeof salesCopy & typeof purchasesCopy & typeof contactsCopy & typeof operationsCopy & typeof productionCopy & typeof engineeringCopy & typeof invCopy & typeof planningCopy & typeof foundationCopy & typeof receivingCopy & typeof activityCopy & typeof approvalsCopy & typeof approvalsAdminCopy & typeof settingsCopy & typeof reportsCopy & typeof quotesCopy & typeof viewAsCopy & typeof ledgerCopy & typeof guideCopy & typeof guide2Copy & typeof guide3Copy & typeof guide4Copy & typeof guide5Copy & typeof transfersCopy & typeof balancesCopy & typeof periodsCopy & typeof costingCopy;
 export type CopyKey = keyof typeof ar | keyof LazyCopy;

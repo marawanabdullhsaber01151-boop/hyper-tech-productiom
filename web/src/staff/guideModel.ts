@@ -260,3 +260,7 @@ export function edgeLabelRoom(g: { x1: number; y1: number; x2: number; y2: numbe
 /** اسم المربع (خط 15px عريض ≈ 8px للحرف): بيتقسّم لسطرين لو أعرض من المربع. */
 export const NODE_CHAR_PX = 8;
 export const nodeLabelLines = (text: string, w: number): string[] => wrapEdgeLabel(text, w - 16, NODE_CHAR_PX);
+
+/** «صلاحياتي الفعلية» من GET /guide/mine (نفس شكل buildMine في السيرفر). */
+export interface GuideMineGrant { key: string; label: string; group: string; until: string | null; source: "override" | "delegation" }
+export interface GuideMine { role: string; extraRoles: string[]; grants: GuideMineGrant[]; blocked: Array<{ key: string; label: string; group: string; until: string | null }> }

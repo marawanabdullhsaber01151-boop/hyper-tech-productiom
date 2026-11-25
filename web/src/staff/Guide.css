@@ -89,3 +89,9 @@
 .gd-faq { border: 1px solid var(--c-border-1); border-radius: var(--r-md); background: var(--c-surface-1); padding: var(--sp-3) var(--sp-4); margin-block-end: var(--sp-2); }
 .gd-faq summary { cursor: pointer; font-weight: 700; }
 @media (max-width: 767px) { .gd-dl { grid-template-columns: 1fr; } .gd-dl dd { margin-block-end: var(--sp-2); } }
+
+/* كتالوجي (الشرح التفصيلي حسب الدور والصلاحية) */
+.gd-man { scroll-margin-block-start: var(--sp-4); }
+.gd-h4 { margin: var(--sp-2) 0 0; font-size: var(--fs-sm); color: var(--c-text-2); }
+.gd-olist, .gd-ulist { margin: 0; padding-inline-start: 1.4em; display: grid; gap: var(--sp-2); line-height: 1.9; }
+.gd-tag { margin-inline-start: var(--sp-2); padding: 1px 8px; border-radius: 999px; background: var(--c-brand-soft); color: var(--c-brand-text); font-size: var(--fs-xs); white-space: nowrap; }

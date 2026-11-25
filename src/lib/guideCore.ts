@@ -68,3 +68,63 @@ export function buildNav(depts: ReadonlyArray<{ id: string; label: string; icon:
     subFunctions: d.subFunctions.map((s) => ({ id: s.id, label: s.label, pages: s.pages.map((p) => ({ id: p.id, label: p.label, href: p.href, roles: [...p.roles] })) })),
   }));
 }
+
+/* ---------------- «صلاحياتي الفعلية» (دليل موسّع): الدور + الاستثناءات + التفويض ---------------- */
+export interface MineGrant { key: string; label: string; group: string; /** ISO أو null = دائمة */ until: string | null; source: "override" | "delegation" }
+export interface GuideMine { role: string; extraRoles: string[]; grants: MineGrant[]; blocked: Array<{ key: string; label: string; group: string; until: string | null }> }
+export interface MineOverrideRow { actionKey: string; allowed: boolean; expiresAt: Date | null }
+export interface MineDelegationRow { actionKey: string; startsAt: Date; endsAt: Date }
+export interface MineAction { label: string; group: string; defaultRoles: readonly string[] }
+
+/**
+ * اللي بيتضاف على دور الموظف دلوقتي: صلاحيات مؤقتة/دائمة (استثناءات) أو تفويضات سارية، والمسحوب منه.
+ * نفس ترتيب أولوية requirePermission: الاستثناء الصريح الأول (يمنع أو يسمح)، وبعده الدور الافتراضي، وبعده التفويض.
+ * المنتهي أو الملغي مش بيظهر (الاستعلام بيشيل الملغي، وهنا بنشيل المنتهي بالوقت).
+ */
+export function buildMine(input: {
+  role: string;
+  overrides: readonly MineOverrideRow[];
+  delegations: readonly MineDelegationRow[];
+  now: Date;
+  find: (key: string) => MineAction | undefined;
+}): GuideMine {
+  const { role, now } = input;
+  const roleSet = new Set<string>(USER_ROLES);
+  const info = (key: string) => {
+    const a = input.find(key);
+    return { label: a?.label ?? key, group: a?.group ?? "", defaults: a?.defaultRoles ?? [] };
+  };
+  const live = (d: Date | null) => d === null || d.getTime() > now.getTime();
+  const iso = (d: Date | null) => (d ? d.toISOString() : null);
+  const chair = role === "chairman";
+  const grants = new Map<string, MineGrant>();
+  const blocked = new Map<string, GuideMine["blocked"][number]>();
+  const overrideKeys = new Set<string>();
+  const extraRoles = new Set<string>();
+
+  for (const o of input.overrides) {
+    if (!live(o.expiresAt)) continue;
+    overrideKeys.add(o.actionKey);
+    const i = info(o.actionKey);
+    if (!o.allowed) {
+      if (chair) continue;
+      const prev = blocked.get(o.actionKey);
+      if (!prev || (prev.until !== null && (o.expiresAt === null || o.expiresAt.toISOString() > prev.until))) blocked.set(o.actionKey, { key: o.actionKey, label: i.label, group: i.group, until: iso(o.expiresAt) });
+      continue;
+    }
+    if (chair || i.defaults.includes(role)) continue;
+    const prev = grants.get(o.actionKey);
+    if (!prev || (prev.until !== null && (o.expiresAt === null || o.expiresAt.toISOString() > prev.until))) grants.set(o.actionKey, { key: o.actionKey, label: i.label, group: i.group, until: iso(o.expiresAt), source: "override" });
+  }
+  for (const d of input.delegations) {
+    if (d.startsAt.getTime() > now.getTime() || d.endsAt.getTime() < now.getTime()) continue;
+    if (roleSet.has(d.actionKey)) { if (d.actionKey !== role) extraRoles.add(d.actionKey); continue; }
+    if (chair || overrideKeys.has(d.actionKey)) continue;
+    const i = info(d.actionKey);
+    if (i.defaults.includes(role)) continue;
+    const prev = grants.get(d.actionKey);
+    if (!prev || (prev.until !== null && d.endsAt.toISOString() > prev.until)) grants.set(d.actionKey, { key: d.actionKey, label: i.label, group: i.group, until: d.endsAt.toISOString(), source: "delegation" });
+  }
+  const byKey = (a: { key: string }, b: { key: string }) => a.key.localeCompare(b.key);
+  return { role, extraRoles: [...extraRoles].sort(), grants: [...grants.values()].sort(byKey), blocked: [...blocked.values()].sort(byKey) };
+}

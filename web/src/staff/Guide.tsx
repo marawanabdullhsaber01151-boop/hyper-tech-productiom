@@ -2,6 +2,7 @@ import "../copy/guide";
 import "../copy/guide2";
 import "../copy/guide3";
 import "../copy/guide4";
+import "../copy/guide5";
 import type { ComponentChildren } from "preact";
 import { useMemo, useState } from "preact/hooks";
 import { api } from "../admin/api";
@@ -18,6 +19,7 @@ import {
 } from "./guideModel";
 import { GLOSSARY, SCENARIOS, SCREENS, type ScreenDef } from "./guideScreens";
 import { FAQ_IDS, groupOfRole, PORTAL_STEPS, SAFE_ITEMS, START_GROUPS } from "./guideStart";
+import { GuideMine } from "./GuideMine";
 import "./Guide.css";
 
 const k = (key: string) => key as CopyKey;
@@ -51,6 +53,7 @@ export function Guide() {
         onChange={setTab}
         tabs={[
           { id: "start", label: t("guide.tab.start"), panel: <StartHere live={live} /> },
+          { id: "mine", label: t("guide.tab.mine"), panel: <GuideMine live={live} /> },
           { id: "map", label: t("guide.tab.map"), panel: <SystemMap live={live} /> },
           { id: "roles", label: t("guide.tab.roles"), panel: <Roles live={live} /> },
           { id: "approvals", label: t("guide.tab.approvals"), panel: <Approvals live={live} /> },
