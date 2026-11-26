@@ -140,3 +140,15 @@
 .pt-btn-link { text-decoration: none; display: inline-flex; }
 .pt-timeline-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--sp-3); }
 .pt-act { display: flex; flex-direction: column; gap: var(--sp-1); padding-block-end: var(--sp-3); border-block-end: 1px solid var(--c-border); }
+
+/* دليل البوابة */
+.pg-sec { scroll-margin-top: 4rem; }
+.pg-h { font-size: 1.2rem; margin: 0; }
+.pg-h3 { font-size: 1rem; margin: 0.5rem 0 0; }
+.pg-list { margin: 0; padding-inline-start: 1.4rem; display: flex; flex-direction: column; gap: 0.4rem; line-height: 1.8; }
+.pg-index { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.pg-index a { display: inline-block; padding: 0.35rem 0.8rem; border: 1px solid var(--c-border-2); border-radius: 999px; text-decoration: none; }
+.pg-parts { margin: 0; display: flex; flex-direction: column; gap: 0.6rem; }
+.pg-parts > div { display: flex; flex-direction: column; gap: 0.15rem; padding: 0.5rem 0.75rem; border-inline-start: 3px solid var(--c-border-2); }
+.pg-parts dt { font-weight: 700; }
+.pg-parts dd { margin: 0; }

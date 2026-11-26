@@ -26,6 +26,8 @@ import { guide3Copy } from "./guide3";
 import { guide4Copy } from "./guide4";
 import { guide5Copy } from "./guide5";
 import { guide6Copy } from "./guide6";
+import { guide7Copy } from "./guide7";
+import { portalGuideCopy } from "./portalGuide";
 import { transfersCopy } from "./transfers";
 import { balancesCopy } from "./balances";
 import { periodsCopy } from "./periods";
@@ -56,6 +58,8 @@ export const lazyCopies = {
   guide4: guide4Copy,
   guide5: guide5Copy,
   guide6: guide6Copy,
+  guide7: guide7Copy,
+  portalGuide: portalGuideCopy,
   transfers: transfersCopy,
   balances: balancesCopy,
   periods: periodsCopy,

@@ -24,6 +24,7 @@ import { Chat } from "./screens/Chat";
 
 const loadPayments = () => import("./screens/Payments").then((m) => m.Payments);
 const loadBalances = () => import("./screens/Balances").then((m) => m.Balances);
+const loadGuide = () => import("./screens/PortalGuide").then((m) => m.PortalGuide);
 
 /** أول ما التطبيق يفتح: بنقرأ الجلسة، وبعدها بنحوّل لـ home أو login. */
 function Entry() {
@@ -76,4 +77,5 @@ export const portalRoutes: RouteDef[] = [
   { path: "/portal/payments", render: () => <Protected perm="payments.report"><LazyPage load={loadPayments} props={{}} /></Protected> },
   { path: "/portal/balances", render: () => <Protected perm="payments.confirm_balance"><LazyPage load={loadBalances} props={{}} /></Protected> },
   { path: "/portal/team", render: () => <Protected perm="team.view"><Team /></Protected> },
+  { path: "/portal/guide", render: () => <Protected><LazyPage load={loadGuide} props={{}} /></Protected> },
 ];

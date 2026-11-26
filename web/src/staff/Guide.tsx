@@ -4,6 +4,7 @@ import "../copy/guide3";
 import "../copy/guide4";
 import "../copy/guide5";
 import "../copy/guide6";
+import "../copy/guide7";
 import type { ComponentChildren } from "preact";
 import { useMemo, useState } from "preact/hooks";
 import { api } from "../admin/api";
@@ -22,6 +23,7 @@ import { GLOSSARY, SCENARIOS, SCREENS, type ScreenDef } from "./guideScreens";
 import { FAQ_IDS, groupOfRole, PORTAL_STEPS, SAFE_ITEMS, START_GROUPS } from "./guideStart";
 import { GuideMine } from "./GuideMine";
 import { GuideMaster } from "./GuideMaster";
+import { Fold, FoldTools } from "./GuideFold";
 import { canSeeMaster } from "./masterCatalog";
 import "./Guide.css";
 
@@ -489,9 +491,10 @@ function Screens({ live }: { live: GuideLive }) {
   };
   const shown = SCREENS.filter((s) => !needle || screenText(s).includes(needle));
   return (
-    <section class="gd-sec">
+    <section class="gd-sec" id="gd-screens">
       <h2 class="gd-h">{t("guide.sc.title")}</h2>
       <p class="gd-p">{t("guide.sc.intro")}</p>
+      <FoldTools scope="gd-screens" />
       <Field label={t("guide.sc.search")}>
         <Input type="search" value={q} onInput={(e) => setQ(val(e))} />
       </Field>
@@ -506,9 +509,7 @@ function Screens({ live }: { live: GuideLive }) {
               const opens = s.pages.map(pageOf).filter((p): p is NonNullable<ReturnType<typeof pageOf>> => Boolean(p) && (!role || p!.roles.includes(role)));
               const uniq = opens.filter((p, i) => opens.findIndex((o) => o.href === p.href) === i);
               return (
-                <article class="gd-card" key={s.id}>
-                  <h4 class="gd-h3">{t(k(`guide.sc.${s.id}.t`))} <small class="gd-muted">{t("guide.sc.count", { n: s.buttons.length })}</small></h4>
-                  <p class="gd-p">{t(k(`guide.sc.${s.id}.d`))}</p>
+                <Fold key={s.id} id={`gd-sc-${s.id}`} open={needle ? true : undefined} title={t(k(`guide.sc.${s.id}.t`))} meta={t("guide.sc.count", { n: s.buttons.length })} sub={t(k(`guide.sc.${s.id}.d`))}>
                   {uniq.length > 0 ? (
                     <p class="gd-opens"><span class="gd-muted">{t("guide.sc.opens")}:</span>{" "}
                       {uniq.map((p) => <Button key={p.href} size="sm" variant="ghost" onClick={() => (p.href.startsWith("/v2/") ? navigate(p.href.slice(3)) : (location.href = p.href))}>{p.label}</Button>)}
@@ -527,7 +528,7 @@ function Screens({ live }: { live: GuideLive }) {
                       </tbody>
                     </table>
                   </div>
-                </article>
+                </Fold>
               );
             })}
           </div>

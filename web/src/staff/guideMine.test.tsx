@@ -97,7 +97,7 @@ describe("دليل النظام: تبويب كتالوجي", () => {
     mount("supervisor", NONE);
     await openMine();
     await screen.findByRole("heading", { name: "طلبات الإنتاج" });
-    expect(screen.getAllByRole("button", { name: /اقرا شرح: أوامر الإنتاج/ }).length).toBeGreaterThan(0);
-    expect(screen.queryByRole("button", { name: /اقرا شرح: التخطيط/ })).toBeNull();
+    expect(screen.getAllByRole("button", { name: /اقرا شرح: أوامر الإنتاج/, hidden: true }).length).toBeGreaterThan(0);
+    expect(screen.queryByRole("button", { name: /اقرا شرح: التخطيط/, hidden: true })).toBeNull();
   });
 });

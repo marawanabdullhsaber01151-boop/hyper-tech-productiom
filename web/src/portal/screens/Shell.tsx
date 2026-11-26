@@ -2,7 +2,7 @@ import type { ComponentChildren } from "preact";
 import { useEffect, useState } from "preact/hooks";
 import { t } from "../../copy";
 import { Banner, Icon, IconButton, Spinner } from "../../design/components";
-import { Bell, ClipboardList, Landmark, ShieldCheck, House, MessageCircle, Package, ShoppingCart, UserRound, WifiOff, Users } from "../../design/icons";
+import { Bell, Info, ClipboardList, Landmark, ShieldCheck, House, MessageCircle, Package, ShoppingCart, UserRound, WifiOff, Users } from "../../design/icons";
 import { ErrorBoundary } from "../../app/ErrorBoundary";
 import { Link, navigate, usePath } from "../../app/router";
 import { cartStore, loadCart, useCart } from "../cart";
@@ -69,6 +69,7 @@ function Shell({ children, perm }: { children: ComponentChildren; perm?: string 
     { to: "/portal/chat", label: t("p.nav.chat"), icon: MessageCircle, badge: chatUnread || undefined, show: can("chat.use") },
     { to: "/portal/team", label: t("p.nav.team"), icon: Users, show: can("team.view") },
     { to: "/portal/account", label: t("p.nav.account"), icon: UserRound, show: true },
+    { to: "/portal/guide", label: t("p.nav.guide"), icon: Info, show: true },
   ];
 
   return (

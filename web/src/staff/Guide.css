@@ -97,3 +97,24 @@
 .gd-tag { margin-inline-start: var(--sp-2); padding: 1px 8px; border-radius: 999px; background: var(--c-brand-soft); color: var(--c-brand-text); font-size: var(--fs-xs); white-space: nowrap; }
 
 .gd-field { background: var(--c-surface-2, var(--c-surface-1)); padding: var(--sp-3); }
+
+/* عناصر الطي (فتح/قفل) في التبويبات الطويلة */
+.gd-fold { border: 1px solid var(--c-border-1); border-radius: 12px; background: var(--c-surface-1); scroll-margin-block-start: var(--sp-4); }
+.gd-fold > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-3) var(--sp-4); }
+.gd-fold > summary::-webkit-details-marker { display: none; }
+.gd-fold > summary::after { content: ""; flex: none; inline-size: 0.55em; block-size: 0.55em; border-inline-end: 2px solid var(--c-text-2); border-block-end: 2px solid var(--c-text-2); transform: rotate(45deg); transition: transform 0.15s; margin-inline-start: auto; }
+.gd-fold[open] > summary::after { transform: rotate(-135deg); }
+.gd-fold > summary:focus-visible { outline: 2px solid var(--c-accent, currentColor); outline-offset: 2px; border-radius: 12px; }
+.gd-fold__head { flex: 1 1 auto; min-inline-size: 0; display: flex; flex-direction: column; gap: 2px; }
+.gd-fold__t { margin: 0; font-size: var(--fs-md); }
+.gd-fold--l2 .gd-fold__t { font-size: var(--fs-sm); }
+.gd-fold__sub { color: var(--c-text-2); font-size: var(--fs-sm); line-height: 1.7; }
+.gd-fold__meta { flex: none; color: var(--c-text-2); background: var(--c-surface-2, var(--c-surface-1)); border: 1px solid var(--c-border-1); border-radius: 999px; padding: 1px var(--sp-2); }
+.gd-fold__body { display: flex; flex-direction: column; gap: var(--sp-3); padding: 0 var(--sp-4) var(--sp-4); }
+.gd-fold--l2 { background: var(--c-surface-2, var(--c-surface-1)); }
+.gd-fold[open] > summary { border-block-end: 1px solid var(--c-border-1); margin-block-end: var(--sp-3); }
+.gd-foldtools { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--sp-2); }
+.gd-foldtools__btns { display: flex; gap: var(--sp-2); }
+.gd-jump { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); position: sticky; inset-block-start: 0; z-index: 2; background: var(--c-bg, var(--c-surface-1)); padding-block: var(--sp-2); }
+.gd-jump__chip { font: inherit; cursor: pointer; color: var(--c-text-1); background: var(--c-surface-1); border: 1px solid var(--c-border-1); border-radius: 999px; padding: 2px var(--sp-3); }
+.gd-jump__chip:hover { border-color: var(--c-text-2); }

@@ -1,3 +1,4 @@
+import { useState } from "preact/hooks";
 import { t } from "../../copy";
 import { Button, Card, EmptyState, InlineAlert } from "../../design/components";
 import { Link, navigate } from "../../app/router";
@@ -9,9 +10,11 @@ import { useCart } from "../cart";
 import type { ChannelsInfo, OrderBatch, Paged } from "../types";
 import { BatchCard, reorderBatch } from "./Orders";
 import { ListSkeleton, LoadError } from "./shared";
+import { guideSeen, markGuideSeen } from "../guideSeen";
 
 export function Home() {
   const auth = useAuth();
+  const [welcomeHidden, setWelcomeHidden] = useState(false);
   const cart = useCart();
   const canOrders = can("orders.view_own") || can("orders.view_company");
   const orders = useQuery((signal) => (canOrders ? api.get<Paged<OrderBatch>>("/portal/my-orders", { query: { scope: "mine", limit: 3 }, signal }) : Promise.resolve(null)), []);
@@ -30,6 +33,20 @@ export function Home() {
         <h1 class="pt-hello__name">{t("p.home.hello", { name: auth.customer?.fullName?.split(" ")[0] ?? "" })}</h1>
       </div>
       <div class="pt-alerts">
+        {!welcomeHidden && !guideSeen(auth.member?.id) ? (
+          <InlineAlert
+            tone="info"
+            title={t("p.guide.welcome.title")}
+            action={
+              <>
+                <Button size="sm" onClick={() => navigate("/portal/guide")}>{t("p.guide.welcome.open")}</Button>
+                <Button size="sm" variant="ghost" onClick={() => { markGuideSeen(auth.member?.id); setWelcomeHidden(true); }}>{t("p.guide.welcome.dismiss")}</Button>
+              </>
+            }
+          >
+            {t("p.guide.welcome.body")}
+          </InlineAlert>
+        ) : null}
         {auth.mustChangePassword ? (
           <InlineAlert tone="warn" title={t("p.mustChange.title")} action={<Button size="sm" onClick={() => navigate("/portal/account?tab=security")}>{t("p.mustChange.action")}</Button>}>
             {t("p.mustChange.body")}

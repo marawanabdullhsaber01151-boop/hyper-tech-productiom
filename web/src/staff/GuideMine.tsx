@@ -1,6 +1,7 @@
 import "../copy/guide";
 import "../copy/guide3";
 import "../copy/guide5";
+import "../copy/guide7";
 import { api } from "../admin/api";
 import { staffUser } from "../admin/session";
 import { useQuery } from "../api/hooks";
@@ -8,29 +9,27 @@ import { navigate } from "../app/router";
 import { t, type CopyKey } from "../copy";
 import { Button, EmptyState, InlineAlert, Spinner } from "../design/components";
 import type { GuideLive, GuideMine as Mine } from "./guideModel";
+import { Fold, FoldTools, JumpBar, jumpTo } from "./GuideFold";
 import { gateOpen, manualCatalog, MANUALS, type CatalogEntry, type Viewer } from "./guideManual";
 
 const k = (key: string) => key as CopyKey;
 const day = (iso: string) => new Date(iso).toLocaleDateString("en-GB");
 const untilText = (iso: string | null) => (iso ? t("guide.mine.until", { d: day(iso) }) : t("guide.mine.perm"));
 
-function ManualCard({ e, viewer, shown }: { e: CatalogEntry; viewer: Viewer; shown: ReadonlySet<string> }) {
+function ManualCard({ e, viewer, shown, open }: { e: CatalogEntry; viewer: Viewer; shown: ReadonlySet<string>; open: boolean }) {
   const m = e.manual;
   const steps = m.steps.filter((x) => gateOpen(x, viewer));
   const parts = m.parts.filter((x) => gateOpen(x, viewer));
   const viaGrant = (g: { only?: readonly string[]; grant?: readonly string[] }) => Boolean(g.grant) && !g.only?.some((r) => viewer.roles.includes(r));
-  const go = (id: string) => document.getElementById(`gd-man-${id}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  const go = (id: string) => jumpTo(`gd-man-${id}`);
   return (
-    <article class="gd-card gd-man" id={`gd-man-${m.id}`}>
-      <h3 class="gd-h3">{t(k(`guide.man.${m.id}.t`))}</h3>
+    <Fold id={`gd-man-${m.id}`} open={open} title={t(k(`guide.man.${m.id}.t`))} sub={t(k(`guide.man.${m.id}.what`))} meta={t("guide.fold.steps", { n: steps.length })}>
       {e.via === "grant" ? <InlineAlert tone="info">{t("guide.mine.viaGrant")}</InlineAlert> : null}
       {e.opens.length > 0 ? (
         <p class="gd-opens">
           {e.opens.map((p) => <Button key={p.href} size="sm" variant="ghost" onClick={() => (p.href.startsWith("/v2/") ? navigate(p.href.slice(3)) : (location.href = p.href))}>{t("guide.mine.opens")}: {p.label}</Button>)}
         </p>
       ) : null}
-      <h4 class="gd-h4">{t("guide.mine.what")}</h4>
-      <p class="gd-p">{t(k(`guide.man.${m.id}.what`))}</p>
       <h4 class="gd-h4">{t("guide.mine.steps")}</h4>
       <ol class="gd-olist">
         {steps.map((x) => (
@@ -82,7 +81,7 @@ function ManualCard({ e, viewer, shown }: { e: CatalogEntry; viewer: Viewer; sho
           </ul>
         </>
       ) : null}
-    </article>
+    </Fold>
   );
 }
 
@@ -100,7 +99,7 @@ export function GuideMine({ live }: { live: GuideLive }) {
   const shown = new Set(entries.map((e) => e.manual.id));
   const roleLabel = (id: string) => live.roles.find((r) => r.id === id)?.label ?? id;
   return (
-    <section class="gd-sec">
+    <section class="gd-sec" id="gd-mine">
       <h2 class="gd-h">{t("guide.mine.title")}</h2>
       <p class="gd-p">{t("guide.mine.intro")}</p>
       {q.error ? <InlineAlert tone="warn">{t("guide.mine.loadFail")}</InlineAlert> : null}
@@ -125,7 +124,9 @@ export function GuideMine({ live }: { live: GuideLive }) {
           </>
         ) : null}
       </div>
-      {entries.length === 0 ? <EmptyState title={t("guide.mine.empty")} /> : entries.map((e) => <ManualCard key={e.manual.id} e={e} viewer={viewer} shown={shown} />)}
+      {entries.length > 0 ? <FoldTools scope="gd-mine" /> : null}
+      <JumpBar items={entries.map((e) => ({ id: `gd-man-${e.manual.id}`, label: t(k(`guide.man.${e.manual.id}.t`)) }))} />
+      {entries.length === 0 ? <EmptyState title={t("guide.mine.empty")} /> : entries.map((e) => <ManualCard key={e.manual.id} e={e} viewer={viewer} shown={shown} open={entries.length <= 2} />)}
     </section>
   );
 }
