@@ -95,3 +95,5 @@
 .gd-h4 { margin: var(--sp-2) 0 0; font-size: var(--fs-sm); color: var(--c-text-2); }
 .gd-olist, .gd-ulist { margin: 0; padding-inline-start: 1.4em; display: grid; gap: var(--sp-2); line-height: 1.9; }
 .gd-tag { margin-inline-start: var(--sp-2); padding: 1px 8px; border-radius: 999px; background: var(--c-brand-soft); color: var(--c-brand-text); font-size: var(--fs-xs); white-space: nowrap; }
+
+.gd-field { background: var(--c-surface-2, var(--c-surface-1)); padding: var(--sp-3); }
