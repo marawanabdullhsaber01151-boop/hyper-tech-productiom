@@ -48,6 +48,7 @@ const ALWAYS_PROTECTED = [
   "sod_rules", // قواعد فصل المهام (مين يقدر يعتمد اللي هو نفسه أنشأه)
   "foundation_state_transitions", // قواعد أداة اختبار انتقال الحالة
   "delivery_method_rules", // قاعدة التوصيل الافتراضية
+  "warehouses", // المخازن الافتراضية التلاتة (هجرة 0110): من غيرها أي حركة مخزون بتفشل (WH_NO_DEFAULT)
 ];
 
 function parseArgs(argv) {

@@ -14,6 +14,8 @@ import {
   salesOrderItemsTable,
   salesOrdersTable,
   inventoryItemsTable,
+  warehousesTable,
+  stockBalancesTable,
   contactsTable,
   appStateTable,
   systemSettingsTable,
@@ -36,7 +38,11 @@ type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
  */
 const BACKUP_TABLES: readonly { name: string; table: any }[] = [
   { name: "contacts", table: contactsTable },
+  // المخازن مابتتمسحش في المسح الشامل (بيانات أساسية فيها المخازن الافتراضية)، فبتتدرج بـ onConflictDoNothing
+  { name: "warehouses", table: warehousesTable },
   { name: "inventory_items", table: inventoryItemsTable },
+  // أرصدة المخازن: بعد إدراج الأصناف (التريجر حط رصيدها في المخزن الافتراضي)، فبنفضّي الأرصدة وندرج اللي في الملف
+  { name: "stock_balances", table: stockBalancesTable },
   { name: "sales_orders", table: salesOrdersTable },
   { name: "sales_order_items", table: salesOrderItemsTable },
   { name: "bom_recipes", table: bomRecipesTable },
@@ -129,7 +135,9 @@ export async function importAllTables(
         }
         return clean;
       });
-      await tx.insert(table).values(restored);
+      if (name === "stock_balances") await tx.execute(sql`DELETE FROM stock_balances`);
+      if (name === "warehouses") await tx.insert(table).values(restored).onConflictDoNothing();
+      else await tx.insert(table).values(restored);
       importSummary[name] = restored.length;
 
       // ✅ إعادة ضبط الـ sequence بتاع الـ id بعد إدراج قيم صريحة، وإلا أي

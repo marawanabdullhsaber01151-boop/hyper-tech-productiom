@@ -11,6 +11,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { z } from "zod";
 import { inventoryItemsTable } from "./inventory";
+import { warehousesTable } from "./warehouses";
 
 export const stockMovementsTable = pgTable(
   "stock_movements",
@@ -19,6 +20,8 @@ export const stockMovementsTable = pgTable(
     inventoryItemId: integer("inventory_item_id")
       .notNull()
       .references(() => inventoryItemsTable.id),
+    // المخزن اللي الحركة حصلت فيه (هجرة 0110). لو اتبعتت فاضية القاعدة بتحط الافتراضي لفئة الصنف.
+    warehouseId: integer("warehouse_id").references(() => warehousesTable.id),
     movementType: text("movement_type").notNull(),
     qty: numeric("qty", { precision: 12, scale: 3 }).notNull(),
     referenceType: text("reference_type"),

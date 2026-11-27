@@ -14,7 +14,8 @@ import {
   requirePermission,
 } from "../middleware/auth";
 import { parseIdParam } from "../lib/validate";
-import { applyStockMovement } from "../lib/stock";
+import { applyStockMovement, balanceIn, bumpBalance, defaultWarehouseId } from "../lib/stock";
+import { toMilli } from "../lib/warehouseCore";
 import { moveToTrash } from "../lib/trash";
 import { PERMISSIONS } from "../lib/permissions";
 import { assertReferencedMovement } from "../lib/phase0";
@@ -149,15 +150,19 @@ router.delete(
           );
         }
 
-        const currentQty = Number(item.qty);
-        const moveQty = Number(movement.qty);
+        // الأثر بيتعكس على نفس المخزن اللي الحركة حصلت فيه (مش على الإجمالي)
+        const whId = movement.warehouseId ?? (await defaultWarehouseId(tx, item.category));
+        const currentMilli = toMilli(await balanceIn(tx, item.id, whId));
+        const moveMilli = toMilli(movement.qty);
+        const currentQty = currentMilli / 1000;
+        const moveQty = moveMilli / 1000;
         // عكس الأثر: حركة "وارد" بتترجع بخصم الكمية، وحركة "منصرف" بترجع الكمية للمخزون
-        const reversedQty =
+        const reversedMilli =
           movement.movementType === "in" ?
-            currentQty - moveQty
-          : currentQty + moveQty;
+            currentMilli - moveMilli
+          : currentMilli + moveMilli;
 
-        if (reversedQty < 0) {
+        if (reversedMilli < 0) {
           throw Object.assign(
             new Error(
               `تعذّر حذف الحركة: الكمية الحالية لصنف "${item.name}" (${currentQty}) أقل من كمية الحركة (${moveQty}) — على الأغلب تم صرف جزء منها بعد هذه الحركة`,
@@ -166,10 +171,7 @@ router.delete(
           );
         }
 
-        await tx
-          .update(inventoryItemsTable)
-          .set({ qty: String(reversedQty), updatedAt: new Date() })
-          .where(eq(inventoryItemsTable.id, item.id));
+        await bumpBalance(tx, item.id, whId, movement.movementType === "in" ? -moveMilli : moveMilli);
 
         await moveToTrash(
           tx,

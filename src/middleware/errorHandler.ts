@@ -6,6 +6,7 @@ import { ZodError } from "zod";
 import { logger } from "../lib/logger";
 import { failure } from "../contracts/api-response";
 import { invoiceGuardOf } from "../lib/invoiceGuard";
+import { warehouseGuardOf } from "../lib/warehouseGuard";
 import { isHttpError } from "../contracts/errors";
 import { recordErrorEvent } from "../lib/errorEvents";
 
@@ -81,6 +82,13 @@ export function errorHandler(
   const guard = invoiceGuardOf(err);
   if (guard) {
     res.status(409).json(failure(guard.code, guard.message));
+    return;
+  }
+
+  // ترجرات المخازن (هجرة 0110): نوع مخزن غلط، مخزن موقوف أو افتراضي، رصيد سالب.
+  const whGuard = warehouseGuardOf(err);
+  if (whGuard) {
+    res.status(409).json(failure(whGuard.code, whGuard.message));
     return;
   }
 

@@ -15,8 +15,9 @@ const core = read("src/lib/invoiceSealCore.ts");
 describe("الهجرة 0109", () => {
   it("آخر هجرة وبعد 0108 من غير فجوة", () => {
     const files = readdirSync(resolve(__dirname, "../migrations")).filter((f) => /^\d{4}_/.test(f)).sort();
-    expect(files.at(-1)).toBe("0109_sales_invoices.sql");
-    expect(files.at(-2)).toMatch(/^0108_/);
+    const i = files.indexOf("0109_sales_invoices.sql");
+    expect(i > 0).toBe(true);
+    expect(files[i - 1]).toMatch(/^0108_/);
   });
   it("رقم الفاتورة وأمر البيع فريدين، والختم 64 hex، وفيه Rollback", () => {
     expect(mig).toMatch(/"invoice_number" text NOT NULL UNIQUE/);

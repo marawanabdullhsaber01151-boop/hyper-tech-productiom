@@ -29,7 +29,7 @@ const { Pool } = pkg;
 const dryRun = process.argv.includes("--dry-run");
 const CONFIRM_PHRASE = "امسح العملاء";
 
-const PROTECTED = new Set(["system_users", "system_settings", "_migrations_applied", "phase0_number_sequences", "approval_policies", "sod_rules", "foundation_state_transitions", "delivery_method_rules", "inventory_items", "login_sessions", "app_state"]);
+const PROTECTED = new Set(["system_users", "system_settings", "_migrations_applied", "phase0_number_sequences", "approval_policies", "sod_rules", "foundation_state_transitions", "delivery_method_rules", "inventory_items", "warehouses", "stock_balances", "login_sessions", "app_state"]);
 
 const q = (name) => `"${String(name).replace(/"/g, '""')}"`;
 const w = (table) => q(`w_${table}`);
@@ -185,8 +185,8 @@ async function main() {
 
     // المخزون: عكس أثر الحركات
     const stockSql = tracked.has("stock_movements")
-      ? await client.query(`select inventory_item_id, sum(case movement_type when 'out' then qty else -qty end) as delta
-                            from stock_movements where id in (select id from ${w("stock_movements")}) group by 1 having sum(case movement_type when 'out' then qty else -qty end) <> 0`)
+      ? await client.query(`select inventory_item_id, warehouse_id, sum(case movement_type when 'out' then qty else -qty end) as delta
+                            from stock_movements where id in (select id from ${w("stock_movements")}) group by 1, 2 having sum(case movement_type when 'out' then qty else -qty end) <> 0`)
       : { rows: [] };
     if (stockSql.rows.length) log(`\nالمخزون: هيتعدّل ${stockSql.rows.length} صنف (الحركات المرتبطة بالطلبات بتتعكس).`);
 
@@ -206,7 +206,9 @@ async function main() {
 
     /* ---------- التنفيذ ---------- */
     for (const row of stockSql.rows) {
-      await client.query(`update inventory_items set qty = qty + $1::numeric, updated_at = now() where id = $2`, [row.delta, row.inventory_item_id]);
+      // الأثر بيتعكس على رصيد نفس المخزن (إجمالي الصنف بيتحدّث بتريجر القاعدة)
+      await client.query(`insert into stock_balances (item_id, warehouse_id) values ($1, $2) on conflict (item_id, warehouse_id) do nothing`, [row.inventory_item_id, row.warehouse_id]);
+      await client.query(`update stock_balances set qty = qty + $1::numeric, updated_at = now() where item_id = $2 and warehouse_id = $3`, [row.delta, row.inventory_item_id, row.warehouse_id]);
     }
     for (const e of nullOuts.values()) {
       await client.query(`update ${q(e.child)} set ${q(e.col)} = null where ${q(e.col)} in (select id from ${w(e.parent)})`);

@@ -498,6 +498,21 @@ const DEFS: CheckDef[] = [
     },
   },
 
+  {
+    id: "stock_balance_mismatch",
+    group: "stock",
+    title: "إجمالي الصنف مختلف عن مجموع أرصدة المخازن",
+    run: async () => {
+      const r = await rows<{ name: string; qty: string; bq: string }>(sql`
+        SELECT i.name, i.qty::text, COALESCE(b.q, 0)::text AS bq FROM inventory_items i
+        LEFT JOIN (SELECT item_id, sum(qty) q, sum(reserved_qty) r, sum(quarantine_qty) k FROM stock_balances GROUP BY item_id) b ON b.item_id = i.id
+        WHERE i.qty <> COALESCE(b.q, 0) OR i.reserved_qty <> COALESCE(b.r, 0) OR i.quarantine_qty <> COALESCE(b.k, 0)
+        ORDER BY i.id DESC LIMIT 50`);
+      if (!r.length) return { status: "ok", message: "إجمالي كل صنف = مجموع أرصدته في المخازن." };
+      return { status: "bad", message: `${countWord(r.length, { one: "صنف", two: "صنفين", few: "أصناف", many: "صنف" })} إجماليه مش مساوي لمجموع أرصدته في المخازن، وده معناه إن حد عدّل الرصيد من برّه النظام.`, action: "بلّغ المهندس يراجع الصنف قبل ما تكمل حركات عليه.", count: r.length, examples: r.map((x) => `${x.name}: إجمالي ${x.qty}، مجموع المخازن ${x.bq}`), href: "/v2/staff/stock" };
+    },
+  },
+
   // ───────── الأخطاء ─────────
   {
     id: "recent_errors",

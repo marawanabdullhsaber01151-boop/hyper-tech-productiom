@@ -1,6 +1,7 @@
 /** @format */
 
 export * from "./inventory";
+export * from "./warehouses";
 export * from "./contacts";
 export * from "./sales";
 export * from "./production";
