@@ -1,9 +1,11 @@
+import "../copy/eInvoice";
 import "../copy/transfers";
 import "../copy/balances";
 import { Collections } from "./Collections";
 import { Transfers } from "./Transfers";
 import { BalanceConfirmations } from "./BalanceConfirmations";
 import { PeriodsPanel, type PeriodRow } from "./PeriodsPanel";
+import { InvoicesPanel } from "./InvoicesPanel";
 import { CostingPanel } from "./CostingPanel";
 import "../copy/costing";
 import { Receivables } from "./Receivables";
@@ -51,6 +53,7 @@ export function Ledger() {
         { id: "accounts", label: t("lg.tab.accounts"), panel: <Accounts /> },
         { id: "trial", label: t("lg.tab.trial"), panel: <Trial /> },
         { id: "periods", label: t("lg.tab.periods"), panel: <PeriodsPanel data={periods.data?.items ?? []} closeDay={periods.data?.closeDay ?? 5} onChanged={() => void periods.refetch()} /> },
+        { id: "invoices", label: t("ei.tab"), panel: <InvoicesPanel /> },
         { id: "collections", label: t("lg.tab.collections"), panel: <Collections /> },
         { id: "transfers", label: t("tr.tab"), panel: <Transfers /> },
         { id: "balances", label: t("bc.tab"), panel: <BalanceConfirmations /> },

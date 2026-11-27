@@ -31,6 +31,7 @@ import { portalGuideCopy } from "./portalGuide";
 import { transfersCopy } from "./transfers";
 import { balancesCopy } from "./balances";
 import { periodsCopy } from "./periods";
+import { eInvoiceCopy } from "./eInvoice";
 import { costingCopy } from "./costing";
 
 export const lazyCopies = {
@@ -63,5 +64,6 @@ export const lazyCopies = {
   transfers: transfersCopy,
   balances: balancesCopy,
   periods: periodsCopy,
+  eInvoice: eInvoiceCopy,
   costing: costingCopy,
 } as const;

@@ -5,6 +5,7 @@ import { randomBytes } from "node:crypto";
 import { ZodError } from "zod";
 import { logger } from "../lib/logger";
 import { failure } from "../contracts/api-response";
+import { invoiceGuardOf } from "../lib/invoiceGuard";
 import { isHttpError } from "../contracts/errors";
 import { recordErrorEvent } from "../lib/errorEvents";
 
@@ -73,6 +74,13 @@ export function errorHandler(
         message: "لا يمكن إجراء هذه العملية — يوجد ارتباط بسجلات أخرى",
       },
     });
+    return;
+  }
+
+  // ترجرات الفاتورة (هجرة 0109): أمر عليه فاتورة صادرة مقفول، والفاتورة نفسها ثابتة.
+  const guard = invoiceGuardOf(err);
+  if (guard) {
+    res.status(409).json(failure(guard.code, guard.message));
     return;
   }
 

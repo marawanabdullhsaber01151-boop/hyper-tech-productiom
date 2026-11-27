@@ -33,6 +33,7 @@ const loadEngineering = () => import("../staff/Engineering").then((m) => m.Engin
 const loadStock = () => import("../staff/Stock").then((m) => m.Stock as ComponentType<{ key?: string }>);
 const loadTasks = () => import("../staff/Tasks").then((m) => m.Tasks as ComponentType<{ key?: string }>);
 const loadGuide = () => import("../staff/Guide").then((m) => m.Guide as ComponentType<Record<string, never>>);
+const loadVerify = () => import("../staff/Verify").then((m) => m.Verify as ComponentType<Record<string, never>>);
 const loadHealth = () => import("../staff/SystemHealth").then((m) => m.SystemHealth as ComponentType<Record<string, never>>);
 
 /** صفحات الموظفين: كلها بتتعرض جوّه غلاف واحد (سايدبار + هيدر). أي صفحة جديدة بتتحط هنا. */
@@ -62,7 +63,7 @@ export const staffRoutes: RouteDef[] = [
 ];
 
 /** الدخول والبوابة بره الغلاف. */
-export const routes: RouteDef[] = [{ path: "/login", render: () => <Login /> }, ...portalRoutes, ...staffRoutes];
+export const routes: RouteDef[] = [{ path: "/login", render: () => <Login /> }, { path: "/verify", render: () => <LazyPage load={loadVerify} props={{}} /> }, ...portalRoutes, ...staffRoutes];
 
 const isStaffPath = (p: string) => p === "/staff" || p.startsWith("/staff/") || p === "/admin" || p.startsWith("/admin/");
 

@@ -8,6 +8,8 @@ import { Ban, Pencil, Printer, Trash } from "../design/icons";
 import { formatDate, formatDateTime, formatMoney, formatNumber } from "../lib/format";
 import { useAct } from "../admin/act";
 import { printInvoice } from "./salesPrint";
+import { InvoiceBox, type InvoiceInfo } from "./InvoiceBox";
+import { isInvoiceable } from "./invoiceCore";
 import { STATUS_TONE, allowedNext, isOverdue, isSalesStatus, moveNotice, overdueDays, primaryNext, stockEffects, type SalesOrder, type SalesStatus } from "./salesCore";
 
 export const statusLabel = (s: string) => (isSalesStatus(s) ? t(`sales.status.${s}` as CopyKey) : s);
@@ -60,12 +62,16 @@ export function SalesDetail({ id, role, customerName, onClose, onChanged, onEdit
   const [move, setMove] = useState<SalesStatus | null>(null);
   const [del, setDel] = useState(false);
   const o = q.data;
+  // الفاتورة بتتجاب للأوامر القابلة للتفويتر بس؛ غير كده مفيش طلب زيادة.
+  const eligible = !!o && isInvoiceable(o.status);
+  const inv = useQuery((signal) => (eligible ? api.get<InvoiceInfo>(`/invoices/by-order/${id}`, { signal }) : Promise.resolve(null)), [id, o?.status]);
+  const invoiced = !!inv.data?.invoice;
 
   const isOnline = o?.channel === "website";
   const sellerOnline = role === "online_seller";
   const canMove = !!o && allowedNext(o.status).length > 0;
-  const canEdit = !!o && !isOnline && !sellerOnline && (o.status === "draft" || o.status === "confirmed");
-  const canDelete = !!o && o.status !== "pending_approval" && (isOnline ? role === "chairman" : !sellerOnline);
+  const canEdit = !!o && !invoiced && !isOnline && !sellerOnline && (o.status === "draft" || o.status === "confirmed");
+  const canDelete = !!o && !invoiced && o.status !== "pending_approval" && (isOnline ? role === "chairman" : !sellerOnline);
   const next = o ? primaryNext(o.status) : null;
   const overdue = !!o && isOverdue(o);
 
@@ -120,7 +126,7 @@ export function SalesDetail({ id, role, customerName, onClose, onChanged, onEdit
               {next && canMove ? <Button onClick={() => setMove(next)}>{t(`sales.act.${next}` as CopyKey)}</Button> : null}
               {canEdit ? <Button variant="secondary" icon={Pencil} onClick={() => onEdit(o)}>{t("sales.act.edit")}</Button> : null}
               <Button variant="secondary" icon={Printer} onClick={print}>{t("sales.act.print")}</Button>
-              {allowedNext(o.status).includes("cancelled") ? <Button variant="ghost" icon={Ban} onClick={() => setMove("cancelled")}>{t("sales.act.cancelled")}</Button> : null}
+              {!invoiced && allowedNext(o.status).includes("cancelled") ? <Button variant="ghost" icon={Ban} onClick={() => setMove("cancelled")}>{t("sales.act.cancelled")}</Button> : null}
               {canDelete ? <Button variant="ghost" icon={Trash} onClick={() => setDel(true)}>{t("sales.act.delete")}</Button> : null}
             </div>
           ) : undefined
@@ -182,6 +188,7 @@ export function SalesDetail({ id, role, customerName, onClose, onChanged, onEdit
               <span>{t("sales.total")}</span>
               <strong>{formatMoney(Number(o.total))}</strong>
             </div>
+            {inv.data ? <InvoiceBox orderId={o.id} orderNumber={o.orderNumber} role={role} info={inv.data} onIssued={() => void inv.refetch()} /> : null}
           </div>
         ) : null}
       </Drawer>

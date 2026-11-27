@@ -1,0 +1,5 @@
+.ev-page { max-inline-size: 32rem; margin: var(--sp-6, 2rem) auto; padding: 0 var(--sp-4, 1rem); display: grid; gap: var(--sp-4, 1rem); }
+.ev-title { font-size: var(--fs-2xl); margin: 0; }
+.ev-facts { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-3); margin: 0; padding: var(--sp-3); background: var(--c-surface-2); border-radius: var(--r-md); }
+.ev-facts dt { font-size: var(--fs-xs); color: var(--c-text-3); }
+.ev-facts dd { margin: 0; font-weight: 600; }
