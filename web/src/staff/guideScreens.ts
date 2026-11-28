@@ -43,6 +43,10 @@ export const SCREENS: readonly ScreenDef[] = [
     { id: "new", src: "inv:new" }, { id: "move", src: "inv:move.save" }, { id: "count", src: "inv:count.save" },
     { id: "export", src: "inv:mv.export" }, { id: "print", src: "inv:act.print" },
   ] },
+  { id: "warehouses", side: "staff", pages: ["wh-raw-all", "wh-wip-all", "wh-finished-all"], buttons: [
+    { id: "new", src: "wh:new" }, { id: "rename", src: "wh:rename" }, { id: "keepers", src: "wh:keepers.edit" },
+    { id: "stop", src: "wh:stop" }, { id: "export", src: "wh:export" },
+  ] },
   { id: "purchases", side: "staff", pages: ["purchases", "purchases-receive"], buttons: [
     { id: "new", src: "po:new" }, { id: "submit", src: "po:act.submit" }, { id: "approve", src: "po:act.approve" },
     { id: "reject", src: "po:act.reject" }, { id: "send", src: "po:act.send" }, { id: "cancel", src: "po:act.cancel" },

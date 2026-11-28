@@ -1,3 +1,4 @@
+import "../copy/warehouses";
 import "../copy/purchases";
 import "../copy/sales";
 import { useState } from "preact/hooks";
@@ -9,6 +10,7 @@ import { Button, ConfirmDialog, Dialog, Drawer, Field, InlineAlert, Input, Skele
 import { Ban, Check, Package, Pencil, Printer, Send, Undo2 } from "../design/icons";
 import { formatDate, formatMoney, formatNumber } from "../lib/format";
 import { printPo } from "./purchasePrint";
+import { WarehousePick } from "./WarehousePick";
 import { PO_TONE, allowedMoves, canEditOrder, canReceiveOrder, isPoStatus, lateDays, primaryMove, receiptCheck, remaining, type PoFull, type PoStatus } from "./purchasingCore";
 
 export const poStatusLabel = (s: string) => (isPoStatus(s) ? t(`po.status.${s}` as CopyKey) : s);
@@ -164,13 +166,14 @@ function ReceiveDialog({ order, onClose, onDone }: { order: PoFull; onClose: () 
   const act = useAct();
   const [input, setInput] = useState<Record<number, string>>({});
   const [notes, setNotes] = useState("");
+  const [wh, setWh] = useState("");
   const [tried, setTried] = useState(false);
   const chk = receiptCheck(order.items, input);
   const open = order.items.filter((i) => remaining(i) > 0);
   const save = async () => {
     setTried(true);
     if (chk.none || Object.keys(chk.errors).length) return;
-    const r = await act.run(() => api.post<PoFull>(`/purchases/${order.id}/receive`, { lines: chk.lines, notes: notes.trim() || undefined }), t("po.rc.done"));
+    const r = await act.run(() => api.post<PoFull>(`/purchases/${order.id}/receive`, { lines: chk.lines, notes: notes.trim() || undefined, ...(wh ? { warehouseId: Number(wh) } : {}) }), t("po.rc.done"));
     if (r) onDone();
   };
   return (
@@ -203,6 +206,7 @@ function ReceiveDialog({ order, onClose, onDone }: { order: PoFull; onClose: () 
             </li>
           ))}
         </ul>
+        <WarehousePick kind="raw" value={wh} onChange={setWh} label={t("wh.pick.receive")} hint={t("wh.pick.receive.hint")} />
         <Field label={t("po.rc.notes")} optional>
           <Input value={notes} onInput={(e) => setNotes(val(e))} />
         </Field>

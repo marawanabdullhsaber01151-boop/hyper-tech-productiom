@@ -16,6 +16,8 @@ import {
 import { parseIdParam } from "../lib/validate";
 import { applyStockMovement, balanceIn, bumpBalance, defaultWarehouseId } from "../lib/stock";
 import { toMilli } from "../lib/warehouseCore";
+import { inScope } from "../lib/warehouseAccess";
+import { warehouseScopeOf } from "../lib/warehouseScope";
 import { moveToTrash } from "../lib/trash";
 import { PERMISSIONS } from "../lib/permissions";
 import { assertReferencedMovement } from "../lib/phase0";
@@ -61,8 +63,22 @@ router.post(
         return;
       }
 
+      // أمين المخزن المعيّن على مخازن: بيتحرك في مخازنه بس، ولازم يحدد المخزن
+      const scope = await warehouseScopeOf(req.user!.role, req.user!.userId);
+      if (scope !== "all") {
+        if (!data.warehouseId) {
+          res.status(400).json({ error: { message: "اختار المخزن اللي الحركة فيه" } });
+          return;
+        }
+        if (!inScope(scope, data.warehouseId)) {
+          res.status(403).json({ error: { message: "المخزن ده مش من مخازنك" } });
+          return;
+        }
+      }
+
       const created = await db.transaction(async (tx) => {
         return applyStockMovement(tx, {
+          warehouseId: data.warehouseId ?? null,
           inventoryItemId: data.inventoryItemId,
           movementType: data.movementType as "in" | "out",
           qty: data.qty,

@@ -68,9 +68,8 @@ export function Sidebar({ nav, path, collapsed, openDept, onToggleDept, onNaviga
               </button>
               {open ? (
                 <div id={`st-dept-${d.id}`} class="st-dept__body">
-                  {d.subFunctions.map((s) => (
-                    <div key={s.id} class="st-sub">
-                      <div class="st-sub__title">{s.label}</div>
+                  {d.subFunctions.map((s) => {
+                    const list = (
                       <ul class="st-sub__list">
                         {s.pages.map((p) => {
                           const r = resolveHref(p.href);
@@ -93,8 +92,24 @@ export function Sidebar({ nav, path, collapsed, openDept, onToggleDept, onNaviga
                           );
                         })}
                       </ul>
-                    </div>
-                  ))}
+                    );
+                    // قايمة مطوية (إدارة المخازن): details، بتتفتح لو فيها الصفحة الحالية
+                    if (s.collapsible) {
+                      const hasHere = s.pages.some((p) => isActiveHref(path, p.href));
+                      return (
+                        <details key={s.id} class="st-sub st-sub--fold" open={hasHere}>
+                          <summary class="st-sub__title st-sub__summary">{s.label}</summary>
+                          {list}
+                        </details>
+                      );
+                    }
+                    return (
+                      <div key={s.id} class="st-sub">
+                        <div class="st-sub__title">{s.label}</div>
+                        {list}
+                      </div>
+                    );
+                  })}
                 </div>
               ) : null}
             </li>

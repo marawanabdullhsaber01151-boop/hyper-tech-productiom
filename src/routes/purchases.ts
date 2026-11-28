@@ -6,10 +6,13 @@ import { Router } from "express";
 import { and, asc, desc, eq, inArray, or, type SQL } from "drizzle-orm";
 import { z } from "zod";
 import { db, contactsTable, inventoryItemsTable } from "../db";
-import { planningPurchaseRequisitionsTable, purchaseOrderItemsTable, purchaseOrdersTable, purchaseReceiptLinesTable, purchaseReceiptsTable, purchaseRequisitionsTable, type PurchaseOrder, type PurchaseOrderItem } from "../db/schema";
+import { warehousesTable, planningPurchaseRequisitionsTable, purchaseOrderItemsTable, purchaseOrdersTable, purchaseReceiptLinesTable, purchaseReceiptsTable, purchaseRequisitionsTable, type PurchaseOrder, type PurchaseOrderItem } from "../db/schema";
 import { requireAuth, requirePermission, requireRole } from "../middleware/auth";
 import { parseIdParam } from "../lib/validate";
-import { applyStockMovement } from "../lib/stock";
+import { applyStockMovement, defaultWarehouseId } from "../lib/stock";
+import { purchasableProblem } from "../lib/warehouseCore";
+import { inScope } from "../lib/warehouseAccess";
+import { warehouseScopeOf } from "../lib/warehouseScope";
 import { writeAuditEvent } from "../lib/governance";
 import { nextPhase0Number } from "../lib/phase0";
 import { INSPECT_ROLES, RECEIPT_READ_ROLES, isReceiptStatus, planInspection, violatesSeparation } from "../lib/receiving";
@@ -59,11 +62,13 @@ async function release(tx: Tx, items: Array<{ requisitionSource: string | null; 
 /** بيجهّز بنود الأمر: بيتأكد من الصنف ويثبّت اسمه ووحدته وقت الإنشاء. */
 async function buildItems(tx: Tx, items: Body["items"]) {
   const ids = [...new Set(items.map((i) => i.inventoryItemId))];
-  const inv = await tx.select({ id: inventoryItemsTable.id, name: inventoryItemsTable.name, unit: inventoryItemsTable.unit }).from(inventoryItemsTable).where(inArray(inventoryItemsTable.id, ids));
+  const inv = await tx.select({ id: inventoryItemsTable.id, name: inventoryItemsTable.name, unit: inventoryItemsTable.unit, category: inventoryItemsTable.category }).from(inventoryItemsTable).where(inArray(inventoryItemsTable.id, ids));
   const by = new Map(inv.map((i) => [i.id, i]));
   return items.map((i) => {
     const it = by.get(i.inventoryItemId);
     if (!it) throw err(`الصنف رقم ${i.inventoryItemId} مش موجود في المخزون`, 404);
+    const notRaw = purchasableProblem(it.category, it.name);
+    if (notRaw) throw err(notRaw, 400);
     return { inventoryItemId: i.inventoryItemId, description: it.name, unit: it.unit, qty: i.qty, unitPrice: i.unitPrice, requisition: i.requisition };
   });
 }
@@ -342,6 +347,8 @@ router.post("/purchases/:id/status", requireAuth, requirePermission("purchases.c
 const receiveSchema = z.object({
   lines: z.array(z.object({ itemId: z.number().int().positive(), qty: z.string() })).min(1),
   notes: z.string().max(300).optional().nullable(),
+  /** مخزن الخامات اللي البضاعة اتستلمت فيه. فاضي = المخزن الافتراضي للخام. */
+  warehouseId: z.number().int().positive().optional().nullable(),
 });
 router.post("/purchases/:id/receive", requireAuth, requirePermission("inventory.receivePurchase"), async (req, res, next) => {
   try {
@@ -359,10 +366,22 @@ router.post("/purchases/:id/receive", requireAuth, requirePermission("inventory.
       const by = new Map(items.map((i) => [i.id, i]));
       const merged = new Map<number, number>();
       for (const l of data.lines) merged.set(l.itemId, Math.round(((merged.get(l.itemId) ?? 0) + Number(l.qty)) * 1000) / 1000);
+      // المخزن لازم يكون مخزن خامات نشط في نطاق الأمين، والأصناف كلها خامات
+      const whId = data.warehouseId ?? (await defaultWarehouseId(tx, "raw_material"));
+      const [wh] = await tx.select().from(warehousesTable).where(eq(warehousesTable.id, whId));
+      if (!wh) throw err("المخزن غير موجود", 404);
+      if (wh.kind !== "raw") throw err("الاستلام من المشتريات لمخزن خامات بس", 409);
+      if (!wh.active) throw err(`المخزن "${wh.name}" موقوف`, 409);
+      if (!inScope(await warehouseScopeOf(req.user!.role, req.user!.userId), wh.id)) throw err("المخزن ده مش من مخازنك", 403);
+      const recvItems = await tx.select({ id: inventoryItemsTable.id, name: inventoryItemsTable.name, category: inventoryItemsTable.category }).from(inventoryItemsTable).where(inArray(inventoryItemsTable.id, [...merged.keys()].map((k) => by.get(k)!.inventoryItemId)));
+      for (const it of recvItems) {
+        const notRaw = purchasableProblem(it.category, it.name);
+        if (notRaw) throw err(notRaw, 409);
+      }
       const receiptNumber = await nextPhase0Number(tx, "purchase_receipt");
       const [receipt] = await tx
         .insert(purchaseReceiptsTable)
-        .values({ receiptNumber, poId: id, notes: data.notes?.trim() || null, receivedBy: req.user!.userId, receivedByName: req.user!.username })
+        .values({ receiptNumber, poId: id, warehouseId: wh.id, notes: data.notes?.trim() || null, receivedBy: req.user!.userId, receivedByName: req.user!.username })
         .returning();
       await tx.insert(purchaseReceiptLinesTable).values(
         [...merged.entries()].map(([itemId, qty]) => {
@@ -370,7 +389,7 @@ router.post("/purchases/:id/receive", requireAuth, requirePermission("inventory.
           return { receiptId: receipt!.id, poItemId: it.id, inventoryItemId: it.inventoryItemId, description: it.description, unit: it.unit, qtyReceived: String(qty) };
         }),
       );
-      await writeAuditEvent({ actorUserId: req.user!.userId, actorName: req.user!.username, actionKey: "purchases.receive", resourceType: "purchase_receipt", resourceId: receipt!.id, beforeData: null, afterData: { receiptNumber, poId: id, status: "pending_inspection", lines: [...merged.entries()].map(([itemId, qty]) => ({ itemId, qty })) }, ipAddress: req.ip, userAgent: req.get("user-agent"), executor: tx });
+      await writeAuditEvent({ actorUserId: req.user!.userId, actorName: req.user!.username, actionKey: "purchases.receive", resourceType: "purchase_receipt", resourceId: receipt!.id, beforeData: null, afterData: { receiptNumber, poId: id, warehouseId: wh.id, status: "pending_inspection", lines: [...merged.entries()].map(([itemId, qty]) => ({ itemId, qty })) }, ipAddress: req.ip, userAgent: req.get("user-agent"), executor: tx });
     });
     res.json(await load(id, req.user!.role));
   } catch (e) {
@@ -409,7 +428,7 @@ router.post("/purchases/receipts/:id/inspect", requireAuth, requireRole(...INSPE
         const line = byLine.get(l.id)!;
         if (l.accepted > 0) {
           await updateAverageCost(tx, line.inventoryItemId, String(l.accepted), priceOf.get(line.poItemId) ?? "0");
-          await applyStockMovement(tx, { inventoryItemId: line.inventoryItemId, movementType: "in", qty: String(l.accepted), referenceType: "purchase", referenceId: po.id, unitPrice: priceOf.get(line.poItemId) ?? "0", notes: [`استلام ${po.poNumber} (${receipt.receiptNumber})`, data.notes?.trim()].filter(Boolean).join(" — ") });
+          await applyStockMovement(tx, { inventoryItemId: line.inventoryItemId, movementType: "in", warehouseId: receipt.warehouseId, qty: String(l.accepted), referenceType: "purchase", referenceId: po.id, unitPrice: priceOf.get(line.poItemId) ?? "0", notes: [`استلام ${po.poNumber} (${receipt.receiptNumber})`, data.notes?.trim()].filter(Boolean).join(" — ") });
         }
         await tx.update(purchaseReceiptLinesTable).set({ qtyAccepted: String(l.accepted), qtyRejected: String(l.rejected), rejectReason: l.rejectReason }).where(eq(purchaseReceiptLinesTable.id, l.id));
       }

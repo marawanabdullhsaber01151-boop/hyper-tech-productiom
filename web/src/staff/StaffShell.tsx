@@ -34,6 +34,11 @@ export function StaffShell({ path, children }: { path: string; children: Compone
   }, [user]);
 
   const nav = useQuery<NavResponse | undefined>((signal) => (user ? api.get<NavResponse>("/nav", { signal }) : Promise.resolve(undefined)), [user?.id]);
+  useEffect(() => {
+    const h = () => void nav.refetch();
+    window.addEventListener("hyper:nav-refresh", h);
+    return () => window.removeEventListener("hyper:nav-refresh", h);
+  }, [nav.refetch]);
   const [prefs, setPrefs] = useState(loadPrefs);
   const [drawer, setDrawer] = useState(false);
   const desktop = useDesktop();

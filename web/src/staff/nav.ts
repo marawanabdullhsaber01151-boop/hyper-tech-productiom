@@ -10,6 +10,8 @@ export interface NavPageDto {
 export interface NavSubDto {
   id: string;
   label: string;
+  /** قايمة مطوية في السايدبار (إدارة المخازن). */
+  collapsible?: boolean;
   pages: NavPageDto[];
 }
 export interface NavDeptDto {

@@ -32,6 +32,7 @@ import { transfersCopy } from "./transfers";
 import { balancesCopy } from "./balances";
 import { periodsCopy } from "./periods";
 import { eInvoiceCopy } from "./eInvoice";
+import { warehousesCopy } from "./warehouses";
 import { costingCopy } from "./costing";
 
 export const lazyCopies = {
@@ -65,5 +66,6 @@ export const lazyCopies = {
   balances: balancesCopy,
   periods: periodsCopy,
   eInvoice: eInvoiceCopy,
+  warehouses: warehousesCopy,
   costing: costingCopy,
 } as const;

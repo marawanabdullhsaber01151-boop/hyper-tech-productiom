@@ -1,4 +1,5 @@
 import { pgTable, serial, integer, text, numeric, timestamp, date, index } from "drizzle-orm/pg-core";
+import { warehousesTable } from "./warehouses";
 
 export const purchaseOrdersTable = pgTable(
   "purchase_orders",
@@ -57,6 +58,8 @@ export const purchaseReceiptsTable = pgTable(
       .references(() => purchaseOrdersTable.id),
     status: text("status").notNull().default("pending_inspection"),
     notes: text("notes"),
+    // المخزن (خام) اللي استُلمت فيه البضاعة (هجرة 0111). فاضي = المخزن الافتراضي للخام.
+    warehouseId: integer("warehouse_id").references(() => warehousesTable.id),
     receivedBy: integer("received_by").notNull(),
     receivedByName: text("received_by_name"),
     receivedAt: timestamp("received_at", { withTimezone: true }).notNull().defaultNow(),

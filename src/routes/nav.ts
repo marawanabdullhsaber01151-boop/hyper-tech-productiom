@@ -7,6 +7,10 @@ import { db, operationsCasesTable, systemUsersTable } from "../db";
 import { roleLabel } from "../lib/roleLabels";
 import { count, eq } from "drizzle-orm";
 import type { UserRole } from "../lib/roles";
+import { warehousesTable } from "../db/schema";
+import { asc } from "drizzle-orm";
+import { canManageWarehouses, inScope } from "../lib/warehouseAccess";
+import { warehouseScopeOf } from "../lib/warehouseScope";
 
 const router = Router();
 const PENDING_CASES_CACHE_MS = 15_000;
@@ -67,6 +71,26 @@ router.get("/nav", requireAuth, async (req, res, next) => {
           ),
         })),
       }));
+    }
+
+    // إدارة المخازن: كل مخزن نشط (في نطاق الأمين) زرار تحت نوعه، و«مخزن جديد» للإدارة ومدير المخازن
+    if (departments.some((d) => d.id === "warehouse-mgmt")) {
+      const scope = await warehouseScopeOf(role, req.user!.userId);
+      const whs = (await db.select().from(warehousesTable).where(eq(warehousesTable.active, true)).orderBy(asc(warehousesTable.id))).filter((w) => inScope(scope, w.id));
+      const manage = canManageWarehouses(role);
+      departments = departments.map((d) =>
+        d.id !== "warehouse-mgmt"
+          ? d
+          : {
+              ...d,
+              subFunctions: d.subFunctions.map((sf) => {
+                const kind = sf.id.replace("wh-", "");
+                const own = whs.filter((w) => w.kind === kind).map((w) => ({ id: `wh-${w.id}`, label: w.name, href: `/v2/staff/warehouses?kind=${kind}&wh=${w.id}`, roles: [role] }));
+                const add = manage ? [{ id: `wh-new-${kind}`, label: "+ مخزن جديد", href: `/v2/staff/warehouses?kind=${kind}&new=1`, roles: [role] }] : [];
+                return { ...sf, pages: [...sf.pages, ...own, ...add] };
+              }),
+            },
+      );
     }
 
     const singleDepartment = departments.length === 1;

@@ -80,3 +80,8 @@ export const planRelease = (rows: BalanceRow[], amount: number): PlanResult => s
 export function totalsOf(rows: readonly BalanceRow[]): { qty: number; reserved: number } {
   return rows.reduce((a, r) => ({ qty: a.qty + r.qty, reserved: a.reserved + r.reserved }), { qty: 0, reserved: 0 });
 }
+
+/** المشتريات للخامات بس: المنتج التام من إنتاجنا، ونص المصنّع بيتصنّع. بيرجّع سبب الرفض أو null. */
+export function purchasableProblem(category: string, itemName: string): string | null {
+  return category === "raw_material" ? null : `الصنف "${itemName}" مش خامة، والمشتريات للخامات بس (المنتج التام من إنتاجنا ونص المصنّع بيتصنّع)`;
+}

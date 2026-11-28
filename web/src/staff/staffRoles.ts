@@ -47,3 +47,6 @@ export { APPROVER_ROLES as APPROVALS_PAGE_ROLES } from "./approvalsCore";
 /** مركز الإعدادات: نفس صلاحية settings.manageUsers في السيرفر (رئيس المجلس). */
 export { SETTINGS_ROLES as SETTINGS_PAGE_ROLES } from "./settingsCore";
 export { REPORT_PAGE_ROLES } from "./reportsCore";
+
+/** صفحة المخازن: نفس قايمة السيرفر (WAREHOUSE_VIEW_ROLES). السيرفر بيحدد النوع لكل دور. */
+export const WAREHOUSE_PAGE_ROLES = ["chairman", "executive_manager", "warehouse_manager", "storekeeper", "operations_manager", "production_manager", "production_controller", "purchasing_manager", "buyer", "raw_material_quality_controller", "sales_manager", "online_seller", "offline_seller"] as const;

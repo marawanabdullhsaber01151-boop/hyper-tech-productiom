@@ -3,6 +3,7 @@
 import { pgTable, serial, text, numeric, integer, boolean, timestamp, index, unique } from "drizzle-orm/pg-core";
 import { inventoryItemsTable } from "./inventory";
 import { foundationLocationsTable } from "./foundation";
+import { systemUsersTable } from "./settings";
 
 // المخازن (هجرة 0110): مخزن له نوع من تلاتة (raw خام / wip تحت تشغيل / finished تام)، وفي مخزن افتراضي واحد لكل نوع.
 export const warehousesTable = pgTable("warehouses", {
@@ -33,6 +34,21 @@ export const stockBalancesTable = pgTable(
   (t) => ({
     itemWh: unique("stock_balances_item_wh_unique").on(t.itemId, t.warehouseId),
     whIdx: index("stock_balances_wh_idx").on(t.warehouseId),
+  }),
+);
+
+// أمناء المخزن (هجرة 0111): أمين المخزن اللي عنده تعيين بيشتغل في مخازنه بس.
+export const warehouseKeepersTable = pgTable(
+  "warehouse_keepers",
+  {
+    id: serial("id").primaryKey(),
+    warehouseId: integer("warehouse_id").notNull().references(() => warehousesTable.id, { onDelete: "cascade" }),
+    userId: integer("user_id").notNull().references(() => systemUsersTable.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    uniq: unique("warehouse_keepers_unique").on(t.warehouseId, t.userId),
+    userIdx: index("warehouse_keepers_user_idx").on(t.userId),
   }),
 );
 

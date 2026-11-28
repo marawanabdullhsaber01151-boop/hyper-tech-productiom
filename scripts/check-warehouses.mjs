@@ -110,6 +110,20 @@ try {
   r = (await c.query(`SELECT 1 FROM stock_balances WHERE item_id = $1`, [fg])).rows;
   check("مسح الصنف بيمسح أرصدته", r.length === 0);
 
+  // المرحلة ب: أمناء المخازن + مخزن استلام المشتريات (الهجرة 0111)
+  const { rows: cols } = await c.query(`SELECT is_nullable FROM information_schema.columns WHERE table_name = 'purchase_receipts' AND column_name = 'warehouse_id'`);
+  check("purchase_receipts.warehouse_id موجود ويقبل null (متوافق مع القديم)", cols.length === 1 && cols[0].is_nullable === "YES");
+  const { rows: us } = await c.query(`SELECT id FROM system_users ORDER BY id LIMIT 1`);
+  if (us.length) {
+    const uid = us[0].id;
+    const k = (await c.query(`INSERT INTO warehouses (code, name, kind) VALUES ('__CHK_K__', '__chk_k__', 'raw') RETURNING id`)).rows[0].id;
+    await c.query(`INSERT INTO warehouse_keepers (warehouse_id, user_id) VALUES ($1, $2)`, [k, uid]);
+    await expectFail(c, "تعيين نفس الأمين مرتين مرفوض", `INSERT INTO warehouse_keepers (warehouse_id, user_id) VALUES ($1, $2)`, [k, uid], "warehouse_keepers_unique");
+    await c.query(`DELETE FROM warehouses WHERE id = $1`, [k]);
+    r = (await c.query(`SELECT 1 FROM warehouse_keepers WHERE warehouse_id = $1`, [k])).rows;
+    check("مسح المخزن بيمسح تعيينات أمنائه", r.length === 0);
+  }
+
   // السلامة الشاملة على بيانات الإنتاج الحقيقية (قراءة بس)
   const { rows: bad } = await c.query(`
     SELECT i.id FROM inventory_items i

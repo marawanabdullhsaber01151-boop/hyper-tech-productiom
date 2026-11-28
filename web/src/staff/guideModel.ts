@@ -86,6 +86,7 @@ export const MAP_NODES: readonly MapNode[] = [
   { id: "approvals", x: 440, y: 320, dept: "approvals" },
   { id: "accounting", x: 700, y: 320, dept: "foundation-data" },
   { id: "management", x: 440, y: 450, dept: "top-management" },
+  { id: "whmgmt", x: 180, y: 450, dept: "warehouse-mgmt" },
 ];
 export interface MapEdge { from: string; to: string; key: string }
 export const MAP_EDGES: readonly MapEdge[] = [
@@ -100,6 +101,7 @@ export const MAP_EDGES: readonly MapEdge[] = [
   { from: "management", to: "approvals", key: "decide" },
   { from: "accounting", to: "management", key: "reports" },
   { from: "operations", to: "production", key: "dispatch" },
+  { from: "management", to: "whmgmt", key: "stockwatch" },
 ];
 
 // ── رحلة أمر البيع ──

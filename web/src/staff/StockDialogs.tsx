@@ -1,3 +1,4 @@
+import "../copy/warehouses";
 import "../copy/inv";
 import "../copy/sales";
 import { useMemo, useState } from "preact/hooks";
@@ -11,6 +12,7 @@ import { formatDateTime, formatNumber } from "../lib/format";
 import { adjustmentFor, fillPct, moveError, reorderQty, stockValue, type Movement, type StockItem } from "./stockCore";
 import { printItemReport } from "./stockPrint";
 import { normNum } from "./salesCore";
+import { WarehousePick } from "./WarehousePick";
 
 const CATS = ["raw_material", "wip", "finished_good"] as const;
 const unitOf = (i: Pick<StockItem, "unit">) => i.unit ?? "";
@@ -31,6 +33,7 @@ export function MovementDialog({ item, type, onClose, onDone }: { item: StockIte
   const act = useAct();
   const [qty, setQty] = useState("");
   const [reason, setReason] = useState("");
+  const [wh, setWh] = useState("");
   const [tried, setTried] = useState(false);
   const cur = Number(item.qty) || 0;
   const err = moveError(type, qty, cur, reason);
@@ -45,7 +48,7 @@ export function MovementDialog({ item, type, onClose, onDone }: { item: StockIte
     const q = normNum(qty);
     const ok = await act.run(
       async () => {
-        await api.post("/stock-movements", { inventoryItemId: item.id, movementType: type, qty: q, referenceType: "adjustment", notes: reason.trim() });
+        await api.post("/stock-movements", { inventoryItemId: item.id, movementType: type, qty: q, referenceType: "adjustment", notes: reason.trim(), ...(wh ? { warehouseId: Number(wh) } : {}) });
         return true;
       },
       t(type === "in" ? "inv.move.done.in" : "inv.move.done.out", { q: fmt(q), unit: unitOf(item) }),
@@ -70,6 +73,7 @@ export function MovementDialog({ item, type, onClose, onDone }: { item: StockIte
         <Field label={t("inv.move.qty")} required error={tried && err === "qty" ? t("inv.move.err.qty") : tried && err === "insufficient" ? t("inv.move.err.insufficient", { q: fmt(cur) }) : null}>
           <Input inputMode="decimal" value={qty} onInput={(e) => setQty(val(e))} />
         </Field>
+        <WarehousePick category={item.category} value={wh} onChange={setWh} />
         <Field label={t("inv.move.reason")} required hint={t("inv.move.reason.hint")} error={tried && err === "reason" ? t("inv.move.err.reason") : null}>
           <Input value={reason} onInput={(e) => setReason(val(e))} />
         </Field>

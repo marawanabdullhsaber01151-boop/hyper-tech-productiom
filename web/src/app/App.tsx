@@ -11,7 +11,7 @@ import { StaffShell } from "../staff/StaffShell";
 import { StaffNotFound } from "../staff/SystemPages";
 import { RoleGuard } from "../staff/RoleGuard";
 import { PURCHASE_ROLES } from "../staff/purchasingCore";
-import { ACTIVITY_PAGE_ROLES, APPROVALS_PAGE_ROLES, CONTACT_ROLES, ENGINEERING_PAGE_ROLES, FOUNDATION_PAGE_ROLES, HEALTH_ROLES, OPERATIONS_ROLES, PLANNING_PAGE_ROLES, PRODUCTION_PAGE_ROLES, RECEIVING_PAGE_ROLES, FINANCE_PAGE_ROLES, REPORT_PAGE_ROLES, SALES_PAGE_ROLES, SETTINGS_PAGE_ROLES, STOCK_ROLES } from "../staff/staffRoles";
+import { ACTIVITY_PAGE_ROLES, APPROVALS_PAGE_ROLES, CONTACT_ROLES, ENGINEERING_PAGE_ROLES, FOUNDATION_PAGE_ROLES, HEALTH_ROLES, OPERATIONS_ROLES, PLANNING_PAGE_ROLES, PRODUCTION_PAGE_ROLES, RECEIVING_PAGE_ROLES, FINANCE_PAGE_ROLES, REPORT_PAGE_ROLES, SALES_PAGE_ROLES, SETTINGS_PAGE_ROLES, STOCK_ROLES, WAREHOUSE_PAGE_ROLES } from "../staff/staffRoles";
 import { LazyPage } from "./lazyPage";
 
 const loadSales = () => import("../staff/Sales").then((m) => m.Sales as ComponentType<{ key?: string }>);
@@ -30,6 +30,7 @@ const loadQuotes = () => import("../staff/Quotes").then((m) => m.Quotes as Compo
 const loadReceiving = () => import("../staff/Receiving").then((m) => m.Receiving as ComponentType<{ key?: string }>);
 const loadPlanning = () => import("../staff/Planning").then((m) => m.Planning as ComponentType<{ key?: string }>);
 const loadEngineering = () => import("../staff/Engineering").then((m) => m.Engineering as ComponentType<{ key?: string }>);
+const loadWarehouses = () => import("../staff/Warehouses").then((m) => m.Warehouses as ComponentType<{ key?: string }>);
 const loadStock = () => import("../staff/Stock").then((m) => m.Stock as ComponentType<{ key?: string }>);
 const loadTasks = () => import("../staff/Tasks").then((m) => m.Tasks as ComponentType<{ key?: string }>);
 const loadGuide = () => import("../staff/Guide").then((m) => m.Guide as ComponentType<Record<string, never>>);
@@ -55,6 +56,7 @@ export const staffRoutes: RouteDef[] = [
   { path: "/staff/foundation", render: () => <RoleGuard roles={FOUNDATION_PAGE_ROLES}><LazyPage key={location.search} load={loadFoundation} props={{}} /></RoleGuard> },
   { path: "/staff/planning", render: () => <RoleGuard roles={PLANNING_PAGE_ROLES}><LazyPage load={loadPlanning} props={{}} /></RoleGuard> },
   { path: "/staff/engineering", render: () => <RoleGuard roles={ENGINEERING_PAGE_ROLES}><LazyPage key={location.search} load={loadEngineering} props={{}} /></RoleGuard> },
+  { path: "/staff/warehouses", render: () => <RoleGuard roles={WAREHOUSE_PAGE_ROLES}><LazyPage key={location.search} load={loadWarehouses} props={{}} /></RoleGuard> },
   { path: "/staff/stock", render: () => <RoleGuard roles={STOCK_ROLES}><LazyPage key={location.search} load={loadStock} props={{}} /></RoleGuard> },
   { path: "/staff/guide", render: () => <LazyPage load={loadGuide} props={{}} /> },
   { path: "/staff/tasks", render: () => <LazyPage key={location.search} load={loadTasks} props={{}} /> },

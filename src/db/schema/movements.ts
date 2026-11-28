@@ -55,6 +55,8 @@ export const insertStockMovementSchema = z.object({
   referenceId: z.number().optional().nullable(),
   unitPrice: z.string().optional().nullable(),
   notes: z.string().optional().nullable(),
+  /** المخزن. فاضي = الافتراضي لفئة الصنف (وفي الصرف: الافتراضي أولًا). */
+  warehouseId: z.number().int().positive().optional().nullable(),
 });
 
 export type InsertStockMovement = z.infer<typeof insertStockMovementSchema>;

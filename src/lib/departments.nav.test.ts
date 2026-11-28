@@ -46,9 +46,13 @@ describe("/nav لكل دور من الـ18 (قبول المرحلة ١)", () => 
   it("المشتريات: الدورين يشوفوا الاحتياجات وأوامر الشراء، والمخزون للقراءة بس (الواجهة الجديدة؛ ومدير المشتريات معاه التقرير)", () => {
     for (const role of ["purchasing_manager", "buyer"] as const) {
       // صندوق الاعتمادات (39أ) قسم مستقل لأي دور معتمد (مدير المشتريات منهم)، فبنستثنيه من المقارنة.
-      const depts = getNavForRole(role).filter((d) => d.id !== "approvals");
+      // وقسم «إدارة المخازن» (م-ب) بيظهر لهم بنوع الخامات بس (هم أصحابه).
+      const all = getNavForRole(role).filter((d) => d.id !== "approvals");
+      const wh = all.find((d) => d.id === "warehouse-mgmt");
+      expect(wh?.subFunctions.map((s) => s.id)).toEqual(["wh-raw"]);
+      const depts = all.filter((d) => d.id !== "warehouse-mgmt");
       expect(depts.map((d) => d.id)).toEqual(["purchasing"]);
-      expect(pageIds(role).filter((id) => id !== "approvals")).toEqual(role === "purchasing_manager" ? ["purchases", "reports", "stock-view"] : ["purchases", "stock-view"]);
+      expect(pageIds(role).filter((id) => id !== "approvals" && !id.startsWith("wh-"))).toEqual(role === "purchasing_manager" ? ["purchases", "reports", "stock-view"] : ["purchases", "stock-view"]);
       expect(depts[0]!.subFunctions[0]!.pages[0]!.href).toBe("/v2/staff/purchases");
       expect(depts[0]!.subFunctions[1]!.pages[0]!.href).toBe("/v2/staff/stock");
     }

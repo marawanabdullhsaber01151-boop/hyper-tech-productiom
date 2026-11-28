@@ -18,6 +18,7 @@
 
 import type { UserRole } from "./roles";
 import { OPERATIONS_CONTROL_ROLES } from "./operations-control-policy";
+import { KIND_VIEW_ROLES, WAREHOUSE_VIEW_ROLES } from "./warehouseAccess";
 
 export interface NavPage {
   id: string;
@@ -30,6 +31,8 @@ export interface NavPage {
 export interface NavSubFunction {
   id: string;
   label: string;
+  /** قايمة مطوية (details) في السايدبار: بتتفتح لو فيها الصفحة الحالية. */
+  collapsible?: boolean;
   roles: readonly UserRole[];
   pages: readonly NavPage[];
 }
@@ -232,6 +235,19 @@ export const DEPARTMENTS: readonly NavDepartment[] = [
     ],
   },
   {
+    // إدارة المخازن: تلات قوايم مطوية (خام / تحت تشغيل / تام) وجواها مخازن كل نوع. المخازن نفسها بتتضاف ديناميكيًا من /nav
+    // (مخزن لكل زرار + «مخزن جديد» للإدارة ومدير المخازن) بحسب الدور ونطاق أمين المخزن.
+    id: "warehouse-mgmt",
+    label: "إدارة المخازن",
+    icon: "warehouse",
+    roles: WAREHOUSE_VIEW_ROLES as readonly UserRole[],
+    subFunctions: [
+      { id: "wh-raw", label: "مخازن الخامات", collapsible: true, roles: KIND_VIEW_ROLES.raw as readonly UserRole[], pages: [{ id: "wh-raw-all", label: "كل مخازن الخامات", href: "/v2/staff/warehouses?kind=raw&wh=all", roles: KIND_VIEW_ROLES.raw as readonly UserRole[] }] },
+      { id: "wh-wip", label: "مخازن تحت التشغيل", collapsible: true, roles: KIND_VIEW_ROLES.wip as readonly UserRole[], pages: [{ id: "wh-wip-all", label: "كل مخازن تحت التشغيل", href: "/v2/staff/warehouses?kind=wip&wh=all", roles: KIND_VIEW_ROLES.wip as readonly UserRole[] }] },
+      { id: "wh-finished", label: "مخازن المنتج التام", collapsible: true, roles: KIND_VIEW_ROLES.finished as readonly UserRole[], pages: [{ id: "wh-finished-all", label: "كل مخازن المنتج التام", href: "/v2/staff/warehouses?kind=finished&wh=all", roles: KIND_VIEW_ROLES.finished as readonly UserRole[] }] },
+    ],
+  },
+  {
     id: "purchasing",
     label: "المشتريات",
     icon: "truck-ramp-box",
@@ -331,6 +347,7 @@ export function getNavForRole(role: UserRole) {
         .map((sf) => ({
           id: sf.id,
           label: sf.label,
+          ...(sf.collapsible ? { collapsible: true as const } : {}),
           pages: sf.pages.filter((p) => p.roles.includes(role)),
         }))
         .filter((sf) => sf.pages.length > 0),
