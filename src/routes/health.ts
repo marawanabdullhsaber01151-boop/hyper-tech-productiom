@@ -18,6 +18,7 @@ import { runEscalations } from "../lib/humanTasks";
 import { scanStalledOrders } from "../lib/productionOversight";
 import { scanApprovalSla } from "../lib/approvalsInbox";
 import { drainSagas } from "../lib/sagas";
+import { writeAuditEvent } from "../lib/governance";
 
 const router = Router();
 const HEALTH_ROLES = ["executive_manager", "operations_manager", "production_manager"];
@@ -257,6 +258,40 @@ router.get(
         data: report,
         meta: { apiVersion: API_CONTRACT_VERSION, correlationId: req.correlationId },
       });
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+/**
+ * علاج الرسائل والإشعارات الفاشلة نهائيًا (status = dead) من صفحة «صحة النظام»:
+ *  - retry: يرجّعها للطابور (محاولات من الصفر) والعامل يبعتها في دورته الجاية.
+ *  - dismiss: يقفلها كـ«تم» لو بقت قديمة ومالهاش لازمة (بتفضل في السجل ومتتمسحش).
+ * بتتسجّل في سجل التدقيق بعدد الأحداث.
+ */
+router.post(
+  "/admin/system-health/outbox",
+  requireAuth,
+  requireRole(...ACCESS.systemHealthRead),
+  async (req, res, next) => {
+    try {
+      const action = req.body?.action;
+      if (action !== "retry" && action !== "dismiss") {
+        res.status(400).json(failure("VALIDATION_ERROR", "اختار إجراء: إعادة محاولة أو تجاهل"));
+        return;
+      }
+      const n = await db.transaction(async (tx) => {
+        const r =
+          action === "retry"
+            ? await tx.execute(sql`UPDATE outbox_events SET status = 'pending', attempts = 0, next_attempt_at = now(), processed_at = NULL WHERE status = 'dead' RETURNING id`)
+            : await tx.execute(sql`UPDATE outbox_events SET status = 'done', processed_at = now(), last_error = left('تم التجاهل يدويًا: ' || COALESCE(last_error, ''), 500) WHERE status = 'dead' RETURNING id`);
+        const count = r.rows.length;
+        await writeAuditEvent({ actorUserId: req.user!.userId, actorName: req.user!.username, actionKey: action === "retry" ? "outbox.dead_retried" : "outbox.dead_dismissed", resourceType: "outbox_events", resourceId: null, beforeData: null, afterData: { count }, ipAddress: req.ip, userAgent: req.get("user-agent"), executor: tx });
+        return count;
+      });
+      if (action === "retry" && n > 0) await drainOutbox({ limit: 50, deadlineMs: 8_000 }).catch(() => undefined);
+      res.json({ data: { action, count: n }, meta: { apiVersion: API_CONTRACT_VERSION, correlationId: req.correlationId } });
     } catch (error) {
       next(error);
     }

@@ -3,7 +3,8 @@ import { Link } from "../app/router";
 import { api } from "../admin/api";
 import { useQuery } from "../api/hooks";
 import { t, type CopyKey } from "../copy";
-import { Button, EmptyState, Icon, InlineAlert, Spinner, Stat, StatusPill } from "../design/components";
+import { useAct } from "../admin/act";
+import { Button, ConfirmDialog, EmptyState, Icon, InlineAlert, Spinner, Stat, StatusPill, useToast } from "../design/components";
 import { CircleAlert, CircleCheck, Clock, TriangleAlert } from "../design/icons";
 import { formatNumber, formatRelative } from "../lib/format";
 import { resolveHref } from "./nav";
@@ -60,7 +61,29 @@ function Action({ href }: { href: string }) {
   );
 }
 
-function CheckCard({ c }: { c: HealthCheck }) {
+/** علاج الرسائل الفاشلة نهائيًا: إعادة محاولة أو تجاهل (للقديمة اللي ملهاش لازمة). */
+function OutboxFix({ onDone }: { onDone: () => void }) {
+  const act = useAct();
+  const toast = useToast();
+  const [ask, setAsk] = useState(false);
+  const run = async (action: "retry" | "dismiss") => {
+    const r = await act.run(() => api.post<{ action: string; count: number }>("/admin/system-health/outbox", { action }), undefined);
+    setAsk(false);
+    if (r) {
+      toast({ tone: "success", message: t(action === "retry" ? "staff.health.outbox.retried" : "staff.health.outbox.dismissed", { n: formatNumber(r.count) }) });
+      onDone();
+    }
+  };
+  return (
+    <div class="sh-check__go">
+      <Button size="sm" variant="secondary" loading={act.busy} onClick={() => void run("retry")}>{t("staff.health.outbox.retry")}</Button>
+      <Button size="sm" variant="ghost" onClick={() => setAsk(true)}>{t("staff.health.outbox.dismiss")}</Button>
+      <ConfirmDialog open={ask} loading={act.busy} onClose={() => setAsk(false)} onConfirm={() => void run("dismiss")} title={t("staff.health.outbox.dismiss.title")} description={t("staff.health.outbox.dismiss.desc")} confirmLabel={t("staff.health.outbox.dismiss")} />
+    </div>
+  );
+}
+
+function CheckCard({ c, onChanged }: { c: HealthCheck; onChanged: () => void }) {
   return (
     <li class={`sh-check sh-check--${c.status}`} data-status={c.status}>
       <span class="sh-check__icon"><Icon icon={ICON[c.status]} size={24} /></span>
@@ -74,11 +97,12 @@ function CheckCard({ c }: { c: HealthCheck }) {
           <p class="sh-check__act"><strong>{t("staff.health.action")}</strong> {c.action}</p>
         ) : null}
         {c.examples && c.examples.length ? (
-          <details class="sh-check__more">
+          <details class="sh-check__more" open={c.status !== "ok"}>
             <summary>{t("staff.health.details")}</summary>
             <ul>{c.examples.map((e) => <li key={e}>{e}</li>)}</ul>
           </details>
         ) : null}
+        {c.id === "outbox" && c.status !== "ok" && c.examples && c.examples.length ? <OutboxFix onDone={onChanged} /> : null}
         {c.href && c.status !== "ok" ? <div class="sh-check__go"><Action href={c.href} /></div> : null}
       </div>
     </li>
@@ -152,7 +176,7 @@ export function SystemHealth() {
                   <h2 id={`sh-g-${g.id}`} class="sh-group__title">{g.title}</h2>
                   <StatusPill tone={TONE[full.status]}>{t("staff.health.group", { ok: okCount, total: full.checks.length })}</StatusPill>
                 </div>
-                <ul class="sh-list">{g.checks.map((c) => <CheckCard key={c.id} c={c} />)}</ul>
+                <ul class="sh-list">{g.checks.map((c) => <CheckCard key={c.id} c={c} onChanged={() => void q.refetch()} />)}</ul>
               </section>
             );
           })}

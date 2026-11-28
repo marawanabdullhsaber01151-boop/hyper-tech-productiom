@@ -1,5 +1,6 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/preact";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { ToastProvider } from "../design/components";
 import { RoleGuard } from "./RoleGuard";
 import { HEALTH_ROLES, SystemHealth, visibleGroups, type HealthGroup, type HealthReport } from "./SystemHealth";
 
@@ -70,6 +71,43 @@ describe("SystemHealth", () => {
     render(<SystemHealth />);
     expect(await screen.findByText(/ماقدرناش نعمل الفحص/)).toBeTruthy();
     expect(screen.getByRole("button", { name: "حاول تاني" })).toBeTruthy();
+  });
+});
+
+describe("علاج الرسائل الفاشلة", () => {
+  const OUT: HealthReport = {
+    ...REPORT,
+    groups: [{ id: "base", title: "الأساس", status: "warn", checks: [{ id: "outbox", group: "base", title: "الرسائل والإشعارات المعلّقة", status: "warn", message: "3 رسالة فشل إرسالهم نهائيًا.", action: "راجع.", examples: ["notify: المزوّد ما ردّش"] }] }],
+  };
+  const calls: Array<{ url: string; method: string; body: unknown }> = [];
+  const stub = () => {
+    calls.length = 0;
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      calls.push({ url: String(input), method: init?.method ?? "GET", body: init?.body ? JSON.parse(String(init.body)) : undefined });
+      if ((init?.method ?? "GET") === "POST") return json({ data: { action: "retry", count: 3 } });
+      return json({ data: OUT });
+    }));
+  };
+  it("بيعرض السبب وزرار إعادة المحاولة بيبعت retry", async () => {
+    stub();
+    render(<ToastProvider><SystemHealth /></ToastProvider>);
+    expect(await screen.findByText("notify: المزوّد ما ردّش")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "أعد محاولة الإرسال" }));
+    await vi.waitFor(() => expect(calls.some((c) => c.method === "POST" && c.url.includes("/admin/system-health/outbox") && (c.body as { action: string }).action === "retry")).toBe(true));
+  });
+  it("التجاهل بيطلب تأكيد الأول", async () => {
+    stub();
+    render(<ToastProvider><SystemHealth /></ToastProvider>);
+    await screen.findByText("notify: المزوّد ما ردّش");
+    fireEvent.click(screen.getByRole("button", { name: "تجاهل الفاشل" }));
+    expect(await screen.findByText("نتجاهل الرسائل الفاشلة؟")).toBeTruthy();
+    expect(calls.some((c) => c.method === "POST")).toBe(false);
+  });
+  it("الفحوصات التانية مابيظهرلهاش الزرارين", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => json({ data: REPORT })));
+    render(<ToastProvider><SystemHealth /></ToastProvider>);
+    await screen.findByText("إجمالي الفواتير مطابق للأصناف");
+    expect(screen.queryByRole("button", { name: "أعد محاولة الإرسال" })).toBeNull();
   });
 });
 

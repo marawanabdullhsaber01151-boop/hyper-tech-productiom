@@ -8,6 +8,8 @@ import { AUDIT_FORK_TOLERATED_BEFORE, emptyChainState, verifyAuditBatch } from "
 import { loadSettingValues } from "./settingsStore";
 import { backupHealth, type LastRun } from "./backupCore";
 import { outboxHealth } from "./outboxCore";
+import { configHint, summarizeDead, summarizeFailures, type DeadRow, type FailureRow } from "./deliveryDiagnosis";
+import { getChannelAdapter } from "./channels/registry";
 import { taskHealth } from "./humanTaskCore";
 import { DEPARTMENTS, getNavForRole } from "./departments";
 import { purgeOldErrorEvents } from "./errorEvents";
@@ -138,7 +140,15 @@ const DEFS: CheckDef[] = [
                min(next_attempt_at) FILTER (WHERE status = 'pending' AND next_attempt_at <= now()) AS oldest_due
         FROM outbox_events`);
       const x = r[0];
-      return outboxHealth({ pending: Number(x?.pending ?? 0), retrying: Number(x?.retrying ?? 0), dead: Number(x?.dead ?? 0), oldestDueAt: x?.oldest_due ? new Date(x.oldest_due) : null }, new Date());
+      const out = outboxHealth({ pending: Number(x?.pending ?? 0), retrying: Number(x?.retrying ?? 0), dead: Number(x?.dead ?? 0), oldestDueAt: x?.oldest_due ? new Date(x.oldest_due) : null }, new Date());
+      // السبب الفعلي للفاشل (آخر خطأ مسجّل لكل نوع حدث) بدل رقم من غير تفسير
+      if (Number(x?.dead ?? 0) > 0) {
+        const why = await rows<DeadRow>(sql`
+          SELECT event_type, (array_agg(last_error ORDER BY id DESC))[1] AS last_error, count(*)::int AS n
+          FROM outbox_events WHERE status = 'dead' GROUP BY event_type`);
+        out.examples = summarizeDead(why);
+      }
+      return out;
     },
   },
 
@@ -464,9 +474,23 @@ const DEFS: CheckDef[] = [
     group: "customers",
     title: "رسائل ما وصلتش للعملاء",
     run: async () => {
-      const n = await count(sql`SELECT count(*)::int AS n FROM portal_outbox WHERE status = 'failed' AND created_at > now() - interval '1 day'`);
-      if (!n) return { status: "ok", message: "كل الرسائل (كود التفعيل والإشعارات) أُرسلت بنجاح آخر ٢٤ ساعة." };
+      // الفشل اللي اتعوّض بقناة تانية (SMS فشل والإيميل وصل في نفس الدقايق) مش مشكلة: العميل استلم الكود.
+      const failed = await rows<FailureRow>(sql`
+        SELECT f.channel, f.error_code, count(*)::int AS n FROM portal_outbox f
+        WHERE f.status = 'failed' AND f.created_at > now() - interval '1 day'
+          AND NOT EXISTS (
+            SELECT 1 FROM portal_outbox s
+            WHERE s.status = 'sent' AND s.purpose = f.purpose
+              AND s.user_id IS NOT DISTINCT FROM f.user_id AND s.company_id IS NOT DISTINCT FROM f.company_id
+              AND s.created_at >= f.created_at AND s.created_at <= f.created_at + interval '10 minutes')
+        GROUP BY f.channel, f.error_code`);
+      const n = failed.reduce((a, r) => a + Number(r.n || 0), 0);
+      if (!n) return { status: "ok", message: "كل الرسائل (كود التفعيل والإشعارات) وصلت للعملاء آخر ٢٤ ساعة." };
+      const examples = summarizeFailures(failed);
+      const hint = configHint({ sms: getChannelAdapter("sms").isConfigured(), email: getChannelAdapter("email").isConfigured() });
+      if (hint) examples.unshift(hint);
       return {
+        examples,
         status: statusFromCount(n, { warnAt: 1, badAt: 10 }),
         message: `${countWord(n, { one: "رسالة", two: "رسالتين", few: "رسائل", many: "رسالة" })} للعملاء فشل إرسالها آخر ٢٤ ساعة (كود تفعيل أو إشعار). العميل ممكن يكون مستني كود ومش جاي.`,
         action: "راجع إعدادات قنوات الإرسال (SMS/واتساب/إيميل) في إعدادات البوابة، وأعد إرسال الكود للعملاء المتأثرين.",
